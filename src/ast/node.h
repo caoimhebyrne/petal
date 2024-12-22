@@ -19,6 +19,10 @@ typedef enum {
     // An identifier reference node.
     // See IdentifierReferenceNode.
     NODE_IDENTIFIER_REFERENCE = 3,
+
+    // A function call node.
+    // See FunctionCallNode
+    NODE_FUNCTION_CALL = 4,
 } NodeType;
 
 typedef struct {

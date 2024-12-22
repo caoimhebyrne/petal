@@ -4,6 +4,7 @@
 #include "../diagnostics.h"
 #include "../lexer/token.h"
 #include "node.h"
+#include "node/function_call.h"
 #include "node/function_declaration.h"
 #include "node/variable_declaration.h"
 
@@ -40,19 +41,12 @@ NodeStream ast_parse(AST* ast);
 // If the token is present, the position is advanced, and the token is returned.
 Token ast_expect_token(AST* ast, TokenType type);
 
-// Parses a statement node at the current position.
+// Parses a node at the current position.
 // Parameters:
 // - ast: The AST to use when parsing.
 // Returns:
 // - A node if successful, otherwise 0.
-Node* ast_parse_statement(AST* ast);
-
-// Parses a value node at the current position.
-// Parameters:
-// - ast: The AST to use when parsing.
-// Returns:
-// - A node if successful, otherwise 0.
-Node* ast_parse_value(AST* ast);
+Node* ast_parse_node(AST* ast, bool as_statement);
 
 // Parses a variable declaration node at the current position.
 // Parameters:
@@ -67,5 +61,12 @@ VariableDeclarationNode* ast_parse_variable_declaration(AST* ast);
 // Returns:
 // - A function declaration node if successful, otherwise 0.
 FunctionDeclarationNode* ast_parse_function_declaration(AST* ast);
+
+// Parses a function call node at the current position.
+// Parameters:
+// - ast: The AST to use when parsing.
+// Returns:
+// - A function call node if successful, otherwise 0.
+FunctionCallNode* ast_parse_function_call(AST* ast, bool as_statement);
 
 #endif // __AST_H__

@@ -1,6 +1,7 @@
 #include "ast.h"
 #include "../string/format_string.h"
 #include "node.h"
+#include "node/function_call.h"
 #include "node/function_declaration.h"
 #include "node/identifier_reference.h"
 #include "node/number_literal.h"
@@ -22,7 +23,7 @@ NodeStream ast_parse(AST* ast) {
     }
 
     while (ast->position < ast->token_stream.length) {
-        Node* node = ast_parse_statement(ast);
+        Node* node = ast_parse_node(ast, true);
         if (node == 0) {
             return stream;
         }
@@ -37,6 +38,19 @@ Token ast_peek_token(AST* ast) { return ast->token_stream.data[ast->position]; }
 
 Token ast_expect_token(AST* ast, TokenType type) {
     Token token = ast->token_stream.data[ast->position];
+    if (token.type == TOKEN_INVALID) {
+        Token last_token = ast->token_stream.data[ast->token_stream.length - 1];
+
+        Diagnostic diagnostic = {
+            .position = last_token.position,
+            .message = format_string("expected %s, but got end-of-file", token_type_to_string(type)),
+            .is_terminal = true,
+        };
+
+        diagnostic_stream_append(&ast->diagnostics, diagnostic);
+        return INVALID_TOKEN;
+    }
+
     if (token.type != type) {
         Diagnostic diagnostic = {
             .position = token.position,
@@ -53,18 +67,39 @@ Token ast_expect_token(AST* ast, TokenType type) {
     return token;
 }
 
-Node* ast_parse_statement(AST* ast) {
-    Token token = ast->token_stream.data[ast->position];
-
+Node* ast_parse_node(AST* ast, bool as_statement) {
+    Token token = ast_peek_token(ast);
     switch (token.type) {
-    // The only token type supported for statements is an identifier.
+
+    // In order to figure out what this identifier is for, we need to see its value, but
+    // also take a look at the tokens around it.
     case TOKEN_IDENTIFIER: {
+        // If this identifier is "func", the following tokens must make up a function declaration.
         if (strcmp(token.string, "func") == 0) {
             return (Node*)ast_parse_function_declaration(ast);
-        } else {
+        }
+
+        // To figure out what the identifier is for, we need to check the next token's value.
+        Token next_token = ast->token_stream.data[ast->position + 1];
+        switch (next_token.type) {
+        case TOKEN_IDENTIFIER:
+            // If the next token is another identifier, this *should* be a variable declaration.
             return (Node*)ast_parse_variable_declaration(ast);
+
+        case TOKEN_OPEN_PARENTHESIS:
+            // If the next token is an opening parenthesis, it's safe to say that this could be a function call.
+            return (Node*)ast_parse_function_call(ast, as_statement);
+
+        // Otherwise, the next token seems to be useless, and this is probably just an identifier reference.
+        default:
+            ast->position += 1;
+            return (Node*)identifier_reference_node_create(token.string);
         }
     }
+
+    case TOKEN_NUMBER_LITERAL:
+        ast->position += 1;
+        return (Node*)number_literal_node_create(token.number);
 
     case TOKEN_INVALID: {
         Token last_token = ast->token_stream.data[ast->token_stream.length - 1];
@@ -79,42 +114,18 @@ Node* ast_parse_statement(AST* ast) {
         return 0;
     }
 
-    default: {
-        Diagnostic diagnostic = {
-            .position = token.position,
-            .message = format_string("unexpected token: '%s'", token_to_string(&token)),
-            .is_terminal = true,
-        };
-
-        diagnostic_stream_append(&ast->diagnostics, diagnostic);
-        return 0;
+    default:
+        break;
     }
-    }
-}
 
-Node* ast_parse_value(AST* ast) {
-    Token token = ast_peek_token(ast);
-    switch (token.type) {
-    case TOKEN_NUMBER_LITERAL:
-        ast->position += 1;
-        return (Node*)number_literal_node_create(token.number);
+    Diagnostic diagnostic = {
+        .position = token.position,
+        .message = format_string("unexpected token: '%s'", token_to_string(&token)),
+        .is_terminal = true,
+    };
 
-    case TOKEN_IDENTIFIER:
-        ast->position += 1;
-        return (Node*)identifier_reference_node_create(token.string);
-
-    default: {
-        Diagnostic diagnostic = {
-            .position = token.position,
-            .message =
-                format_string("unexpected token: '%s', expected a number or an identifier", token_to_string(&token)),
-            .is_terminal = true,
-        };
-
-        diagnostic_stream_append(&ast->diagnostics, diagnostic);
-        return 0;
-    }
-    }
+    diagnostic_stream_append(&ast->diagnostics, diagnostic);
+    return 0;
 }
 
 // <type> <name> = <value>;
@@ -137,7 +148,7 @@ VariableDeclarationNode* ast_parse_variable_declaration(AST* ast) {
         return 0;
     }
 
-    Node* value_node = ast_parse_value(ast);
+    Node* value_node = ast_parse_node(ast, false);
     if (value_node == 0) {
         return 0;
     }
@@ -196,7 +207,7 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
     node_stream_initialize(&function_body, 2);
 
     while (ast_peek_token(ast).type != TOKEN_CLOSE_BRACE) {
-        Node* node = ast_parse_statement(ast);
+        Node* node = ast_parse_node(ast, true);
         if (node == 0) {
             return 0;
         }
@@ -210,6 +221,35 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
     }
 
     return function_declaration_node_create(name_token.string, function_body);
+}
+
+FunctionCallNode* ast_parse_function_call(AST* ast, bool as_statement) {
+    // The first token in the stream must be an identifier for the name.
+    Token name_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
+    if (name_token.type == TOKEN_INVALID) {
+        return 0;
+    }
+
+    // FIXME: There is no support for arguments/parameters in functions yet.
+    Token open_parenthesis_token = ast_expect_token(ast, TOKEN_OPEN_PARENTHESIS);
+    if (open_parenthesis_token.type == TOKEN_INVALID) {
+        return 0;
+    }
+
+    Token close_parenthesis_token = ast_expect_token(ast, TOKEN_CLOSE_PARENTHESIS);
+    if (close_parenthesis_token.type == TOKEN_INVALID) {
+        return 0;
+    }
+
+    if (as_statement) {
+        // The last token must be a semicolon.
+        Token semicolon_token = ast_expect_token(ast, TOKEN_SEMICOLON);
+        if (semicolon_token.type == TOKEN_INVALID) {
+            return 0;
+        }
+    }
+
+    return function_call_node_create(name_token.string);
 }
 
 void ast_destroy(AST* ast) {

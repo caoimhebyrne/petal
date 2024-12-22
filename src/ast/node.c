@@ -1,5 +1,6 @@
 #include "node.h"
 #include "../string/format_string.h"
+#include "node/function_call.h"
 #include "node/function_declaration.h"
 #include "node/identifier_reference.h"
 #include "node/number_literal.h"
@@ -35,6 +36,13 @@ void node_destroy(Node* node) {
 
         break;
     }
+
+    case NODE_FUNCTION_CALL: {
+        FunctionCallNode* function_call = (FunctionCallNode*)node;
+        free(function_call->name);
+
+        break;
+    }
     }
 
     free(node);
@@ -61,6 +69,9 @@ char* node_to_string(Node* node) {
 
     case NODE_IDENTIFIER_REFERENCE:
         return identifier_reference_node_to_string((IdentifierReferenceNode*)node);
+
+    case NODE_FUNCTION_CALL:
+        return function_call_node_to_string((FunctionCallNode*)node);
     }
 
     return format_string("unknown node (%d)", node->node_type);
