@@ -34,11 +34,10 @@ int main(int argc, char** argv) {
     }
 
     TokenStream token_stream = lexer_parse(&lexer);
-    lexer_destroy(&lexer);
-
     if (lexer.diagnostics.length != 0) {
         token_stream_destroy(&token_stream);
         diagnostic_stream_print(&lexer.diagnostics, filename);
+        lexer_destroy(&lexer);
 
         return -1;
     }
@@ -52,7 +51,10 @@ int main(int argc, char** argv) {
 
     NodeStream node_stream = ast_parse(&ast);
     if (ast.diagnostics.length != 0) {
+        node_stream_destroy(&node_stream);
         diagnostic_stream_print(&ast.diagnostics, filename);
+        ast_destroy(&ast);
+
         return -1;
     }
 

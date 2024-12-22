@@ -10,8 +10,6 @@ void diagnostic_stream_print(DiagnosticStream* stream, char* filename) {
         printf("%s: %s(%zu:%zu): %s\n", prefix, filename, diagnostic.position.line + 1, diagnostic.position.column,
                diagnostic.message);
     }
-
-    diagnostic_stream_destroy(stream);
 }
 
 void diagnostic_stream_destroy(DiagnosticStream* stream) { free(stream->data); }
