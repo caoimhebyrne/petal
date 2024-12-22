@@ -18,9 +18,15 @@ typedef struct {
 
 DECLARE_STREAM(DiagnosticStream, diagnostic_stream, Diagnostic);
 
+// Resets the provided DiagnoticStream with a certain capacity.
+// Parameters:
+// - diagnostic_stream: The diagnostic stream to reset.
+// - initial_capacity: The initial capacity of the new stream.
+bool diagnostic_stream_reset(DiagnosticStream* stream, size_t initial_capacity);
+
 // Prints the diagnostic stream out to the console.
 // Parameters:
-// - diagnostic_stream: The diagnostic stream to print
+// - diagnostic_stream: The diagnostic stream to print.
 // - filename: The name of the file that the diagnostics occurred in.
 void diagnostic_stream_print(DiagnosticStream* stream, char* filename);
 
