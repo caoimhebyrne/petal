@@ -2,11 +2,6 @@
 #include "stream.h"
 #include <stdarg.h>
 
-bool diagnostic_stream_reset(DiagnosticStream* stream, size_t initial_capacity) {
-    diagnostic_stream_destroy(stream);
-    return diagnostic_stream_initialize(stream, initial_capacity);
-}
-
 void diagnostic_stream_print(DiagnosticStream* stream, char* filename) {
     for (size_t i = 0; i < stream->length; i++) {
         Diagnostic diagnostic = stream->data[i];

@@ -50,13 +50,15 @@ bool lexer_initialize(Lexer* lexer, char* filename) {
     lexer->contents = contents;
     lexer->contents_length = file_size;
     lexer->position = (Position){.line = 0, .column = 0, .index = 0};
+    lexer->diagnostics = (DiagnosticStream){};
+    diagnostic_stream_initialize(&lexer->diagnostics, 2);
 
     LOG_DEBUG("lexer", "initialized lexer with %zu bytes from %s", file_size, filename);
 
     return true;
 }
 
-TokenStream lexer_parse(Lexer* lexer, DiagnosticStream* diagnostic_stream) {
+TokenStream lexer_parse(Lexer* lexer) {
     TokenStream stream;
     token_stream_initialize(&stream, 2);
 
@@ -141,7 +143,7 @@ TokenStream lexer_parse(Lexer* lexer, DiagnosticStream* diagnostic_stream) {
                 .is_terminal = true,
             };
 
-            diagnostic_stream_append(diagnostic_stream, diagnostic);
+            diagnostic_stream_append(&lexer->diagnostics, diagnostic);
             break;
         }
         }

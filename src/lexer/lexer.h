@@ -15,6 +15,9 @@ typedef struct {
 
     // The position that the lexer is at within the contents.
     Position position;
+
+    // The diagnostics emitted by this lexer.
+    DiagnosticStream diagnostics;
 } Lexer;
 
 // Initializes the provided lexer with the contents of the provided filename.
@@ -26,10 +29,9 @@ bool lexer_initialize(Lexer* lexer, char* filename);
 // Iterates over the contents within the Lexer, producing a stream of tokens.
 // Parameters:
 // - lexer: The lexer to use when parsing.
-// - diagnostic_stream: The diagnostic stream to write errors to.
 // Returns:
-// - A token stream, if the diagnostic_stream's length is greater than zero, this stream is incomplete.
-TokenStream lexer_parse(Lexer* lexer, DiagnosticStream* diagnostic_stream);
+// - A token stream, if the diagnostics's length is greater than zero, this stream is incomplete.
+TokenStream lexer_parse(Lexer* lexer);
 
 // Attempts to parse an identifier token from the contents at the current position in the Lexer.
 // Parameters:

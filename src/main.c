@@ -18,22 +18,13 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    // This diagnostic stream will be used for
-    DiagnosticStream diagnostic_stream;
-    diagnostic_stream_initialize(&diagnostic_stream, 1);
-
-    TokenStream token_stream = lexer_parse(&lexer, &diagnostic_stream);
+    TokenStream token_stream = lexer_parse(&lexer);
     lexer_destroy(&lexer);
 
-    if (diagnostic_stream.length != 0) {
+    if (lexer.diagnostics.length != 0) {
         token_stream_destroy(&token_stream);
-        diagnostic_stream_print(&diagnostic_stream, filename);
+        diagnostic_stream_print(&lexer.diagnostics, filename);
 
-        return -1;
-    }
-
-    // Re-use the diagnostic stream variable for the AST.
-    if (!diagnostic_stream_reset(&diagnostic_stream, 2)) {
         return -1;
     }
 
