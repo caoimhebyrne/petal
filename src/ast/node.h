@@ -8,9 +8,13 @@ typedef enum {
     // See VariableDeclarationNode.
     NODE_VARIABLE_DECLARATION = 0,
 
+    // A function declaration node.
+    // See FunctionDeclarationNode.
+    NODE_FUNCTION_DECLARATION = 1,
+
     // A number literal node.
     // See NumberLiteralNode.
-    NODE_NUMBER_LITERAL = 1,
+    NODE_NUMBER_LITERAL = 2,
 } NodeType;
 
 typedef struct {

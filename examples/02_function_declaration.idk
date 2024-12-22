@@ -1,4 +1,1 @@
-func hello() {
-    i32 my_variable = 123;
-    f32 other_variable = 456.789;
-}
+func hello() {}

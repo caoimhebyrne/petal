@@ -1,8 +1,10 @@
 #include "ast.h"
 #include "../string/format_string.h"
 #include "node.h"
+#include "node/function_declaration.h"
 #include "node/number_literal.h"
 #include "node/variable_declaration.h"
+#include <string.h>
 
 bool ast_initialize(AST* ast, TokenStream token_stream) {
     ast->diagnostics = (DiagnosticStream){};
@@ -53,9 +55,13 @@ Node* ast_parse_statement(AST* ast) {
 
     switch (token.type) {
     // The only token type supported for statements is an identifier.
-    // This is because there is only one statement, a variable declaration.
-    case TOKEN_IDENTIFIER:
-        return (Node*)ast_parse_variable_declaration(ast);
+    case TOKEN_IDENTIFIER: {
+        if (strcmp(token.string, "func") == 0) {
+            return (Node*)ast_parse_function_declaration(ast);
+        } else {
+            return (Node*)ast_parse_variable_declaration(ast);
+        }
+    }
 
     default: {
         Diagnostic diagnostic = {
@@ -111,4 +117,54 @@ VariableDeclarationNode* ast_parse_variable_declaration(AST* ast) {
     }
 
     return variable_declaration_node_create(type_token.string, name_token.string, value_node);
+}
+
+// func <name>() { ... }
+FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
+    // The first token in the stream must be an identifier which equals 'func'.
+    Token func_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
+    if (func_token.type == TOKEN_INVALID) {
+        return 0;
+    }
+
+    if (strcmp(func_token.string, "func") != 0) {
+        Diagnostic diagnostic = {
+            .position = func_token.position,
+            .message = format_string("unexpected identifier: '%s', expected keyword 'func'", func_token.string),
+            .is_terminal = true,
+        };
+
+        diagnostic_stream_append(&ast->diagnostics, diagnostic);
+        return 0;
+    }
+
+    // The second token in the stream must be an identifier for the name.
+    Token name_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
+    if (name_token.type == TOKEN_INVALID) {
+        return 0;
+    }
+
+    // FIXME: There is no support for arguments/parameters in functions yet.
+    Token open_parenthesis_token = ast_expect_token(ast, TOKEN_OPEN_PARENTHESIS);
+    if (open_parenthesis_token.type == TOKEN_INVALID) {
+        return 0;
+    }
+
+    Token close_parenthesis_token = ast_expect_token(ast, TOKEN_CLOSE_PARENTHESIS);
+    if (close_parenthesis_token.type == TOKEN_INVALID) {
+        return 0;
+    }
+
+    // FIXME: There is no support for function bodies yet.
+    Token open_brace_token = ast_expect_token(ast, TOKEN_OPEN_BRACE);
+    if (open_brace_token.type == TOKEN_INVALID) {
+        return 0;
+    }
+
+    Token close_brace_token = ast_expect_token(ast, TOKEN_CLOSE_BRACE);
+    if (close_brace_token.type == TOKEN_INVALID) {
+        return 0;
+    }
+
+    return function_declaration_node_create(name_token.string);
 }

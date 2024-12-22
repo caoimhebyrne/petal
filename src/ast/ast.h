@@ -4,6 +4,7 @@
 #include "../diagnostics.h"
 #include "../lexer/token.h"
 #include "node.h"
+#include "node/function_declaration.h"
 #include "node/variable_declaration.h"
 
 typedef struct {
@@ -54,5 +55,12 @@ Node* ast_parse_value(AST* ast);
 // Returns:
 // - A variable declaration node if successful, otherwise 0.
 VariableDeclarationNode* ast_parse_variable_declaration(AST* ast);
+
+// Parses a function declaration node at the current position.
+// Parameters:
+// - ast: The AST to use when parsing.
+// Returns:
+// - A function declaration node if successful, otherwise 0.
+FunctionDeclarationNode* ast_parse_function_declaration(AST* ast);
 
 #endif // __AST_H__
