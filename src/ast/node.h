@@ -23,6 +23,10 @@ typedef enum {
     // A function call node.
     // See FunctionCallNode
     NODE_FUNCTION_CALL = 4,
+
+    // A return statement node.
+    // See ReturnNode.
+    NODE_RETURN = 5,
 } NodeType;
 
 typedef struct {

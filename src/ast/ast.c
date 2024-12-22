@@ -5,6 +5,7 @@
 #include "node/function_declaration.h"
 #include "node/identifier_reference.h"
 #include "node/number_literal.h"
+#include "node/return.h"
 #include "node/variable_declaration.h"
 #include <string.h>
 
@@ -77,6 +78,11 @@ Node* ast_parse_node(AST* ast, bool as_statement) {
         // If this identifier is "func", the following tokens must make up a function declaration.
         if (strcmp(token.string, "func") == 0) {
             return (Node*)ast_parse_function_declaration(ast);
+        }
+
+        // If this identifier is "return", then this is a return statement.
+        if (strcmp(token.string, "return") == 0) {
+            return (Node*)ast_parse_return_statement(ast);
         }
 
         // To figure out what the identifier is for, we need to check the next token's value.
@@ -290,6 +296,47 @@ FunctionCallNode* ast_parse_function_call(AST* ast, bool as_statement) {
     }
 
     return function_call_node_create(name_token.string);
+}
+
+// return <value>;
+ReturnNode* ast_parse_return_statement(AST* ast) {
+    // The first token in the stream must be the "return" keyword.
+    Token return_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
+    if (return_token.type == TOKEN_INVALID) {
+        return 0;
+    }
+
+    if (strcmp(return_token.string, "return") != 0) {
+        Diagnostic diagnostic = {
+            .position = return_token.position,
+            .message = format_string("unexpected identifier: '%s', expected keyword 'return'", return_token.string),
+            .is_terminal = true,
+        };
+
+        diagnostic_stream_append(&ast->diagnostics, diagnostic);
+        return 0;
+    }
+
+    // If the next token is a semicolon, there should not be a value.
+    Token next_token = ast_peek_token(ast);
+
+    Node* value = 0;
+    if (next_token.type == TOKEN_SEMICOLON) {
+        ast->position += 1;
+    } else {
+        value = ast_parse_node(ast, false);
+        if (!value) {
+            return 0;
+        }
+
+        // The last token must be a semicolon.
+        Token semicolon_token = ast_expect_token(ast, TOKEN_SEMICOLON);
+        if (semicolon_token.type == TOKEN_INVALID) {
+            return 0;
+        }
+    }
+
+    return return_node_create(value);
 }
 
 void ast_destroy(AST* ast) {

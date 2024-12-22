@@ -4,6 +4,7 @@
 #include "node/function_declaration.h"
 #include "node/identifier_reference.h"
 #include "node/number_literal.h"
+#include "node/return.h"
 #include "node/variable_declaration.h"
 
 CREATE_STREAM(NodeStream, node_stream, Node*);
@@ -43,6 +44,15 @@ void node_destroy(Node* node) {
 
         break;
     }
+
+    case NODE_RETURN: {
+        ReturnNode* return_statement = (ReturnNode*)node;
+        if (return_statement->value != 0) {
+            node_destroy(return_statement->value);
+        }
+
+        break;
+    }
     }
 
     free(node);
@@ -72,6 +82,9 @@ char* node_to_string(Node* node) {
 
     case NODE_FUNCTION_CALL:
         return function_call_node_to_string((FunctionCallNode*)node);
+
+    case NODE_RETURN:
+        return return_node_to_string((ReturnNode*)node);
     }
 
     return format_string("unknown node (%d)", node->node_type);

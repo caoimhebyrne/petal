@@ -1,0 +1,12 @@
+// As shown in the previous example, a function can have a return type.
+// In order to actually return a value, the `return` keyword is used.
+func my_function() -> i32 {
+    return 5;
+}
+
+// A function can also just return without a value.
+func other_function() {
+    return;
+}
+
+i32 my_value = my_function();

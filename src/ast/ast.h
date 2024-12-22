@@ -6,6 +6,7 @@
 #include "node.h"
 #include "node/function_call.h"
 #include "node/function_declaration.h"
+#include "node/return.h"
 #include "node/variable_declaration.h"
 
 typedef struct {
@@ -68,5 +69,12 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast);
 // Returns:
 // - A function call node if successful, otherwise 0.
 FunctionCallNode* ast_parse_function_call(AST* ast, bool as_statement);
+
+// Parses a return statement node at the current position.
+// Parameters:
+// - ast: The AST to use when parsing.
+// Returns:
+// - A return statement node if successful, otherwise 0.
+ReturnNode* ast_parse_return_statement(AST* ast);
 
 #endif // __AST_H__
