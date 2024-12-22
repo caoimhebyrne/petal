@@ -1,0 +1,193 @@
+#include "lexer.h"
+#include "../logger.h"
+#include "../string/string_builder.h"
+#include "token.h"
+#include <ctype.h>
+#include <errno.h> // IWYU pragma: keep
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+
+bool lexer_initialize(Lexer* lexer, char* filename) {
+    FILE* file = fopen(filename, "r");
+    if (!file) {
+        LOG_ERROR("lexer", "failed to open file %s: %s", filename, strerror(errno));
+        return false;
+    }
+
+    // In order to use the `stat` API, we need to get the file descriptor for the opened file.
+    int file_descriptor = fileno(file);
+
+    struct stat stat_result;
+    if (fstat(file_descriptor, &stat_result) != 0) {
+        LOG_ERROR("lexer", "failed to read file %s: %s", filename, strerror(errno));
+        return false;
+    }
+
+    // Ensure that the filename passed is not actually a directory.
+    if (S_ISDIR(stat_result.st_mode)) {
+        LOG_ERROR("lexer", "%s is a directory, expected a file", filename);
+        return 0;
+    }
+
+    size_t file_size = stat_result.st_size;
+
+    char* contents = malloc(file_size);
+    if (!contents) {
+        LOG_ERROR("lexer", "failed to allocate buffer of %zu for file %s", file_size, filename);
+        return false;
+    }
+
+    if (fread(contents, file_size, sizeof(char), file) != 1) {
+        LOG_ERROR("lexer", "failed to read %zu bytes from %s: %s", file_size, filename, strerror(errno));
+        return false;
+    }
+
+    fclose(file);
+
+    lexer->contents = contents;
+    lexer->contents_length = file_size;
+    lexer->position = 0;
+
+    LOG_DEBUG("lexer", "initialized lexer with %zu bytes from %s", file_size, filename);
+
+    return true;
+}
+
+TokenStream lexer_parse(Lexer* lexer) {
+    TokenStream stream;
+    token_stream_initialize(&stream, 2);
+
+    for (; lexer->position < lexer->contents_length; lexer->position++) {
+        char character = lexer->contents[lexer->position];
+        switch (character) {
+
+        case '/': {
+            if (lexer->contents[lexer->position + 1] == '/') {
+                // If this is a comment (//), skip until the next new-line.
+                while (lexer->position < lexer->contents_length) {
+                    lexer->position++;
+
+                    // FIXME: this does not have support for carraige-returns.
+                    if (lexer->contents[lexer->position] == '\n') {
+                        break;
+                    }
+                }
+            } else {
+                // This is a single `/`, not a comment.
+                token_stream_append(&stream, (Token){.type = TOKEN_SLASH});
+            }
+
+            break;
+        }
+
+        // Ignore any whitespace!
+        case ' ':
+        case '\t':
+        case '\r':
+        case '\n':
+            break;
+
+        case '=':
+            token_stream_append(&stream, (Token){.type = TOKEN_EQUALS});
+            break;
+
+        case ';':
+            token_stream_append(&stream, (Token){.type = TOKEN_SEMICOLON});
+            break;
+
+        case '(':
+            token_stream_append(&stream, (Token){.type = TOKEN_OPEN_PARENTHESIS});
+            break;
+
+        case ')':
+            token_stream_append(&stream, (Token){.type = TOKEN_CLOSE_PARENTHESIS});
+            break;
+
+        case '{':
+            token_stream_append(&stream, (Token){.type = TOKEN_OPEN_BRACE});
+            break;
+
+        case '}':
+            token_stream_append(&stream, (Token){.type = TOKEN_CLOSE_BRACE});
+            break;
+
+        default: {
+            if (isalpha(character)) {
+                // If the character is an alphabetic character, attempt to parse an identifier.
+                Token token = lexer_parse_identifier(lexer);
+                if (token.type != TOKEN_INVALID) {
+                    token_stream_append(&stream, token);
+                    continue;
+                }
+            } else if (isdigit(character)) {
+                // If the character is a digit, attempt to parse a number literal.
+                Token token = lexer_parse_number_literal(lexer);
+                if (token.type != TOKEN_INVALID) {
+                    token_stream_append(&stream, token);
+                    continue;
+                }
+            }
+
+            LOG_ERROR("lexer", "unexpected character: '%c'", character);
+            break;
+        }
+        }
+    }
+
+    return stream;
+}
+
+Token lexer_parse_identifier(Lexer* lexer) {
+    StringBuilder string_builder;
+    if (!string_builder_initialize(&string_builder, 2)) {
+        return INVALID_TOKEN;
+    }
+
+    for (; lexer->position < lexer->contents_length; lexer->position++) {
+        char character = lexer->contents[lexer->position];
+        if (!isalpha(character) && !isdigit(character) && character != '_') {
+            lexer->position--; // Don't consume the character, it is not part of the identifier.
+            break;
+        }
+
+        string_builder_append(&string_builder, character);
+    }
+
+    char* identifier_name = string_builder_finish(&string_builder);
+    return (Token){.type = TOKEN_IDENTIFIER, .string = identifier_name};
+}
+
+Token lexer_parse_number_literal(Lexer* lexer) {
+    StringBuilder string_builder;
+    if (!string_builder_initialize(&string_builder, 2)) {
+        return INVALID_TOKEN;
+    }
+
+    for (; lexer->position < lexer->contents_length; lexer->position++) {
+        char character = lexer->contents[lexer->position];
+        if (!isdigit(character) && character != '.') {
+            lexer->position--; // Don't consume the character, it is not part of the identifier.
+            break;
+        }
+
+        string_builder_append(&string_builder, character);
+    }
+
+    char* string_value = string_builder_finish(&string_builder);
+
+    // strtod will set end_ptr to the first character after the numeric value has been parsed.
+    char* end_ptr = string_value;
+    double value = strtod(string_value, &end_ptr);
+
+    // If the end_ptr is still equal to the string_value, this is an invalid number.
+    if (end_ptr == string_value) {
+        LOG_ERROR("lexer", "invalid number: '%s'", string_value);
+        return INVALID_TOKEN;
+    }
+
+    return (Token){.type = TOKEN_NUMBER_LITERAL, .number = value};
+}
+
+void lexer_destroy(Lexer* lexer) { free(lexer->contents); }
