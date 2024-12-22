@@ -1,6 +1,7 @@
 #include "node.h"
 #include "../string/format_string.h"
 #include "node/function_declaration.h"
+#include "node/identifier_reference.h"
 #include "node/number_literal.h"
 #include "node/variable_declaration.h"
 
@@ -18,6 +19,9 @@ char* node_to_string(Node* node) {
 
     case NODE_NUMBER_LITERAL:
         return number_literal_node_to_string((NumberLiteralNode*)node);
+
+    case NODE_IDENTIFIER_REFERENCE:
+        return identifier_reference_node_to_string((IdentifierReferenceNode*)node);
     }
 
     return format_string("unknown node (%d)", node->node_type);

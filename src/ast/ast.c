@@ -2,6 +2,7 @@
 #include "../string/format_string.h"
 #include "node.h"
 #include "node/function_declaration.h"
+#include "node/identifier_reference.h"
 #include "node/number_literal.h"
 #include "node/variable_declaration.h"
 #include <string.h>
@@ -79,12 +80,28 @@ Node* ast_parse_statement(AST* ast) {
 }
 
 Node* ast_parse_value(AST* ast) {
-    Token token = ast_expect_token(ast, TOKEN_NUMBER_LITERAL);
-    if (token.type == TOKEN_INVALID) {
+    Token token = ast_peek_token(ast);
+    switch (token.type) {
+    case TOKEN_NUMBER_LITERAL:
+        ast->position += 1;
+        return (Node*)number_literal_node_create(token.number);
+
+    case TOKEN_IDENTIFIER:
+        ast->position += 1;
+        return (Node*)identifier_reference_node_create(token.string);
+
+    default: {
+        Diagnostic diagnostic = {
+            .position = token.position,
+            .message =
+                format_string("unexpected token: '%s', expected a number or an identifier", token_to_string(&token)),
+            .is_terminal = true,
+        };
+
+        diagnostic_stream_append(&ast->diagnostics, diagnostic);
         return 0;
     }
-
-    return (Node*)number_literal_node_create(token.number);
+    }
 }
 
 // <type> <name> = <value>;

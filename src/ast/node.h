@@ -15,6 +15,10 @@ typedef enum {
     // A number literal node.
     // See NumberLiteralNode.
     NODE_NUMBER_LITERAL = 2,
+
+    // An identifier reference node.
+    // See IdentifierReferenceNode.
+    NODE_IDENTIFIER_REFERENCE = 3,
 } NodeType;
 
 typedef struct {
