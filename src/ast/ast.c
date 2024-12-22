@@ -211,3 +211,8 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
 
     return function_declaration_node_create(name_token.string, function_body);
 }
+
+void ast_destroy(AST* ast) {
+    token_stream_destroy(&ast->token_stream);
+    diagnostic_stream_destroy(&ast->diagnostics);
+}

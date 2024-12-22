@@ -209,4 +209,7 @@ Token lexer_parse_number_literal(Lexer* lexer) {
     return (Token){.type = TOKEN_NUMBER_LITERAL, .number = value, .position = starting_position};
 }
 
-void lexer_destroy(Lexer* lexer) { free(lexer->contents); }
+void lexer_destroy(Lexer* lexer) {
+    free(lexer->contents);
+    diagnostic_stream_destroy(&lexer->diagnostics);
+}

@@ -36,6 +36,8 @@ void node_destroy(Node* node) {
         break;
     }
     }
+
+    free(node);
 }
 
 void node_stream_destroy(NodeStream* stream) {

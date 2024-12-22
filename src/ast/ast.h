@@ -24,6 +24,11 @@ typedef struct {
 // - token_stream: The token stream to parse from.
 bool ast_initialize(AST* ast, TokenStream token_stream);
 
+// De-allocates the contents held within the provided AST.
+// Parameters:
+// - ast: The AST to destroy.
+void ast_destroy(AST* lexer);
+
 // Parses a node stream from the data associated with the AST.
 // If the AST's diagnostics length is greater than zero, this node stream is incomplete.
 // Parameters:

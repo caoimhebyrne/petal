@@ -51,8 +51,6 @@ int main(int argc, char** argv) {
     }
 
     NodeStream node_stream = ast_parse(&ast);
-    token_stream_destroy(&token_stream);
-
     if (ast.diagnostics.length != 0) {
         diagnostic_stream_print(&ast.diagnostics, filename);
         return -1;
@@ -60,6 +58,7 @@ int main(int argc, char** argv) {
 
     LOG_INFO("main", "node tree:");
 
+    ast_destroy(&ast);
     print_node_stream(node_stream, 0);
     node_stream_destroy(&node_stream);
 
