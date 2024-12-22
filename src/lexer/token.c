@@ -56,6 +56,9 @@ char* token_to_string(Token* token) {
 
     case TOKEN_CLOSE_BRACE:
         return "close brace ('}')";
+
+    case TOKEN_ASTERISK:
+        return "asterisk ('*')";
     }
 
     return "unknown";

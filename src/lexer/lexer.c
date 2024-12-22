@@ -120,6 +120,10 @@ TokenStream lexer_parse(Lexer* lexer) {
             token_stream_append(&stream, (Token){.type = TOKEN_CLOSE_BRACE});
             break;
 
+        case '*':
+            token_stream_append(&stream, (Token){.type = TOKEN_ASTERISK});
+            break;
+
         default: {
             if (isalpha(character)) {
                 // If the character is an alphabetic character, attempt to parse an identifier.

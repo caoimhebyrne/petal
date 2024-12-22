@@ -22,6 +22,7 @@ typedef enum {
     TOKEN_CLOSE_PARENTHESIS = 7, // )
     TOKEN_OPEN_BRACE = 8,        // {
     TOKEN_CLOSE_BRACE = 9,       // }
+    TOKEN_ASTERISK = 10,         // *
 } TokenType;
 
 // Represents a single Token produced by the Lexer.
