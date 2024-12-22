@@ -20,16 +20,16 @@ char* codegen_generate(Codegen* codegen) {
 
     for (size_t i = 0; i < codegen->node_stream.length; i++) {
         Node* node = codegen->node_stream.data[i];
-        codegen_generate_node(&builder, node);
+        codegen_generate_node(&builder, node, false);
     }
 
     return string_builder_finish(&builder);
 }
 
-void codegen_generate_node(StringBuilder* builder, Node* node) {
+void codegen_generate_node(StringBuilder* builder, Node* node, bool as_value) {
     switch (node->node_type) {
     case NODE_FUNCTION_CALL:
-        codegen_generate_function_call(builder, (FunctionCallNode*)node);
+        codegen_generate_function_call(builder, (FunctionCallNode*)node, as_value);
         break;
 
     case NODE_VARIABLE_DECLARATION:
@@ -38,6 +38,10 @@ void codegen_generate_node(StringBuilder* builder, Node* node) {
 
     case NODE_FUNCTION_DECLARATION:
         codegen_generate_function_declaration(builder, (FunctionDeclarationNode*)node);
+        break;
+
+    case NODE_IDENTIFIER_REFERENCE:
+        codegen_generate_identifier_reference(builder, (IdentifierReferenceNode*)node);
         break;
 
     case NODE_NUMBER_LITERAL:
@@ -58,7 +62,7 @@ void codegen_generate_return(StringBuilder* builder, ReturnNode* node) {
     string_builder_append_string(builder, "return");
     if (node->value) {
         string_builder_append(builder, ' ');
-        codegen_generate_node(builder, node->value);
+        codegen_generate_node(builder, node->value, true);
     }
     string_builder_append(builder, ';');
     string_builder_append(builder, '\n');
@@ -67,6 +71,10 @@ void codegen_generate_return(StringBuilder* builder, ReturnNode* node) {
 void codegen_generate_number_literal(StringBuilder* builder, NumberLiteralNode* node) {
     char* value = format_string("%f", node->value);
     string_builder_append_string(builder, value);
+}
+
+void codegen_generate_identifier_reference(StringBuilder* builder, IdentifierReferenceNode* node) {
+    string_builder_append_string(builder, node->name);
 }
 
 void codegen_generate_function_declaration(StringBuilder* builder, FunctionDeclarationNode* node) {
@@ -78,7 +86,7 @@ void codegen_generate_function_declaration(StringBuilder* builder, FunctionDecla
         Node* child_node = node->function_body.data[i];
 
         string_builder_append_string(builder, "    ");
-        codegen_generate_node(builder, child_node);
+        codegen_generate_node(builder, child_node, false);
     }
 
     string_builder_append(builder, '}');
@@ -88,11 +96,16 @@ void codegen_generate_function_declaration(StringBuilder* builder, FunctionDecla
 
 void codegen_generate_variable_declaration(StringBuilder* builder, VariableDeclarationNode* node) {
     string_builder_append_string(builder, format_string("%s %s = ", node->type_name, node->name));
-    codegen_generate_node(builder, node->value);
+    codegen_generate_node(builder, node->value, true);
     string_builder_append(builder, ';');
     string_builder_append(builder, '\n');
 }
 
-void codegen_generate_function_call(StringBuilder* builder, FunctionCallNode* node) {
+void codegen_generate_function_call(StringBuilder* builder, FunctionCallNode* node, bool as_value) {
     string_builder_append_string(builder, format_string("%s()", node->name));
+
+    if (!as_value) {
+        string_builder_append(builder, ';');
+        string_builder_append(builder, '\n');
+    }
 }
