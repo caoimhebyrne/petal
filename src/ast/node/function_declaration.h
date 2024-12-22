@@ -10,6 +10,9 @@ typedef struct {
     // The name of this function.
     char* name;
 
+    // The return type of this function
+    char* return_type_name;
+
     // The nodes contained within this function's body.
     NodeStream function_body;
 } FunctionDeclarationNode;
@@ -17,8 +20,9 @@ typedef struct {
 // Creates a new function declaration node.
 // Parameters:
 // - name: The name of this function.
+// - return_type_name: The name of the return type of this function.
 // - node_stream: The nodes contained within this function's body.
-FunctionDeclarationNode* function_declaration_node_create(char* name, NodeStream function_body);
+FunctionDeclarationNode* function_declaration_node_create(char* name, char* return_type_name, NodeStream function_body);
 
 // Returns a string representation of the provided FunctionDeclarationNode.
 // Parameters:

@@ -124,6 +124,14 @@ TokenStream lexer_parse(Lexer* lexer) {
             token_stream_append(&stream, (Token){.type = TOKEN_ASTERISK, .position = lexer->position});
             break;
 
+        case '-':
+            token_stream_append(&stream, (Token){.type = TOKEN_HYPHEN, .position = lexer->position});
+            break;
+
+        case '>':
+            token_stream_append(&stream, (Token){.type = TOKEN_RIGHT_ANGLE_BRACKET, .position = lexer->position});
+            break;
+
         default: {
             if (isalpha(character)) {
                 // If the character is an alphabetic character, attempt to parse an identifier.

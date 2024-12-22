@@ -198,8 +198,48 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
         return 0;
     }
 
-    Token open_brace_token = ast_expect_token(ast, TOKEN_OPEN_BRACE);
-    if (open_brace_token.type == TOKEN_INVALID) {
+    // The next token should either be...
+    // 1. An open brace -> This function returns `void`.
+    // 2. A hyphen, this function specifies a return type.
+    Token next_token = ast_peek_token(ast);
+
+    char* return_type;
+    if (next_token.type == TOKEN_OPEN_BRACE) {
+        ast->position += 1;
+        return_type = "void";
+    } else if (next_token.type == TOKEN_HYPHEN) {
+        LOG_DEBUG("ast", "found hyphen");
+        ast->position += 1;
+
+        Token angle_bracket_token = ast_expect_token(ast, TOKEN_RIGHT_ANGLE_BRACKET);
+        if (angle_bracket_token.type == TOKEN_INVALID) {
+            return 0;
+        }
+
+        LOG_DEBUG("ast", "found right angle bracket");
+
+        // The next token should be an identifier indicating the return type.
+        Token return_type_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
+        if (return_type_token.type == TOKEN_INVALID) {
+            return 0;
+        }
+
+        return_type = return_type_token.string;
+
+        // The next token should be an open brace.
+        Token open_brace_token = ast_expect_token(ast, TOKEN_OPEN_BRACE);
+        if (open_brace_token.type == TOKEN_INVALID) {
+            return 0;
+        }
+    } else {
+        Diagnostic diagnostic = {
+            .position = name_token.position,
+            .message = format_string("unexpected token: %s, expected: %s", token_to_string(&name_token),
+                                     token_type_to_string(TOKEN_OPEN_BRACE)),
+            .is_terminal = true,
+        };
+
+        diagnostic_stream_append(&ast->diagnostics, diagnostic);
         return 0;
     }
 
@@ -220,7 +260,7 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
         return 0;
     }
 
-    return function_declaration_node_create(name_token.string, function_body);
+    return function_declaration_node_create(name_token.string, return_type, function_body);
 }
 
 FunctionCallNode* ast_parse_function_call(AST* ast, bool as_statement) {

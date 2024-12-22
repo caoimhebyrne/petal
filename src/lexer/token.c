@@ -54,6 +54,12 @@ char* token_type_to_string(TokenType token_type) {
 
     case TOKEN_ASTERISK:
         return "asterisk";
+
+    case TOKEN_HYPHEN:
+        return "hyphen";
+
+    case TOKEN_RIGHT_ANGLE_BRACKET:
+        return "right angle bracket";
     }
 
     return "unknown";

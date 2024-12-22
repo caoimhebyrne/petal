@@ -16,14 +16,16 @@ typedef enum {
     TOKEN_NUMBER_LITERAL = 2,
 
     // Symbols
-    TOKEN_EQUALS = 3,            // =
-    TOKEN_SEMICOLON = 4,         // ;
-    TOKEN_SLASH = 5,             // /
-    TOKEN_OPEN_PARENTHESIS = 6,  // (
-    TOKEN_CLOSE_PARENTHESIS = 7, // )
-    TOKEN_OPEN_BRACE = 8,        // {
-    TOKEN_CLOSE_BRACE = 9,       // }
-    TOKEN_ASTERISK = 10,         // *
+    TOKEN_EQUALS = 3,               // =
+    TOKEN_SEMICOLON = 4,            // ;
+    TOKEN_SLASH = 5,                // /
+    TOKEN_OPEN_PARENTHESIS = 6,     // (
+    TOKEN_CLOSE_PARENTHESIS = 7,    // )
+    TOKEN_OPEN_BRACE = 8,           // {
+    TOKEN_CLOSE_BRACE = 9,          // }
+    TOKEN_ASTERISK = 10,            // *
+    TOKEN_HYPHEN = 11,              // -
+    TOKEN_RIGHT_ANGLE_BRACKET = 12, // >
 } TokenType;
 
 // Represents a single Token produced by the Lexer.

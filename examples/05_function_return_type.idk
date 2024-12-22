@@ -1,0 +1,9 @@
+// By default, a function has a return value of `void`.
+func my_function() {
+}
+
+// A function may return *any* value type.
+func my_other_function() -> i32 {
+}
+
+i32 my_value = my_other_function();
