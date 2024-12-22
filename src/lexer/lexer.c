@@ -1,5 +1,6 @@
 #include "lexer.h"
 #include "../logger.h"
+#include "../string/format_string.h"
 #include "../string/string_builder.h"
 #include "token.h"
 #include <ctype.h>
@@ -48,29 +49,30 @@ bool lexer_initialize(Lexer* lexer, char* filename) {
 
     lexer->contents = contents;
     lexer->contents_length = file_size;
-    lexer->position = 0;
+    lexer->position = (Position){.line = 0, .column = 0, .index = 0};
 
     LOG_DEBUG("lexer", "initialized lexer with %zu bytes from %s", file_size, filename);
 
     return true;
 }
 
-TokenStream lexer_parse(Lexer* lexer) {
+TokenStream lexer_parse(Lexer* lexer, DiagnosticStream* diagnostic_stream) {
     TokenStream stream;
     token_stream_initialize(&stream, 2);
 
-    for (; lexer->position < lexer->contents_length; lexer->position++) {
-        char character = lexer->contents[lexer->position];
+    for (; lexer->position.index < lexer->contents_length; position_advance(&lexer->position)) {
+        char character = lexer->contents[lexer->position.index];
         switch (character) {
 
         case '/': {
-            if (lexer->contents[lexer->position + 1] == '/') {
+            if (lexer->contents[lexer->position.index + 1] == '/') {
                 // If this is a comment (//), skip until the next new-line.
-                while (lexer->position < lexer->contents_length) {
-                    lexer->position++;
+                while (lexer->position.index < lexer->contents_length) {
+                    position_advance(&lexer->position);
 
                     // FIXME: this does not have support for carraige-returns.
-                    if (lexer->contents[lexer->position] == '\n') {
+                    if (lexer->contents[lexer->position.index] == '\n') {
+                        position_advance_line(&lexer->position);
                         break;
                     }
                 }
@@ -86,7 +88,10 @@ TokenStream lexer_parse(Lexer* lexer) {
         case ' ':
         case '\t':
         case '\r':
+            break;
+
         case '\n':
+            position_advance_line(&lexer->position);
             break;
 
         case '=':
@@ -130,7 +135,13 @@ TokenStream lexer_parse(Lexer* lexer) {
                 }
             }
 
-            LOG_ERROR("lexer", "unexpected character: '%c'", character);
+            Diagnostic diagnostic = {
+                .position = lexer->position,
+                .message = format_string("unknown character: '%c'", character),
+                .is_terminal = true,
+            };
+
+            diagnostic_stream_append(diagnostic_stream, diagnostic);
             break;
         }
         }
@@ -145,10 +156,10 @@ Token lexer_parse_identifier(Lexer* lexer) {
         return INVALID_TOKEN;
     }
 
-    for (; lexer->position < lexer->contents_length; lexer->position++) {
-        char character = lexer->contents[lexer->position];
+    for (; lexer->position.index < lexer->contents_length; position_advance(&lexer->position)) {
+        char character = lexer->contents[lexer->position.index];
         if (!isalpha(character) && !isdigit(character) && character != '_') {
-            lexer->position--; // Don't consume the character, it is not part of the identifier.
+            position_retreat(&lexer->position); // Don't consume the character, it is not part of the identifier.
             break;
         }
 
@@ -165,10 +176,10 @@ Token lexer_parse_number_literal(Lexer* lexer) {
         return INVALID_TOKEN;
     }
 
-    for (; lexer->position < lexer->contents_length; lexer->position++) {
-        char character = lexer->contents[lexer->position];
+    for (; lexer->position.index < lexer->contents_length; position_advance(&lexer->position)) {
+        char character = lexer->contents[lexer->position.index];
         if (!isdigit(character) && character != '.') {
-            lexer->position--; // Don't consume the character, it is not part of the identifier.
+            position_retreat(&lexer->position); // Don't consume the character, it is not part of the number.
             break;
         }
 

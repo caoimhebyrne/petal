@@ -1,3 +1,4 @@
+#include "diagnostics.h"
 #include "lexer/lexer.h"
 #include "lexer/token.h"
 #include "logger.h"
@@ -10,23 +11,30 @@ int main(int argc, char** argv) {
         return -1;
     }
 
+    char* filename = argv[1];
+
     Lexer lexer;
-    if (!lexer_initialize(&lexer, argv[1])) {
+    if (!lexer_initialize(&lexer, filename)) {
         return -1;
     }
 
-    TokenStream stream = lexer_parse(&lexer);
-    if (stream.length == 0) {
-        token_stream_destroy(&stream);
+    DiagnosticStream diagnostic_stream;
+    diagnostic_stream_initialize(&diagnostic_stream, 1);
+
+    TokenStream token_stream = lexer_parse(&lexer, &diagnostic_stream);
+    if (diagnostic_stream.length != 0) {
+        token_stream_destroy(&token_stream);
+        diagnostic_stream_print(&diagnostic_stream, filename);
+
         return -1;
     }
 
-    for (size_t i = 0; i < stream.length; i++) {
-        Token token = stream.data[i];
+    for (size_t i = 0; i < token_stream.length; i++) {
+        Token token = token_stream.data[i];
         LOG_INFO("main", "token %zu: %s", i, token_to_string(&token));
     }
 
-    token_stream_destroy(&stream);
+    token_stream_destroy(&token_stream);
     lexer_destroy(&lexer);
 
     return 0;
