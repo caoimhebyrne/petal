@@ -20,7 +20,7 @@ NodeStream ast_parse(AST* ast) {
         return stream;
     }
 
-    for (; ast->position < ast->token_stream.length; ast->position++) {
+    while (ast->position < ast->token_stream.length) {
         Node* node = ast_parse_statement(ast);
         if (node == 0) {
             return stream;
