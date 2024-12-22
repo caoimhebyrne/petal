@@ -66,6 +66,19 @@ Node* ast_parse_statement(AST* ast) {
         }
     }
 
+    case TOKEN_INVALID: {
+        Token last_token = ast->token_stream.data[ast->token_stream.length - 1];
+
+        Diagnostic diagnostic = {
+            .position = last_token.position,
+            .message = "expected any token, but got end-of-file",
+            .is_terminal = true,
+        };
+
+        diagnostic_stream_append(&ast->diagnostics, diagnostic);
+        return 0;
+    }
+
     default: {
         Diagnostic diagnostic = {
             .position = token.position,
