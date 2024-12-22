@@ -1,7 +1,7 @@
+#include "ast/ast.h"
 #include "diagnostics.h"
 #include "lexer/lexer.h"
 #include "lexer/token.h"
-#include "logger.h"
 #include <stdio.h>
 
 int main(int argc, char** argv) {
@@ -28,9 +28,9 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    for (size_t i = 0; i < token_stream.length; i++) {
-        Token token = token_stream.data[i];
-        LOG_INFO("main", "token %zu: %s", i, token_to_string(&token));
+    AST ast;
+    if (!ast_initialize(&ast, token_stream)) {
+        return -1;
     }
 
     token_stream_destroy(&token_stream);
