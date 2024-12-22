@@ -27,7 +27,7 @@ char* token_to_string(Token* token) {
         const char* format = "number literal ('%f')";
         size_t length = snprintf(NULL, 0, format, token->number);
 
-        char* buffer = malloc(length);
+        char* buffer = malloc(length + 1);
         if (!buffer) {
             return "number literal (?)";
         }
