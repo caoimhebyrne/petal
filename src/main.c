@@ -1,10 +1,23 @@
 #include "ast/ast.h"
 #include "ast/node.h"
+#include "ast/node/function_declaration.h"
 #include "diagnostics.h"
 #include "lexer/lexer.h"
 #include "lexer/token.h"
 #include "logger.h"
 #include <stdio.h>
+
+void print_node_stream(NodeStream node_stream, int depth) {
+    for (size_t i = 0; i < node_stream.length; i++) {
+        Node* node = node_stream.data[i];
+        printf("%*c- %s\n", depth, ' ', node_to_string(node));
+
+        if (node->node_type == NODE_FUNCTION_DECLARATION) {
+            FunctionDeclarationNode* function_node = (FunctionDeclarationNode*)node;
+            print_node_stream(function_node->function_body, depth + 4);
+        }
+    }
+}
 
 int main(int argc, char** argv) {
     // FIXME: Only one filename is supported right now.
@@ -45,12 +58,9 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    LOG_INFO("main", "parsed %zu node(s)", node_stream.length);
+    LOG_INFO("main", "node tree:");
 
-    for (size_t i = 0; i < node_stream.length; i++) {
-        LOG_INFO("main", "node %zu: %s", i, node_to_string(node_stream.data[i]));
-    }
-
+    print_node_stream(node_stream, 0);
     node_stream_destroy(&node_stream);
 
     return 0;

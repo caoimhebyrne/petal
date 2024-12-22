@@ -2,10 +2,11 @@
 #include "../../string/format_string.h"
 #include <stdlib.h>
 
-FunctionDeclarationNode* function_declaration_node_create(char* name) {
+FunctionDeclarationNode* function_declaration_node_create(char* name, NodeStream function_body) {
     FunctionDeclarationNode* node = malloc(sizeof(FunctionDeclarationNode));
     node->node_type = NODE_FUNCTION_DECLARATION;
     node->name = name;
+    node->function_body = function_body;
 
     return node;
 }

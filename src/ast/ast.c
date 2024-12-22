@@ -32,6 +32,8 @@ NodeStream ast_parse(AST* ast) {
     return stream;
 }
 
+Token ast_peek_token(AST* ast) { return ast->token_stream.data[ast->position]; }
+
 Token ast_expect_token(AST* ast, TokenType type) {
     Token token = ast->token_stream.data[ast->position];
     if (token.type != type) {
@@ -155,10 +157,21 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
         return 0;
     }
 
-    // FIXME: There is no support for function bodies yet.
     Token open_brace_token = ast_expect_token(ast, TOKEN_OPEN_BRACE);
     if (open_brace_token.type == TOKEN_INVALID) {
         return 0;
+    }
+
+    NodeStream function_body;
+    node_stream_initialize(&function_body, 2);
+
+    while (ast_peek_token(ast).type != TOKEN_CLOSE_BRACE) {
+        Node* node = ast_parse_statement(ast);
+        if (node == 0) {
+            return 0;
+        }
+
+        node_stream_append(&function_body, node);
     }
 
     Token close_brace_token = ast_expect_token(ast, TOKEN_CLOSE_BRACE);
@@ -166,5 +179,5 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
         return 0;
     }
 
-    return function_declaration_node_create(name_token.string);
+    return function_declaration_node_create(name_token.string, function_body);
 }
