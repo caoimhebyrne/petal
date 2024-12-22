@@ -97,31 +97,31 @@ TokenStream lexer_parse(Lexer* lexer) {
             break;
 
         case '=':
-            token_stream_append(&stream, (Token){.type = TOKEN_EQUALS});
+            token_stream_append(&stream, (Token){.type = TOKEN_EQUALS, .position = lexer->position});
             break;
 
         case ';':
-            token_stream_append(&stream, (Token){.type = TOKEN_SEMICOLON});
+            token_stream_append(&stream, (Token){.type = TOKEN_SEMICOLON, .position = lexer->position});
             break;
 
         case '(':
-            token_stream_append(&stream, (Token){.type = TOKEN_OPEN_PARENTHESIS});
+            token_stream_append(&stream, (Token){.type = TOKEN_OPEN_PARENTHESIS, .position = lexer->position});
             break;
 
         case ')':
-            token_stream_append(&stream, (Token){.type = TOKEN_CLOSE_PARENTHESIS});
+            token_stream_append(&stream, (Token){.type = TOKEN_CLOSE_PARENTHESIS, .position = lexer->position});
             break;
 
         case '{':
-            token_stream_append(&stream, (Token){.type = TOKEN_OPEN_BRACE});
+            token_stream_append(&stream, (Token){.type = TOKEN_OPEN_BRACE, .position = lexer->position});
             break;
 
         case '}':
-            token_stream_append(&stream, (Token){.type = TOKEN_CLOSE_BRACE});
+            token_stream_append(&stream, (Token){.type = TOKEN_CLOSE_BRACE, .position = lexer->position});
             break;
 
         case '*':
-            token_stream_append(&stream, (Token){.type = TOKEN_ASTERISK});
+            token_stream_append(&stream, (Token){.type = TOKEN_ASTERISK, .position = lexer->position});
             break;
 
         default: {
@@ -162,6 +162,7 @@ Token lexer_parse_identifier(Lexer* lexer) {
         return INVALID_TOKEN;
     }
 
+    Position starting_position = lexer->position;
     for (; lexer->position.index < lexer->contents_length; position_advance(&lexer->position)) {
         char character = lexer->contents[lexer->position.index];
         if (!isalpha(character) && !isdigit(character) && character != '_') {
@@ -173,7 +174,7 @@ Token lexer_parse_identifier(Lexer* lexer) {
     }
 
     char* identifier_name = string_builder_finish(&string_builder);
-    return (Token){.type = TOKEN_IDENTIFIER, .string = identifier_name};
+    return (Token){.type = TOKEN_IDENTIFIER, .string = identifier_name, .position = starting_position};
 }
 
 Token lexer_parse_number_literal(Lexer* lexer) {
@@ -182,6 +183,7 @@ Token lexer_parse_number_literal(Lexer* lexer) {
         return INVALID_TOKEN;
     }
 
+    Position starting_position = lexer->position;
     for (; lexer->position.index < lexer->contents_length; position_advance(&lexer->position)) {
         char character = lexer->contents[lexer->position.index];
         if (!isdigit(character) && character != '.') {
@@ -204,7 +206,7 @@ Token lexer_parse_number_literal(Lexer* lexer) {
         return INVALID_TOKEN;
     }
 
-    return (Token){.type = TOKEN_NUMBER_LITERAL, .number = value};
+    return (Token){.type = TOKEN_NUMBER_LITERAL, .number = value, .position = starting_position};
 }
 
 void lexer_destroy(Lexer* lexer) { free(lexer->contents); }

@@ -1,7 +1,6 @@
 #include "token.h"
-#include <stdio.h>
+#include "../string/format_string.h"
 #include <stdlib.h>
-#include <string.h>
 
 void token_stream_destroy(TokenStream* stream) { free(stream->data); }
 
@@ -10,55 +9,51 @@ char* token_to_string(Token* token) {
     case TOKEN_INVALID:
         return "invalid token";
 
-    case TOKEN_IDENTIFIER: {
-        const char* format = "identifier ('%s')";
-        size_t length = snprintf(NULL, 0, format, token->string);
+    case TOKEN_IDENTIFIER:
+        return format_string("identifier ('%s')", token->string);
 
-        char* buffer = malloc(length + 1);
-        if (!buffer) {
-            return "identifier (?)";
-        }
+    case TOKEN_NUMBER_LITERAL:
+        return format_string("number literal ('%f')", token->number);
 
-        snprintf(buffer, length + 1, format, token->string);
-        return buffer;
+    default:
+        return token_type_to_string(token->type);
     }
+}
 
-    case TOKEN_NUMBER_LITERAL: {
-        const char* format = "number literal ('%f')";
-        size_t length = snprintf(NULL, 0, format, token->number);
+char* token_type_to_string(TokenType token_type) {
+    switch (token_type) {
+    case TOKEN_IDENTIFIER:
+        return "identifier";
 
-        char* buffer = malloc(length + 1);
-        if (!buffer) {
-            return "number literal (?)";
-        }
+    case TOKEN_NUMBER_LITERAL:
+        return "number";
 
-        snprintf(buffer, length + 1, format, token->number);
-        return buffer;
-    }
+    case TOKEN_INVALID:
+        return "invalid token";
 
     case TOKEN_EQUALS:
-        return "equals ('=')";
+        return "equals";
 
     case TOKEN_SEMICOLON:
-        return "semicolon (';')";
+        return "semicolon";
 
     case TOKEN_SLASH:
-        return "slash ('/')";
+        return "slash";
 
     case TOKEN_OPEN_PARENTHESIS:
-        return "open parenthesis ('(')";
+        return "open parenthesis";
 
     case TOKEN_CLOSE_PARENTHESIS:
-        return "close parenthesis (')')";
+        return "close parenthesis";
 
     case TOKEN_OPEN_BRACE:
-        return "open brace ('{')";
+        return "open brace";
 
     case TOKEN_CLOSE_BRACE:
-        return "close brace ('}')";
+        return "close brace";
 
     case TOKEN_ASTERISK:
-        return "asterisk ('*')";
+        return "asterisk";
     }
 
     return "unknown";

@@ -1,6 +1,7 @@
 #ifndef __TOKEN_H__
 #define __TOKEN_H__
 
+#include "../position.h"
 #include "../stream.h"
 
 // Represents the type of a single Token.
@@ -31,6 +32,9 @@ typedef struct {
     // This indicates which value properties are available for access.
     TokenType type;
 
+    // The position in the file that this token occurred at.
+    Position position;
+
     union {
         // Only available on TOKEN_IDENTIFIER and TOKEN_KEYWORD.
         char* string;
@@ -41,7 +45,7 @@ typedef struct {
 } Token;
 
 // An invalid token.
-#define INVALID_TOKEN (Token){.type = TOKEN_INVALID};
+#define INVALID_TOKEN (Token){.type = TOKEN_INVALID, .position = (Position){}};
 
 // Returns a string representation of the provided Token.
 // Parameters:
@@ -49,6 +53,13 @@ typedef struct {
 // Returns:
 // - A string representing the provided token.
 char* token_to_string(Token* token);
+
+// Returns a string representation of the provided TokenType.
+// Parameters:
+// - token_type: The token type to turn into a string.
+// Returns:
+// - A string representing the provided token type.
+char* token_type_to_string(TokenType token_type);
 
 DECLARE_STREAM(TokenStream, token_stream, Token);
 
