@@ -1,11 +1,13 @@
 #include "ast/ast.h"
 #include "ast/node.h"
 #include "ast/node/function_declaration.h"
+#include "codegen/codegen.h"
 #include "diagnostics.h"
 #include "lexer/lexer.h"
 #include "lexer/token.h"
 #include "logger.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 void print_node_stream(NodeStream node_stream, int depth) {
     for (size_t i = 0; i < node_stream.length; i++) {
@@ -58,10 +60,23 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    LOG_INFO("main", "node tree:");
-
     ast_destroy(&ast);
-    print_node_stream(node_stream, 0);
+
+    Codegen codegen = codegen_create(node_stream);
+
+    char* code = codegen_generate(&codegen);
+
+    FILE* output = fopen("./build/output.c", "w");
+    fprintf(output, "%s", code);
+    fclose(output);
+
+    if (system("cc -o ./build/output ./build/output.c") != 0) {
+        LOG_ERROR("main", "failed to compile!");
+        return -1;
+    }
+
+    LOG_INFO("main", "compiled to ./build/output");
+
     node_stream_destroy(&node_stream);
 
     return 0;

@@ -9,4 +9,6 @@ func other_function() {
     return;
 }
 
-i32 my_value = my_function();
+func main() -> i32 {
+    return my_function();
+}

@@ -7,6 +7,11 @@
 
 DECLARE_STREAM(StringBuilder, string_builder, char);
 
+// Appends a string of characters to the StringBuilder.
+// Parameters:
+// - string: The string to append.
+bool string_builder_append_string(StringBuilder* builder, char* string);
+
 // Finalizes the StringBuilder, returning the string contents.
 // Parameters:
 // - builder: The string builder to finalize.
