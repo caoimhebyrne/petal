@@ -14,7 +14,6 @@ void node_destroy(Node* node) {
     case NODE_VARIABLE_DECLARATION: {
         VariableDeclarationNode* variable_declaration = (VariableDeclarationNode*)node;
         free(variable_declaration->name);
-        free(variable_declaration->type_name);
         node_destroy(variable_declaration->value);
 
         break;

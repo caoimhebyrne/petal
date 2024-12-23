@@ -7,6 +7,7 @@
 #include "node/number_literal.h"
 #include "node/return.h"
 #include "node/variable_declaration.h"
+#include "type.h"
 #include <string.h>
 
 bool ast_initialize(AST* ast, TokenStream token_stream) {
@@ -142,6 +143,19 @@ VariableDeclarationNode* ast_parse_variable_declaration(AST* ast) {
         return 0;
     }
 
+    // If this is an unsupported type, throw an error.
+    Type type = type_from_string(type_token.string);
+    if (type == TYPE_INVALID) {
+        Diagnostic diagnostic = {
+            .position = type_token.position,
+            .message = format_string("unrecognized type: '%s'", type_token.string),
+            .is_terminal = true,
+        };
+
+        diagnostic_stream_append(&ast->diagnostics, diagnostic);
+        return 0;
+    }
+
     // The second token in the stream must be an identifier for the name.
     Token name_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
     if (name_token.type == TOKEN_INVALID) {
@@ -165,7 +179,7 @@ VariableDeclarationNode* ast_parse_variable_declaration(AST* ast) {
         return 0;
     }
 
-    return variable_declaration_node_create(type_token.string, name_token.string, value_node);
+    return variable_declaration_node_create(name_token.string, type, value_node);
 }
 
 // func <name>() { ... }
@@ -209,12 +223,15 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
     // 2. A hyphen, this function specifies a return type.
     Token next_token = ast_peek_token(ast);
 
-    char* return_type;
+    Position return_type_position;
+    char* return_type_name;
+
     if (next_token.type == TOKEN_OPEN_BRACE) {
         ast->position += 1;
-        return_type = "void";
+
+        return_type_name = "void";
+        return_type_position = next_token.position;
     } else if (next_token.type == TOKEN_HYPHEN) {
-        LOG_DEBUG("ast", "found hyphen");
         ast->position += 1;
 
         Token angle_bracket_token = ast_expect_token(ast, TOKEN_RIGHT_ANGLE_BRACKET);
@@ -222,15 +239,14 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
             return 0;
         }
 
-        LOG_DEBUG("ast", "found right angle bracket");
-
         // The next token should be an identifier indicating the return type.
         Token return_type_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
         if (return_type_token.type == TOKEN_INVALID) {
             return 0;
         }
 
-        return_type = return_type_token.string;
+        return_type_name = return_type_token.string;
+        return_type_position = return_type_token.position;
 
         // The next token should be an open brace.
         Token open_brace_token = ast_expect_token(ast, TOKEN_OPEN_BRACE);
@@ -242,6 +258,19 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
             .position = name_token.position,
             .message = format_string("unexpected token: %s, expected: %s", token_to_string(&name_token),
                                      token_type_to_string(TOKEN_OPEN_BRACE)),
+            .is_terminal = true,
+        };
+
+        diagnostic_stream_append(&ast->diagnostics, diagnostic);
+        return 0;
+    }
+
+    // If this is an unsupported type, throw an error.
+    Type return_type = type_from_string(return_type_name);
+    if (return_type == TYPE_INVALID) {
+        Diagnostic diagnostic = {
+            .position = return_type_position,
+            .message = format_string("unrecognized type: '%s'", return_type_name),
             .is_terminal = true,
         };
 

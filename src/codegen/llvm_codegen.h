@@ -2,6 +2,7 @@
 #define __LLVM_CODEGEN_H__
 
 #include "../ast/node.h"
+#include "../ast/type.h"
 #include <llvm-c/Types.h>
 
 typedef struct {
@@ -33,5 +34,8 @@ void llvm_codegen_generate_node(LLVMCodegen codegen, Node* node);
 
 // Destroys the provided LLVM code generator.
 void llvm_codegen_destroy(LLVMCodegen codegen);
+
+// Converts a Type to an LLVMTypeRef.
+LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen codegen, Type type);
 
 #endif // __LLVM_CODEGEN_H__

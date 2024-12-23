@@ -2,6 +2,7 @@
 #define __FUNCTION_DECLARATION_NODE_H__
 
 #include "../node.h"
+#include "../type.h"
 
 typedef struct {
     // The type of this node, always NODE_FUNCTION_DECLARATION.
@@ -11,7 +12,7 @@ typedef struct {
     char* name;
 
     // The return type of this function
-    char* return_type_name;
+    Type return_type;
 
     // The nodes contained within this function's body.
     NodeStream function_body;
@@ -20,9 +21,9 @@ typedef struct {
 // Creates a new function declaration node.
 // Parameters:
 // - name: The name of this function.
-// - return_type_name: The name of the return type of this function.
+// - return_type: The return type of this function.
 // - node_stream: The nodes contained within this function's body.
-FunctionDeclarationNode* function_declaration_node_create(char* name, char* return_type_name, NodeStream function_body);
+FunctionDeclarationNode* function_declaration_node_create(char* name, Type return_type, NodeStream function_body);
 
 // Returns a string representation of the provided FunctionDeclarationNode.
 // Parameters:

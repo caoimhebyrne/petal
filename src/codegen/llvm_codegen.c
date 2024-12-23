@@ -33,7 +33,8 @@ void llvm_codegen_generate_node(LLVMCodegen codegen, Node* node) {
         FunctionDeclarationNode* function_declaration = (FunctionDeclarationNode*)node;
         LOG_DEBUG("llvm-codegen", "generating function '%s'", function_declaration->name);
 
-        LLVMTypeRef function_type = LLVMFunctionType(LLVMVoidTypeInContext(codegen.context), 0, 0, false);
+        LLVMTypeRef return_type = llvm_codegen_type_to_ref(codegen, function_declaration->return_type);
+        LLVMTypeRef function_type = LLVMFunctionType(return_type, 0, 0, false);
         LLVMValueRef function = LLVMAddFunction(codegen.module, function_declaration->name, function_type);
 
         LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(codegen.context, function, "entry");
@@ -53,15 +54,15 @@ void llvm_codegen_generate_node(LLVMCodegen codegen, Node* node) {
             LLVMBuildRetVoid(codegen.builder);
         } else {
             LOG_DEBUG("llvm-codegen", "generating return statement with value '%s'", node_to_string(return_->value));
-
             if (return_->value->node_type != NODE_NUMBER_LITERAL) {
                 LOG_ERROR("llvm-codegen", "number literals are only supported in return expressions at the moment");
                 break;
             }
 
             NumberLiteralNode* number_literal = (NumberLiteralNode*)return_->value;
-            LOG_INFO("llvm-codegen", "number_literal");
 
+            // FIXME: Probably want to infer this type somehow.
+            //        If my function returns i64, it should be generating an i64 constant, etc.
             LLVMTypeRef int_32_type = LLVMInt32TypeInContext(codegen.context);
             LLVMBuildRet(codegen.builder, LLVMConstInt(int_32_type, (int32_t)number_literal->value, false));
         }
@@ -81,4 +82,30 @@ void llvm_codegen_destroy(LLVMCodegen codegen) {
     LLVMContextDispose(codegen.context);
 
     node_stream_destroy(&codegen.node_stream);
+}
+
+LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen codegen, Type type) {
+    switch (type) {
+    case TYPE_INVALID:
+        break;
+
+    case TYPE_INT_32:
+        return LLVMInt32TypeInContext(codegen.context);
+
+    case TYPE_INT_64:
+        return LLVMInt64TypeInContext(codegen.context);
+
+    case TYPE_FLOAT_32:
+        return LLVMFloatTypeInContext(codegen.context);
+
+    case TYPE_VOID:
+        return LLVMVoidTypeInContext(codegen.context);
+    }
+
+    LOG_ERROR("llvm-codegen", "unable to convert type '%s' into llvm type", type_to_string(type));
+
+    // FIXME: The code generator should also have support for diagnotics.
+    //        For now, emitting void is fine, since the compiler enforces that the switch statement above
+    //        covers all cases (yet it still requires a return statement at the end of the function).
+    return LLVMVoidTypeInContext(codegen.context);
 }
