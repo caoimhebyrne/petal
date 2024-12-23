@@ -26,6 +26,9 @@ typedef enum {
     TOKEN_ASTERISK = 10,            // *
     TOKEN_HYPHEN = 11,              // -
     TOKEN_RIGHT_ANGLE_BRACKET = 12, // >
+    TOKEN_COLON = 13,               // ;
+    TOKEN_COMMA = 14,               // ,
+    TOKEN_PLUS = 15,                // +
 } TokenType;
 
 // Represents a single Token produced by the Lexer.

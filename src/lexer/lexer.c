@@ -132,6 +132,18 @@ TokenStream lexer_parse(Lexer* lexer) {
             token_stream_append(&stream, (Token){.type = TOKEN_RIGHT_ANGLE_BRACKET, .position = lexer->position});
             break;
 
+        case ':':
+            token_stream_append(&stream, (Token){.type = TOKEN_COLON, .position = lexer->position});
+            break;
+
+        case ',':
+            token_stream_append(&stream, (Token){.type = TOKEN_COMMA, .position = lexer->position});
+            break;
+
+        case '+':
+            token_stream_append(&stream, (Token){.type = TOKEN_PLUS, .position = lexer->position});
+            break;
+
         default: {
             if (isalpha(character)) {
                 // If the character is an alphabetic character, attempt to parse an identifier.

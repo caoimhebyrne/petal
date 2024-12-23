@@ -60,6 +60,15 @@ char* token_type_to_string(TokenType token_type) {
 
     case TOKEN_RIGHT_ANGLE_BRACKET:
         return "right angle bracket";
+
+    case TOKEN_COLON:
+        return "colon";
+
+    case TOKEN_COMMA:
+        return "comma";
+
+    case TOKEN_PLUS:
+        return "plus";
     }
 
     return "unknown";
