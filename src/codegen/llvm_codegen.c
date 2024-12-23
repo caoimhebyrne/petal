@@ -63,8 +63,15 @@ bool llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node) {
         } else {
             LOG_DEBUG("llvm-codegen", "generating return statement with value '%s'", node_to_string(return_->value));
             if (return_->value->node_type != NODE_NUMBER_LITERAL) {
-                LOG_ERROR("llvm-codegen", "number literals are only supported in return expressions at the moment");
-                break;
+                Diagnostic diagnostic = {
+                    .position = return_->position,
+                    .is_terminal = true,
+                    .message =
+                        format_string("returning node '%s' is not supported yet", node_to_string(return_->value)),
+                };
+
+                diagnostic_stream_append(&codegen->diagnostics, diagnostic);
+                return false;
             }
 
             NumberLiteralNode* number_literal = (NumberLiteralNode*)return_->value;
