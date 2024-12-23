@@ -49,8 +49,8 @@ int main(int argc, char** argv) {
 
     ast_destroy(&ast);
 
-    LLVMCodegen codegen = llvm_codegen_create(node_stream);
-    llvm_codegen_generate();
+    LLVMCodegen codegen = llvm_codegen_create(filename, node_stream);
+    llvm_codegen_generate(codegen);
     llvm_codegen_destroy(codegen);
 
     return 0;

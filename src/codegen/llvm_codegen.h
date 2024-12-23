@@ -16,9 +16,6 @@ typedef struct {
 
     // The NodeStream to use as source for code generation.
     NodeStream node_stream;
-
-    // The position that the code generator is at in the NodeStream.
-    size_t position;
 } LLVMCodegen;
 
 // Initializes a new LLVM code generator.
@@ -26,10 +23,13 @@ typedef struct {
 // - node_stream: The node stream to use as a source for code generation.
 //                This LLVMCodegen instance will then take "ownership" of this node_stream, and
 //                it will be destroyed when llvm_codegen_destroy is called.
-LLVMCodegen llvm_codegen_create(NodeStream node_stream);
+LLVMCodegen llvm_codegen_create(char* filename, NodeStream node_stream);
 
 // Generates LLVM bytecode from this code generator's node stream.
-void llvm_codegen_generate();
+void llvm_codegen_generate(LLVMCodegen codegen);
+
+// Generates LLVM bytecode for a single node.
+void llvm_codegen_generate_node(LLVMCodegen codegen, Node* node);
 
 // Destroys the provided LLVM code generator.
 void llvm_codegen_destroy(LLVMCodegen codegen);
