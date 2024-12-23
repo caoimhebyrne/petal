@@ -1,7 +1,9 @@
-## `mlang`
+## `petal` 🌸
 
-This is a compiler/runtime for my language, which doesn't have a name yet. The plan is for this compiler to provide
+This is a compiler/runtime for my language, called Petal. The plan is for this compiler to provide
 enough basic features to build a self-hosted compiler.
+
+This compiler uses LLVM to generate binaries.
 
 ```rust
 // This is a variable declaration. Since it is in the top level of the file,
