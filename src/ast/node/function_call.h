@@ -8,6 +8,10 @@ typedef struct {
     // The type of this node, always NODE_FUNCTION_CALL.
     NodeType node_type;
 
+    // The rough position within the source file that this Node was
+    // generated from.
+    Position position;
+
     // The name of the function being called.
     char* name;
 } FunctionCallNode;
@@ -15,7 +19,7 @@ typedef struct {
 // Creates a new function call node.
 // Parameters:
 // - name: The name of this function.
-FunctionCallNode* function_call_node_create(char* name);
+FunctionCallNode* function_call_node_create(Position position, char* name);
 
 // Returns a string representation of the provided FunctionCallNode.
 // Parameters:

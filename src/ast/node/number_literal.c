@@ -2,9 +2,10 @@
 #include "../../string/format_string.h"
 #include <stdlib.h>
 
-NumberLiteralNode* number_literal_node_create(double value) {
+NumberLiteralNode* number_literal_node_create(Position position, double value) {
     NumberLiteralNode* node = malloc(sizeof(NumberLiteralNode));
     node->node_type = NODE_NUMBER_LITERAL;
+    node->position = position;
     node->value = value;
 
     return node;

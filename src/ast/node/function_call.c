@@ -1,10 +1,11 @@
 #include "function_call.h"
 #include "../../string/format_string.h"
 
-FunctionCallNode* function_call_node_create(char* name) {
+FunctionCallNode* function_call_node_create(Position position, char* name) {
     FunctionCallNode* node = malloc(sizeof(FunctionCallNode));
 
     node->node_type = NODE_FUNCTION_CALL;
+    node->position = position;
     node->name = name;
 
     return node;

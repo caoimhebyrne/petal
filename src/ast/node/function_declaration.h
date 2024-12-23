@@ -8,6 +8,10 @@ typedef struct {
     // The type of this node, always NODE_FUNCTION_DECLARATION.
     NodeType node_type;
 
+    // The rough position within the source file that this Node was
+    // generated from.
+    Position position;
+
     // The name of this function.
     char* name;
 
@@ -23,7 +27,8 @@ typedef struct {
 // - name: The name of this function.
 // - return_type: The return type of this function.
 // - node_stream: The nodes contained within this function's body.
-FunctionDeclarationNode* function_declaration_node_create(char* name, Type return_type, NodeStream function_body);
+FunctionDeclarationNode* function_declaration_node_create(Position position, char* name, Type return_type,
+                                                          NodeStream function_body);
 
 // Returns a string representation of the provided FunctionDeclarationNode.
 // Parameters:

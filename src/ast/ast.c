@@ -100,13 +100,13 @@ Node* ast_parse_node(AST* ast, bool as_statement) {
         // Otherwise, the next token seems to be useless, and this is probably just an identifier reference.
         default:
             ast->position += 1;
-            return (Node*)identifier_reference_node_create(token.string);
+            return (Node*)identifier_reference_node_create(token.position, token.string);
         }
     }
 
     case TOKEN_NUMBER_LITERAL:
         ast->position += 1;
-        return (Node*)number_literal_node_create(token.number);
+        return (Node*)number_literal_node_create(token.position, token.number);
 
     case TOKEN_INVALID: {
         Token last_token = ast->token_stream.data[ast->token_stream.length - 1];
@@ -179,7 +179,7 @@ VariableDeclarationNode* ast_parse_variable_declaration(AST* ast) {
         return 0;
     }
 
-    return variable_declaration_node_create(name_token.string, type, value_node);
+    return variable_declaration_node_create(name_token.position, name_token.string, type, value_node);
 }
 
 // func <name>() { ... }
@@ -295,7 +295,7 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
         return 0;
     }
 
-    return function_declaration_node_create(name_token.string, return_type, function_body);
+    return function_declaration_node_create(func_token.position, name_token.string, return_type, function_body);
 }
 
 FunctionCallNode* ast_parse_function_call(AST* ast, bool as_statement) {
@@ -324,7 +324,7 @@ FunctionCallNode* ast_parse_function_call(AST* ast, bool as_statement) {
         }
     }
 
-    return function_call_node_create(name_token.string);
+    return function_call_node_create(name_token.position, name_token.string);
 }
 
 // return <value>;
@@ -365,7 +365,7 @@ ReturnNode* ast_parse_return_statement(AST* ast) {
         }
     }
 
-    return return_node_create(value);
+    return return_node_create(return_token.position, value);
 }
 
 void ast_destroy(AST* ast) {

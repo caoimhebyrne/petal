@@ -1,6 +1,7 @@
 #ifndef __NODE_H__
 #define __NODE_H__
 
+#include "../position.h"
 #include "../stream.h"
 
 typedef enum {
@@ -33,6 +34,10 @@ typedef struct {
     // Represents the type of this node.
     // This value will indicate what type you can cast this Node to.
     NodeType node_type;
+
+    // The rough position within the source file that this Node was
+    // generated from.
+    Position position;
 } Node;
 
 // Returns a string representation of the provided Node.

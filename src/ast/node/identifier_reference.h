@@ -8,6 +8,10 @@ typedef struct {
     // The type of this node, always NODE_IDENTIFIER_REFERENCE.
     NodeType node_type;
 
+    // The rough position within the source file that this Node was
+    // generated from.
+    Position position;
+
     // The name of the identifier referenced.
     char* name;
 } IdentifierReferenceNode;
@@ -15,7 +19,7 @@ typedef struct {
 // Creates a new IdentifierReferenceNode.
 // Parameters:
 // - name: The name of the identifier referenced.
-IdentifierReferenceNode* identifier_reference_node_create(char* name);
+IdentifierReferenceNode* identifier_reference_node_create(Position position, char* name);
 
 // Returns a string representation of the provided IdentifierReferenceNode.
 // Parameters:

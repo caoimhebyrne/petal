@@ -2,9 +2,10 @@
 #include "../../string/format_string.h"
 #include <stdlib.h>
 
-VariableDeclarationNode* variable_declaration_node_create(char* name, Type type, Node* value) {
+VariableDeclarationNode* variable_declaration_node_create(Position position, char* name, Type type, Node* value) {
     VariableDeclarationNode* node = malloc(sizeof(VariableDeclarationNode));
     node->node_type = NODE_VARIABLE_DECLARATION;
+    node->position = position;
     node->name = name;
     node->type = type;
     node->value = value;

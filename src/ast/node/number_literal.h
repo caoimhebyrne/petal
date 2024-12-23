@@ -7,6 +7,10 @@ typedef struct {
     // The type of this node, always NODE_NUMBER_LITERAL.
     NodeType node_type;
 
+    // The rough position within the source file that this Node was
+    // generated from.
+    Position position;
+
     // The value.
     double value;
 } NumberLiteralNode;
@@ -14,7 +18,7 @@ typedef struct {
 // Creates a new variable declaration node.
 // Parameters:
 // - value: The value of this node.
-NumberLiteralNode* number_literal_node_create(double value);
+NumberLiteralNode* number_literal_node_create(Position position, double value);
 
 // Returns a string representation of the provided VariableDeclarationNode.
 // Parameters:
