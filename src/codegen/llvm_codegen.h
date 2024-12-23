@@ -2,6 +2,8 @@
 #define __LLVM_CODEGEN_H__
 
 #include "../ast/node.h"
+#include "../ast/node/function_declaration.h"
+#include "../ast/node/return.h"
 #include "../ast/type.h"
 #include "../diagnostics.h"
 #include <llvm-c/Types.h>
@@ -40,6 +42,12 @@ void llvm_codegen_generate(LLVMCodegen* codegen);
 // - A boolean indicating whether the node could be generated or not.
 //   If false, generation should stop.
 bool llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node);
+
+// Generates LLVM bytecode for a FunctionDeclarationNode.
+bool llvm_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclarationNode* node);
+
+// Generates LLVM bytecode for a ReturnNode.
+bool llvm_generate_return(LLVMCodegen* codegen, ReturnNode* node);
 
 // Destroys the provided LLVM code generator.
 void llvm_codegen_destroy(LLVMCodegen* codegen);

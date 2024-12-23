@@ -32,63 +32,92 @@ void llvm_codegen_generate(LLVMCodegen* codegen) {
 bool llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node) {
     switch (node->node_type) {
     case NODE_FUNCTION_DECLARATION: {
-        FunctionDeclarationNode* function_declaration = (FunctionDeclarationNode*)node;
-        LOG_DEBUG("llvm-codegen", "generating function '%s'", function_declaration->name);
-
-        LLVMTypeRef return_type = llvm_codegen_type_to_ref(codegen, function_declaration->return_type);
-        if (!return_type) {
+        if (!llvm_generate_function_declaration(codegen, (FunctionDeclarationNode*)node)) {
             return false;
-        }
-
-        LLVMTypeRef function_type = LLVMFunctionType(return_type, 0, 0, false);
-        LLVMValueRef function = LLVMAddFunction(codegen->module, function_declaration->name, function_type);
-
-        LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(codegen->context, function, "entry");
-        LLVMPositionBuilderAtEnd(codegen->builder, entry);
-
-        for (size_t i = 0; i < function_declaration->function_body.length; i++) {
-            if (!llvm_codegen_generate_node(codegen, function_declaration->function_body.data[i])) {
-                return false;
-            }
         }
 
         break;
     }
 
     case NODE_RETURN: {
-        ReturnNode* return_ = (ReturnNode*)node;
-        if (return_->value == 0) {
-            LOG_DEBUG("llvm-codegen", "generating return statement without value");
-            LLVMBuildRetVoid(codegen->builder);
-        } else {
-            LOG_DEBUG("llvm-codegen", "generating return statement with value '%s'", node_to_string(return_->value));
-            if (return_->value->node_type != NODE_NUMBER_LITERAL) {
-                Diagnostic diagnostic = {
-                    .position = return_->position,
-                    .is_terminal = true,
-                    .message =
-                        format_string("returning node '%s' is not supported yet", node_to_string(return_->value)),
-                };
-
-                diagnostic_stream_append(&codegen->diagnostics, diagnostic);
-                return false;
-            }
-
-            NumberLiteralNode* number_literal = (NumberLiteralNode*)return_->value;
-
-            // FIXME: Probably want to infer this type somehow.
-            //        If my function returns i64, it should be generating an i64 constant, etc.
-            LLVMTypeRef int_32_type = LLVMInt32TypeInContext(codegen->context);
-            LLVMBuildRet(codegen->builder, LLVMConstInt(int_32_type, (int32_t)number_literal->value, false));
+        if (!llvm_generate_return(codegen, (ReturnNode*)node)) {
+            return false;
         }
 
         break;
     }
 
-    default:
-        LOG_ERROR("llvm-codegen", "unsupported node: %s", node_to_string(node));
-        break;
+    default: {
+        Diagnostic diagnostic = {
+            .position = node->position,
+            .is_terminal = true,
+            .message = format_string("unable to generate code for node '%s'", node_to_string(node)),
+        };
+
+        diagnostic_stream_append(&codegen->diagnostics, diagnostic);
+        return false;
     }
+    }
+
+    return true;
+}
+
+bool llvm_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclarationNode* node) {
+    LOG_DEBUG("llvm-codegen", "generating function '%s'", node->name);
+
+    LLVMTypeRef return_type = llvm_codegen_type_to_ref(codegen, node->return_type);
+    if (!return_type) {
+        return false;
+    }
+
+    // FIXME: Function declarations don't have support for parameters yet.
+    LLVMTypeRef function_type = LLVMFunctionType(return_type, 0, 0, false);
+    LLVMValueRef function = LLVMAddFunction(codegen->module, node->name, function_type);
+
+    // All code generated from now on will be inside this block.
+    LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(codegen->context, function, "entry");
+    LLVMPositionBuilderAtEnd(codegen->builder, entry);
+
+    for (size_t i = 0; i < node->function_body.length; i++) {
+        if (!llvm_codegen_generate_node(codegen, node->function_body.data[i])) {
+            return false;
+        }
+    }
+
+    // I'm unsure if I need to call something like LLVMClearInsertionPosition(builder) after I generate the nodes,
+    // so let this be a comment to future me saying sorry if this not being here ends up breaking something.
+    return true;
+}
+
+bool llvm_generate_return(LLVMCodegen* codegen, ReturnNode* node) {
+    if (node->value == 0) {
+        LOG_DEBUG("llvm-codegen", "generating return statement without value");
+        LLVMBuildRetVoid(codegen->builder);
+
+        return true;
+    }
+
+    LOG_DEBUG("llvm-codegen", "generating return statement with value '%s'", node_to_string(node->value));
+
+    // FIXME: Support for returning other nodes is not implemented yet.
+    //        The easiest way to do this is probably to make all llvm_generate methods return a LLVMValueRef.
+    if (node->value->node_type != NODE_NUMBER_LITERAL) {
+        Diagnostic diagnostic = {
+            .position = node->position,
+            .is_terminal = true,
+            .message = format_string("returning node '%s' is not supported yet", node_to_string(node->value)),
+        };
+
+        diagnostic_stream_append(&codegen->diagnostics, diagnostic);
+        return false;
+    }
+
+    NumberLiteralNode* number_literal = (NumberLiteralNode*)node->value;
+
+    // FIXME: Probably want to infer this type somehow..?
+    //        If my function returns i64, it should be generating an i64 constant, etc.
+    LLVMTypeRef int_32_type = LLVMInt32TypeInContext(codegen->context);
+    LLVMBuildRet(codegen->builder, LLVMConstInt(int_32_type, (int32_t)number_literal->value, false));
 
     return true;
 }
