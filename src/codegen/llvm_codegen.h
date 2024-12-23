@@ -2,6 +2,7 @@
 #define __LLVM_CODEGEN_H__
 
 #include "../ast/node.h"
+#include "../ast/node/function_call.h"
 #include "../ast/node/function_declaration.h"
 #include "../ast/node/return.h"
 #include "../ast/type.h"
@@ -39,15 +40,21 @@ void llvm_codegen_generate(LLVMCodegen* codegen);
 
 // Generates LLVM bytecode for a single node.
 // Returns:
-// - A boolean indicating whether the node could be generated or not.
-//   If false, generation should stop.
-bool llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node);
+// - The value reference produced by this function.
+//   If this is zero, the generation failed.
+LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node);
 
 // Generates LLVM bytecode for a FunctionDeclarationNode.
 // Returns:
 // - The value reference produced by this function.
 //   If this is zero, the generation failed.
 LLVMValueRef llvm_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclarationNode* node);
+
+// Generates LLVM bytecode for a FunctionCallNode.
+// Returns:
+// - The value reference produced by this function.
+//   If this is zero, the generation failed.
+LLVMValueRef llvm_generate_function_call(LLVMCodegen* codegen, FunctionCallNode* node);
 
 // Generates LLVM bytecode for a ReturnNode.
 // Returns:

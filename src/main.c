@@ -5,8 +5,6 @@
 #include "lexer/lexer.h"
 #include "lexer/token.h"
 #include "logger.h"
-#include <llvm-c/Core.h>
-#include <stdio.h>
 
 int main(int argc, char** argv) {
     // FIXME: Only one filename is supported right now.
@@ -59,7 +57,6 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    LLVMDumpModule(codegen.module);
     llvm_codegen_destroy(&codegen);
 
     return 0;

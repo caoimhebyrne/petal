@@ -3,6 +3,7 @@
 #include "../ast/node/number_literal.h"
 #include "../ast/node/return.h"
 #include "../string/format_string.h"
+#include <llvm-c/Analysis.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/Types.h>
 #include <string.h>
@@ -27,25 +28,33 @@ void llvm_codegen_generate(LLVMCodegen* codegen) {
             break;
         }
     }
+
+    LLVMDumpModule(codegen->module);
+
+    char* error_message;
+    bool failed = LLVMVerifyModule(codegen->module, LLVMReturnStatusAction, &error_message);
+    if (failed) {
+        Diagnostic diagnostic = {
+            .position = (Position){.line = 0, .column = 0, .index = 0},
+            .message = format_string("Module verification failed: %s", error_message),
+            .is_terminal = true,
+        };
+
+        diagnostic_stream_append(&codegen->diagnostics, diagnostic);
+        LLVMDisposeMessage(error_message);
+    }
 }
 
-bool llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node) {
+LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node) {
     switch (node->node_type) {
-    case NODE_FUNCTION_DECLARATION: {
-        if (!llvm_generate_function_declaration(codegen, (FunctionDeclarationNode*)node)) {
-            return false;
-        }
+    case NODE_FUNCTION_DECLARATION:
+        return llvm_generate_function_declaration(codegen, (FunctionDeclarationNode*)node);
 
-        break;
-    }
+    case NODE_RETURN:
+        return llvm_generate_return(codegen, (ReturnNode*)node);
 
-    case NODE_RETURN: {
-        if (!llvm_generate_return(codegen, (ReturnNode*)node)) {
-            return false;
-        }
-
-        break;
-    }
+    case NODE_FUNCTION_CALL:
+        return llvm_generate_function_call(codegen, (FunctionCallNode*)node);
 
     default: {
         Diagnostic diagnostic = {
@@ -55,11 +64,9 @@ bool llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node) {
         };
 
         diagnostic_stream_append(&codegen->diagnostics, diagnostic);
-        return false;
+        return 0;
     }
     }
-
-    return true;
 }
 
 LLVMValueRef llvm_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclarationNode* node) {
@@ -89,6 +96,29 @@ LLVMValueRef llvm_generate_function_declaration(LLVMCodegen* codegen, FunctionDe
     return function;
 }
 
+LLVMValueRef llvm_generate_function_call(LLVMCodegen* codegen, FunctionCallNode* node) {
+    LOG_DEBUG("llvm-codegen", "generating function call for '%s'", node->name);
+
+    // In order to generate the call, we need the function itself.
+    LLVMValueRef callee = LLVMGetNamedFunction(codegen->module, node->name);
+    if (!callee) {
+        Diagnostic diagnostic = {
+            .position = node->position,
+            .message = format_string("undefined function: '%s'", node->name),
+            .is_terminal = true,
+        };
+
+        diagnostic_stream_append(&codegen->diagnostics, diagnostic);
+        return 0;
+    }
+
+    // This took me a bit to figure out...
+    // The type of (LLVMTypeOf) a global (in this case, a function) is a pointer to a global.
+    // LLVMGlobalGetValueType gets the type that LLVMTypeOf is pointing to.
+    LLVMTypeRef function_type = LLVMGlobalGetValueType(callee);
+    return LLVMBuildCall2(codegen->builder, function_type, callee, 0, 0, node->name);
+}
+
 LLVMValueRef llvm_generate_return(LLVMCodegen* codegen, ReturnNode* node) {
     if (node->value == 0) {
         LOG_DEBUG("llvm-codegen", "generating return statement without value");
@@ -97,25 +127,22 @@ LLVMValueRef llvm_generate_return(LLVMCodegen* codegen, ReturnNode* node) {
 
     LOG_DEBUG("llvm-codegen", "generating return statement with value '%s'", node_to_string(node->value));
 
-    // FIXME: Support for returning other nodes is not implemented yet.
-    //        The easiest way to do this is probably to make all llvm_generate methods return a LLVMValueRef.
-    if (node->value->node_type != NODE_NUMBER_LITERAL) {
-        Diagnostic diagnostic = {
-            .position = node->position,
-            .is_terminal = true,
-            .message = format_string("returning node '%s' is not supported yet", node_to_string(node->value)),
-        };
+    // FIXME: This is just a stub because I'm too lazy to move generating number literals to llvm_codegen_generate_node.
+    if (node->value->node_type == NODE_NUMBER_LITERAL) {
+        NumberLiteralNode* number_literal = (NumberLiteralNode*)node->value;
 
-        diagnostic_stream_append(&codegen->diagnostics, diagnostic);
+        // FIXME: Probably want to infer this type somehow..?
+        //        If my function returns i64, it should be generating an i64 constant, etc.
+        LLVMTypeRef int_32_type = LLVMInt32TypeInContext(codegen->context);
+        return LLVMBuildRet(codegen->builder, LLVMConstInt(int_32_type, (int32_t)number_literal->value, false));
+    }
+
+    LLVMValueRef value = llvm_codegen_generate_node(codegen, node->value);
+    if (value == 0) {
         return 0;
     }
 
-    NumberLiteralNode* number_literal = (NumberLiteralNode*)node->value;
-
-    // FIXME: Probably want to infer this type somehow..?
-    //        If my function returns i64, it should be generating an i64 constant, etc.
-    LLVMTypeRef int_32_type = LLVMInt32TypeInContext(codegen->context);
-    return LLVMBuildRet(codegen->builder, LLVMConstInt(int_32_type, (int32_t)number_literal->value, false));
+    return LLVMBuildRet(codegen->builder, value);
 }
 
 void llvm_codegen_destroy(LLVMCodegen* codegen) {
