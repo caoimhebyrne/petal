@@ -44,10 +44,16 @@ void llvm_codegen_generate(LLVMCodegen* codegen);
 bool llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node);
 
 // Generates LLVM bytecode for a FunctionDeclarationNode.
-bool llvm_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclarationNode* node);
+// Returns:
+// - The value reference produced by this function.
+//   If this is zero, the generation failed.
+LLVMValueRef llvm_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclarationNode* node);
 
 // Generates LLVM bytecode for a ReturnNode.
-bool llvm_generate_return(LLVMCodegen* codegen, ReturnNode* node);
+// Returns:
+// - The value reference produced by this function.
+//   If this is zero, the generation failed.
+LLVMValueRef llvm_generate_return(LLVMCodegen* codegen, ReturnNode* node);
 
 // Destroys the provided LLVM code generator.
 void llvm_codegen_destroy(LLVMCodegen* codegen);

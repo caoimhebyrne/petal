@@ -62,12 +62,12 @@ bool llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node) {
     return true;
 }
 
-bool llvm_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclarationNode* node) {
+LLVMValueRef llvm_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclarationNode* node) {
     LOG_DEBUG("llvm-codegen", "generating function '%s'", node->name);
 
     LLVMTypeRef return_type = llvm_codegen_type_to_ref(codegen, node->return_type);
     if (!return_type) {
-        return false;
+        return 0;
     }
 
     // FIXME: Function declarations don't have support for parameters yet.
@@ -80,21 +80,19 @@ bool llvm_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclaratio
 
     for (size_t i = 0; i < node->function_body.length; i++) {
         if (!llvm_codegen_generate_node(codegen, node->function_body.data[i])) {
-            return false;
+            return 0;
         }
     }
 
     // I'm unsure if I need to call something like LLVMClearInsertionPosition(builder) after I generate the nodes,
     // so let this be a comment to future me saying sorry if this not being here ends up breaking something.
-    return true;
+    return function;
 }
 
-bool llvm_generate_return(LLVMCodegen* codegen, ReturnNode* node) {
+LLVMValueRef llvm_generate_return(LLVMCodegen* codegen, ReturnNode* node) {
     if (node->value == 0) {
         LOG_DEBUG("llvm-codegen", "generating return statement without value");
-        LLVMBuildRetVoid(codegen->builder);
-
-        return true;
+        return LLVMBuildRetVoid(codegen->builder);
     }
 
     LOG_DEBUG("llvm-codegen", "generating return statement with value '%s'", node_to_string(node->value));
@@ -109,7 +107,7 @@ bool llvm_generate_return(LLVMCodegen* codegen, ReturnNode* node) {
         };
 
         diagnostic_stream_append(&codegen->diagnostics, diagnostic);
-        return false;
+        return 0;
     }
 
     NumberLiteralNode* number_literal = (NumberLiteralNode*)node->value;
@@ -117,9 +115,7 @@ bool llvm_generate_return(LLVMCodegen* codegen, ReturnNode* node) {
     // FIXME: Probably want to infer this type somehow..?
     //        If my function returns i64, it should be generating an i64 constant, etc.
     LLVMTypeRef int_32_type = LLVMInt32TypeInContext(codegen->context);
-    LLVMBuildRet(codegen->builder, LLVMConstInt(int_32_type, (int32_t)number_literal->value, false));
-
-    return true;
+    return LLVMBuildRet(codegen->builder, LLVMConstInt(int_32_type, (int32_t)number_literal->value, false));
 }
 
 void llvm_codegen_destroy(LLVMCodegen* codegen) {
