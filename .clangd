@@ -1,2 +1,2 @@
 CompileFlags:
-  Add: [-Wall, -Wextra, -Werror, -DDEBUG]
+  Add: [-Wall, -Wextra, -Werror, -DDEBUG, -Wno-pointer-to-int-cast]

@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Werror -DDEBUG -ggdb3 -Og
+CFLAGS = -Wall -Wextra -Werror -Wno-pointer-to-int-cast -DDEBUG -ggdb3 -Og
 LDFLAGS = -lLLVM
 
 prepare:
