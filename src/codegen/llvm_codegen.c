@@ -25,7 +25,7 @@ LLVMCodegen llvm_codegen_create(char* filename, NodeStream node_stream) {
 void llvm_codegen_generate(LLVMCodegen* codegen) {
     for (size_t i = 0; i < codegen->node_stream.length; i++) {
         if (!llvm_codegen_generate_node(codegen, codegen->node_stream.data[i])) {
-            break;
+            return;
         }
     }
 
@@ -80,6 +80,11 @@ LLVMValueRef llvm_generate_function_declaration(LLVMCodegen* codegen, FunctionDe
     // FIXME: Function declarations don't have support for parameters yet.
     LLVMTypeRef function_type = LLVMFunctionType(return_type, 0, 0, false);
     LLVMValueRef function = LLVMAddFunction(codegen->module, node->name, function_type);
+
+    // If there are no nodes within this function's body, don't create a block.
+    if (node->function_body.length == 0) {
+        return function;
+    }
 
     // All code generated from now on will be inside this block.
     LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(codegen->context, function, "entry");
