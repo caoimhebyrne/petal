@@ -3,6 +3,7 @@
 
 #include "../ast/node.h"
 #include "../ast/type.h"
+#include "../diagnostics.h"
 #include <llvm-c/Types.h>
 
 typedef struct {
@@ -17,6 +18,9 @@ typedef struct {
 
     // The NodeStream to use as source for code generation.
     NodeStream node_stream;
+
+    // The diagnostic stream that errors are produced onto.
+    DiagnosticStream diagnostics;
 } LLVMCodegen;
 
 // Initializes a new LLVM code generator.
@@ -27,15 +31,20 @@ typedef struct {
 LLVMCodegen llvm_codegen_create(char* filename, NodeStream node_stream);
 
 // Generates LLVM bytecode from this code generator's node stream.
-void llvm_codegen_generate(LLVMCodegen codegen);
+// If this code generator's diagnostic stream has a length greater than 0, the code generation
+// was not successful.
+void llvm_codegen_generate(LLVMCodegen* codegen);
 
 // Generates LLVM bytecode for a single node.
-void llvm_codegen_generate_node(LLVMCodegen codegen, Node* node);
+// Returns:
+// - A boolean indicating whether the node could be generated or not.
+//   If false, generation should stop.
+bool llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node);
 
 // Destroys the provided LLVM code generator.
-void llvm_codegen_destroy(LLVMCodegen codegen);
+void llvm_codegen_destroy(LLVMCodegen* codegen);
 
 // Converts a Type to an LLVMTypeRef.
-LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen codegen, Type type);
+LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, Type type);
 
 #endif // __LLVM_CODEGEN_H__

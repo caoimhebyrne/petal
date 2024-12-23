@@ -50,8 +50,17 @@ int main(int argc, char** argv) {
     ast_destroy(&ast);
 
     LLVMCodegen codegen = llvm_codegen_create(filename, node_stream);
-    llvm_codegen_generate(codegen);
-    llvm_codegen_destroy(codegen);
+    llvm_codegen_generate(&codegen);
+
+    if (codegen.diagnostics.length != 0) {
+        diagnostic_stream_print(&codegen.diagnostics, filename);
+        llvm_codegen_destroy(&codegen);
+
+        return -1;
+    }
+
+    LLVMDumpModule(codegen.module);
+    llvm_codegen_destroy(&codegen);
 
     return 0;
 }
