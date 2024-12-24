@@ -56,6 +56,13 @@ LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node) {
     case NODE_FUNCTION_CALL:
         return llvm_generate_function_call(codegen, (FunctionCallNode*)node);
 
+    case NODE_NUMBER_LITERAL: {
+        NumberLiteralNode* number_literal = (NumberLiteralNode*)node;
+
+        LLVMTypeRef int_32_type = LLVMInt32TypeInContext(codegen->context);
+        return LLVMConstInt(int_32_type, (int32_t)number_literal->value, false);
+    }
+
     default: {
         Diagnostic diagnostic = {
             .position = node->position,
@@ -77,9 +84,21 @@ LLVMValueRef llvm_generate_function_declaration(LLVMCodegen* codegen, FunctionDe
         return 0;
     }
 
-    // FIXME: Function declarations don't have support for parameters yet.
-    LLVMTypeRef function_type = LLVMFunctionType(return_type, 0, 0, false);
+    LLVMTypeRef parameters[node->parameters.length] = {};
+    for (size_t i = 0; i < node->parameters.length; i++) {
+        Parameter parameter = node->parameters.data[i];
+        parameters[i] = llvm_codegen_type_to_ref(codegen, parameter.type);
+    }
+
+    LLVMTypeRef function_type = LLVMFunctionType(return_type, parameters, node->parameters.length, false);
     LLVMValueRef function = LLVMAddFunction(codegen->module, node->name, function_type);
+
+    // Set the name of the function parameter.
+    for (size_t i = 0; i < node->parameters.length; i++) {
+        Parameter node_parameter = node->parameters.data[i];
+        LLVMValueRef parameter = LLVMGetParam(function, i);
+        LLVMSetValueName2(parameter, node_parameter.name, strlen(node_parameter.name));
+    }
 
     // If there are no nodes within this function's body, don't create a block.
     if (node->function_body.length == 0) {
@@ -117,11 +136,22 @@ LLVMValueRef llvm_generate_function_call(LLVMCodegen* codegen, FunctionCallNode*
         return 0;
     }
 
+    LLVMValueRef arguments[node->arguments.length] = {};
+    for (size_t i = 0; i < node->arguments.length; i++) {
+        Node* argument = node->arguments.data[i];
+        LLVMValueRef value = llvm_codegen_generate_node(codegen, argument);
+        if (value == 0) {
+            return 0;
+        }
+
+        arguments[i] = value;
+    }
+
     // This took me a bit to figure out...
     // The type of (LLVMTypeOf) a global (in this case, a function) is a pointer to a global.
     // LLVMGlobalGetValueType gets the type that LLVMTypeOf is pointing to.
     LLVMTypeRef function_type = LLVMGlobalGetValueType(callee);
-    return LLVMBuildCall2(codegen->builder, function_type, callee, 0, 0, node->name);
+    return LLVMBuildCall2(codegen->builder, function_type, callee, arguments, node->arguments.length, node->name);
 }
 
 LLVMValueRef llvm_generate_return(LLVMCodegen* codegen, ReturnNode* node) {
@@ -131,16 +161,6 @@ LLVMValueRef llvm_generate_return(LLVMCodegen* codegen, ReturnNode* node) {
     }
 
     LOG_DEBUG("llvm-codegen", "generating return statement with value '%s'", node_to_string(node->value));
-
-    // FIXME: This is just a stub because I'm too lazy to move generating number literals to llvm_codegen_generate_node.
-    if (node->value->node_type == NODE_NUMBER_LITERAL) {
-        NumberLiteralNode* number_literal = (NumberLiteralNode*)node->value;
-
-        // FIXME: Probably want to infer this type somehow..?
-        //        If my function returns i64, it should be generating an i64 constant, etc.
-        LLVMTypeRef int_32_type = LLVMInt32TypeInContext(codegen->context);
-        return LLVMBuildRet(codegen->builder, LLVMConstInt(int_32_type, (int32_t)number_literal->value, false));
-    }
 
     LLVMValueRef value = llvm_codegen_generate_node(codegen, node->value);
     if (value == 0) {

@@ -14,12 +14,16 @@ typedef struct {
 
     // The name of the function being called.
     char* name;
+
+    // The arguments being passed to the function.
+    NodeStream arguments;
 } FunctionCallNode;
 
 // Creates a new function call node.
 // Parameters:
 // - name: The name of this function.
-FunctionCallNode* function_call_node_create(Position position, char* name);
+// - arguments: The arguments being passed to this function.
+FunctionCallNode* function_call_node_create(Position position, char* name, NodeStream arguments);
 
 // Returns a string representation of the provided FunctionCallNode.
 // Parameters:

@@ -4,7 +4,7 @@ func my_function() -> i32 {
     return 5;
 }
 
-// A function can also just return without a value.
+// A function can also just return without an explicit value.
 func other_function() {
     return;
 }

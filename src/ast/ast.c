@@ -7,6 +7,7 @@
 #include "node/number_literal.h"
 #include "node/return.h"
 #include "node/variable_declaration.h"
+#include "parameter.h"
 #include "type.h"
 #include <string.h>
 
@@ -37,6 +38,8 @@ NodeStream ast_parse(AST* ast) {
 }
 
 Token ast_peek_token(AST* ast) { return ast->token_stream.data[ast->position]; }
+
+Token ast_consume_token(AST* ast) { return ast->token_stream.data[ast->position++]; }
 
 Token ast_expect_token(AST* ast, TokenType type) {
     Token token = ast->token_stream.data[ast->position];
@@ -207,33 +210,108 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
         return 0;
     }
 
-    // FIXME: There is no support for arguments/parameters in functions yet.
     Token open_parenthesis_token = ast_expect_token(ast, TOKEN_OPEN_PARENTHESIS);
     if (open_parenthesis_token.type == TOKEN_INVALID) {
         return 0;
     }
 
-    Token close_parenthesis_token = ast_expect_token(ast, TOKEN_CLOSE_PARENTHESIS);
-    if (close_parenthesis_token.type == TOKEN_INVALID) {
+    Parameters parameters;
+    parameters_initialize(&parameters, 1);
+
+    // The next token will indicate how we are going to parse parameters.
+    // If there is a closing parenthesis, no parameters are defined.
+    // In the case of an identifier, we should start parsing parameters.
+    // Otherwise, throw an error, this is an unexpected token.
+    Token next_token = ast_peek_token(ast);
+
+    switch (next_token.type) {
+    case TOKEN_CLOSE_PARENTHESIS:
+        // There are no parameters defined.
+        ast->position += 1;
+        break;
+
+    case TOKEN_IDENTIFIER:
+        // This is the first parameter's name.
+        while (true) {
+            // The first token should be an identifier, indicating the parameter's name.
+            Token parameter_name_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
+            if (parameter_name_token.type == TOKEN_INVALID) {
+                return 0;
+            }
+
+            // The next token must be a colon.
+            Token colon_token = ast_expect_token(ast, TOKEN_COLON);
+            if (colon_token.type == TOKEN_INVALID) {
+                return 0;
+            }
+
+            // Finally, the last token should be the parameter's type.
+            Token parameter_type_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
+            if (parameter_type_token.type == TOKEN_INVALID) {
+                return 0;
+            }
+
+            Type parameter_type = type_from_string(parameter_type_token.string);
+            if (parameter_type == 0) {
+                Diagnostic diagnostic = {
+                    .position = parameter_type_token.position,
+                    .message = format_string("unrecognized type: '%s'", parameter_type_token.string),
+                    .is_terminal = true,
+                };
+
+                diagnostic_stream_append(&ast->diagnostics, diagnostic);
+                return 0;
+            }
+
+            Parameter parameter = parameter_create(parameter_name_token.string, parameter_type);
+            parameters_append(&parameters, parameter);
+
+            next_token = ast_consume_token(ast);
+
+            // If the next token is a comma, consume and continue.
+            // If it is a closing parentheses, no more parsing of arguments is required.
+            // Otherwise, this is an unexpected token.
+            if (next_token.type == TOKEN_COMMA) {
+                // no-op
+            } else if (next_token.type == TOKEN_CLOSE_PARENTHESIS) {
+                break;
+            } else {
+                Diagnostic diagnostic = {
+                    .position = next_token.position,
+                    .message = format_string("expected closing parentheses, but got %s", token_to_string(&next_token)),
+                    .is_terminal = true,
+                };
+
+                diagnostic_stream_append(&ast->diagnostics, diagnostic);
+                return 0;
+            }
+        }
+        break;
+
+    default: {
+        Diagnostic diagnostic = {
+            .position = next_token.position,
+            .message = format_string("expected closing parentheses, but got %s", token_to_string(&next_token)),
+            .is_terminal = true,
+        };
+
+        diagnostic_stream_append(&ast->diagnostics, diagnostic);
         return 0;
+    }
     }
 
     // The next token should either be...
     // 1. An open brace -> This function returns `void`.
     // 2. A hyphen, this function specifies a return type.
-    Token next_token = ast_peek_token(ast);
+    next_token = ast_consume_token(ast);
 
     Position return_type_position;
     char* return_type_name;
 
     if (next_token.type == TOKEN_OPEN_BRACE) {
-        ast->position += 1;
-
         return_type_name = "void";
         return_type_position = next_token.position;
     } else if (next_token.type == TOKEN_HYPHEN) {
-        ast->position += 1;
-
         Token angle_bracket_token = ast_expect_token(ast, TOKEN_RIGHT_ANGLE_BRACKET);
         if (angle_bracket_token.type == TOKEN_INVALID) {
             return 0;
@@ -295,7 +373,8 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
         return 0;
     }
 
-    return function_declaration_node_create(func_token.position, name_token.string, return_type, function_body);
+    return function_declaration_node_create(func_token.position, name_token.string, parameters, return_type,
+                                            function_body);
 }
 
 FunctionCallNode* ast_parse_function_call(AST* ast, bool as_statement) {
@@ -305,15 +384,36 @@ FunctionCallNode* ast_parse_function_call(AST* ast, bool as_statement) {
         return 0;
     }
 
-    // FIXME: There is no support for arguments/parameters in functions yet.
     Token open_parenthesis_token = ast_expect_token(ast, TOKEN_OPEN_PARENTHESIS);
     if (open_parenthesis_token.type == TOKEN_INVALID) {
         return 0;
     }
 
-    Token close_parenthesis_token = ast_expect_token(ast, TOKEN_CLOSE_PARENTHESIS);
-    if (close_parenthesis_token.type == TOKEN_INVALID) {
-        return 0;
+    NodeStream arguments;
+    node_stream_initialize(&arguments, 1);
+
+    // If the next token is a closing parenthesis, then there are no arguments to this function.
+    Token next_token = ast_peek_token(ast);
+    if (next_token.type == TOKEN_CLOSE_PARENTHESIS) {
+        ast->position += 1;
+    } else {
+        while (true) {
+            // Attempt to parse a value.
+            Node* argument = ast_parse_node(ast, false);
+            if (argument == 0) {
+                return 0;
+            }
+
+            node_stream_append(&arguments, argument);
+
+            // The next token will indicate how we are going to parse arguments.
+            // If there is a closing parenthesis, no arguments are defined.
+            Token next_token = ast_peek_token(ast);
+            if (next_token.type == TOKEN_CLOSE_PARENTHESIS) {
+                ast->position += 1;
+                break;
+            }
+        }
     }
 
     if (as_statement) {
@@ -324,7 +424,7 @@ FunctionCallNode* ast_parse_function_call(AST* ast, bool as_statement) {
         }
     }
 
-    return function_call_node_create(name_token.position, name_token.string);
+    return function_call_node_create(name_token.position, name_token.string, arguments);
 }
 
 // return <value>;
