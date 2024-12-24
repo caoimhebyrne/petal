@@ -53,13 +53,13 @@ void llvm_codegen_generate(LLVMCodegen* codegen) {
 LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node) {
     switch (node->node_type) {
     case NODE_FUNCTION_DECLARATION:
-        return llvm_generate_function_declaration(codegen, (FunctionDeclarationNode*)node);
+        return llvm_codegen_generate_function_declaration(codegen, (FunctionDeclarationNode*)node);
 
     case NODE_RETURN:
-        return llvm_generate_return(codegen, (ReturnNode*)node);
+        return llvm_codegen_generate_return(codegen, (ReturnNode*)node);
 
     case NODE_FUNCTION_CALL:
-        return llvm_generate_function_call(codegen, (FunctionCallNode*)node);
+        return llvm_codegen_generate_function_call(codegen, (FunctionCallNode*)node);
 
     case NODE_NUMBER_LITERAL: {
         NumberLiteralNode* number_literal = (NumberLiteralNode*)node;
@@ -68,24 +68,8 @@ LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node) {
         return LLVMConstInt(int_32_type, (int32_t)number_literal->value, false);
     }
 
-    case NODE_IDENTIFIER_REFERENCE: {
-        IdentifierReferenceNode* identifier_reference = (IdentifierReferenceNode*)node;
-
-        // Attempt to find a stored value with the provided name.
-        StoredValue* stored_value = stored_values_find_by_name(codegen->stored_values, identifier_reference->name);
-        if (!stored_value) {
-            Diagnostic diagnostic = {
-                .position = node->position,
-                .is_terminal = true,
-                .message = format_string("undeclared variable: '%s'", identifier_reference->name),
-            };
-
-            diagnostic_stream_append(&codegen->diagnostics, diagnostic);
-            return 0;
-        }
-
-        return stored_value->value;
-    }
+    case NODE_IDENTIFIER_REFERENCE:
+        return llvm_codegen_generate_identifier_reference(codegen, (IdentifierReferenceNode*)node);
 
     default: {
         Diagnostic diagnostic = {
@@ -100,7 +84,7 @@ LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node) {
     }
 }
 
-LLVMValueRef llvm_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclarationNode* node) {
+LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclarationNode* node) {
     LOG_DEBUG("llvm-codegen", "generating function '%s'", node->name);
 
     // Before generating the function, we should clear all stored value references.
@@ -153,7 +137,7 @@ LLVMValueRef llvm_generate_function_declaration(LLVMCodegen* codegen, FunctionDe
     return function;
 }
 
-LLVMValueRef llvm_generate_function_call(LLVMCodegen* codegen, FunctionCallNode* node) {
+LLVMValueRef llvm_codegen_generate_function_call(LLVMCodegen* codegen, FunctionCallNode* node) {
     LOG_DEBUG("llvm-codegen", "generating function call for '%s'", node->name);
 
     // In order to generate the call, we need the function itself.
@@ -187,7 +171,24 @@ LLVMValueRef llvm_generate_function_call(LLVMCodegen* codegen, FunctionCallNode*
     return LLVMBuildCall2(codegen->builder, function_type, callee, arguments, node->arguments.length, node->name);
 }
 
-LLVMValueRef llvm_generate_return(LLVMCodegen* codegen, ReturnNode* node) {
+LLVMValueRef llvm_codegen_generate_identifier_reference(LLVMCodegen* codegen, IdentifierReferenceNode* node) {
+    // Attempt to find a stored value with the provided name.
+    StoredValue* stored_value = stored_values_find_by_name(codegen->stored_values, node->name);
+    if (!stored_value) {
+        Diagnostic diagnostic = {
+            .position = node->position,
+            .is_terminal = true,
+            .message = format_string("undeclared variable: '%s'", node->name),
+        };
+
+        diagnostic_stream_append(&codegen->diagnostics, diagnostic);
+        return 0;
+    }
+
+    return stored_value->value;
+}
+
+LLVMValueRef llvm_codegen_generate_return(LLVMCodegen* codegen, ReturnNode* node) {
     if (node->value == 0) {
         LOG_DEBUG("llvm-codegen", "generating return statement without value");
         return LLVMBuildRetVoid(codegen->builder);

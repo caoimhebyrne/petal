@@ -4,6 +4,7 @@
 #include "../ast/node.h"
 #include "../ast/node/function_call.h"
 #include "../ast/node/function_declaration.h"
+#include "../ast/node/identifier_reference.h"
 #include "../ast/node/return.h"
 #include "../ast/type.h"
 #include "../diagnostics.h"
@@ -52,19 +53,25 @@ LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node);
 // Returns:
 // - The value reference produced by this function.
 //   If this is zero, the generation failed.
-LLVMValueRef llvm_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclarationNode* node);
+LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclarationNode* node);
 
 // Generates LLVM bytecode for a FunctionCallNode.
 // Returns:
 // - The value reference produced by this function.
 //   If this is zero, the generation failed.
-LLVMValueRef llvm_generate_function_call(LLVMCodegen* codegen, FunctionCallNode* node);
+LLVMValueRef llvm_codegen_generate_function_call(LLVMCodegen* codegen, FunctionCallNode* node);
+
+// Generates LLVM bytecode for a IdentifierReferenceNode.
+// Returns:
+// - The value reference produced by this function.
+//   If this is zero, the generation failed.
+LLVMValueRef llvm_codegen_generate_identifier_reference(LLVMCodegen* codegen, IdentifierReferenceNode* node);
 
 // Generates LLVM bytecode for a ReturnNode.
 // Returns:
 // - The value reference produced by this function.
 //   If this is zero, the generation failed.
-LLVMValueRef llvm_generate_return(LLVMCodegen* codegen, ReturnNode* node);
+LLVMValueRef llvm_codegen_generate_return(LLVMCodegen* codegen, ReturnNode* node);
 
 // Destroys the provided LLVM code generator.
 void llvm_codegen_destroy(LLVMCodegen* codegen);
