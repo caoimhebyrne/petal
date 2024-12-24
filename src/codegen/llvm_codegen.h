@@ -7,6 +7,7 @@
 #include "../ast/node/return.h"
 #include "../ast/type.h"
 #include "../diagnostics.h"
+#include "stored_values.h"
 #include <llvm-c/Types.h>
 
 typedef struct {
@@ -18,6 +19,9 @@ typedef struct {
 
     // The builder for this module.
     LLVMBuilderRef builder;
+
+    // The stored values within this code generator.
+    StoredValues stored_values;
 
     // The NodeStream to use as source for code generation.
     NodeStream node_stream;

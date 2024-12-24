@@ -1,8 +1,10 @@
 #include "llvm_codegen.h"
 #include "../ast/node/function_declaration.h"
+#include "../ast/node/identifier_reference.h"
 #include "../ast/node/number_literal.h"
 #include "../ast/node/return.h"
 #include "../string/format_string.h"
+#include "stored_values.h"
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/Types.h>
@@ -18,8 +20,11 @@ LLVMCodegen llvm_codegen_create(char* filename, NodeStream node_stream) {
     DiagnosticStream diagnostics;
     diagnostic_stream_initialize(&diagnostics, 2);
 
+    StoredValues stored_values;
+    stored_values_initialize(&stored_values, 1);
+
     LOG_DEBUG("llvm-codegen", "created module for code generation");
-    return (LLVMCodegen){context, module, builder, node_stream, diagnostics};
+    return (LLVMCodegen){context, module, builder, stored_values, node_stream, diagnostics};
 }
 
 void llvm_codegen_generate(LLVMCodegen* codegen) {
@@ -63,6 +68,25 @@ LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node) {
         return LLVMConstInt(int_32_type, (int32_t)number_literal->value, false);
     }
 
+    case NODE_IDENTIFIER_REFERENCE: {
+        IdentifierReferenceNode* identifier_reference = (IdentifierReferenceNode*)node;
+
+        // Attempt to find a stored value with the provided name.
+        StoredValue* stored_value = stored_values_find_by_name(codegen->stored_values, identifier_reference->name);
+        if (!stored_value) {
+            Diagnostic diagnostic = {
+                .position = node->position,
+                .is_terminal = true,
+                .message = format_string("undeclared variable: '%s'", identifier_reference->name),
+            };
+
+            diagnostic_stream_append(&codegen->diagnostics, diagnostic);
+            return 0;
+        }
+
+        return stored_value->value;
+    }
+
     default: {
         Diagnostic diagnostic = {
             .position = node->position,
@@ -78,6 +102,10 @@ LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node) {
 
 LLVMValueRef llvm_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclarationNode* node) {
     LOG_DEBUG("llvm-codegen", "generating function '%s'", node->name);
+
+    // Before generating the function, we should clear all stored value references.
+    stored_values_destroy(&codegen->stored_values);
+    stored_values_initialize(&codegen->stored_values, 1);
 
     LLVMTypeRef return_type = llvm_codegen_type_to_ref(codegen, node->return_type);
     if (!return_type) {
@@ -96,8 +124,13 @@ LLVMValueRef llvm_generate_function_declaration(LLVMCodegen* codegen, FunctionDe
     // Set the name of the function parameter.
     for (size_t i = 0; i < node->parameters.length; i++) {
         Parameter node_parameter = node->parameters.data[i];
+
         LLVMValueRef parameter = LLVMGetParam(function, i);
         LLVMSetValueName2(parameter, node_parameter.name, strlen(node_parameter.name));
+
+        // Store this parameter within the stored values for this function.
+        StoredValue stored_value = stored_value_create(node_parameter.name, parameter);
+        stored_values_append(&codegen->stored_values, stored_value);
     }
 
     // If there are no nodes within this function's body, don't create a block.
