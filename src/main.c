@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    int linker_status = system("gcc --fuse-ld=lld ./build/output.o -o ./build/output");
+    int linker_status = system("gcc -fuse-ld=lld ./build/output.o -o ./build/output");
     if (linker_status != 0) {
         LOG_INFO("main", "linker failed! (%d)", linker_status);
         return -1;
