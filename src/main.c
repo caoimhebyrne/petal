@@ -5,6 +5,7 @@
 #include "lexer/lexer.h"
 #include "lexer/token.h"
 #include "logger.h"
+#include <stdlib.h>
 
 int main(int argc, char** argv) {
     // FIXME: Only one filename is supported right now.
@@ -57,7 +58,18 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    llvm_codegen_destroy(&codegen);
+    char* error_message = llvm_codegen_emit(&codegen, "./build/output.o");
+    if (error_message) {
+        LOG_ERROR("main", "%s", error_message);
+        return -1;
+    }
 
+    int linker_status = system("ld ./build/output.o -o ./build/output");
+    if (linker_status != 0) {
+        LOG_INFO("main", "linker failed! (%d)", linker_status);
+        return -1;
+    }
+
+    llvm_codegen_destroy(&codegen);
     return 0;
 }

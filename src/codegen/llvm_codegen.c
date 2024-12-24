@@ -7,7 +7,9 @@
 #include "stored_values.h"
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Core.h>
+#include <llvm-c/TargetMachine.h>
 #include <llvm-c/Types.h>
+#include <stdio.h>
 #include <string.h>
 
 LLVMCodegen llvm_codegen_create(char* filename, NodeStream node_stream) {
@@ -48,6 +50,36 @@ void llvm_codegen_generate(LLVMCodegen* codegen) {
         diagnostic_stream_append(&codegen->diagnostics, diagnostic);
         LLVMDisposeMessage(error_message);
     }
+}
+
+char* llvm_codegen_emit(LLVMCodegen* codegen, char* out_file_path) {
+    char* error_message;
+    char* host_triple = LLVMGetDefaultTargetTriple();
+
+    LLVMInitializeAllTargetInfos();
+    LLVMInitializeAllTargets();
+    LLVMInitializeAllAsmPrinters();
+    LLVMInitializeAllTargetMCs();
+
+    LLVMTargetRef target;
+    if (LLVMGetTargetFromTriple(host_triple, &target, &error_message)) {
+        char* formatted_message = format_string("Failed to produce binary: %s", error_message);
+        LLVMDisposeMessage(error_message);
+
+        return formatted_message;
+    }
+
+    LLVMTargetMachineRef target_machine = LLVMCreateTargetMachine(target, host_triple, "", "", LLVMCodeGenLevelDefault,
+                                                                  LLVMRelocPIC, LLVMCodeModelDefault);
+
+    if (LLVMTargetMachineEmitToFile(target_machine, codegen->module, out_file_path, LLVMObjectFile, &error_message)) {
+        char* formatted_message = format_string("Failed to produce binary: %s", error_message);
+        LLVMDisposeMessage(error_message);
+
+        return formatted_message;
+    }
+
+    return 0;
 }
 
 LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node) {

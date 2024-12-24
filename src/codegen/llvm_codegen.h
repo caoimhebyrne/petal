@@ -43,6 +43,14 @@ LLVMCodegen llvm_codegen_create(char* filename, NodeStream node_stream);
 // was not successful.
 void llvm_codegen_generate(LLVMCodegen* codegen);
 
+// Emits an object file from the generated LLVM bytecode.
+// Parameters:
+// - codegen: The code generator being used.
+// - out_file_path: The path (relative to the current working directory) that the object file should be written to.
+// Returns:
+// - An error message if one occurred, otherwise 0.
+char* llvm_codegen_emit(LLVMCodegen* codegen, char* out_file_path);
+
 // Generates LLVM bytecode for a single node.
 // Returns:
 // - The value reference produced by this function.
