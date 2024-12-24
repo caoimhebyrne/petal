@@ -77,6 +77,6 @@ LLVMValueRef llvm_codegen_generate_return(LLVMCodegen* codegen, ReturnNode* node
 void llvm_codegen_destroy(LLVMCodegen* codegen);
 
 // Converts a Type to an LLVMTypeRef.
-LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, Type type);
+LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, Type type, Position position);
 
 #endif // __LLVM_CODEGEN_H__

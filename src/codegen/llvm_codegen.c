@@ -91,7 +91,7 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
     stored_values_destroy(&codegen->stored_values);
     stored_values_initialize(&codegen->stored_values, 1);
 
-    LLVMTypeRef return_type = llvm_codegen_type_to_ref(codegen, node->return_type);
+    LLVMTypeRef return_type = llvm_codegen_type_to_ref(codegen, node->return_type, node->position);
     if (!return_type) {
         return 0;
     }
@@ -99,7 +99,7 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
     LLVMTypeRef parameters[node->parameters.length] = {};
     for (size_t i = 0; i < node->parameters.length; i++) {
         Parameter parameter = node->parameters.data[i];
-        parameters[i] = llvm_codegen_type_to_ref(codegen, parameter.type);
+        parameters[i] = llvm_codegen_type_to_ref(codegen, parameter.type, node->position);
     }
 
     LLVMTypeRef function_type = LLVMFunctionType(return_type, parameters, node->parameters.length, false);
@@ -212,7 +212,7 @@ void llvm_codegen_destroy(LLVMCodegen* codegen) {
     node_stream_destroy(&codegen->node_stream);
 }
 
-LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, Type type) {
+LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, Type type, Position position) {
     switch (type) {
     case TYPE_INVALID:
         break;
@@ -231,8 +231,7 @@ LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, Type type) {
     }
 
     Diagnostic diagnostic = {
-        // TODO: AST nodes do not have a position associated with them yet.
-        .position = (Position){.line = 0, .column = 0, .index = 0},
+        .position = position,
         .is_terminal = true,
         .message = format_string("unable to convert type '%s' into llvm type", type_to_string(type)),
     };
