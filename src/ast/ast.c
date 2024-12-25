@@ -72,13 +72,31 @@ Token ast_expect_token(AST* ast, TokenType type) {
     return token;
 }
 
+Token ast_expect_keyword(AST* ast, char* keyword) {
+    Token token = ast_expect_token(ast, TOKEN_KEYWORD);
+    if (token.type == TOKEN_INVALID) {
+        return INVALID_TOKEN
+    }
+
+    if (strcmp(token.string, keyword) != 0) {
+        Diagnostic diagnostic = {
+            .position = token.position,
+            .message = format_string("unexpected keyword: '%s', expected: '%s'", token.string, keyword),
+            .is_terminal = true,
+        };
+
+        diagnostic_stream_append(&ast->diagnostics, diagnostic);
+        return INVALID_TOKEN;
+    }
+
+    return token;
+}
+
 Node* ast_parse_node(AST* ast, bool as_statement) {
     Token token = ast_peek_token(ast);
     switch (token.type) {
 
-    // In order to figure out what this identifier is for, we need to see its value, but
-    // also take a look at the tokens around it.
-    case TOKEN_IDENTIFIER: {
+    case TOKEN_KEYWORD: {
         // There are multiple identifiers that can indicate a function definition.
         // - func
         // - extern
@@ -92,6 +110,12 @@ Node* ast_parse_node(AST* ast, bool as_statement) {
             return (Node*)ast_parse_return_statement(ast);
         }
 
+        break;
+    }
+
+    // In order to figure out what this identifier is for, we need to see its value, but
+    // also take a look at the tokens around it.
+    case TOKEN_IDENTIFIER: {
         // To figure out what the identifier is for, we need to check the next token's value.
         Token next_token = ast->token_stream.data[ast->position + 1];
         switch (next_token.type) {
@@ -188,38 +212,35 @@ VariableDeclarationNode* ast_parse_variable_declaration(AST* ast) {
     return variable_declaration_node_create(name_token.position, name_token.string, type, value_node);
 }
 
-// func <name>() { ... }
+// <optional: modifier> func <name>(...) {...}
+// OR
+// extern func <name>(...);
 FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
-    // The first token in the stream must be an identifier which equals 'func'.
-    Token first_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
-    if (first_token.type == TOKEN_INVALID) {
+    LOG_DEBUG("ast", "starting to parse function declaration!");
+
+    // If the first token in the stream is "extern", we should parse this as an external function (no body).
+    Token initial_token = ast_expect_token(ast, TOKEN_KEYWORD);
+    if (initial_token.type == TOKEN_INVALID) {
         return 0;
     }
 
-    // The first token may be "extern", if so, the next keyword must be "func".
-    bool is_external = false;
-    if (strcmp(first_token.string, "extern") == 0) {
-        is_external = true;
+    LOG_DEBUG("ast", "initial token: '%s'", initial_token.string);
 
-        Token func_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
+    // An external function has no body, just a name, parameters, and then a semicolon.
+    bool is_external_function = false;
+
+    if (strcmp(initial_token.string, "extern") == 0) {
+        // The next token must be the "func" keyword.
+        Token func_token = ast_expect_keyword(ast, "func");
         if (func_token.type == TOKEN_INVALID) {
             return 0;
         }
 
-        if (strcmp(func_token.string, "func") != 0) {
-            Diagnostic diagnostic = {
-                .position = first_token.position,
-                .message = format_string("unexpected identifier: '%s', expected keyword 'func'", first_token.string),
-                .is_terminal = true,
-            };
-
-            diagnostic_stream_append(&ast->diagnostics, diagnostic);
-            return 0;
-        }
-    } else if (strcmp(first_token.string, "func") != 0) {
+        is_external_function = true;
+    } else if (strcmp(initial_token.string, "func") != 0) {
         Diagnostic diagnostic = {
-            .position = first_token.position,
-            .message = format_string("unexpected identifier: '%s', expected keyword 'func'", first_token.string),
+            .position = initial_token.position,
+            .message = format_string("unexpected keyword: '%s', expected keyword 'func'", initial_token.string),
             .is_terminal = true,
         };
 
@@ -328,13 +349,47 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
     // 2. A hyphen, this function specifies a return type.
     next_token = ast_consume_token(ast);
 
-    Position return_type_position;
-    char* return_type_name;
+    Position return_type_position = next_token.position;
+    char* return_type_name = "void";
 
-    if (next_token.type == TOKEN_OPEN_BRACE || next_token.type == TOKEN_SEMICOLON) {
-        return_type_name = "void";
-        return_type_position = next_token.position;
-    } else if (next_token.type == TOKEN_HYPHEN) {
+    switch (next_token.type) {
+
+    // An open brace indicates the start of the function body.
+    // This should only be present on non-external functions.
+    case TOKEN_OPEN_BRACE: {
+        if (is_external_function) {
+            Diagnostic diagnostic = {
+                .position = name_token.position,
+                .message = format_string("unexpected token: %s, expected semicolon", token_to_string(&next_token)),
+                .is_terminal = true,
+            };
+
+            diagnostic_stream_append(&ast->diagnostics, diagnostic);
+            return 0;
+        }
+
+        break;
+    }
+
+    // A semicolon indicates the end of an external function declaration.
+    case TOKEN_SEMICOLON: {
+        if (!is_external_function) {
+            Diagnostic diagnostic = {
+                .position = name_token.position,
+                .message = format_string("unexpected token: semicolon, expected open brace"),
+                .is_terminal = true,
+            };
+
+            diagnostic_stream_append(&ast->diagnostics, diagnostic);
+            return 0;
+        }
+
+        break;
+    }
+
+    // A hyphen indicates that a return type is about to be specified (-> <type>).
+    // It must be followed by a semicolon or an open brace, depending on the definition type.
+    case TOKEN_HYPHEN: {
         Token angle_bracket_token = ast_expect_token(ast, TOKEN_RIGHT_ANGLE_BRACKET);
         if (angle_bracket_token.type == TOKEN_INVALID) {
             return 0;
@@ -350,19 +405,13 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
         return_type_position = return_type_token.position;
 
         // The next token should be an open brace or a semicolon.
-        Token final_token = ast_consume_token(ast);
-        if (final_token.type != TOKEN_OPEN_BRACE || final_token.type != TOKEN_SEMICOLON) {
-            Diagnostic diagnostic = {
-                .position = name_token.position,
-                .message = format_string("unexpected token: %s, expected open brace or semicolon",
-                                         token_to_string(&next_token)),
-                .is_terminal = true,
-            };
+        TokenType final_token_type = is_external_function ? TOKEN_SEMICOLON : TOKEN_OPEN_BRACE;
+        ast_expect_token(ast, final_token_type);
 
-            diagnostic_stream_append(&ast->diagnostics, diagnostic);
-            return 0;
-        }
-    } else {
+        break;
+    }
+
+    default: {
         Diagnostic diagnostic = {
             .position = name_token.position,
             .message = format_string("unexpected token: %s, expected: %s", token_to_string(&next_token),
@@ -372,6 +421,7 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
 
         diagnostic_stream_append(&ast->diagnostics, diagnostic);
         return 0;
+    }
     }
 
     // If this is an unsupported type, throw an error.
@@ -406,8 +456,8 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
         }
     }
 
-    return function_declaration_node_create(first_token.position, name_token.string, parameters, return_type,
-                                            function_body, is_external);
+    return function_declaration_node_create(initial_token.position, name_token.string, parameters, return_type,
+                                            function_body, is_external_function);
 }
 
 FunctionCallNode* ast_parse_function_call(AST* ast, bool as_statement) {
@@ -463,30 +513,19 @@ FunctionCallNode* ast_parse_function_call(AST* ast, bool as_statement) {
 // return <value>;
 ReturnNode* ast_parse_return_statement(AST* ast) {
     // The first token in the stream must be the "return" keyword.
-    Token return_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
+    Token return_token = ast_expect_keyword(ast, "return");
     if (return_token.type == TOKEN_INVALID) {
-        return 0;
-    }
-
-    if (strcmp(return_token.string, "return") != 0) {
-        Diagnostic diagnostic = {
-            .position = return_token.position,
-            .message = format_string("unexpected identifier: '%s', expected keyword 'return'", return_token.string),
-            .is_terminal = true,
-        };
-
-        diagnostic_stream_append(&ast->diagnostics, diagnostic);
         return 0;
     }
 
     // If the next token is a semicolon, there should not be a value.
     Token next_token = ast_peek_token(ast);
 
-    Node* value = 0;
     if (next_token.type == TOKEN_SEMICOLON) {
         ast->position += 1;
+        return return_node_create(return_token.position, 0);
     } else {
-        value = ast_parse_node(ast, false);
+        Node* value = ast_parse_node(ast, false);
         if (!value) {
             return 0;
         }
@@ -496,9 +535,9 @@ ReturnNode* ast_parse_return_statement(AST* ast) {
         if (semicolon_token.type == TOKEN_INVALID) {
             return 0;
         }
-    }
 
-    return return_node_create(return_token.position, value);
+        return return_node_create(return_token.position, value);
+    }
 }
 
 void ast_destroy(AST* ast) {

@@ -7,28 +7,31 @@
 // Represents the type of a single Token.
 typedef enum {
     // An invalid token.
-    TOKEN_INVALID = 0,
+    TOKEN_INVALID,
 
     // An identifier, e.g. "my_variable".
-    TOKEN_IDENTIFIER = 1,
+    TOKEN_IDENTIFIER,
+
+    // A keyword, e.g. "func".
+    TOKEN_KEYWORD,
 
     // A number literal, e.g. 123.456.
-    TOKEN_NUMBER_LITERAL = 2,
+    TOKEN_NUMBER_LITERAL,
 
     // Symbols
-    TOKEN_EQUALS = 3,               // =
-    TOKEN_SEMICOLON = 4,            // ;
-    TOKEN_SLASH = 5,                // /
-    TOKEN_OPEN_PARENTHESIS = 6,     // (
-    TOKEN_CLOSE_PARENTHESIS = 7,    // )
-    TOKEN_OPEN_BRACE = 8,           // {
-    TOKEN_CLOSE_BRACE = 9,          // }
-    TOKEN_ASTERISK = 10,            // *
-    TOKEN_HYPHEN = 11,              // -
-    TOKEN_RIGHT_ANGLE_BRACKET = 12, // >
-    TOKEN_COLON = 13,               // ;
-    TOKEN_COMMA = 14,               // ,
-    TOKEN_PLUS = 15,                // +
+    TOKEN_EQUALS,              // =
+    TOKEN_SEMICOLON,           // ;
+    TOKEN_SLASH,               // /
+    TOKEN_OPEN_PARENTHESIS,    // (
+    TOKEN_CLOSE_PARENTHESIS,   // )
+    TOKEN_OPEN_BRACE,          // {
+    TOKEN_CLOSE_BRACE,         // }
+    TOKEN_ASTERISK,            // *
+    TOKEN_HYPHEN,              // -
+    TOKEN_RIGHT_ANGLE_BRACKET, // >
+    TOKEN_COLON,               // ;
+    TOKEN_COMMA,               // ,
+    TOKEN_PLUS,                // +
 } TokenType;
 
 // Represents a single Token produced by the Lexer.

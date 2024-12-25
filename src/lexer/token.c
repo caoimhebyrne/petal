@@ -12,6 +12,9 @@ char* token_to_string(Token* token) {
     case TOKEN_IDENTIFIER:
         return format_string("identifier ('%s')", token->string);
 
+    case TOKEN_KEYWORD:
+        return format_string("keyword ('%s')", token->string);
+
     case TOKEN_NUMBER_LITERAL:
         return format_string("number literal ('%f')", token->number);
 
@@ -24,6 +27,9 @@ char* token_type_to_string(TokenType token_type) {
     switch (token_type) {
     case TOKEN_IDENTIFIER:
         return "identifier";
+
+    case TOKEN_KEYWORD:
+        return "keyword";
 
     case TOKEN_NUMBER_LITERAL:
         return "number";

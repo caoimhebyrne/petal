@@ -10,6 +10,9 @@
 #include <string.h>
 #include <sys/stat.h>
 
+char* keywords[] = {"func", "extern", "return"};
+size_t keywords_length = sizeof(keywords) / sizeof(char*);
+
 bool lexer_initialize(Lexer* lexer, char* filename) {
     FILE* file = fopen(filename, "r");
     if (!file) {
@@ -193,8 +196,19 @@ Token lexer_parse_identifier(Lexer* lexer) {
         string_builder_append(&string_builder, character);
     }
 
+    TokenType token_type = TOKEN_IDENTIFIER;
     char* identifier_name = string_builder_finish(&string_builder);
-    return (Token){.type = TOKEN_IDENTIFIER, .string = identifier_name, .position = starting_position};
+
+    for (size_t i = 0; i < keywords_length; i++) {
+        // TODO: Hashtable
+        char* keyword = keywords[i];
+        if (strcmp(identifier_name, keyword) == 0) {
+            token_type = TOKEN_KEYWORD;
+            break;
+        }
+    }
+
+    return (Token){.type = token_type, .string = identifier_name, .position = starting_position};
 }
 
 Token lexer_parse_number_literal(Lexer* lexer) {
