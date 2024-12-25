@@ -22,6 +22,7 @@
 int main(int argc, char** argv) {
     char* output_file_name = 0;
     char* input_file_name = 0;
+    char* linker_arguments = 0;
     bool display_help = false;
     bool display_version = false;
 
@@ -38,6 +39,13 @@ int main(int argc, char** argv) {
             .type = ARGUMENT_TYPE_FLAG,
             .message = "Display this message",
             .value = &display_help,
+        },
+
+        (Argument){
+            .name = 'l',
+            .type = ARGUMENT_TYPE_STRING,
+            .message = "Extra arguments to pass to the linker",
+            .value = &linker_arguments,
         },
 
         (Argument){
@@ -117,7 +125,8 @@ int main(int argc, char** argv) {
             return -1;
         }
 
-        int linker_status = system(format_string("clang -fuse-ld=lld %s.o -o %s", output_file_name, output_file_name));
+        int linker_status = system(format_string("clang -fuse-ld=lld -o %s %s.o %s", output_file_name, output_file_name,
+                                                 linker_arguments ? linker_arguments : ""));
         if (linker_status != 0) {
             LOG_ERROR("main", "linker failed! (%d)", linker_status);
             return -1;
