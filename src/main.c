@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
     }
 
     if (!input_file_name) {
-        fprintf(stderr, "error: no input file(s) provided!\n");
+        LOG_ERROR("main", "no input file(s) provided!");
         print_help_message(argv[0], arguments, arguments_length);
 
         return -1;
@@ -97,9 +97,13 @@ int main(int argc, char** argv) {
 
         int linker_status = system(format_string("gcc -fuse-ld=lld %s.o -o %s", output_file_name, output_file_name));
         if (linker_status != 0) {
-            LOG_INFO("main", "linker failed! (%d)", linker_status);
+            LOG_ERROR("main", "linker failed! (%d)", linker_status);
             return -1;
         }
+
+        LOG_SUCCESS("binary created: %s", output_file_name);
+    } else {
+        LOG_WARNING("main", "no output file specified, skipping emit step");
     }
 
     llvm_codegen_destroy(&codegen);
