@@ -27,6 +27,8 @@ func main() -> i32 {
    $ make build
    ```
 
+> ✨ **NEW:** You can install Petal for your user using the `install-compiler.sh` script.
+
 ### License
 
 This project is licensed under the MIT license. See the [LICENSE](./LICENSE) file for more information.
