@@ -1,0 +1,13 @@
+// Functions can take in input as parameters, which have values passed to them as arguments.
+// The syntax for parameters is <name>: <type>.
+
+// Here, we have defined a function `producer`, which just takes a value as an `i32`, and returns it.
+func producer(value: i32) -> i32 {
+    return value;
+}
+
+// The `main` function is the same as the previous example.
+func main() -> i32 {
+    // The new `producer` function can now be called, passing an i32 as the only argument.
+    return producer(123);
+}

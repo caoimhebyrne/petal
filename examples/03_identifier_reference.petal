@@ -1,5 +1,0 @@
-// A variable can be assigned a constant value.
-i32 my_variable = 1;
-
-// Or, a variable may reference another variable when assigning it a value.
-i32 other_variable = my_variable;

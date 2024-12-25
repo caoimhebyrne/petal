@@ -1,9 +1,0 @@
-// Functions can take in input as parameters, which have values passed to them as arguments.
-func producer(value: i32) -> i32 {
-    return value;
-}
-
-// `add` can now be called, passing two values as arguments.
-func main() -> i32 {
-    return producer(123);
-}

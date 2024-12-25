@@ -1,4 +1,0 @@
-func hello() {
-    i32 my_value = 123;
-    f32 other_value = 123.456;
-}

@@ -1,7 +1,0 @@
-// After declaring a function, like this one:
-func my_function() {
-    // This function does nothing, it's just here for demonstration purposes.
-}
-
-// You can call it by using its name, followed by parenthesis surrounding the arguments (if any).
-my_function();
