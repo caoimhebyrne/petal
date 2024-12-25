@@ -2,6 +2,7 @@
 #define __LLVM_CODEGEN_H__
 
 #include "../ast/node.h"
+#include "../ast/node/binary_operation.h"
 #include "../ast/node/function_call.h"
 #include "../ast/node/function_declaration.h"
 #include "../ast/node/identifier_reference.h"
@@ -91,6 +92,12 @@ LLVMValueRef llvm_codegen_generate_variable_declaration(LLVMCodegen* codegen, Va
 // - The value reference produced by this function.
 //   If this is zero, the generation failed.
 LLVMValueRef llvm_codegen_generate_return(LLVMCodegen* codegen, ReturnNode* node);
+
+// Generates LLVM bytecode for a BinaryOperationNode.
+// Returns:
+// - The value reference produced by this function.
+//   If this is zero, the generation failed.
+LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, BinaryOperationNode* node);
 
 // Destroys the provided LLVM code generator.
 void llvm_codegen_destroy(LLVMCodegen* codegen);

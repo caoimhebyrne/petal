@@ -28,6 +28,10 @@ typedef enum {
     // A return statement node.
     // See ReturnNode.
     NODE_RETURN = 5,
+
+    // A binary operation node.
+    // See BinaryOperationNode.
+    NODE_BINARY_OPERATION = 6,
 } NodeType;
 
 typedef struct {

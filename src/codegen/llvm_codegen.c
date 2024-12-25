@@ -1,4 +1,5 @@
 #include "llvm_codegen.h"
+#include "../ast/node/binary_operation.h"
 #include "../ast/node/function_declaration.h"
 #include "../ast/node/identifier_reference.h"
 #include "../ast/node/number_literal.h"
@@ -106,6 +107,9 @@ LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node, bool a
 
     case NODE_IDENTIFIER_REFERENCE:
         return llvm_codegen_generate_identifier_reference(codegen, (IdentifierReferenceNode*)node);
+
+    case NODE_BINARY_OPERATION:
+        return llvm_codegen_generate_binary_operation(codegen, (BinaryOperationNode*)node);
 
     default: {
         Diagnostic diagnostic = {
@@ -276,6 +280,38 @@ LLVMValueRef llvm_codegen_generate_variable_declaration(LLVMCodegen* codegen, Va
     stored_values_append(&codegen->stored_values, stored_value);
 
     return variable_declaration;
+}
+
+LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, BinaryOperationNode* node) {
+    LLVMValueRef left = llvm_codegen_generate_node(codegen, node->left, true);
+    LLVMValueRef right = llvm_codegen_generate_node(codegen, node->right, true);
+
+    // TODO: The types here should change based on the value types.
+    switch (node->operator_) {
+    case OPERATOR_PLUS:
+        return LLVMBuildAdd(codegen->builder, left, right, "add");
+
+    case OPERATOR_MINUS:
+        return LLVMBuildSub(codegen->builder, left, right, "subtract");
+
+    case OPERATOR_DIVIDE:
+        return LLVMBuildSDiv(codegen->builder, left, right, "divide");
+
+    case OPERATOR_MULTIPLY:
+        return LLVMBuildMul(codegen->builder, left, right, "multiply");
+
+    default: {
+        Diagnostic diagnostic = {
+            .position = node->position,
+            .is_terminal = true,
+            .message =
+                format_string("unsupported operator for binary operation: '%s'", operator_to_string(node->operator_)),
+        };
+
+        diagnostic_stream_append(&codegen->diagnostics, diagnostic);
+        return 0;
+    }
+    }
 }
 
 void llvm_codegen_destroy(LLVMCodegen* codegen) {

@@ -4,6 +4,7 @@
 #include "../diagnostics.h"
 #include "../lexer/token.h"
 #include "node.h"
+#include "node/binary_operation.h"
 #include "node/function_call.h"
 #include "node/function_declaration.h"
 #include "node/return.h"
@@ -76,5 +77,12 @@ FunctionCallNode* ast_parse_function_call(AST* ast, bool as_statement);
 // Returns:
 // - A return statement node if successful, otherwise 0.
 ReturnNode* ast_parse_return_statement(AST* ast);
+
+// Parses a binary operation node at the current position.
+// Parameters:
+// - ast: The AST to use when parsing.
+// Returns:
+// - A binary operation node if successful, otherwise 0.
+BinaryOperationNode* ast_parse_binary_operation(AST* ast, Node* left, Token operator_token);
 
 #endif // __AST_H__

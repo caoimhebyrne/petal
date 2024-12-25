@@ -1,6 +1,7 @@
 #include "ast.h"
 #include "../string/format_string.h"
 #include "node.h"
+#include "node/binary_operation.h"
 #include "node/function_call.h"
 #include "node/function_declaration.h"
 #include "node/identifier_reference.h"
@@ -94,6 +95,8 @@ Token ast_expect_keyword(AST* ast, char* keyword) {
 
 Node* ast_parse_node(AST* ast, bool as_statement) {
     Token token = ast_peek_token(ast);
+    Node* node;
+
     switch (token.type) {
 
     case TOKEN_KEYWORD: {
@@ -102,12 +105,12 @@ Node* ast_parse_node(AST* ast, bool as_statement) {
         // - extern
         // If this identifier matches one of thse, the following tokens must make up a function declaration.
         if (strcmp(token.string, "func") == 0 || strcmp(token.string, "extern") == 0) {
-            return (Node*)ast_parse_function_declaration(ast);
+            node = (Node*)ast_parse_function_declaration(ast);
         }
 
         // If this identifier is "return", then this is a return statement.
         if (strcmp(token.string, "return") == 0) {
-            return (Node*)ast_parse_return_statement(ast);
+            node = (Node*)ast_parse_return_statement(ast);
         }
 
         break;
@@ -121,22 +124,28 @@ Node* ast_parse_node(AST* ast, bool as_statement) {
         switch (next_token.type) {
         case TOKEN_IDENTIFIER:
             // If the next token is another identifier, this *should* be a variable declaration.
-            return (Node*)ast_parse_variable_declaration(ast);
+            node = (Node*)ast_parse_variable_declaration(ast);
+            break;
 
         case TOKEN_OPEN_PARENTHESIS:
             // If the next token is an opening parenthesis, it's safe to say that this could be a function call.
-            return (Node*)ast_parse_function_call(ast, as_statement);
+            node = (Node*)ast_parse_function_call(ast, as_statement);
+            break;
 
         // Otherwise, the next token seems to be useless, and this is probably just an identifier reference.
         default:
             ast->position += 1;
-            return (Node*)identifier_reference_node_create(token.position, token.string);
+            node = (Node*)identifier_reference_node_create(token.position, token.string);
+            break;
         }
+
+        break;
     }
 
     case TOKEN_NUMBER_LITERAL:
         ast->position += 1;
-        return (Node*)number_literal_node_create(token.position, token.number);
+        node = (Node*)number_literal_node_create(token.position, token.number);
+        break;
 
     case TOKEN_INVALID: {
         Token last_token = ast->token_stream.data[ast->token_stream.length - 1];
@@ -151,18 +160,31 @@ Node* ast_parse_node(AST* ast, bool as_statement) {
         return 0;
     }
 
-    default:
-        break;
+    default: {
+        Diagnostic diagnostic = {
+            .position = token.position,
+            .message = format_string("unexpected token: '%s'", token_to_string(&token)),
+            .is_terminal = true,
+        };
+
+        diagnostic_stream_append(&ast->diagnostics, diagnostic);
+        return 0;
+    }
     }
 
-    Diagnostic diagnostic = {
-        .position = token.position,
-        .message = format_string("unexpected token: '%s'", token_to_string(&token)),
-        .is_terminal = true,
-    };
+    if (node == 0) {
+        return 0;
+    }
 
-    diagnostic_stream_append(&ast->diagnostics, diagnostic);
-    return 0;
+    // Before parsing the current node, we should lookahead to see if an operator is used after this node.
+    Token next_token = ast_peek_token(ast);
+    if (next_token.type == TOKEN_PLUS || next_token.type == TOKEN_HYPHEN || next_token.type == TOKEN_SLASH ||
+        next_token.type == TOKEN_ASTERISK) {
+        ast->position += 1;
+        return (Node*)ast_parse_binary_operation(ast, node, next_token);
+    }
+
+    return node;
 }
 
 // <type> <name> = <value>;
@@ -470,6 +492,8 @@ FunctionCallNode* ast_parse_function_call(AST* ast, bool as_statement) {
         return 0;
     }
 
+    LOG_DEBUG("ast", "parsing function call for: '%s'", name_token.string);
+
     Token open_parenthesis_token = ast_expect_token(ast, TOKEN_OPEN_PARENTHESIS);
     if (open_parenthesis_token.type == TOKEN_INVALID) {
         return 0;
@@ -498,6 +522,12 @@ FunctionCallNode* ast_parse_function_call(AST* ast, bool as_statement) {
             if (next_token.type == TOKEN_CLOSE_PARENTHESIS) {
                 ast->position += 1;
                 break;
+            }
+
+            // If the next token is a comma, just continue.
+            if (next_token.type == TOKEN_COMMA) {
+                ast->position += 1;
+                continue;
             }
         }
     }
@@ -541,6 +571,50 @@ ReturnNode* ast_parse_return_statement(AST* ast) {
 
         return return_node_create(return_token.position, value);
     }
+}
+
+BinaryOperationNode* ast_parse_binary_operation(AST* ast, Node* left, Token operator_token) {
+    LOG_DEBUG("ast", "parsing binary operation");
+
+    Operator operator_;
+    switch (operator_token.type) {
+    case TOKEN_PLUS:
+        operator_ = OPERATOR_PLUS;
+        break;
+
+    case TOKEN_HYPHEN:
+        operator_ = OPERATOR_MINUS;
+        break;
+
+    case TOKEN_SLASH:
+        operator_ = OPERATOR_DIVIDE;
+        break;
+
+    case TOKEN_ASTERISK:
+        operator_ = OPERATOR_MULTIPLY;
+        break;
+
+    default: {
+        Diagnostic diagnostic = {
+            .position = operator_token.position,
+            .message = format_string("unexpected token: '%s', expected an operator", token_to_string(&operator_token)),
+            .is_terminal = true,
+        };
+
+        diagnostic_stream_append(&ast->diagnostics, diagnostic);
+        return 0;
+    }
+    }
+
+    Node* right = ast_parse_node(ast, false);
+    if (!right) {
+        return 0;
+    }
+
+    BinaryOperationNode* node = binary_operation_node_create(operator_token.position, left, right, operator_);
+
+    LOG_DEBUG("ast", "parsed binary operation: '%s'", binary_operation_node_to_string(node));
+    return node;
 }
 
 void ast_destroy(AST* ast) {

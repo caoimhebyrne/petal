@@ -1,5 +1,6 @@
 #include "node.h"
 #include "../string/format_string.h"
+#include "node/binary_operation.h"
 #include "node/function_call.h"
 #include "node/function_declaration.h"
 #include "node/identifier_reference.h"
@@ -52,6 +53,14 @@ void node_destroy(Node* node) {
 
         break;
     }
+
+    case NODE_BINARY_OPERATION: {
+        BinaryOperationNode* binary_operation = (BinaryOperationNode*)node;
+        node_destroy(binary_operation->left);
+        node_destroy(binary_operation->right);
+
+        break;
+    }
     }
 
     free(node);
@@ -84,6 +93,9 @@ char* node_to_string(Node* node) {
 
     case NODE_RETURN:
         return return_node_to_string((ReturnNode*)node);
+
+    case NODE_BINARY_OPERATION:
+        return binary_operation_node_to_string((BinaryOperationNode*)node);
     }
 
     return format_string("unknown node (%d)", node->node_type);
