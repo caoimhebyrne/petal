@@ -27,7 +27,12 @@ func main() -> i32 {
    $ make build
    ```
 
-> ✨ **NEW:** You can install Petal for your user using the `install-compiler.sh` script.
+### Installation
+
+You can install the Petal compiler for your user through the `install` target.
+```sh
+$ make install
+```
 
 ### License
 

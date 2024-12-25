@@ -1,5 +1,6 @@
 CC = clang
 CFLAGS = -Wall -Wextra -Werror -Wno-pointer-to-int-cast -DDEBUG $(shell llvm-config --cflags --ldflags --system-libs --libs core)
+INSTALL_DIR = $(HOME)/.local/bin
 
 prepare:
 	mkdir -p build
@@ -9,3 +10,7 @@ build: prepare
 
 run: build
 	./build/petal
+
+.PHONY: install
+install: build
+	install -Dm755 ./build/petal $(INSTALL_DIR)/petal
