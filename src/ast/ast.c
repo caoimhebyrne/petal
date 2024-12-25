@@ -117,6 +117,10 @@ Node* ast_parse_node(AST* ast, bool as_statement) {
         break;
     }
 
+    case TOKEN_ASTERISK:
+        node = (Node*)ast_parse_variable_declaration(ast);
+        break;
+
     // In order to figure out what this identifier is for, we need to see its value, but
     // also take a look at the tokens around it.
     case TOKEN_IDENTIFIER: {
@@ -193,17 +197,26 @@ Node* ast_parse_node(AST* ast, bool as_statement) {
     return node;
 }
 
-// <type> <name> = <value>;
-VariableDeclarationNode* ast_parse_variable_declaration(AST* ast) {
-    // The first token in the stream must be an identifier for the type.
-    Token type_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
-    if (type_token.type == TOKEN_INVALID) {
-        return 0;
+Type ast_parse_type(AST* ast) {
+    bool is_pointer = false;
+
+    // The first token in the stream may be an asterisk (i.e. pointer).
+    Token first_token = ast_peek_token(ast);
+    if (first_token.type == TOKEN_ASTERISK) {
+        ast->position += 1;
+        is_pointer = true;
     }
 
-    // If this is an unsupported type, throw an error.
-    Type type = type_from_string(type_token.string);
-    if (type == TYPE_INVALID) {
+    LOG_DEBUG("ast", "parsing type with first token '%s'", token_to_string(&first_token));
+
+    // The type token must be a valid identifier.
+    Token type_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
+    if (type_token.type == TOKEN_INVALID) {
+        return TYPE_INVALID;
+    }
+
+    TypeKind kind = type_kind_from_string(type_token.string);
+    if (kind == TYPE_KIND_INVALID) {
         Diagnostic diagnostic = {
             .position = type_token.position,
             .message = format_string("unrecognized type: '%s'", type_token.string),
@@ -211,6 +224,19 @@ VariableDeclarationNode* ast_parse_variable_declaration(AST* ast) {
         };
 
         diagnostic_stream_append(&ast->diagnostics, diagnostic);
+        return TYPE_INVALID;
+    }
+
+    return type_create(kind, is_pointer);
+}
+
+// <type> <name> = <value>;
+VariableDeclarationNode* ast_parse_variable_declaration(AST* ast) {
+    LOG_DEBUG("ast", "parsing variable declaration!");
+
+    // If this is an unsupported type, throw an error.
+    Type type = ast_parse_type(ast);
+    if (type.kind == TYPE_KIND_INVALID) {
         return 0;
     }
 
@@ -317,21 +343,8 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
                 return 0;
             }
 
-            // Finally, the last token should be the parameter's type.
-            Token parameter_type_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
-            if (parameter_type_token.type == TOKEN_INVALID) {
-                return 0;
-            }
-
-            Type parameter_type = type_from_string(parameter_type_token.string);
-            if (parameter_type == 0) {
-                Diagnostic diagnostic = {
-                    .position = parameter_type_token.position,
-                    .message = format_string("unrecognized type: '%s'", parameter_type_token.string),
-                    .is_terminal = true,
-                };
-
-                diagnostic_stream_append(&ast->diagnostics, diagnostic);
+            Type parameter_type = ast_parse_type(ast);
+            if (parameter_type.kind == TYPE_KIND_INVALID) {
                 return 0;
             }
 
@@ -377,9 +390,7 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
     // 2. A hyphen, this function specifies a return type.
     next_token = ast_consume_token(ast);
 
-    Position return_type_position = next_token.position;
-    char* return_type_name = "void";
-
+    Type return_type = type_create(TYPE_KIND_VOID, false);
     switch (next_token.type) {
 
     // An open brace indicates the start of the function body.
@@ -423,14 +434,10 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
             return 0;
         }
 
-        // The next token should be an identifier indicating the return type.
-        Token return_type_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
-        if (return_type_token.type == TOKEN_INVALID) {
+        return_type = ast_parse_type(ast);
+        if (return_type.kind == TYPE_KIND_INVALID) {
             return 0;
         }
-
-        return_type_name = return_type_token.string;
-        return_type_position = return_type_token.position;
 
         // The next token should be an open brace or a semicolon.
         TokenType final_token_type = is_external_function ? TOKEN_SEMICOLON : TOKEN_OPEN_BRACE;
@@ -453,19 +460,6 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
         diagnostic_stream_append(&ast->diagnostics, diagnostic);
         return 0;
     }
-    }
-
-    // If this is an unsupported type, throw an error.
-    Type return_type = type_from_string(return_type_name);
-    if (return_type == TYPE_INVALID) {
-        Diagnostic diagnostic = {
-            .position = return_type_position,
-            .message = format_string("unrecognized type: '%s'", return_type_name),
-            .is_terminal = true,
-        };
-
-        diagnostic_stream_append(&ast->diagnostics, diagnostic);
-        return 0;
     }
 
     NodeStream function_body;

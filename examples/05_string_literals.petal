@@ -1,0 +1,6 @@
+extern func printf(format: *i32);
+
+func main() -> i32 {
+    printf("Hello world!");
+    return 0;
+}

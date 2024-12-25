@@ -329,29 +329,40 @@ void llvm_codegen_destroy(LLVMCodegen* codegen) {
 }
 
 LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, Type type, Position position) {
-    switch (type) {
-    case TYPE_INVALID:
+    LLVMTypeRef type_ref;
+
+    switch (type.kind) {
+    case TYPE_KIND_INT_32:
+        type_ref = LLVMInt32TypeInContext(codegen->context);
         break;
 
-    case TYPE_INT_32:
-        return LLVMInt32TypeInContext(codegen->context);
+    case TYPE_KIND_INT_64:
+        type_ref = LLVMInt64TypeInContext(codegen->context);
+        break;
 
-    case TYPE_INT_64:
-        return LLVMInt64TypeInContext(codegen->context);
+    case TYPE_KIND_FLOAT_32:
+        type_ref = LLVMFloatTypeInContext(codegen->context);
+        break;
 
-    case TYPE_FLOAT_32:
-        return LLVMFloatTypeInContext(codegen->context);
+    case TYPE_KIND_VOID:
+        type_ref = LLVMVoidTypeInContext(codegen->context);
+        break;
 
-    case TYPE_VOID:
-        return LLVMVoidTypeInContext(codegen->context);
+    default: {
+        Diagnostic diagnostic = {
+            .position = position,
+            .is_terminal = true,
+            .message = format_string("unable to convert type '%s' into llvm type", type_to_string(type)),
+        };
+
+        diagnostic_stream_append(&codegen->diagnostics, diagnostic);
+        return 0;
+    }
     }
 
-    Diagnostic diagnostic = {
-        .position = position,
-        .is_terminal = true,
-        .message = format_string("unable to convert type '%s' into llvm type", type_to_string(type)),
-    };
-
-    diagnostic_stream_append(&codegen->diagnostics, diagnostic);
-    return 0;
+    if (type.is_pointer) {
+        return LLVMPointerType(type_ref, 0);
+    } else {
+        return type_ref;
+    }
 }

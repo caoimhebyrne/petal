@@ -9,6 +9,7 @@
 #include "node/function_declaration.h"
 #include "node/return.h"
 #include "node/variable_declaration.h"
+#include "type.h"
 
 typedef struct {
     // The token stream to parse from.
@@ -49,6 +50,13 @@ Token ast_expect_token(AST* ast, TokenType type);
 // Returns:
 // - A node if successful, otherwise 0.
 Node* ast_parse_node(AST* ast, bool as_statement);
+
+// Parses a Type from the current position.
+// Parameters:
+// - ast: The AST to use when parsing.
+// Returns:
+// - A Type if successful, otherwise TYPE_INVALID.
+Type ast_parse_type(AST* ast);
 
 // Parses a variable declaration node at the current position.
 // Parameters:
