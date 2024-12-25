@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
             return -1;
         }
 
-        int linker_status = system(format_string("gcc -fuse-ld=lld %s.o -o %s", output_file_name, output_file_name));
+        int linker_status = system(format_string("clang -fuse-ld=lld %s.o -o %s", output_file_name, output_file_name));
         if (linker_status != 0) {
             LOG_ERROR("main", "linker failed! (%d)", linker_status);
             return -1;

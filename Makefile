@@ -1,4 +1,4 @@
-CC = gcc
+CC = clang
 CFLAGS = -Wall -Wextra -Werror -Wno-pointer-to-int-cast -DDEBUG $(shell llvm-config --cflags --ldflags --system-libs --libs core)
 
 prepare:
