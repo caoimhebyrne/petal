@@ -406,7 +406,10 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
 
         // The next token should be an open brace or a semicolon.
         TokenType final_token_type = is_external_function ? TOKEN_SEMICOLON : TOKEN_OPEN_BRACE;
-        ast_expect_token(ast, final_token_type);
+        Token final_token = ast_expect_token(ast, final_token_type);
+        if (final_token.type == TOKEN_INVALID) {
+            return 0;
+        }
 
         break;
     }
