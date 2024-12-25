@@ -10,10 +10,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifndef VERSION
+#define VERSION "local"
+#endif
+
+#define VERSION_MESSAGE                                                                                                \
+    "Petal v" VERSION "\n"                                                                                             \
+    "This project is licensed under the MIT license.\n"                                                                \
+    "GitHub: https://github.com/caoimhebyrne/petal/\n"
+
 int main(int argc, char** argv) {
     char* output_file_name = 0;
     char* input_file_name = 0;
     bool display_help = false;
+    bool display_version = false;
 
     Argument arguments[] = {
         (Argument){
@@ -26,13 +36,25 @@ int main(int argc, char** argv) {
         (Argument){
             .name = 'h',
             .type = ARGUMENT_TYPE_FLAG,
-            .message = "Displays this help message",
+            .message = "Display this message",
             .value = &display_help,
+        },
+
+        (Argument){
+            .name = 'v',
+            .type = ARGUMENT_TYPE_FLAG,
+            .message = "Display the version of the compiler",
+            .value = &display_version,
         },
     };
 
     size_t arguments_length = sizeof(arguments) / sizeof(Argument);
     parse_arguments(argc, argv, arguments, arguments_length, &input_file_name);
+
+    if (display_version) {
+        printf(VERSION_MESSAGE);
+        return 0;
+    }
 
     if (display_help) {
         print_help_message(argv[0], arguments, arguments_length);
