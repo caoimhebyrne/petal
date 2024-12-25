@@ -465,7 +465,7 @@ FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
     NodeStream function_body;
     node_stream_initialize(&function_body, 2);
 
-    if (next_token.type != TOKEN_SEMICOLON) {
+    if (!is_external_function) {
         while (ast_peek_token(ast).type != TOKEN_CLOSE_BRACE) {
             Node* node = ast_parse_node(ast, true);
             if (node == 0) {
