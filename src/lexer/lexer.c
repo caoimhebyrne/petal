@@ -75,7 +75,7 @@ TokenStream lexer_parse(Lexer* lexer) {
                 while (lexer->position.index < lexer->contents_length) {
                     position_advance(&lexer->position);
 
-                    // FIXME: this does not have support for carraige-returns.
+                    // NOTE: This also works for carraige returns, \r is skipped as part of the comment.
                     if (lexer->contents[lexer->position.index] == '\n') {
                         position_advance_line(&lexer->position);
                         break;
