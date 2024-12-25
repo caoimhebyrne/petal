@@ -24,6 +24,9 @@ typedef struct {
 
     // The nodes contained within this function's body.
     NodeStream function_body;
+
+    // Whether this function is an "external" function or not.
+    bool is_external;
 } FunctionDeclarationNode;
 
 // Creates a new function declaration node.
@@ -32,8 +35,9 @@ typedef struct {
 // - parameters: The parameters that this function expects.
 // - return_type: The return type of this function.
 // - node_stream: The nodes contained within this function's body.
+// - is_external: Whether this function is external or not.
 FunctionDeclarationNode* function_declaration_node_create(Position position, char* name, Parameters parameters,
-                                                          Type return_type, NodeStream function_body);
+                                                          Type return_type, NodeStream function_body, bool is_external);
 
 // Returns a string representation of the provided FunctionDeclarationNode.
 // Parameters:

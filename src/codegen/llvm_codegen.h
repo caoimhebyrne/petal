@@ -52,10 +52,12 @@ void llvm_codegen_generate(LLVMCodegen* codegen);
 char* llvm_codegen_emit(LLVMCodegen* codegen, char* out_file_path);
 
 // Generates LLVM bytecode for a single node.
+// Parameters:
+// - as_value: Whether this should be generated as a value, instead of a statement.
 // Returns:
 // - The value reference produced by this function.
 //   If this is zero, the generation failed.
-LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node);
+LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node, bool as_value);
 
 // Generates LLVM bytecode for a FunctionDeclarationNode.
 // Returns:
@@ -64,10 +66,12 @@ LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node);
 LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclarationNode* node);
 
 // Generates LLVM bytecode for a FunctionCallNode.
+// Parameters:
+// - as_value: Whether this should be generated as a value, instead of a statement.
 // Returns:
 // - The value reference produced by this function.
 //   If this is zero, the generation failed.
-LLVMValueRef llvm_codegen_generate_function_call(LLVMCodegen* codegen, FunctionCallNode* node);
+LLVMValueRef llvm_codegen_generate_function_call(LLVMCodegen* codegen, FunctionCallNode* node, bool as_value);
 
 // Generates LLVM bytecode for a IdentifierReferenceNode.
 // Returns:

@@ -31,7 +31,7 @@ LLVMCodegen llvm_codegen_create(char* filename, NodeStream node_stream) {
 
 void llvm_codegen_generate(LLVMCodegen* codegen) {
     for (size_t i = 0; i < codegen->node_stream.length; i++) {
-        if (!llvm_codegen_generate_node(codegen, codegen->node_stream.data[i])) {
+        if (!llvm_codegen_generate_node(codegen, codegen->node_stream.data[i], false)) {
             return;
         }
     }
@@ -82,7 +82,7 @@ char* llvm_codegen_emit(LLVMCodegen* codegen, char* out_file_path) {
     return 0;
 }
 
-LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node) {
+LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node, bool as_value) {
     switch (node->node_type) {
     case NODE_FUNCTION_DECLARATION:
         return llvm_codegen_generate_function_declaration(codegen, (FunctionDeclarationNode*)node);
@@ -91,7 +91,7 @@ LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node) {
         return llvm_codegen_generate_return(codegen, (ReturnNode*)node);
 
     case NODE_FUNCTION_CALL:
-        return llvm_codegen_generate_function_call(codegen, (FunctionCallNode*)node);
+        return llvm_codegen_generate_function_call(codegen, (FunctionCallNode*)node, as_value);
 
     case NODE_NUMBER_LITERAL: {
         NumberLiteralNode* number_literal = (NumberLiteralNode*)node;
@@ -150,7 +150,7 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
     }
 
     // If there are no nodes within this function's body, don't create a block.
-    if (node->function_body.length == 0) {
+    if (node->function_body.length == 0 || node->is_external) {
         return function;
     }
 
@@ -159,7 +159,7 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
     LLVMPositionBuilderAtEnd(codegen->builder, entry);
 
     for (size_t i = 0; i < node->function_body.length; i++) {
-        if (!llvm_codegen_generate_node(codegen, node->function_body.data[i])) {
+        if (!llvm_codegen_generate_node(codegen, node->function_body.data[i], false)) {
             return 0;
         }
     }
@@ -169,7 +169,7 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
     return function;
 }
 
-LLVMValueRef llvm_codegen_generate_function_call(LLVMCodegen* codegen, FunctionCallNode* node) {
+LLVMValueRef llvm_codegen_generate_function_call(LLVMCodegen* codegen, FunctionCallNode* node, bool as_value) {
     LOG_DEBUG("llvm-codegen", "generating function call for '%s'", node->name);
 
     // In order to generate the call, we need the function itself.
@@ -188,7 +188,7 @@ LLVMValueRef llvm_codegen_generate_function_call(LLVMCodegen* codegen, FunctionC
     LLVMValueRef arguments[node->arguments.length] = {};
     for (size_t i = 0; i < node->arguments.length; i++) {
         Node* argument = node->arguments.data[i];
-        LLVMValueRef value = llvm_codegen_generate_node(codegen, argument);
+        LLVMValueRef value = llvm_codegen_generate_node(codegen, argument, true);
         if (value == 0) {
             return 0;
         }
@@ -200,7 +200,8 @@ LLVMValueRef llvm_codegen_generate_function_call(LLVMCodegen* codegen, FunctionC
     // The type of (LLVMTypeOf) a global (in this case, a function) is a pointer to a global.
     // LLVMGlobalGetValueType gets the type that LLVMTypeOf is pointing to.
     LLVMTypeRef function_type = LLVMGlobalGetValueType(callee);
-    return LLVMBuildCall2(codegen->builder, function_type, callee, arguments, node->arguments.length, node->name);
+    return LLVMBuildCall2(codegen->builder, function_type, callee, arguments, node->arguments.length,
+                          as_value ? node->name : "");
 }
 
 LLVMValueRef llvm_codegen_generate_identifier_reference(LLVMCodegen* codegen, IdentifierReferenceNode* node) {
@@ -228,7 +229,7 @@ LLVMValueRef llvm_codegen_generate_return(LLVMCodegen* codegen, ReturnNode* node
 
     LOG_DEBUG("llvm-codegen", "generating return statement with value '%s'", node_to_string(node->value));
 
-    LLVMValueRef value = llvm_codegen_generate_node(codegen, node->value);
+    LLVMValueRef value = llvm_codegen_generate_node(codegen, node->value, true);
     if (value == 0) {
         return 0;
     }
