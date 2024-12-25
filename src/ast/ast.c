@@ -98,6 +98,11 @@ Node* ast_parse_node(AST* ast, bool as_statement) {
     Token token = ast_peek_token(ast);
     Node* node;
 
+    // keyword -> function
+    // identifier:
+    // 1. variable declaration: <type> <identifier> = <node>;
+    // 2. function call <identifier>(<node...>);
+
     switch (token.type) {
 
     case TOKEN_KEYWORD: {
@@ -188,8 +193,8 @@ Node* ast_parse_node(AST* ast, bool as_statement) {
 
     // Before parsing the current node, we should lookahead to see if an operator is used after this node.
     Token next_token = ast_peek_token(ast);
-    if (next_token.type == TOKEN_PLUS || next_token.type == TOKEN_HYPHEN || next_token.type == TOKEN_SLASH ||
-        next_token.type == TOKEN_ASTERISK) {
+    if (!as_statement && (next_token.type == TOKEN_PLUS || next_token.type == TOKEN_HYPHEN ||
+                          next_token.type == TOKEN_SLASH || next_token.type == TOKEN_ASTERISK)) {
         ast->position += 1;
         return (Node*)ast_parse_binary_operation(ast, node, next_token);
     }
