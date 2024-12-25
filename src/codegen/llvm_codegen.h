@@ -6,6 +6,7 @@
 #include "../ast/node/function_declaration.h"
 #include "../ast/node/identifier_reference.h"
 #include "../ast/node/return.h"
+#include "../ast/node/variable_declaration.h"
 #include "../ast/type.h"
 #include "../diagnostics.h"
 #include "stored_values.h"
@@ -78,6 +79,12 @@ LLVMValueRef llvm_codegen_generate_function_call(LLVMCodegen* codegen, FunctionC
 // - The value reference produced by this function.
 //   If this is zero, the generation failed.
 LLVMValueRef llvm_codegen_generate_identifier_reference(LLVMCodegen* codegen, IdentifierReferenceNode* node);
+
+// Generates LLVM bytecode for a VariableDeclarationNode.
+// Returns:
+// - The value reference produced by this function.
+//   If this is zero, the generation failed.
+LLVMValueRef llvm_codegen_generate_variable_declaration(LLVMCodegen* codegen, VariableDeclarationNode* node);
 
 // Generates LLVM bytecode for a ReturnNode.
 // Returns:

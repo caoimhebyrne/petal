@@ -3,6 +3,7 @@
 #include "../ast/node/identifier_reference.h"
 #include "../ast/node/number_literal.h"
 #include "../ast/node/return.h"
+#include "../ast/node/variable_declaration.h"
 #include "../string/format_string.h"
 #include "stored_values.h"
 #include <llvm-c/Analysis.h>
@@ -100,6 +101,9 @@ LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node, bool a
         return LLVMConstInt(int_32_type, (int32_t)number_literal->value, false);
     }
 
+    case NODE_VARIABLE_DECLARATION:
+        return llvm_codegen_generate_variable_declaration(codegen, (VariableDeclarationNode*)node);
+
     case NODE_IDENTIFIER_REFERENCE:
         return llvm_codegen_generate_identifier_reference(codegen, (IdentifierReferenceNode*)node);
 
@@ -137,6 +141,12 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
     LLVMTypeRef function_type = LLVMFunctionType(return_type, parameters, node->parameters.length, false);
     LLVMValueRef function = LLVMAddFunction(codegen->module, node->name, function_type);
 
+    // All code generated from now on will be inside this block.
+    if (!node->is_external) {
+        LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(codegen->context, function, "entry");
+        LLVMPositionBuilderAtEnd(codegen->builder, entry);
+    }
+
     // Set the name of the function parameter.
     for (size_t i = 0; i < node->parameters.length; i++) {
         Parameter node_parameter = node->parameters.data[i];
@@ -144,19 +154,22 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
         LLVMValueRef parameter = LLVMGetParam(function, i);
         LLVMSetValueName2(parameter, node_parameter.name, strlen(node_parameter.name));
 
-        // Store this parameter within the stored values for this function.
-        StoredValue stored_value = stored_value_create(node_parameter.name, parameter);
-        stored_values_append(&codegen->stored_values, stored_value);
-    }
+        if (!node->is_external) {
+            LLVMTypeRef parameter_type = parameters[i];
+            LOG_DEBUG("llvm-codegen", "building alloca for parameter '%s' with type '%s'", node_parameter.name,
+                      LLVMPrintTypeToString(parameter_type));
 
-    // If there are no nodes within this function's body, don't create a block.
-    if (node->function_body.length == 0 || node->is_external) {
-        return function;
-    }
+            // In order to access this properly, we need to build an alloca and store for this parameter.
+            LLVMValueRef alloca = LLVMBuildAlloca(codegen->builder, parameter_type, node_parameter.name);
 
-    // All code generated from now on will be inside this block.
-    LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(codegen->context, function, "entry");
-    LLVMPositionBuilderAtEnd(codegen->builder, entry);
+            // We can then store the parameter reference into this alloca.
+            LLVMBuildStore(codegen->builder, parameter, alloca);
+
+            // The alloca can now be referenced through the stored value.
+            StoredValue stored_value = stored_value_create(node_parameter.name, alloca);
+            stored_values_append(&codegen->stored_values, stored_value);
+        }
+    }
 
     for (size_t i = 0; i < node->function_body.length; i++) {
         if (!llvm_codegen_generate_node(codegen, node->function_body.data[i], false)) {
@@ -218,7 +231,9 @@ LLVMValueRef llvm_codegen_generate_identifier_reference(LLVMCodegen* codegen, Id
         return 0;
     }
 
-    return stored_value->value;
+    LLVMTypeRef type = LLVMGetAllocatedType(stored_value->value);
+    LLVMValueRef load = LLVMBuildLoad2(codegen->builder, type, stored_value->value, node->name);
+    return load;
 }
 
 LLVMValueRef llvm_codegen_generate_return(LLVMCodegen* codegen, ReturnNode* node) {
@@ -235,6 +250,32 @@ LLVMValueRef llvm_codegen_generate_return(LLVMCodegen* codegen, ReturnNode* node
     }
 
     return LLVMBuildRet(codegen->builder, value);
+}
+
+LLVMValueRef llvm_codegen_generate_variable_declaration(LLVMCodegen* codegen, VariableDeclarationNode* node) {
+    LLVMTypeRef variable_type = llvm_codegen_type_to_ref(codegen, node->type, node->position);
+    if (!variable_type) {
+        return 0;
+    }
+
+    // 1. Create an "alloca" for this variable.
+    LOG_DEBUG("llvm-codegen", "generating variable declaration '%s'", node->name);
+    LLVMValueRef variable_declaration = LLVMBuildAlloca(codegen->builder, variable_type, node->name);
+
+    // 2. Convert the initial value for this variable into an LLVMValueRef.
+    LLVMValueRef initial_value = llvm_codegen_generate_node(codegen, node->value, true);
+    if (!initial_value) {
+        return 0;
+    }
+
+    // 3. Store the initial value into the alloca.
+    LLVMBuildStore(codegen->builder, initial_value, variable_declaration);
+
+    // 4. Store this in the variable lookup table.
+    StoredValue stored_value = {.value = variable_declaration, .name = node->name};
+    stored_values_append(&codegen->stored_values, stored_value);
+
+    return variable_declaration;
 }
 
 void llvm_codegen_destroy(LLVMCodegen* codegen) {
