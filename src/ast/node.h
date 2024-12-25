@@ -7,31 +7,35 @@
 typedef enum {
     // A variable declaration node.
     // See VariableDeclarationNode.
-    NODE_VARIABLE_DECLARATION = 0,
+    NODE_VARIABLE_DECLARATION,
 
     // A function declaration node.
     // See FunctionDeclarationNode.
-    NODE_FUNCTION_DECLARATION = 1,
+    NODE_FUNCTION_DECLARATION,
 
     // A number literal node.
     // See NumberLiteralNode.
-    NODE_NUMBER_LITERAL = 2,
+    NODE_NUMBER_LITERAL,
+
+    // A string literal node.
+    // See StringLiteralNode.
+    NODE_STRING_LITERAL,
 
     // An identifier reference node.
     // See IdentifierReferenceNode.
-    NODE_IDENTIFIER_REFERENCE = 3,
+    NODE_IDENTIFIER_REFERENCE,
 
     // A function call node.
     // See FunctionCallNode
-    NODE_FUNCTION_CALL = 4,
+    NODE_FUNCTION_CALL,
 
     // A return statement node.
     // See ReturnNode.
-    NODE_RETURN = 5,
+    NODE_RETURN,
 
     // A binary operation node.
     // See BinaryOperationNode.
-    NODE_BINARY_OPERATION = 6,
+    NODE_BINARY_OPERATION,
 } NodeType;
 
 typedef struct {

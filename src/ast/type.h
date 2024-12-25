@@ -3,19 +3,19 @@
 
 typedef enum {
     // An invalid type.
-    TYPE_INVALID = 0,
+    TYPE_INVALID,
 
     // void
-    TYPE_VOID = 1,
+    TYPE_VOID,
 
     // A 32-bit integer, defined as 'i32'.
-    TYPE_INT_32 = 2,
+    TYPE_INT_32,
 
     // A 64-bit integer, defined as 'i64'.
-    TYPE_INT_64 = 3,
+    TYPE_INT_64,
 
     // A 32-bit float, defined as 'f32'.
-    TYPE_FLOAT_32 = 4,
+    TYPE_FLOAT_32,
 } Type;
 
 // Returns a Type for the provided v string.

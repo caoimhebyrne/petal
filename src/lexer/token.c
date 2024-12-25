@@ -18,6 +18,9 @@ char* token_to_string(Token* token) {
     case TOKEN_NUMBER_LITERAL:
         return format_string("number literal ('%f')", token->number);
 
+    case TOKEN_STRING_LITERAL:
+        return format_string("string ('%s')", token->string);
+
     default:
         return token_type_to_string(token->type);
     }
@@ -33,6 +36,9 @@ char* token_type_to_string(TokenType token_type) {
 
     case TOKEN_NUMBER_LITERAL:
         return "number";
+
+    case TOKEN_STRING_LITERAL:
+        return "string";
 
     case TOKEN_INVALID:
         return "invalid token";

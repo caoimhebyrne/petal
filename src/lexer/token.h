@@ -18,6 +18,9 @@ typedef enum {
     // A number literal, e.g. 123.456.
     TOKEN_NUMBER_LITERAL,
 
+    // A string literal, e.g: 'Hello World'.
+    TOKEN_STRING_LITERAL,
+
     // Symbols
     TOKEN_EQUALS,              // =
     TOKEN_SEMICOLON,           // ;
@@ -44,7 +47,7 @@ typedef struct {
     Position position;
 
     union {
-        // Only available on TOKEN_IDENTIFIER and TOKEN_KEYWORD.
+        // Only available on TOKEN_IDENTIFIER, TOKEN_KEYWORD, and TOKEN_STRING_LITERAL.
         char* string;
 
         // Only available on TOKEN_NUMBER_LITERAL.

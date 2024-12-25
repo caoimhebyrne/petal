@@ -7,6 +7,7 @@
 #include "node/identifier_reference.h"
 #include "node/number_literal.h"
 #include "node/return.h"
+#include "node/string_literal.h"
 #include "node/variable_declaration.h"
 #include "parameter.h"
 #include "type.h"
@@ -145,6 +146,11 @@ Node* ast_parse_node(AST* ast, bool as_statement) {
     case TOKEN_NUMBER_LITERAL:
         ast->position += 1;
         node = (Node*)number_literal_node_create(token.position, token.number);
+        break;
+
+    case TOKEN_STRING_LITERAL:
+        ast->position += 1;
+        node = (Node*)string_literal_node_create(token.position, token.string);
         break;
 
     case TOKEN_INVALID: {

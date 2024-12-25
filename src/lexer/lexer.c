@@ -147,6 +147,17 @@ TokenStream lexer_parse(Lexer* lexer) {
             token_stream_append(&stream, (Token){.type = TOKEN_PLUS, .position = lexer->position});
             break;
 
+        case '"': {
+            lexer->position.index += 1;
+            Token token = lexer_parse_string_literal(lexer);
+            if (token.type != TOKEN_INVALID) {
+                token_stream_append(&stream, token);
+                continue;
+            }
+
+            break;
+        }
+
         default: {
             if (isalpha(character)) {
                 // If the character is an alphabetic character, attempt to parse an identifier.
@@ -241,6 +252,26 @@ Token lexer_parse_number_literal(Lexer* lexer) {
     }
 
     return (Token){.type = TOKEN_NUMBER_LITERAL, .number = value, .position = starting_position};
+}
+
+Token lexer_parse_string_literal(Lexer* lexer) {
+    StringBuilder string_builder;
+    if (!string_builder_initialize(&string_builder, 2)) {
+        return INVALID_TOKEN;
+    }
+
+    Position starting_position = lexer->position;
+    for (; lexer->position.index < lexer->contents_length; position_advance(&lexer->position)) {
+        char character = lexer->contents[lexer->position.index];
+        if (character == '\n' || character == '"') {
+            break;
+        }
+
+        string_builder_append(&string_builder, character);
+    }
+
+    char* value = string_builder_finish(&string_builder);
+    return (Token){.type = TOKEN_STRING_LITERAL, .string = value, .position = starting_position};
 }
 
 void lexer_destroy(Lexer* lexer) {

@@ -6,6 +6,7 @@
 #include "node/identifier_reference.h"
 #include "node/number_literal.h"
 #include "node/return.h"
+#include "node/string_literal.h"
 #include "node/variable_declaration.h"
 
 CREATE_STREAM(NodeStream, node_stream, Node*);
@@ -30,6 +31,13 @@ void node_destroy(Node* node) {
 
     case NODE_NUMBER_LITERAL:
         break;
+
+    case NODE_STRING_LITERAL: {
+        StringLiteralNode* string_literal = (StringLiteralNode*)node;
+        free(string_literal->value);
+
+        break;
+    }
 
     case NODE_IDENTIFIER_REFERENCE: {
         IdentifierReferenceNode* identifier_reference = (IdentifierReferenceNode*)node;
@@ -84,6 +92,9 @@ char* node_to_string(Node* node) {
 
     case NODE_NUMBER_LITERAL:
         return number_literal_node_to_string((NumberLiteralNode*)node);
+
+    case NODE_STRING_LITERAL:
+        return string_literal_node_to_string((StringLiteralNode*)node);
 
     case NODE_IDENTIFIER_REFERENCE:
         return identifier_reference_node_to_string((IdentifierReferenceNode*)node);

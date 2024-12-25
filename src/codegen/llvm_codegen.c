@@ -4,6 +4,7 @@
 #include "../ast/node/identifier_reference.h"
 #include "../ast/node/number_literal.h"
 #include "../ast/node/return.h"
+#include "../ast/node/string_literal.h"
 #include "../ast/node/variable_declaration.h"
 #include "../string/format_string.h"
 #include "stored_values.h"
@@ -100,6 +101,11 @@ LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node, bool a
 
         LLVMTypeRef int_32_type = LLVMInt32TypeInContext(codegen->context);
         return LLVMConstInt(int_32_type, (int32_t)number_literal->value, false);
+    }
+
+    case NODE_STRING_LITERAL: {
+        StringLiteralNode* string_literal = (StringLiteralNode*)node;
+        return LLVMBuildGlobalStringPtr(codegen->builder, string_literal->value, "a");
     }
 
     case NODE_VARIABLE_DECLARATION:

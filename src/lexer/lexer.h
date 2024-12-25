@@ -47,6 +47,13 @@ Token lexer_parse_identifier(Lexer* lexer);
 // - A token if a number literal could be parsed, otherwise 0.
 Token lexer_parse_number_literal(Lexer* lexer);
 
+// Attempts to parse a string literal token from the contents at the current position in the Lexer.
+// Parameters:
+// - lexer: The lexer to use when parsing;
+// Returns:
+// - A token if a number literal could be parsed, otherwise 0.
+Token lexer_parse_string_literal(Lexer* lexer);
+
 // De-allocates the contents held within the provided Lexer.
 // Parameters:
 // - lexer: The lexer to destroy.
