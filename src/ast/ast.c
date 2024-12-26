@@ -366,6 +366,11 @@ Node* ast_parse_function_call(AST* ast) {
         }
 
         node_stream_append(&arguments, value);
+
+        // If the next token is not a closing parenthesis, it must be a comma.
+        if (!ast_next_is(ast, TOKEN_CLOSE_PARENTHESIS)) {
+            ast_expect(ast, TOKEN_COMMA);
+        }
     }
 
     // Must be closed by a closing parenthesis.
@@ -487,6 +492,11 @@ Node* ast_parse_function_declaration_statement(AST* ast) {
         }
 
         parameters_append(&parameters, parameter);
+
+        // If the next token is not a closing parenthesis, it must be a comma.
+        if (!ast_next_is(ast, TOKEN_CLOSE_PARENTHESIS)) {
+            ast_expect(ast, TOKEN_COMMA);
+        }
     }
 
     ast_expect(ast, TOKEN_CLOSE_PARENTHESIS);
