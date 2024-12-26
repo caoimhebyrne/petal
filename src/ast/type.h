@@ -10,6 +10,9 @@ typedef enum {
     // void
     TYPE_KIND_VOID,
 
+    // A 8-bit integer, defined as 'i8'.
+    TYPE_KIND_INT_8,
+
     // A 32-bit integer, defined as 'i32'.
     TYPE_KIND_INT_32,
 

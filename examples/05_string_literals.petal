@@ -1,4 +1,4 @@
-extern func printf(format: *i32);
+extern func printf(format: *i8);
 
 func main() -> i32 {
     printf("Hello world!\n");

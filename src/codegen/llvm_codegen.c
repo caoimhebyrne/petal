@@ -334,6 +334,11 @@ LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, Type type, Position p
     LLVMTypeRef type_ref;
 
     switch (type.kind) {
+
+    case TYPE_KIND_INT_8:
+        type_ref = LLVMInt8TypeInContext(codegen->context);
+        break;
+
     case TYPE_KIND_INT_32:
         type_ref = LLVMInt32TypeInContext(codegen->context);
         break;
