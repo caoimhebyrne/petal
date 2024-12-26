@@ -2,6 +2,7 @@
 #include "node.h"
 #include "node/binary_operation.h"
 #include "node/block.h"
+#include "node/boolean_literal.h"
 #include "node/function_call.h"
 #include "node/function_declaration.h"
 #include "node/identifier_reference.h"
@@ -38,6 +39,7 @@ Node* ast_parse_function_declaration_statement(AST* ast);
 Node* ast_parse_addition_subtraction(AST* ast);
 Node* ast_parse_multiplication_division(AST* ast);
 Node* ast_parse_number_literal_expression(AST* ast);
+Node* ast_parse_boolean_literal_expression(AST* ast);
 Node* ast_parse_string_literal_expression(AST* ast);
 Node* ast_parse_identifier_reference_expression(AST* ast);
 
@@ -288,6 +290,9 @@ Node* ast_parse_value(AST* ast) {
         return expression;
     }
 
+    if (ast_next_is_string(ast, TOKEN_KEYWORD, "true") || ast_next_is_string(ast, TOKEN_KEYWORD, "false"))
+        return ast_parse_boolean_literal_expression(ast);
+
     Token next = ast_peek(ast);
     switch (next.type) {
     case TOKEN_NUMBER_LITERAL:
@@ -326,6 +331,16 @@ Node* ast_parse_number_literal_expression(AST* ast) {
 
     // `token` comes from the `ast_expect` macro.
     return (Node*)number_literal_node_create(token.position, token.number);
+}
+
+// true | false
+Node* ast_parse_boolean_literal_expression(AST* ast) {
+    Token token = ast_consume_type(ast, TOKEN_KEYWORD);
+    if (token.type == TOKEN_INVALID) {
+        return 0;
+    }
+
+    return (Node*)boolean_literal_node_create(token.position, strcmp(token.string, "true"));
 }
 
 Node* ast_parse_string_literal_expression(AST* ast) {

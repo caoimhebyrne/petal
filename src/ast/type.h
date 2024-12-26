@@ -10,6 +10,9 @@ typedef enum {
     // void
     TYPE_KIND_VOID,
 
+    // A boolean, defined as 'bool'.
+    TYPE_KIND_BOOL,
+
     // A 8-bit integer, defined as 'i8'.
     TYPE_KIND_INT_8,
 

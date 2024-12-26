@@ -7,6 +7,8 @@ Type type_create(TypeKind kind, bool is_pointer) { return (Type){kind, is_pointe
 TypeKind type_kind_from_string(char* value) {
     if (strcmp(value, "void") == 0) {
         return TYPE_KIND_VOID;
+    } else if (strcmp(value, "bool") == 0) {
+        return TYPE_KIND_BOOL;
     } else if (strcmp(value, "i8") == 0) {
         return TYPE_KIND_INT_8;
     } else if (strcmp(value, "i32") == 0) {
@@ -26,6 +28,10 @@ char* type_to_string(Type type) {
     switch (type.kind) {
     case TYPE_KIND_INVALID:
         type_name = "invalid type";
+        break;
+
+    case TYPE_KIND_BOOL:
+        type_name = "bool";
         break;
 
     case TYPE_KIND_INT_8:

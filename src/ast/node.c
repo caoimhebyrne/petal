@@ -2,6 +2,7 @@
 #include "../string/format_string.h"
 #include "node/binary_operation.h"
 #include "node/block.h"
+#include "node/boolean_literal.h"
 #include "node/function_call.h"
 #include "node/function_declaration.h"
 #include "node/identifier_reference.h"
@@ -32,6 +33,9 @@ void node_destroy(Node* node) {
 
         break;
     }
+
+    case NODE_BOOLEAN_LITERAL:
+        break;
 
     case NODE_NUMBER_LITERAL:
         break;
@@ -119,6 +123,9 @@ char* node_to_string(Node* node) {
 
     case NODE_BLOCK:
         return block_node_to_string((BlockNode*)node);
+
+    case NODE_BOOLEAN_LITERAL:
+        return boolean_literal_node_to_string((BooleanLiteralNode*)node);
     }
 
     return format_string("unknown node (%d)", node->node_type);

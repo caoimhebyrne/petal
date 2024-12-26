@@ -1,5 +1,6 @@
 #include "llvm_codegen.h"
 #include "../ast/node/binary_operation.h"
+#include "../ast/node/boolean_literal.h"
 #include "../ast/node/function_declaration.h"
 #include "../ast/node/identifier_reference.h"
 #include "../ast/node/number_literal.h"
@@ -101,6 +102,13 @@ LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node, bool a
 
         LLVMTypeRef int_32_type = LLVMInt32TypeInContext(codegen->context);
         return LLVMConstInt(int_32_type, (int32_t)number_literal->value, false);
+    }
+
+    case NODE_BOOLEAN_LITERAL: {
+        BooleanLiteralNode* boolean_literal = (BooleanLiteralNode*)node;
+
+        LLVMTypeRef int_1_type = LLVMInt1TypeInContext(codegen->context);
+        return LLVMConstInt(int_1_type, boolean_literal->value, false);
     }
 
     case NODE_STRING_LITERAL: {
@@ -334,6 +342,9 @@ LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, Type type, Position p
     LLVMTypeRef type_ref;
 
     switch (type.kind) {
+    case TYPE_KIND_BOOL:
+        type_ref = LLVMInt1TypeInContext(codegen->context);
+        break;
 
     case TYPE_KIND_INT_8:
         type_ref = LLVMInt8TypeInContext(codegen->context);

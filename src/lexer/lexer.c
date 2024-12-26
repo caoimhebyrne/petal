@@ -10,7 +10,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-char* keywords[] = {"func", "extern", "return"};
+char* keywords[] = {"func", "extern", "return", "true", "false"};
 size_t keywords_length = sizeof(keywords) / sizeof(char*);
 
 bool lexer_initialize(Lexer* lexer, char* filename) {

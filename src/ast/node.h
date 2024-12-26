@@ -40,6 +40,10 @@ typedef enum {
     // A block node.
     // See BlockNode.
     NODE_BLOCK,
+
+    // A boolean literal node.
+    // See BooleanLiteralNode.
+    NODE_BOOLEAN_LITERAL,
 } NodeType;
 
 typedef struct {
