@@ -9,13 +9,11 @@
 // int putchar(int c);
 extern func putchar(character: i32);
 
-func main() -> i32 {
+func main() {
     putchar(72);  // H
     putchar(101); // e
     putchar(108); // l
     putchar(108); // l
     putchar(111); // o
     putchar(10);  // \n
-
-    return 0;
 }

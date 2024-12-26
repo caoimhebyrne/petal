@@ -195,6 +195,30 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
                 return 0;
             }
         }
+
+        // All functions need to have a terminator (either return or unreachable).
+        // If the last instruction in the last block of the function is not a return, we can
+        // generate it if and only if the function's return type is void.
+        LLVMBasicBlockRef block = LLVMGetLastBasicBlock(function);
+        LLVMValueRef last_instruction = LLVMGetLastInstruction(block);
+
+        bool needs_terminator = true;
+        if (last_instruction) {
+            LLVMOpcode opcode = LLVMGetInstructionOpcode(last_instruction);
+            needs_terminator = opcode != LLVMRet && opcode != LLVMUnreachable;
+        }
+
+        if (needs_terminator) {
+            if (node->return_type.kind == TYPE_KIND_VOID) {
+                LOG_DEBUG("llvm-codegen", "generating terminator for '%s'", node->name);
+                LLVMBuildRetVoid(codegen->builder);
+            } else {
+                diagnostic_stream_push(&codegen->diagnostics, (Position){}, true,
+                                       "function '%s' does not return a value", node->name);
+
+                return 0;
+            }
+        }
     }
 
     // I'm unsure if I need to call something like LLVMClearInsertionPosition(builder) after I generate the nodes,
