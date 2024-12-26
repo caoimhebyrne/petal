@@ -36,6 +36,10 @@ typedef enum {
     // A binary operation node.
     // See BinaryOperationNode.
     NODE_BINARY_OPERATION,
+
+    // A block node.
+    // See BlockNode.
+    NODE_BLOCK,
 } NodeType;
 
 typedef struct {

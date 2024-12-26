@@ -4,25 +4,25 @@
 
 void token_stream_destroy(TokenStream* stream) { free(stream->data); }
 
-char* token_to_string(Token* token) {
-    switch (token->type) {
+char* token_to_string(Token token) {
+    switch (token.type) {
     case TOKEN_INVALID:
         return "invalid token";
 
     case TOKEN_IDENTIFIER:
-        return format_string("identifier ('%s')", token->string);
+        return format_string("identifier ('%s')", token.string);
 
     case TOKEN_KEYWORD:
-        return format_string("keyword ('%s')", token->string);
+        return format_string("keyword ('%s')", token.string);
 
     case TOKEN_NUMBER_LITERAL:
-        return format_string("number literal ('%f')", token->number);
+        return format_string("number literal ('%f')", token.number);
 
     case TOKEN_STRING_LITERAL:
-        return format_string("string ('%s')", token->string);
+        return format_string("string ('%s')", token.string);
 
     default:
-        return token_type_to_string(token->type);
+        return token_type_to_string(token.type);
     }
 }
 

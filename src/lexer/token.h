@@ -63,7 +63,7 @@ typedef struct {
 // - token: The token to turn into a string.
 // Returns:
 // - A string representing the provided token.
-char* token_to_string(Token* token);
+char* token_to_string(Token token);
 
 // Returns a string representation of the provided TokenType.
 // Parameters:

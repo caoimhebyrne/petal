@@ -1,6 +1,7 @@
 #include "node.h"
 #include "../string/format_string.h"
 #include "node/binary_operation.h"
+#include "node/block.h"
 #include "node/function_call.h"
 #include "node/function_declaration.h"
 #include "node/identifier_reference.h"
@@ -24,7 +25,10 @@ void node_destroy(Node* node) {
     case NODE_FUNCTION_DECLARATION: {
         FunctionDeclarationNode* function_declaration = (FunctionDeclarationNode*)node;
         free(function_declaration->name);
-        node_stream_destroy(&function_declaration->function_body);
+
+        if (function_declaration->function_body) {
+            node_destroy((Node*)function_declaration->function_body);
+        }
 
         break;
     }
@@ -69,6 +73,11 @@ void node_destroy(Node* node) {
 
         break;
     }
+
+    case NODE_BLOCK: {
+        BlockNode* block = (BlockNode*)node;
+        node_stream_destroy(&block->body);
+    }
     }
 
     free(node);
@@ -107,6 +116,9 @@ char* node_to_string(Node* node) {
 
     case NODE_BINARY_OPERATION:
         return binary_operation_node_to_string((BinaryOperationNode*)node);
+
+    case NODE_BLOCK:
+        return block_node_to_string((BlockNode*)node);
     }
 
     return format_string("unknown node (%d)", node->node_type);

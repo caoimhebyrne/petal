@@ -4,6 +4,7 @@
 #include "../node.h"
 #include "../parameter.h"
 #include "../type.h"
+#include "block.h"
 
 typedef struct {
     // The type of this node, always NODE_FUNCTION_DECLARATION.
@@ -22,8 +23,8 @@ typedef struct {
     // The return type of this function
     Type return_type;
 
-    // The nodes contained within this function's body.
-    NodeStream function_body;
+    // A block node representing the function's body, may be null.
+    BlockNode* function_body;
 
     // Whether this function is an "external" function or not.
     bool is_external;
@@ -34,10 +35,10 @@ typedef struct {
 // - name: The name of this function.
 // - parameters: The parameters that this function expects.
 // - return_type: The return type of this function.
-// - node_stream: The nodes contained within this function's body.
+// - function_body: A block node representing the function's body, may be null.
 // - is_external: Whether this function is external or not.
 FunctionDeclarationNode* function_declaration_node_create(Position position, char* name, Parameters parameters,
-                                                          Type return_type, NodeStream function_body, bool is_external);
+                                                          Type return_type, BlockNode* function_body, bool is_external);
 
 // Returns a string representation of the provided FunctionDeclarationNode.
 // Parameters:

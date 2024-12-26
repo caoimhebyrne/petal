@@ -1,7 +1,7 @@
 #include "ast.h"
-#include "../string/format_string.h"
 #include "node.h"
 #include "node/binary_operation.h"
+#include "node/block.h"
 #include "node/function_call.h"
 #include "node/function_declaration.h"
 #include "node/identifier_reference.h"
@@ -11,615 +11,553 @@
 #include "node/variable_declaration.h"
 #include "parameter.h"
 #include "type.h"
+#include <stdbool.h>
 #include <string.h>
 
+// A macro to require a token to be at the current position in the AST.
+#define ast_expect(ast, token_type)                                                                                    \
+    {                                                                                                                  \
+        Token token = ast_consume_type(ast, token_type);                                                               \
+        if (token.type == TOKEN_INVALID) {                                                                             \
+            LOG_DEBUG("ast", "ast_expect! returning");                                                                 \
+            return 0;                                                                                                  \
+        }                                                                                                              \
+    }
+
+// Forward declarations for AST parsing methods.
+// All of these return a pointer to a Node, if this pointer is zero, something
+// went wrong during the parsing process.
+Node* ast_parse_statement(AST* ast);
+Node* ast_parse_expression(AST* ast);
+Node* ast_parse_value(AST* ast);
+
+Node* ast_parse_return_statement(AST* ast);
+Node* ast_parse_variable_declaration_statement(AST* ast);
+Node* ast_parse_function_declaration_statement(AST* ast);
+
+Node* ast_parse_addition_subtraction(AST* ast);
+Node* ast_parse_multiplication_division(AST* ast);
+Node* ast_parse_number_literal_expression(AST* ast);
+Node* ast_parse_string_literal_expression(AST* ast);
+Node* ast_parse_identifier_reference_expression(AST* ast);
+
+Node* ast_parse_function_call(AST* ast);
+
+BlockNode* ast_parse_block(AST* ast);
+
 bool ast_initialize(AST* ast, TokenStream token_stream) {
-    ast->diagnostics = (DiagnosticStream){};
+    DiagnosticStream diagnostics;
+    if (!diagnostic_stream_initialize(&diagnostics, 1)) {
+        return false;
+    }
+
     ast->token_stream = token_stream;
+    ast->diagnostics = diagnostics;
     ast->position = 0;
 
-    return diagnostic_stream_initialize(&ast->diagnostics, 2);
+    return true;
+}
+
+Token ast_peek(AST* ast) {
+    // If the AST's position is outside the bounds of the array,
+    // there are no tokens left to consume.
+    if (ast->position >= ast->token_stream.length) {
+        return INVALID_TOKEN;
+    }
+
+    return ast->token_stream.data[ast->position];
+}
+
+Token ast_consume(AST* ast) {
+    // If the AST's position is outside the bounds of the array,
+    // there are no tokens left to consume.
+    if (ast->position >= ast->token_stream.length) {
+        return INVALID_TOKEN;
+    }
+
+    return ast->token_stream.data[ast->position++];
+}
+
+Token ast_consume_type(AST* ast, TokenType type) {
+    // If the AST's position is outside the bounds of the array,
+    // there are no tokens left to consume.
+    if (ast->position >= ast->token_stream.length) {
+        Token last_token = ast->token_stream.data[ast->token_stream.length - 1];
+
+        diagnostic_stream_push(&ast->diagnostics, last_token.position, true,
+                               "expected token: '%s', but got end of file", token_type_to_string(type));
+
+        return INVALID_TOKEN;
+    }
+
+    Token token = ast->token_stream.data[ast->position++];
+    if (token.type != type) {
+        diagnostic_stream_push(&ast->diagnostics, token.position, true, "expected token: '%s', but got '%s'",
+                               token_type_to_string(type), token_to_string(token));
+
+        return INVALID_TOKEN;
+    }
+
+    return token;
+}
+
+Token ast_consume_type_string(AST* ast, TokenType type, char* string) {
+    Token token = ast_consume_type(ast, type);
+    if (token.type == TOKEN_INVALID) {
+        return INVALID_TOKEN;
+    }
+
+    if (strcmp(token.string, string) != 0) {
+        diagnostic_stream_push(&ast->diagnostics, token.position, true, "expected %s of '%s', but got '%s'",
+                               token_type_to_string(token.type), string, token.string);
+
+        return INVALID_TOKEN;
+    }
+
+    return token;
+}
+
+bool ast_next_is(AST* ast, TokenType type) {
+    Token token = ast_peek(ast);
+    if (token.type == TOKEN_INVALID) {
+        // FIXME: This needs to be handled differently.
+        // If there are no tokens left, parsing should stop.
+        return false;
+    }
+
+    // Ensure the token types are matching.
+    return token.type == type;
+}
+
+bool ast_after_next_is(AST* ast, TokenType type) {
+    // If the intended position is out of bounds, the token will not match.
+    size_t position = ast->position + 1;
+    if (position >= ast->token_stream.length) {
+        return false;
+    }
+
+    Token token = ast->token_stream.data[position];
+    return token.type == type;
+}
+
+bool ast_next_is_string(AST* ast, TokenType type, char* string_value) {
+    Token token = ast_peek(ast);
+    if (token.type == TOKEN_INVALID) {
+        // FIXME: This needs to be handled differently.
+        // If there are no tokens left, parsing should stop.
+        return false;
+    }
+
+    // Ensure the token types are matching.
+    if (token.type != type) {
+        return false;
+    }
+
+    // If no string value was attached to this call, just return true, they match.
+    if (!string_value) {
+        return true;
+    }
+
+    // Compare the two string values for a match.
+    return strcmp(token.string, string_value) == 0;
 }
 
 NodeStream ast_parse(AST* ast) {
     NodeStream stream;
-    if (!node_stream_initialize(&stream, 2)) {
-        return stream;
-    }
+    node_stream_initialize(&stream, 1);
 
+    // Keep parsing until EOF is reached.
     while (ast->position < ast->token_stream.length) {
-        Node* node = ast_parse_node(ast, true);
-        if (node == 0) {
-            return stream;
+        Node* statement = ast_parse_statement(ast);
+        if (!statement) {
+            // A statement could not be parsed, it's probably best to stop
+            // parsing, the rest of the file is probably not usable.
+            LOG_ERROR("ast", "parsing error occurred");
+            break;
         }
 
-        node_stream_append(&stream, node);
+        node_stream_append(&stream, statement);
     }
 
     return stream;
 }
 
-Token ast_peek_token(AST* ast) { return ast->token_stream.data[ast->position]; }
-
-Token ast_consume_token(AST* ast) { return ast->token_stream.data[ast->position++]; }
-
-Token ast_expect_token(AST* ast, TokenType type) {
-    Token token = ast->token_stream.data[ast->position];
-    if (token.type == TOKEN_INVALID) {
-        Token last_token = ast->token_stream.data[ast->token_stream.length - 1];
-
-        Diagnostic diagnostic = {
-            .position = last_token.position,
-            .message = format_string("expected %s, but got end-of-file", token_type_to_string(type)),
-            .is_terminal = true,
-        };
-
-        diagnostic_stream_append(&ast->diagnostics, diagnostic);
-        return INVALID_TOKEN;
-    }
-
-    if (token.type != type) {
-        Diagnostic diagnostic = {
-            .position = token.position,
-            .message = format_string("unexpected token: %s, expected: %s", token_to_string(&token),
-                                     token_type_to_string(type)),
-            .is_terminal = true,
-        };
-
-        diagnostic_stream_append(&ast->diagnostics, diagnostic);
-        return INVALID_TOKEN;
-    }
-
-    ast->position++;
-    return token;
+Node* ast_parse_expression(AST* ast) {
+    // Addition and subtraction is the binary operator that takes precedence.
+    return ast_parse_addition_subtraction(ast);
 }
 
-Token ast_expect_keyword(AST* ast, char* keyword) {
-    Token token = ast_expect_token(ast, TOKEN_KEYWORD);
-    if (token.type == TOKEN_INVALID) {
-        return INVALID_TOKEN
+Node* ast_parse_statement(AST* ast) {
+    Node* statement = 0;
+
+    // An asterisk at the start of a statement typically indicates a variable declaration, as
+    // an asterisk is used for a pointer type.
+    if (ast_next_is(ast, TOKEN_ASTERISK))
+        statement = ast_parse_variable_declaration_statement(ast);
+
+    else if (ast_next_is(ast, TOKEN_IDENTIFIER) && ast_after_next_is(ast, TOKEN_IDENTIFIER))
+        statement = ast_parse_variable_declaration_statement(ast);
+
+    else if (ast_next_is(ast, TOKEN_IDENTIFIER) && ast_after_next_is(ast, TOKEN_OPEN_PARENTHESIS))
+        statement = ast_parse_function_call(ast);
+
+    else if (ast_next_is_string(ast, TOKEN_KEYWORD, "return"))
+        statement = ast_parse_return_statement(ast);
+
+    else if (ast_next_is_string(ast, TOKEN_KEYWORD, "func") || ast_next_is_string(ast, TOKEN_KEYWORD, "extern"))
+        statement = ast_parse_function_declaration_statement(ast);
+
+    else {
+        return ast_parse_expression(ast);
     }
 
-    if (strcmp(token.string, keyword) != 0) {
-        Diagnostic diagnostic = {
-            .position = token.position,
-            .message = format_string("unexpected keyword: '%s', expected: '%s'", token.string, keyword),
-            .is_terminal = true,
-        };
-
-        diagnostic_stream_append(&ast->diagnostics, diagnostic);
-        return INVALID_TOKEN;
+    // If a statement was successfully parsed, expect a semicolon.
+    if (statement && statement->node_type != NODE_FUNCTION_DECLARATION) {
+        // All statements must end in a semicolon.
+        ast_expect(ast, TOKEN_SEMICOLON);
     }
 
-    return token;
+    return statement;
 }
 
-Node* ast_parse_node(AST* ast, bool as_statement) {
-    Token token = ast_peek_token(ast);
-    Node* node;
-
-    // keyword -> function
-    // identifier:
-    // 1. variable declaration: <type> <identifier> = <node>;
-    // 2. function call <identifier>(<node...>);
-
-    switch (token.type) {
-
-    case TOKEN_KEYWORD: {
-        // There are multiple identifiers that can indicate a function definition.
-        // - func
-        // - extern
-        // If this identifier matches one of thse, the following tokens must make up a function declaration.
-        if (strcmp(token.string, "func") == 0 || strcmp(token.string, "extern") == 0) {
-            node = (Node*)ast_parse_function_declaration(ast);
-        }
-
-        // If this identifier is "return", then this is a return statement.
-        if (strcmp(token.string, "return") == 0) {
-            node = (Node*)ast_parse_return_statement(ast);
-        }
-
-        break;
+Node* ast_parse_addition_subtraction(AST* ast) {
+    // Multiplication/division is less important than addition/subtraction.
+    Node* left = ast_parse_multiplication_division(ast);
+    if (!left) {
+        return 0;
     }
 
-    case TOKEN_ASTERISK:
-        node = (Node*)ast_parse_variable_declaration(ast);
-        break;
+    if (ast_next_is(ast, TOKEN_PLUS) || ast_next_is(ast, TOKEN_HYPHEN)) {
+        Token operator_token = ast_consume(ast);
 
-    // In order to figure out what this identifier is for, we need to see its value, but
-    // also take a look at the tokens around it.
-    case TOKEN_IDENTIFIER: {
-        // To figure out what the identifier is for, we need to check the next token's value.
-        Token next_token = ast->token_stream.data[ast->position + 1];
-        switch (next_token.type) {
-        case TOKEN_IDENTIFIER:
-            // If the next token is another identifier, this *should* be a variable declaration.
-            node = (Node*)ast_parse_variable_declaration(ast);
-            break;
-
-        case TOKEN_OPEN_PARENTHESIS:
-            // If the next token is an opening parenthesis, it's safe to say that this could be a function call.
-            node = (Node*)ast_parse_function_call(ast, as_statement);
-            break;
-
-        // Otherwise, the next token seems to be useless, and this is probably just an identifier reference.
-        default:
-            ast->position += 1;
-            node = (Node*)identifier_reference_node_create(token.position, token.string);
-            break;
+        // The next token is a plus or minus operator, parse a binary operation.
+        Node* right = ast_parse_addition_subtraction(ast);
+        if (!right) {
+            return 0;
         }
 
-        break;
+        Operator operator_ = OPERATOR_PLUS;
+        if (operator_token.type == TOKEN_HYPHEN) {
+            operator_ = OPERATOR_MINUS;
+        }
+
+        return (Node*)binary_operation_node_create(operator_token.position, left, right, operator_);
     }
 
+    return left;
+}
+
+Node* ast_parse_multiplication_division(AST* ast) {
+    Node* left = ast_parse_value(ast);
+    if (left == 0) {
+        return 0;
+    }
+
+    if (ast_next_is(ast, TOKEN_ASTERISK) || ast_next_is(ast, TOKEN_SLASH)) {
+        Token operator_token = ast_consume(ast);
+
+        // The next token is a plus or minus operator, parse a binary operation.
+        Node* right = ast_parse_expression(ast);
+        if (right == 0) {
+            return 0;
+        }
+
+        Operator operator_ = OPERATOR_MULTIPLY;
+        if (operator_token.type == TOKEN_SLASH) {
+            operator_ = OPERATOR_DIVIDE;
+        }
+
+        return (Node*)binary_operation_node_create(operator_token.position, left, right, operator_);
+    }
+
+    return left;
+}
+
+Node* ast_parse_value(AST* ast) {
+    // If this value starts with an opening parenthesis, we need to parse
+    // the expression within the parenthesis.
+    if (ast_next_is(ast, TOKEN_OPEN_PARENTHESIS)) {
+        ast_consume(ast);
+
+        Node* expression = ast_parse_expression(ast);
+        if (expression == 0) {
+            return 0;
+        }
+
+        ast_expect(ast, TOKEN_CLOSE_PARENTHESIS);
+        return expression;
+    }
+
+    Token next = ast_peek(ast);
+    switch (next.type) {
     case TOKEN_NUMBER_LITERAL:
-        ast->position += 1;
-        node = (Node*)number_literal_node_create(token.position, token.number);
-        break;
+        return ast_parse_number_literal_expression(ast);
+
+    case TOKEN_IDENTIFIER: {
+        // If the following token is an opening parenthesis, this is a function call.
+        if (ast_after_next_is(ast, TOKEN_OPEN_PARENTHESIS)) {
+            return ast_parse_function_call(ast);
+        }
+
+        return ast_parse_identifier_reference_expression(ast);
+    }
 
     case TOKEN_STRING_LITERAL:
-        ast->position += 1;
-        node = (Node*)string_literal_node_create(token.position, token.string);
-        break;
+        return ast_parse_string_literal_expression(ast);
 
-    case TOKEN_INVALID: {
-        Token last_token = ast->token_stream.data[ast->token_stream.length - 1];
+    case TOKEN_INVALID:
+        diagnostic_stream_push(&ast->diagnostics, next.position, true, "expected a value, but got end of file");
+        return 0;
 
-        Diagnostic diagnostic = {
-            .position = last_token.position,
-            .message = "expected any token, but got end-of-file",
-            .is_terminal = true,
-        };
+    default:
+        diagnostic_stream_push(&ast->diagnostics, next.position, true, "unexpected token for value: '%s'",
+                               token_to_string(next));
+        return 0;
+    }
+}
 
-        diagnostic_stream_append(&ast->diagnostics, diagnostic);
+// <number>
+Node* ast_parse_number_literal_expression(AST* ast) {
+    // The only token must be a number literal.
+    Token token = ast_consume_type(ast, TOKEN_NUMBER_LITERAL);
+    if (token.type == TOKEN_INVALID) {
         return 0;
     }
 
-    default: {
-        Diagnostic diagnostic = {
-            .position = token.position,
-            .message = format_string("unexpected token: '%s'", token_to_string(&token)),
-            .is_terminal = true,
-        };
+    // `token` comes from the `ast_expect` macro.
+    return (Node*)number_literal_node_create(token.position, token.number);
+}
 
-        diagnostic_stream_append(&ast->diagnostics, diagnostic);
-        return 0;
-    }
-    }
-
-    if (node == 0) {
+Node* ast_parse_string_literal_expression(AST* ast) {
+    Token token = ast_consume_type(ast, TOKEN_STRING_LITERAL);
+    if (token.type == TOKEN_INVALID) {
         return 0;
     }
 
-    // Before parsing the current node, we should lookahead to see if an operator is used after this node.
-    Token next_token = ast_peek_token(ast);
-    if (!as_statement && (next_token.type == TOKEN_PLUS || next_token.type == TOKEN_HYPHEN ||
-                          next_token.type == TOKEN_SLASH || next_token.type == TOKEN_ASTERISK)) {
-        ast->position += 1;
-        return (Node*)ast_parse_binary_operation(ast, node, next_token);
+    return (Node*)string_literal_node_create(token.position, token.string);
+}
+
+// <identifier>
+Node* ast_parse_identifier_reference_expression(AST* ast) {
+    // The first token must be an identifier.
+    Token token = ast_consume_type(ast, TOKEN_IDENTIFIER);
+
+    return (Node*)identifier_reference_node_create(token.position, token.string);
+}
+
+Node* ast_parse_function_call(AST* ast) {
+    // The first token must be an identifier.
+    Token name_token = ast_consume_type(ast, TOKEN_IDENTIFIER);
+    if (name_token.type == TOKEN_INVALID) {
+        return 0;
     }
 
-    return node;
+    // The next token must be an opening parenthesis.
+    ast_expect(ast, TOKEN_OPEN_PARENTHESIS);
+
+    NodeStream arguments;
+    node_stream_initialize(&arguments, 1);
+
+    // Attempt to parse the arguments to the function (if any).
+    while (!ast_next_is(ast, TOKEN_CLOSE_PARENTHESIS)) {
+        Node* value = ast_parse_expression(ast);
+        if (!value) {
+            return 0;
+        }
+
+        node_stream_append(&arguments, value);
+    }
+
+    // Must be closed by a closing parenthesis.
+    ast_expect(ast, TOKEN_CLOSE_PARENTHESIS);
+
+    return (Node*)function_call_node_create(name_token.position, name_token.string, arguments);
 }
 
 Type ast_parse_type(AST* ast) {
-    bool is_pointer = false;
+    // Variable declarations could be for a pointer type.
+    bool is_pointer_type = false;
 
-    // The first token in the stream may be an asterisk (i.e. pointer).
-    Token first_token = ast_peek_token(ast);
-    if (first_token.type == TOKEN_ASTERISK) {
-        ast->position += 1;
-        is_pointer = true;
+    // If the first token is an asterisk, this declaration is for a pointer type.
+    if (ast_next_is(ast, TOKEN_ASTERISK)) {
+        ast_consume(ast);
+        is_pointer_type = true;
     }
 
-    LOG_DEBUG("ast", "parsing type with first token '%s'", token_to_string(&first_token));
-
-    // The type token must be a valid identifier.
-    Token type_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
+    // The first token (or the one after the modifier) must be an identifier.
+    Token type_token = ast_consume_type(ast, TOKEN_IDENTIFIER);
     if (type_token.type == TOKEN_INVALID) {
         return TYPE_INVALID;
     }
 
-    TypeKind kind = type_kind_from_string(type_token.string);
-    if (kind == TYPE_KIND_INVALID) {
-        Diagnostic diagnostic = {
-            .position = type_token.position,
-            .message = format_string("unrecognized type: '%s'", type_token.string),
-            .is_terminal = true,
-        };
-
-        diagnostic_stream_append(&ast->diagnostics, diagnostic);
+    // The type identifier token provided must be a valid type.
+    TypeKind type_kind = type_kind_from_string(type_token.string);
+    if (type_kind == TYPE_KIND_INVALID) {
+        diagnostic_stream_push(&ast->diagnostics, type_token.position, true, "invalid type: '%s'", type_token.string);
         return TYPE_INVALID;
     }
 
-    return type_create(kind, is_pointer);
+    return type_create(type_kind, is_pointer_type);
 }
 
-// <type> <name> = <value>;
-VariableDeclarationNode* ast_parse_variable_declaration(AST* ast) {
-    LOG_DEBUG("ast", "parsing variable declaration!");
-
-    // If this is an unsupported type, throw an error.
+// (*)<identifier> <identifier> = <value>
+Node* ast_parse_variable_declaration_statement(AST* ast) {
     Type type = ast_parse_type(ast);
     if (type.kind == TYPE_KIND_INVALID) {
         return 0;
     }
 
-    // The second token in the stream must be an identifier for the name.
-    Token name_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
+    // The next token must be an identifier for the variable name.
+    Token name_token = ast_consume_type(ast, TOKEN_IDENTIFIER);
     if (name_token.type == TOKEN_INVALID) {
         return 0;
     }
 
-    // The second token in the stream must be an equals.
-    Token equals_token = ast_expect_token(ast, TOKEN_EQUALS);
-    if (equals_token.type == TOKEN_INVALID) {
+    ast_expect(ast, TOKEN_EQUALS);
+
+    // The final token should be a valid value.
+    Node* value = ast_parse_expression(ast);
+    if (value == 0) {
         return 0;
     }
 
-    Node* value_node = ast_parse_node(ast, false);
-    if (value_node == 0) {
-        return 0;
-    }
+    LOG_DEBUG("ast", "parsed variable declaration node with value: '%s'", node_to_string(value));
 
-    // The last token must be a semicolon.
-    Token semicolon_token = ast_expect_token(ast, TOKEN_SEMICOLON);
-    if (semicolon_token.type == TOKEN_INVALID) {
-        return 0;
-    }
-
-    return variable_declaration_node_create(name_token.position, name_token.string, type, value_node);
+    return (Node*)variable_declaration_node_create(name_token.position, name_token.string, type, value);
 }
 
-// <optional: modifier> func <name>(...) {...}
-// OR
-// extern func <name>(...);
-FunctionDeclarationNode* ast_parse_function_declaration(AST* ast) {
-    LOG_DEBUG("ast", "starting to parse function declaration!");
+Parameter ast_parse_function_parameter(AST* ast) {
+    // The first token must be the parameter's name.
+    Token name_token = ast_consume_type(ast, TOKEN_IDENTIFIER);
+    if (name_token.type == TOKEN_INVALID) {
+        return PARAMETER_INVALID;
+    }
 
-    // If the first token in the stream is "extern", we should parse this as an external function (no body).
-    Token initial_token = ast_expect_token(ast, TOKEN_KEYWORD);
-    if (initial_token.type == TOKEN_INVALID) {
+    // The next token must be a colon.
+    Token colon_token = ast_consume_type(ast, TOKEN_COLON);
+    if (colon_token.type == TOKEN_INVALID) {
+        return PARAMETER_INVALID;
+    }
+
+    // The last token must be a valid type identifier.
+    Type type = ast_parse_type(ast);
+    if (type.kind == TYPE_KIND_INVALID) {
+        return PARAMETER_INVALID;
+    }
+
+    return parameter_create(name_token.string, type);
+}
+
+// (keyword: extern) <keyword: func> <identifier>(...) {...}
+Node* ast_parse_function_declaration_statement(AST* ast) {
+    // An extern function is parsed differently to a normal function.
+    // The main difference being not having a function body surrounded by braces.
+    bool is_extern_function = false;
+
+    if (ast_next_is_string(ast, TOKEN_KEYWORD, "extern")) {
+        ast_consume(ast);
+        is_extern_function = true;
+    }
+
+    // The first token must be the "func" keyword.
+    Token func_keyword_token = ast_consume_type_string(ast, TOKEN_KEYWORD, "func");
+    if (func_keyword_token.type == TOKEN_INVALID) {
         return 0;
     }
 
-    LOG_DEBUG("ast", "initial token: '%s'", initial_token.string);
-
-    // An external function has no body, just a name, parameters, and then a semicolon.
-    bool is_external_function = false;
-
-    if (strcmp(initial_token.string, "extern") == 0) {
-        // The next token must be the "func" keyword.
-        Token func_token = ast_expect_keyword(ast, "func");
-        if (func_token.type == TOKEN_INVALID) {
-            return 0;
-        }
-
-        is_external_function = true;
-    } else if (strcmp(initial_token.string, "func") != 0) {
-        Diagnostic diagnostic = {
-            .position = initial_token.position,
-            .message = format_string("unexpected keyword: '%s', expected keyword 'func'", initial_token.string),
-            .is_terminal = true,
-        };
-
-        diagnostic_stream_append(&ast->diagnostics, diagnostic);
-        return 0;
-    }
-
-    // The second token in the stream must be an identifier for the name.
-    Token name_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
+    // The next token must be the token's name.
+    Token name_token = ast_consume_type(ast, TOKEN_IDENTIFIER);
     if (name_token.type == TOKEN_INVALID) {
         return 0;
     }
 
-    Token open_parenthesis_token = ast_expect_token(ast, TOKEN_OPEN_PARENTHESIS);
-    if (open_parenthesis_token.type == TOKEN_INVALID) {
-        return 0;
-    }
+    // The next token must be an opening parenthesis.
+    ast_expect(ast, TOKEN_OPEN_PARENTHESIS);
 
+    // Consume parameters until a close parenthesis is reached.
     Parameters parameters;
     parameters_initialize(&parameters, 1);
 
-    // The next token will indicate how we are going to parse parameters.
-    // If there is a closing parenthesis, no parameters are defined.
-    // In the case of an identifier, we should start parsing parameters.
-    // Otherwise, throw an error, this is an unexpected token.
-    Token next_token = ast_peek_token(ast);
+    while (!ast_next_is(ast, TOKEN_CLOSE_PARENTHESIS)) {
+        LOG_DEBUG("ast", "attempting to parse parameter from '%s'", token_to_string(ast_peek(ast)));
 
-    switch (next_token.type) {
-    case TOKEN_CLOSE_PARENTHESIS:
-        // There are no parameters defined.
-        ast->position += 1;
-        break;
-
-    case TOKEN_IDENTIFIER:
-        // This is the first parameter's name.
-        while (true) {
-            // The first token should be an identifier, indicating the parameter's name.
-            Token parameter_name_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
-            if (parameter_name_token.type == TOKEN_INVALID) {
-                return 0;
-            }
-
-            // The next token must be a colon.
-            Token colon_token = ast_expect_token(ast, TOKEN_COLON);
-            if (colon_token.type == TOKEN_INVALID) {
-                return 0;
-            }
-
-            Type parameter_type = ast_parse_type(ast);
-            if (parameter_type.kind == TYPE_KIND_INVALID) {
-                return 0;
-            }
-
-            Parameter parameter = parameter_create(parameter_name_token.string, parameter_type);
-            parameters_append(&parameters, parameter);
-
-            next_token = ast_consume_token(ast);
-
-            // If the next token is a comma, consume and continue.
-            // If it is a closing parentheses, no more parsing of arguments is required.
-            // Otherwise, this is an unexpected token.
-            if (next_token.type == TOKEN_COMMA) {
-                // no-op
-            } else if (next_token.type == TOKEN_CLOSE_PARENTHESIS) {
-                break;
-            } else {
-                Diagnostic diagnostic = {
-                    .position = next_token.position,
-                    .message = format_string("expected closing parentheses, but got %s", token_to_string(&next_token)),
-                    .is_terminal = true,
-                };
-
-                diagnostic_stream_append(&ast->diagnostics, diagnostic);
-                return 0;
-            }
+        Parameter parameter = ast_parse_function_parameter(ast);
+        if (parameter.type.kind == TYPE_KIND_INVALID) {
+            return 0;
         }
-        break;
 
-    default: {
-        Diagnostic diagnostic = {
-            .position = next_token.position,
-            .message = format_string("expected closing parentheses, but got %s", token_to_string(&next_token)),
-            .is_terminal = true,
-        };
-
-        diagnostic_stream_append(&ast->diagnostics, diagnostic);
-        return 0;
-    }
+        parameters_append(&parameters, parameter);
     }
 
-    // The next token should either be...
-    // 1. An open brace -> This function returns `void`.
-    // 2. A hyphen, this function specifies a return type.
-    next_token = ast_consume_token(ast);
+    ast_expect(ast, TOKEN_CLOSE_PARENTHESIS);
 
+    // The default return type is void.
     Type return_type = type_create(TYPE_KIND_VOID, false);
-    switch (next_token.type) {
 
-    // An open brace indicates the start of the function body.
-    // This should only be present on non-external functions.
-    case TOKEN_OPEN_BRACE: {
-        if (is_external_function) {
-            Diagnostic diagnostic = {
-                .position = name_token.position,
-                .message = format_string("unexpected token: %s, expected semicolon", token_to_string(&next_token)),
-                .is_terminal = true,
-            };
+    // If a hyphen is after the closing parenthesis, we should parse a return type.
+    if (ast_next_is(ast, TOKEN_HYPHEN)) {
+        ast_consume(ast);
 
-            diagnostic_stream_append(&ast->diagnostics, diagnostic);
-            return 0;
-        }
+        // The next token must be a `>`.
+        ast_expect(ast, TOKEN_RIGHT_ANGLE_BRACKET);
 
-        break;
-    }
-
-    // A semicolon indicates the end of an external function declaration.
-    case TOKEN_SEMICOLON: {
-        if (!is_external_function) {
-            Diagnostic diagnostic = {
-                .position = name_token.position,
-                .message = format_string("unexpected token: semicolon, expected open brace"),
-                .is_terminal = true,
-            };
-
-            diagnostic_stream_append(&ast->diagnostics, diagnostic);
-            return 0;
-        }
-
-        break;
-    }
-
-    // A hyphen indicates that a return type is about to be specified (-> <type>).
-    // It must be followed by a semicolon or an open brace, depending on the definition type.
-    case TOKEN_HYPHEN: {
-        Token angle_bracket_token = ast_expect_token(ast, TOKEN_RIGHT_ANGLE_BRACKET);
-        if (angle_bracket_token.type == TOKEN_INVALID) {
-            return 0;
-        }
-
+        // The final token must be a valid type.
         return_type = ast_parse_type(ast);
         if (return_type.kind == TYPE_KIND_INVALID) {
             return 0;
         }
-
-        // The next token should be an open brace or a semicolon.
-        TokenType final_token_type = is_external_function ? TOKEN_SEMICOLON : TOKEN_OPEN_BRACE;
-        Token final_token = ast_expect_token(ast, final_token_type);
-        if (final_token.type == TOKEN_INVALID) {
-            return 0;
-        }
-
-        break;
     }
 
-    default: {
-        Diagnostic diagnostic = {
-            .position = name_token.position,
-            .message = format_string("unexpected token: %s, expected: %s", token_to_string(&next_token),
-                                     token_type_to_string(TOKEN_OPEN_BRACE)),
-            .is_terminal = true,
-        };
+    // An external function does not have a body and must end in a semicolon.
+    if (is_extern_function) {
+        ast_expect(ast, TOKEN_SEMICOLON);
+        return (Node*)function_declaration_node_create(func_keyword_token.position, name_token.string, parameters,
+                                                       return_type, 0, true);
+    }
 
-        diagnostic_stream_append(&ast->diagnostics, diagnostic);
+    BlockNode* function_body = ast_parse_block(ast);
+    if (!function_body) {
         return 0;
     }
-    }
 
-    NodeStream function_body;
-    node_stream_initialize(&function_body, 2);
-
-    if (!is_external_function) {
-        while (ast_peek_token(ast).type != TOKEN_CLOSE_BRACE) {
-            Node* node = ast_parse_node(ast, true);
-            if (node == 0) {
-                return 0;
-            }
-
-            node_stream_append(&function_body, node);
-        }
-
-        Token close_brace_token = ast_expect_token(ast, TOKEN_CLOSE_BRACE);
-        if (close_brace_token.type == TOKEN_INVALID) {
-            return 0;
-        }
-    }
-
-    return function_declaration_node_create(initial_token.position, name_token.string, parameters, return_type,
-                                            function_body, is_external_function);
+    return (Node*)function_declaration_node_create(func_keyword_token.position, name_token.string, parameters,
+                                                   return_type, function_body, false);
 }
 
-FunctionCallNode* ast_parse_function_call(AST* ast, bool as_statement) {
-    // The first token in the stream must be an identifier for the name.
-    Token name_token = ast_expect_token(ast, TOKEN_IDENTIFIER);
-    if (name_token.type == TOKEN_INVALID) {
+// <keyword: return> (value)
+Node* ast_parse_return_statement(AST* ast) {
+    // We already know that the first token is the `return` keyword.
+    Token token = ast_consume_type(ast, TOKEN_KEYWORD);
+
+    // The next token must be a valid expression.
+    Node* value = ast_parse_expression(ast);
+    if (!value) {
         return 0;
     }
 
-    LOG_DEBUG("ast", "parsing function call for: '%s'", name_token.string);
-
-    Token open_parenthesis_token = ast_expect_token(ast, TOKEN_OPEN_PARENTHESIS);
-    if (open_parenthesis_token.type == TOKEN_INVALID) {
-        return 0;
-    }
-
-    NodeStream arguments;
-    node_stream_initialize(&arguments, 1);
-
-    // If the next token is a closing parenthesis, then there are no arguments to this function.
-    Token next_token = ast_peek_token(ast);
-    if (next_token.type == TOKEN_CLOSE_PARENTHESIS) {
-        ast->position += 1;
-    } else {
-        while (true) {
-            // Attempt to parse a value.
-            Node* argument = ast_parse_node(ast, false);
-            if (argument == 0) {
-                return 0;
-            }
-
-            node_stream_append(&arguments, argument);
-
-            // The next token will indicate how we are going to parse arguments.
-            // If there is a closing parenthesis, no arguments are defined.
-            Token next_token = ast_peek_token(ast);
-            if (next_token.type == TOKEN_CLOSE_PARENTHESIS) {
-                ast->position += 1;
-                break;
-            }
-
-            // If the next token is a comma, just continue.
-            if (next_token.type == TOKEN_COMMA) {
-                ast->position += 1;
-                continue;
-            }
-        }
-    }
-
-    if (as_statement) {
-        // The last token must be a semicolon.
-        Token semicolon_token = ast_expect_token(ast, TOKEN_SEMICOLON);
-        if (semicolon_token.type == TOKEN_INVALID) {
-            return 0;
-        }
-    }
-
-    return function_call_node_create(name_token.position, name_token.string, arguments);
+    return (Node*)return_node_create(token.position, value);
 }
 
-// return <value>;
-ReturnNode* ast_parse_return_statement(AST* ast) {
-    // The first token in the stream must be the "return" keyword.
-    Token return_token = ast_expect_keyword(ast, "return");
-    if (return_token.type == TOKEN_INVALID) {
+BlockNode* ast_parse_block(AST* ast) {
+    Token open_brace_token = ast_consume_type(ast, TOKEN_OPEN_BRACE);
+    if (open_brace_token.type == TOKEN_INVALID) {
         return 0;
     }
 
-    // If the next token is a semicolon, there should not be a value.
-    Token next_token = ast_peek_token(ast);
+    NodeStream body;
+    node_stream_initialize(&body, 1);
 
-    if (next_token.type == TOKEN_SEMICOLON) {
-        ast->position += 1;
-        return return_node_create(return_token.position, 0);
-    } else {
-        Node* value = ast_parse_node(ast, false);
-        if (!value) {
+    while (!ast_next_is(ast, TOKEN_CLOSE_BRACE)) {
+        Node* statement = ast_parse_statement(ast);
+        if (statement == 0) {
             return 0;
         }
 
-        // The last token must be a semicolon.
-        Token semicolon_token = ast_expect_token(ast, TOKEN_SEMICOLON);
-        if (semicolon_token.type == TOKEN_INVALID) {
-            return 0;
-        }
-
-        return return_node_create(return_token.position, value);
-    }
-}
-
-BinaryOperationNode* ast_parse_binary_operation(AST* ast, Node* left, Token operator_token) {
-    LOG_DEBUG("ast", "parsing binary operation");
-
-    Operator operator_;
-    switch (operator_token.type) {
-    case TOKEN_PLUS:
-        operator_ = OPERATOR_PLUS;
-        break;
-
-    case TOKEN_HYPHEN:
-        operator_ = OPERATOR_MINUS;
-        break;
-
-    case TOKEN_SLASH:
-        operator_ = OPERATOR_DIVIDE;
-        break;
-
-    case TOKEN_ASTERISK:
-        operator_ = OPERATOR_MULTIPLY;
-        break;
-
-    default: {
-        Diagnostic diagnostic = {
-            .position = operator_token.position,
-            .message = format_string("unexpected token: '%s', expected an operator", token_to_string(&operator_token)),
-            .is_terminal = true,
-        };
-
-        diagnostic_stream_append(&ast->diagnostics, diagnostic);
-        return 0;
-    }
+        node_stream_append(&body, statement);
     }
 
-    Node* right = ast_parse_node(ast, false);
-    if (!right) {
-        return 0;
-    }
-
-    BinaryOperationNode* node = binary_operation_node_create(operator_token.position, left, right, operator_);
-
-    LOG_DEBUG("ast", "parsed binary operation: '%s'", binary_operation_node_to_string(node));
-    return node;
+    ast_expect(ast, TOKEN_CLOSE_BRACE);
+    return block_node_create(open_brace_token.position, body);
 }
 
 void ast_destroy(AST* ast) {

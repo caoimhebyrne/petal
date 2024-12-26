@@ -181,9 +181,11 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
         }
     }
 
-    for (size_t i = 0; i < node->function_body.length; i++) {
-        if (!llvm_codegen_generate_node(codegen, node->function_body.data[i], false)) {
-            return 0;
+    if (node->function_body) {
+        for (size_t i = 0; i < node->function_body->body.length; i++) {
+            if (!llvm_codegen_generate_node(codegen, node->function_body->body.data[i], false)) {
+                return 0;
+            }
         }
     }
 

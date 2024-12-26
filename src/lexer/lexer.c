@@ -267,7 +267,14 @@ Token lexer_parse_string_literal(Lexer* lexer) {
             break;
         }
 
-        string_builder_append(&string_builder, character);
+        // FIXME: We need a better way to parse escape sequences like \n.
+        //        Also need to be able to escape them with an extra \.
+        if (character == '\\' && lexer->contents[lexer->position.index + 1] == 'n') {
+            string_builder_append(&string_builder, '\n');
+            position_advance(&lexer->position);
+        } else {
+            string_builder_append(&string_builder, character);
+        }
     }
 
     char* value = string_builder_finish(&string_builder);

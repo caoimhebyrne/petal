@@ -4,6 +4,9 @@
 #include "../stream.h"
 #include "type.h"
 
+#define PARAMETER_INVALID                                                                                              \
+    (Parameter) { .name = 0, .type = (Type){.kind = TYPE_KIND_INVALID, .is_pointer = 0} }
+
 typedef struct {
     // The name of this parameter.
     char* name;

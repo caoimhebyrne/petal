@@ -1,9 +1,10 @@
 #include "function_declaration.h"
 #include "../../string/format_string.h"
+#include "block.h"
 #include <stdlib.h>
 
 FunctionDeclarationNode* function_declaration_node_create(Position position, char* name, Parameters parameters,
-                                                          Type return_type, NodeStream function_body,
+                                                          Type return_type, BlockNode* function_body,
                                                           bool is_external) {
     FunctionDeclarationNode* node = malloc(sizeof(FunctionDeclarationNode));
     node->node_type = NODE_FUNCTION_DECLARATION;
