@@ -1,0 +1,34 @@
+{
+    "name": "petal",
+    "displayName": "Petal",
+    "description": "Syntax highlighting for the Petal language",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.96.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "petal",
+                "aliases": [
+                    "Petal",
+                    "petal"
+                ],
+                "extensions": [
+                    ".petal"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "petal",
+                "scopeName": "source.petal",
+                "path": "./syntaxes/petal.tmLanguage.json"
+            }
+        ]
+    }
+}

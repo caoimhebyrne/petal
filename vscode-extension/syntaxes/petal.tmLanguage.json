@@ -1,0 +1,71 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "Petal",
+    "patterns": [
+        {
+            "include": "#keywords"
+        },
+        {
+            "include": "#strings"
+        },
+        {
+            "include": "#comment"
+        },
+        {
+            "include": "#operator"
+        },
+        {
+            "include": "#punctuation"
+        },
+        {
+            "include": "#number-literal"
+        }
+    ],
+    "repository": {
+        "keywords": {
+            "patterns": [
+                {
+                    "name": "keyword.control.petal",
+                    "match": "\\b(return)\\b"
+                },
+                {
+                    "name": "keyword.import.petal",
+                    "match": "\\b(extern)\\b"
+                },
+                {
+                    "name": "keyword.declaration.petal",
+                    "match": "\\b(func)\\b"
+                }
+            ]
+        },
+        "strings": {
+            "name": "string.quoted.double.petal",
+            "begin": "\"",
+            "end": "\"",
+            "patterns": [
+                {
+                    "name": "constant.character.escape.petal",
+                    "match": "\\\\."
+                }
+            ]
+        },
+        "operator": {
+            "name": "keyword.operator.arithmetic.petal",
+            "match": "(\\+|\\-|\\*|\\/)(=)?"
+        },
+        "comment": {
+            "name": "comment.line.petal",
+            "begin": "//",
+            "end": "$"
+        },
+        "number-literal": {
+            "name": "constant.numeric.petal",
+            "match": "\\b\\d+\\b"
+        },
+        "punctuation": {
+            "name": "punctuation.semicolon.petal",
+            "match": ";"
+        }
+    },
+    "scopeName": "source.petal"
+}

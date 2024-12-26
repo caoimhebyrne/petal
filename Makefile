@@ -16,3 +16,7 @@ run: build
 .PHONY: install
 install: build
 	install -Dm755 ./build/petal $(INSTALL_DIR)/petal
+
+.PHONY: install-vscode-extension
+install_vscode_extension:
+	cp -r ./vscode-extension $(HOME)/.vscode/extensions/petal-0.1.0
