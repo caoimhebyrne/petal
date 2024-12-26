@@ -341,6 +341,9 @@ Node* ast_parse_string_literal_expression(AST* ast) {
 Node* ast_parse_identifier_reference_expression(AST* ast) {
     // The first token must be an identifier.
     Token token = ast_consume_type(ast, TOKEN_IDENTIFIER);
+    if (token.type == TOKEN_INVALID) {
+        return 0;
+    }
 
     return (Node*)identifier_reference_node_create(token.position, token.string);
 }
@@ -538,6 +541,11 @@ Node* ast_parse_function_declaration_statement(AST* ast) {
 Node* ast_parse_return_statement(AST* ast) {
     // We already know that the first token is the `return` keyword.
     Token token = ast_consume_type(ast, TOKEN_KEYWORD);
+
+    // If the next token is a semicolon, this return statement has no value.
+    if (ast_next_is(ast, TOKEN_SEMICOLON)) {
+        return (Node*)return_node_create(token.position, 0);
+    }
 
     // The next token must be a valid expression.
     Node* value = ast_parse_expression(ast);
