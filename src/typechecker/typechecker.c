@@ -87,6 +87,14 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
     declared_variables_destroy(&typechecker->variables);
     declared_variables_initialize(&typechecker->variables, 1);
 
+    // Function parameters are *technicaly* local values.
+    // FIXME: This feels a little bit wrong, but it's fine for now?
+    for (size_t i = 0; i < node->parameters.length; i++) {
+        Parameter parameter = node->parameters.data[i];
+        declared_variables_append(&typechecker->variables,
+                                  (DeclaredVariable){.name = parameter.name, .type = parameter.type});
+    }
+
     // Function declarations don't have much to typecheck, their parameters should already have types defined,
     // so all we have to do is verify that the function body is OK.
     return typechecker_check(typechecker, &node->function_body->body, node->return_type);
