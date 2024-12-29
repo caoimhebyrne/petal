@@ -1,0 +1,22 @@
+// This is an example file to illustrate how the typechecker will catch common errors.
+// This file is not supposed to run, don't be afraid if you get some errors! (be afraid if you don't).
+// To see the errors produced, run `petal ./examples/07_typechecking.petal`.
+
+func my_function(value: i8) -> i32 {
+    return value * 4;
+    //           ^ incompatible types for binary operation: 'i8' and 'i32'
+    // 
+    //             This one is a little hard to understand at first if you're not famiiar with the type inference here.
+    //             You'd probably expect the literal `4` to get coerced into whatever type `value` is to satisfy the binary
+    //             operation, but that is not the case.
+    //             The literal `4` is coerced into the expected overall type, which on its own causes a conflict.
+    //             Either way, an error would be raised, this one is just a little unexpected at first.
+}
+
+func main() -> i32 {
+    i8 result = my_function(32);
+    //          ^ unable to assign value of type 'i32' to type 'i8'
+
+    return result;
+    //     ^ type 'i8' cannot be returned from a function with return type 'i32'
+}
