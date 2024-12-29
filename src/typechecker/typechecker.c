@@ -1,5 +1,6 @@
 #include "typechecker.h"
 #include "../ast/node/binary_operation.h"
+#include "../ast/node/boolean_literal.h"
 #include "../ast/node/function_call.h"
 #include "../ast/node/function_declaration.h"
 #include "../ast/node/identifier_reference.h"
@@ -23,6 +24,7 @@ bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node, Type r
 Type typechecker_check_value(Typechecker* typechecker, Node* value, Type expected_type);
 Type typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNode* node, Type expected_type);
 Type typechecker_check_string_literal(Typechecker* typechecker, StringLiteralNode* node);
+Type typechecker_check_boolean_literal(Typechecker* typechecker, BooleanLiteralNode* node);
 Type typechecker_check_identifier_reference(Typechecker* typechecker, IdentifierReferenceNode* node);
 Type typechecker_check_binary_operation(Typechecker* typechecker, BinaryOperationNode* node, Type expected_type);
 Type typechecker_check_function_call(Typechecker* typechecker, FunctionCallNode* node);
@@ -175,6 +177,9 @@ Type typechecker_check_value(Typechecker* typechecker, Node* node, Type expected
     case NODE_STRING_LITERAL:
         return typechecker_check_string_literal(typechecker, (StringLiteralNode*)node);
 
+    case NODE_BOOLEAN_LITERAL:
+        return typechecker_check_boolean_literal(typechecker, (BooleanLiteralNode*)node);
+
     case NODE_IDENTIFIER_REFERENCE:
         return typechecker_check_identifier_reference(typechecker, (IdentifierReferenceNode*)node);
 
@@ -226,6 +231,14 @@ Type typechecker_check_string_literal(Typechecker* typechecker, StringLiteralNod
 
     // String literals are always i8 pointers.
     return type_create(TYPE_KIND_INT_8, true);
+}
+
+Type typechecker_check_boolean_literal(Typechecker* typechecker, BooleanLiteralNode* node) {
+    (void)typechecker;
+    (void)node;
+
+    // Boolean literals are always `bool`.
+    return type_create(TYPE_KIND_BOOL, false);
 }
 
 Type typechecker_check_identifier_reference(Typechecker* typechecker, IdentifierReferenceNode* node) {
