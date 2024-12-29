@@ -5,6 +5,7 @@
 #include "../ast/node/identifier_reference.h"
 #include "../ast/node/number_literal.h"
 #include "../ast/node/return.h"
+#include "../ast/node/string_literal.h"
 #include "../ast/node/variable_declaration.h"
 #include "declared_function.h"
 #include "declared_variable.h"
@@ -21,6 +22,7 @@ bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node, Type r
 
 Type typechecker_check_value(Typechecker* typechecker, Node* value, Type expected_type);
 Type typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNode* node, Type expected_type);
+Type typechecker_check_string_literal(Typechecker* typechecker, StringLiteralNode* node);
 Type typechecker_check_identifier_reference(Typechecker* typechecker, IdentifierReferenceNode* node);
 Type typechecker_check_binary_operation(Typechecker* typechecker, BinaryOperationNode* node, Type expected_type);
 Type typechecker_check_function_call(Typechecker* typechecker, FunctionCallNode* node);
@@ -170,6 +172,9 @@ Type typechecker_check_value(Typechecker* typechecker, Node* node, Type expected
     case NODE_NUMBER_LITERAL:
         return typechecker_check_number_literal(typechecker, (NumberLiteralNode*)node, expected_type);
 
+    case NODE_STRING_LITERAL:
+        return typechecker_check_string_literal(typechecker, (StringLiteralNode*)node);
+
     case NODE_IDENTIFIER_REFERENCE:
         return typechecker_check_identifier_reference(typechecker, (IdentifierReferenceNode*)node);
 
@@ -213,6 +218,14 @@ Type typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNod
     // Assign the new type to the node.
     node->expected_type = value_type;
     return value_type;
+}
+
+Type typechecker_check_string_literal(Typechecker* typechecker, StringLiteralNode* node) {
+    (void)typechecker;
+    (void)node;
+
+    // String literals are always i8 pointers.
+    return type_create(TYPE_KIND_INT_8, true);
 }
 
 Type typechecker_check_identifier_reference(Typechecker* typechecker, IdentifierReferenceNode* node) {
