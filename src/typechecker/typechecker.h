@@ -9,6 +9,9 @@ typedef struct {
     // The diagnostics produced from this typechecker.
     DiagnosticStream diagnostics;
 
+    // The functions found during this typechecking session.
+    DeclaredVariables functions;
+
     // The variables found during this typechecking session.
     DeclaredVariables variables;
 } Typechecker;

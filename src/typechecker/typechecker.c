@@ -1,5 +1,6 @@
 #include "typechecker.h"
 #include "../ast/node/binary_operation.h"
+#include "../ast/node/function_call.h"
 #include "../ast/node/function_declaration.h"
 #include "../ast/node/identifier_reference.h"
 #include "../ast/node/number_literal.h"
@@ -21,6 +22,7 @@ Type typechecker_check_value(Typechecker* typechecker, Node* value, Type expecte
 Type typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNode* node, Type expected_type);
 Type typechecker_check_identifier_reference(Typechecker* typechecker, IdentifierReferenceNode* node);
 Type typechecker_check_binary_operation(Typechecker* typechecker, BinaryOperationNode* node, Type expected_type);
+Type typechecker_check_function_call(Typechecker* typechecker, FunctionCallNode* node);
 
 Typechecker typechecker_create() {
     DiagnosticStream diagnostics;
@@ -29,7 +31,10 @@ Typechecker typechecker_create() {
     DeclaredVariables variables;
     declared_variables_initialize(&variables, 1);
 
-    return (Typechecker){diagnostics, variables};
+    DeclaredVariables functions;
+    declared_variables_initialize(&functions, 1);
+
+    return (Typechecker){diagnostics, functions, variables};
 }
 
 void typechecker_run(Typechecker* typechecker, NodeStream* node_stream) {
@@ -58,6 +63,15 @@ bool typechecker_check_statement(Typechecker* typechecker, Node* node, Type retu
     case NODE_RETURN:
         return typechecker_check_return(typechecker, (ReturnNode*)node, return_type);
 
+    case NODE_FUNCTION_CALL: {
+        Type return_type = typechecker_check_function_call(typechecker, (FunctionCallNode*)node);
+        if (return_type.kind == TYPE_KIND_INVALID) {
+            return false;
+        }
+
+        return true;
+    }
+
     default: {
         diagnostic_stream_push(&typechecker->diagnostics, node->position, true, "unable to type-check node: '%s'",
                                node_to_string(node));
@@ -68,6 +82,9 @@ bool typechecker_check_statement(Typechecker* typechecker, Node* node, Type retu
 }
 
 bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDeclarationNode* node) {
+    declared_variables_append(&typechecker->functions,
+                              (DeclaredVariable){.name = node->name, .type = node->return_type});
+
     if (node->is_external) {
         // External functions have nothing to typecheck at the moment.
         LOG_DEBUG("typechecker", "skipping external function: '%s'", node->name);
@@ -153,6 +170,9 @@ Type typechecker_check_value(Typechecker* typechecker, Node* node, Type expected
     case NODE_BINARY_OPERATION:
         return typechecker_check_binary_operation(typechecker, (BinaryOperationNode*)node, expected_type);
 
+    case NODE_FUNCTION_CALL:
+        return typechecker_check_function_call(typechecker, (FunctionCallNode*)node);
+
     default: {
         diagnostic_stream_push(&typechecker->diagnostics, node->position, true,
                                "unable to type-check node as value: '%s'", node_to_string(node));
@@ -225,6 +245,21 @@ Type typechecker_check_binary_operation(Typechecker* typechecker, BinaryOperatio
     }
 
     return left_type;
+}
+
+Type typechecker_check_function_call(Typechecker* typechecker, FunctionCallNode* node) {
+    // A function call always refers to a previously declared function.
+    DeclaredVariable* function = declared_variables_find_by_name(typechecker->functions, node->name);
+    if (!function) {
+        diagnostic_stream_push(&typechecker->diagnostics, node->position, true, "undeclared function: '%s'",
+                               node->name);
+        return TYPE_INVALID;
+    }
+
+    // FIXME: Ensure that the provided arguments match the expected function parameters.
+
+    // The type of this function call is the return type of the function.
+    return function->type;
 }
 
 void typechecker_destroy(Typechecker* typechecker) {
