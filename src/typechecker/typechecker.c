@@ -1,4 +1,5 @@
 #include "typechecker.h"
+#include "../ast/node/binary_operation.h"
 #include "../ast/node/function_declaration.h"
 #include "../ast/node/identifier_reference.h"
 #include "../ast/node/number_literal.h"
@@ -19,6 +20,7 @@ bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node, Type r
 Type typechecker_check_value(Typechecker* typechecker, Node* value, Type expected_type);
 Type typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNode* node, Type expected_type);
 Type typechecker_check_identifier_reference(Typechecker* typechecker, IdentifierReferenceNode* node);
+Type typechecker_check_binary_operation(Typechecker* typechecker, BinaryOperationNode* node, Type expected_type);
 
 Typechecker typechecker_create() {
     DiagnosticStream diagnostics;
@@ -140,6 +142,9 @@ Type typechecker_check_value(Typechecker* typechecker, Node* node, Type expected
     case NODE_IDENTIFIER_REFERENCE:
         return typechecker_check_identifier_reference(typechecker, (IdentifierReferenceNode*)node);
 
+    case NODE_BINARY_OPERATION:
+        return typechecker_check_binary_operation(typechecker, (BinaryOperationNode*)node, expected_type);
+
     default: {
         diagnostic_stream_push(&typechecker->diagnostics, node->position, true,
                                "unable to type-check node as value: '%s'", node_to_string(node));
@@ -187,6 +192,31 @@ Type typechecker_check_identifier_reference(Typechecker* typechecker, Identifier
 
     // The type of this identifier reference is the type of the variable.
     return variable->type;
+}
+
+Type typechecker_check_binary_operation(Typechecker* typechecker, BinaryOperationNode* node, Type expected_type) {
+    // Both sides of the operation must be the same type.
+    // This could be expanded to "compatible" types in the future, but for now, we will just make sure
+    // that they are the same type.
+    Type left_type = typechecker_check_value(typechecker, node->left, expected_type);
+    if (left_type.kind == TYPE_KIND_INVALID) {
+        return TYPE_INVALID;
+    }
+
+    Type right_type = typechecker_check_value(typechecker, node->right, expected_type);
+    if (right_type.kind == TYPE_KIND_INVALID) {
+        return TYPE_INVALID;
+    }
+
+    if (left_type.kind != right_type.kind || left_type.is_pointer != right_type.is_pointer) {
+        diagnostic_stream_push(&typechecker->diagnostics, node->position, true,
+                               "incompatible types for binary operation: '%s' and '%s'", type_to_string(left_type),
+                               type_to_string(right_type));
+
+        return TYPE_INVALID;
+    }
+
+    return left_type;
 }
 
 void typechecker_destroy(Typechecker* typechecker) {
