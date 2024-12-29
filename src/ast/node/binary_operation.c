@@ -4,11 +4,16 @@
 
 BinaryOperationNode* binary_operation_node_create(Position position, Node* left, Node* right, Operator operator_) {
     BinaryOperationNode* node = malloc(sizeof(BinaryOperationNode));
+    if (!node) {
+        return 0;
+    }
+
     node->node_type = NODE_BINARY_OPERATION;
     node->position = position;
     node->left = left;
     node->right = right;
     node->operator_ = operator_;
+    node->expected_type = TYPE_INVALID;
 
     return node;
 }

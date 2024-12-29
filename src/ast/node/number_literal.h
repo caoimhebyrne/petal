@@ -2,6 +2,7 @@
 #define __NUMBER_LITERAL_NODE_H__
 
 #include "../node.h"
+#include "../type.h"
 
 typedef struct {
     // The type of this node, always NODE_NUMBER_LITERAL.
@@ -13,6 +14,9 @@ typedef struct {
 
     // The value.
     double value;
+
+    // The expected type that this node produces.
+    Type expected_type;
 } NumberLiteralNode;
 
 // Creates a new variable declaration node.

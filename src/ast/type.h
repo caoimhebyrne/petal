@@ -34,7 +34,8 @@ typedef struct {
     bool is_pointer;
 } Type;
 
-#define TYPE_INVALID (Type){.kind = TYPE_KIND_INVALID, .is_pointer = false};
+#define TYPE_INVALID                                                                                                   \
+    (Type) { .kind = TYPE_KIND_INVALID, .is_pointer = false }
 
 // Creates a Type with a certain kind.
 // Parameters:

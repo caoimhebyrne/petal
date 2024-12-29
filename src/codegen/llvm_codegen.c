@@ -83,15 +83,12 @@ LLVMValueRef llvm_codegen_generate_value(LLVMCodegen* codegen, Node* node, LLVMT
         NumberLiteralNode* number_literal = (NumberLiteralNode*)node;
 
         // Default to a 32-bit integer literal if no type was specified.
-        LLVMTypeRef value_type;
-        if (expected_type == 0) {
-            LOG_DEBUG("llvm-codegen", "generating number literal (%f) with default type of i32", number_literal->value);
+        LLVMTypeRef value_type =
+            llvm_codegen_type_to_ref(codegen, number_literal->expected_type, number_literal->position);
 
-            value_type = LLVMInt32TypeInContext(codegen->context);
-        } else {
-            LOG_DEBUG("llvm-codegen", "generating number literal (%f) with expected type: '%s'", number_literal->value,
-                      LLVMPrintTypeToString(*expected_type));
-            value_type = *expected_type;
+        // If we could not find a matching type reference, return.
+        if (!value_type) {
+            return 0;
         }
 
         return LLVMConstInt(value_type, number_literal->value, false);

@@ -7,6 +7,7 @@
 #include "lexer/token.h"
 #include "logger.h"
 #include "string/format_string.h"
+#include "typechecker/typechecker.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -104,14 +105,25 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    ast_destroy(&ast);
+    Typechecker typechecker = typechecker_create();
+    typechecker_run(&typechecker, &node_stream);
+
+    if (typechecker.diagnostics.length != 0) {
+        diagnostic_stream_print(&typechecker.diagnostics, input_file_name);
+        typechecker_destroy(&typechecker);
+
+        return -1;
+    }
+
+    typechecker_destroy(&typechecker);
 
     LLVMCodegen codegen = llvm_codegen_create(input_file_name, node_stream);
     llvm_codegen_generate(&codegen);
 
     if (codegen.diagnostics.length != 0) {
         diagnostic_stream_print(&codegen.diagnostics, input_file_name);
-        llvm_codegen_destroy(&codegen);
+        // llvm_codegen_destroy(&codegen);
+        // ast_destroy(&ast);
 
         return -1;
     }
@@ -136,5 +148,6 @@ int main(int argc, char** argv) {
     }
 
     llvm_codegen_destroy(&codegen);
+    ast_destroy(&ast);
     return 0;
 }

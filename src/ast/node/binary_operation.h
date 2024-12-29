@@ -2,6 +2,7 @@
 #define __BINARY_OPERATION_H__
 
 #include "../node.h"
+#include "../type.h"
 
 typedef enum {
     OPERATOR_PLUS,
@@ -25,6 +26,9 @@ typedef struct {
 
     // The operator to perform on the two values.
     Operator operator_;
+
+    // The expected type that this node should produce when the operation is performed.
+    Type expected_type;
 } BinaryOperationNode;
 
 // Creates a binary operation node.
