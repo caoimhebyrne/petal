@@ -149,6 +149,10 @@ bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node, Type r
 
     // The value within a return node must match the return type of the function.
     Type value_type = typechecker_check_value(typechecker, node->value, return_type);
+    if (value_type.kind == TYPE_KIND_INVALID) {
+        return false;
+    }
+
     if (value_type.kind != return_type.kind || value_type.is_pointer != return_type.is_pointer) {
         // These types are not matching!
         diagnostic_stream_push(&typechecker->diagnostics, node->position, true,
