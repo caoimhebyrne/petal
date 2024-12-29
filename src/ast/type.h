@@ -24,6 +24,9 @@ typedef enum {
 
     // A 32-bit float, defined as 'f32'.
     TYPE_KIND_FLOAT_32,
+
+    // A 64-bit float, defined as 'f64'.
+    TYPE_KIND_FLOAT_64,
 } TypeKind;
 
 typedef struct {

@@ -90,6 +90,11 @@ LLVMValueRef llvm_codegen_generate_value(LLVMCodegen* codegen, Node* node) {
             return 0;
         }
 
+        if (number_literal->expected_type.kind == TYPE_KIND_FLOAT_32 ||
+            number_literal->expected_type.kind == TYPE_KIND_FLOAT_64) {
+            return LLVMConstReal(value_type, number_literal->value);
+        }
+
         return LLVMConstInt(value_type, number_literal->value, false);
     }
 
@@ -331,19 +336,81 @@ LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, Binary
     LLVMValueRef left = llvm_codegen_generate_value(codegen, node->left);
     LLVMValueRef right = llvm_codegen_generate_value(codegen, node->right);
 
-    // TODO: The types here should change based on the value types.
+    LOG_DEBUG("llvm-codegen", "generating binary operation between '%s' and '%s'", LLVMPrintValueToString(left),
+              LLVMPrintValueToString(right));
+
     switch (node->operator_) {
     case OPERATOR_PLUS:
-        return LLVMBuildAdd(codegen->builder, left, right, "add");
+        switch (node->expected_type.kind) {
+        case TYPE_KIND_FLOAT_32:
+        case TYPE_KIND_FLOAT_64:
+            return LLVMBuildFAdd(codegen->builder, left, right, "fadd");
+
+        case TYPE_KIND_INT_8:
+        case TYPE_KIND_INT_32:
+        case TYPE_KIND_INT_64:
+            return LLVMBuildAdd(codegen->builder, left, right, "add");
+
+        default: {
+            diagnostic_stream_push(&codegen->diagnostics, node->position, true, "unable to produce code for node: '%s'",
+                                   node_to_string((Node*)node));
+            return 0;
+        }
+        }
 
     case OPERATOR_MINUS:
-        return LLVMBuildSub(codegen->builder, left, right, "subtract");
+        switch (node->expected_type.kind) {
+        case TYPE_KIND_FLOAT_32:
+        case TYPE_KIND_FLOAT_64:
+            return LLVMBuildFSub(codegen->builder, left, right, "fsubtract");
+
+        case TYPE_KIND_INT_8:
+        case TYPE_KIND_INT_32:
+        case TYPE_KIND_INT_64:
+            return LLVMBuildSub(codegen->builder, left, right, "subtract");
+
+        default: {
+            diagnostic_stream_push(&codegen->diagnostics, node->position, true, "unable to produce code for node: '%s'",
+                                   node_to_string((Node*)node));
+            return 0;
+        }
+        }
 
     case OPERATOR_DIVIDE:
-        return LLVMBuildSDiv(codegen->builder, left, right, "divide");
+        switch (node->expected_type.kind) {
+        case TYPE_KIND_FLOAT_32:
+        case TYPE_KIND_FLOAT_64:
+            return LLVMBuildFDiv(codegen->builder, left, right, "fdivide");
+
+        case TYPE_KIND_INT_8:
+        case TYPE_KIND_INT_32:
+        case TYPE_KIND_INT_64:
+            return LLVMBuildSDiv(codegen->builder, left, right, "sdivide");
+
+        default: {
+            diagnostic_stream_push(&codegen->diagnostics, node->position, true, "unable to produce code for node: '%s'",
+                                   node_to_string((Node*)node));
+            return 0;
+        }
+        }
 
     case OPERATOR_MULTIPLY:
-        return LLVMBuildMul(codegen->builder, left, right, "multiply");
+        switch (node->expected_type.kind) {
+        case TYPE_KIND_FLOAT_32:
+        case TYPE_KIND_FLOAT_64:
+            return LLVMBuildFMul(codegen->builder, left, right, "fmultiply");
+
+        case TYPE_KIND_INT_8:
+        case TYPE_KIND_INT_32:
+        case TYPE_KIND_INT_64:
+            return LLVMBuildMul(codegen->builder, left, right, "multiply");
+
+        default: {
+            diagnostic_stream_push(&codegen->diagnostics, node->position, true, "unable to produce code for node: '%s'",
+                                   node_to_string((Node*)node));
+            return 0;
+        }
+        }
 
     default: {
         Diagnostic diagnostic = {
@@ -389,6 +456,10 @@ LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, Type type, Position p
 
     case TYPE_KIND_FLOAT_32:
         type_ref = LLVMFloatTypeInContext(codegen->context);
+        break;
+
+    case TYPE_KIND_FLOAT_64:
+        type_ref = LLVMDoubleTypeInContext(codegen->context);
         break;
 
     case TYPE_KIND_VOID:

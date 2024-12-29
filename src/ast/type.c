@@ -17,6 +17,8 @@ TypeKind type_kind_from_string(char* value) {
         return TYPE_KIND_INT_64;
     } else if (strcmp(value, "f32") == 0) {
         return TYPE_KIND_FLOAT_32;
+    } else if (strcmp(value, "f64") == 0) {
+        return TYPE_KIND_FLOAT_64;
     } else {
         return TYPE_KIND_INVALID;
     }
@@ -48,6 +50,10 @@ char* type_to_string(Type type) {
 
     case TYPE_KIND_FLOAT_32:
         type_name = "f32";
+        break;
+
+    case TYPE_KIND_FLOAT_64:
+        type_name = "f64";
         break;
 
     case TYPE_KIND_VOID:

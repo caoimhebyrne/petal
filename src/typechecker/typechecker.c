@@ -206,9 +206,14 @@ Type typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNod
 
     Type value_type;
 
-    // If this is a floating point number, f32 must be used.
+    // Ensure that only floating point values are assigned to floating point literals.
     if (floor(node->value) != node->value) {
-        value_type = type_create(TYPE_KIND_FLOAT_32, false);
+        // If the expected type is f64, we can coerce it to that.
+        if (expected_type.kind == TYPE_KIND_FLOAT_64) {
+            value_type = expected_type;
+        } else {
+            value_type = type_create(TYPE_KIND_FLOAT_32, false);
+        }
     } else {
         // Integer literals have a default type of i32.
         value_type = type_create(TYPE_KIND_INT_32, false);
@@ -279,6 +284,7 @@ Type typechecker_check_binary_operation(Typechecker* typechecker, BinaryOperatio
         return TYPE_INVALID;
     }
 
+    node->expected_type = left_type;
     return left_type;
 }
 
