@@ -3,6 +3,7 @@
 
 #include "../ast/node.h"
 #include "../diagnostics.h"
+#include "declared_function.h"
 #include "declared_variable.h"
 
 typedef struct {
@@ -10,7 +11,7 @@ typedef struct {
     DiagnosticStream diagnostics;
 
     // The functions found during this typechecking session.
-    DeclaredVariables functions;
+    DeclaredFunctions functions;
 
     // The variables found during this typechecking session.
     DeclaredVariables variables;

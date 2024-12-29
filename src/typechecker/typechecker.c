@@ -6,6 +6,7 @@
 #include "../ast/node/number_literal.h"
 #include "../ast/node/return.h"
 #include "../ast/node/variable_declaration.h"
+#include "declared_function.h"
 #include "declared_variable.h"
 #include <math.h>
 #include <stdbool.h>
@@ -28,11 +29,11 @@ Typechecker typechecker_create() {
     DiagnosticStream diagnostics;
     diagnostic_stream_initialize(&diagnostics, 1);
 
+    DeclaredFunctions functions;
+    declared_functions_initialize(&functions, 1);
+
     DeclaredVariables variables;
     declared_variables_initialize(&variables, 1);
-
-    DeclaredVariables functions;
-    declared_variables_initialize(&functions, 1);
 
     return (Typechecker){diagnostics, functions, variables};
 }
@@ -82,8 +83,9 @@ bool typechecker_check_statement(Typechecker* typechecker, Node* node, Type retu
 }
 
 bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDeclarationNode* node) {
-    declared_variables_append(&typechecker->functions,
-                              (DeclaredVariable){.name = node->name, .type = node->return_type});
+    declared_functions_append(
+        &typechecker->functions,
+        (DeclaredFunction){.name = node->name, .return_type = node->return_type, .parameters = node->parameters});
 
     if (node->is_external) {
         // External functions have nothing to typecheck at the moment.
@@ -249,17 +251,44 @@ Type typechecker_check_binary_operation(Typechecker* typechecker, BinaryOperatio
 
 Type typechecker_check_function_call(Typechecker* typechecker, FunctionCallNode* node) {
     // A function call always refers to a previously declared function.
-    DeclaredVariable* function = declared_variables_find_by_name(typechecker->functions, node->name);
+    DeclaredFunction* function = declared_functions_find_by_name(typechecker->functions, node->name);
     if (!function) {
         diagnostic_stream_push(&typechecker->diagnostics, node->position, true, "undeclared function: '%s'",
                                node->name);
         return TYPE_INVALID;
     }
 
-    // FIXME: Ensure that the provided arguments match the expected function parameters.
+    // FIXME: Allow for function overloading.
+    if (node->arguments.length != function->parameters.length) {
+        diagnostic_stream_push(&typechecker->diagnostics, node->position, true,
+                               "function '%s' expects %d parameters, but %d arguments were passed", function->name,
+                               function->parameters.length, node->arguments.length);
+
+        return TYPE_INVALID;
+    }
+
+    // Ensure that the arguments passed match the function's parameters.
+    for (size_t i = 0; i < function->parameters.length; i++) {
+        Parameter parameter = function->parameters.data[i];
+        Node* argument = node->arguments.data[i];
+
+        Type argument_type = typechecker_check_value(typechecker, argument, parameter.type);
+        if (argument_type.kind == TYPE_KIND_INVALID) {
+            return TYPE_INVALID;
+        }
+
+        // If the parameter's type does not match the argument passed, this is a problem.
+        if (parameter.type.kind != argument_type.kind || parameter.type.is_pointer != argument_type.is_pointer) {
+            diagnostic_stream_push(&typechecker->diagnostics, argument->position, true,
+                                   "type '%s' cannot be passed to a function with parameter of type '%s'",
+                                   type_to_string(argument_type), type_to_string(parameter.type));
+
+            return TYPE_INVALID;
+        }
+    }
 
     // The type of this function call is the return type of the function.
-    return function->type;
+    return function->return_type;
 }
 
 void typechecker_destroy(Typechecker* typechecker) {
