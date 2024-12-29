@@ -53,56 +53,7 @@ void llvm_codegen_generate(LLVMCodegen* codegen);
 // - An error message if one occurred, otherwise 0.
 char* llvm_codegen_emit(LLVMCodegen* codegen, char* out_file_path);
 
-// Generates LLVM bytecode for a single node.
-// Parameters:
-// - as_value: Whether this should be generated as a value, instead of a statement.
-// Returns:
-// - The value reference produced by this function.
-//   If this is zero, the generation failed.
-LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node, bool as_value);
-
-// Generates LLVM bytecode for a FunctionDeclarationNode.
-// Returns:
-// - The value reference produced by this function.
-//   If this is zero, the generation failed.
-LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclarationNode* node);
-
-// Generates LLVM bytecode for a FunctionCallNode.
-// Parameters:
-// - as_value: Whether this should be generated as a value, instead of a statement.
-// Returns:
-// - The value reference produced by this function.
-//   If this is zero, the generation failed.
-LLVMValueRef llvm_codegen_generate_function_call(LLVMCodegen* codegen, FunctionCallNode* node, bool as_value);
-
-// Generates LLVM bytecode for a IdentifierReferenceNode.
-// Returns:
-// - The value reference produced by this function.
-//   If this is zero, the generation failed.
-LLVMValueRef llvm_codegen_generate_identifier_reference(LLVMCodegen* codegen, IdentifierReferenceNode* node);
-
-// Generates LLVM bytecode for a VariableDeclarationNode.
-// Returns:
-// - The value reference produced by this function.
-//   If this is zero, the generation failed.
-LLVMValueRef llvm_codegen_generate_variable_declaration(LLVMCodegen* codegen, VariableDeclarationNode* node);
-
-// Generates LLVM bytecode for a ReturnNode.
-// Returns:
-// - The value reference produced by this function.
-//   If this is zero, the generation failed.
-LLVMValueRef llvm_codegen_generate_return(LLVMCodegen* codegen, ReturnNode* node);
-
-// Generates LLVM bytecode for a BinaryOperationNode.
-// Returns:
-// - The value reference produced by this function.
-//   If this is zero, the generation failed.
-LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, BinaryOperationNode* node);
-
 // Destroys the provided LLVM code generator.
 void llvm_codegen_destroy(LLVMCodegen* codegen);
-
-// Converts a Type to an LLVMTypeRef.
-LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, Type type, Position position);
 
 #endif // __LLVM_CODEGEN_H__

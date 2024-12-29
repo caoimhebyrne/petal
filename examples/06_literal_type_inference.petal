@@ -1,0 +1,19 @@
+// By default, number literals will be generated as 32-bit integer constants.
+// Where supported (currently only in variable declarations), they will be generated
+// as the expected type.
+
+// Boilerplate function for printing to the console!
+extern func printf(format: *i8, value: i64);
+
+func multiplier(value: i64) -> i64 {
+    i64 result = value * 6;
+    return result;
+}
+
+func main() {
+    // Previously, this would fail due to `22` being generated as an i32.
+    i64 value = 22;
+    i64 new_value = multiplier(value);
+
+    printf("new_value = %d\n", new_value);
+}

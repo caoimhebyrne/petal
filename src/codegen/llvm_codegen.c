@@ -16,6 +16,21 @@
 #include <stdio.h>
 #include <string.h>
 
+// Forward declarations.
+LLVMValueRef llvm_codegen_generate_value(LLVMCodegen* codegen, Node* node, LLVMTypeRef* expected_type);
+LLVMValueRef llvm_codegen_generate_statement(LLVMCodegen* codegen, Node* node);
+
+LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclarationNode* node);
+LLVMValueRef llvm_codegen_generate_variable_declaration(LLVMCodegen* codegen, VariableDeclarationNode* node);
+LLVMValueRef llvm_codegen_generate_return(LLVMCodegen* codegen, ReturnNode* node);
+
+LLVMValueRef llvm_codegen_generate_function_call(LLVMCodegen* codegen, FunctionCallNode* node, bool as_value);
+LLVMValueRef llvm_codegen_generate_identifier_reference(LLVMCodegen* codegen, IdentifierReferenceNode* node);
+LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, BinaryOperationNode* node,
+                                                    LLVMTypeRef* expected_type);
+
+LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, Type type, Position position);
+
 LLVMCodegen llvm_codegen_create(char* filename, NodeStream node_stream) {
     LLVMContextRef context = LLVMContextCreate();
     LLVMModuleRef module = LLVMModuleCreateWithNameInContext("module", context);
@@ -35,7 +50,7 @@ LLVMCodegen llvm_codegen_create(char* filename, NodeStream node_stream) {
 
 void llvm_codegen_generate(LLVMCodegen* codegen) {
     for (size_t i = 0; i < codegen->node_stream.length; i++) {
-        if (!llvm_codegen_generate_node(codegen, codegen->node_stream.data[i], false)) {
+        if (!llvm_codegen_generate_statement(codegen, codegen->node_stream.data[i])) {
             return;
         }
     }
@@ -56,52 +71,30 @@ void llvm_codegen_generate(LLVMCodegen* codegen) {
     }
 }
 
-char* llvm_codegen_emit(LLVMCodegen* codegen, char* out_file_path) {
-    char* error_message;
-    char* host_triple = LLVMGetDefaultTargetTriple();
-
-    LLVMInitializeAllTargetInfos();
-    LLVMInitializeAllTargets();
-    LLVMInitializeAllAsmPrinters();
-    LLVMInitializeAllTargetMCs();
-
-    LLVMTargetRef target;
-    if (LLVMGetTargetFromTriple(host_triple, &target, &error_message)) {
-        char* formatted_message = format_string("Failed to produce binary: %s", error_message);
-        LLVMDisposeMessage(error_message);
-
-        return formatted_message;
-    }
-
-    LLVMTargetMachineRef target_machine = LLVMCreateTargetMachine(target, host_triple, "", "", LLVMCodeGenLevelDefault,
-                                                                  LLVMRelocPIC, LLVMCodeModelDefault);
-
-    if (LLVMTargetMachineEmitToFile(target_machine, codegen->module, out_file_path, LLVMObjectFile, &error_message)) {
-        char* formatted_message = format_string("Failed to produce binary: %s", error_message);
-        LLVMDisposeMessage(error_message);
-
-        return formatted_message;
-    }
-
-    return 0;
-}
-
-LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node, bool as_value) {
+// Generates an LLVM value for a value-node.
+// Parameters:
+// - expected_type: The (optional) expected type for this value, may be used for literal coersion.
+LLVMValueRef llvm_codegen_generate_value(LLVMCodegen* codegen, Node* node, LLVMTypeRef* expected_type) {
     switch (node->node_type) {
-    case NODE_FUNCTION_DECLARATION:
-        return llvm_codegen_generate_function_declaration(codegen, (FunctionDeclarationNode*)node);
-
-    case NODE_RETURN:
-        return llvm_codegen_generate_return(codegen, (ReturnNode*)node);
-
     case NODE_FUNCTION_CALL:
-        return llvm_codegen_generate_function_call(codegen, (FunctionCallNode*)node, as_value);
+        return llvm_codegen_generate_function_call(codegen, (FunctionCallNode*)node, true);
 
     case NODE_NUMBER_LITERAL: {
         NumberLiteralNode* number_literal = (NumberLiteralNode*)node;
 
-        LLVMTypeRef int_32_type = LLVMInt32TypeInContext(codegen->context);
-        return LLVMConstInt(int_32_type, (int32_t)number_literal->value, false);
+        // Default to a 32-bit integer literal if no type was specified.
+        LLVMTypeRef value_type;
+        if (expected_type == 0) {
+            LOG_DEBUG("llvm-codegen", "generating number literal (%f) with default type of i32", number_literal->value);
+
+            value_type = LLVMInt32TypeInContext(codegen->context);
+        } else {
+            LOG_DEBUG("llvm-codegen", "generating number literal (%f) with expected type: '%s'", number_literal->value,
+                      LLVMPrintTypeToString(*expected_type));
+            value_type = *expected_type;
+        }
+
+        return LLVMConstInt(value_type, number_literal->value, false);
     }
 
     case NODE_BOOLEAN_LITERAL: {
@@ -116,23 +109,38 @@ LLVMValueRef llvm_codegen_generate_node(LLVMCodegen* codegen, Node* node, bool a
         return LLVMBuildGlobalStringPtr(codegen->builder, string_literal->value, "a");
     }
 
-    case NODE_VARIABLE_DECLARATION:
-        return llvm_codegen_generate_variable_declaration(codegen, (VariableDeclarationNode*)node);
-
     case NODE_IDENTIFIER_REFERENCE:
         return llvm_codegen_generate_identifier_reference(codegen, (IdentifierReferenceNode*)node);
 
     case NODE_BINARY_OPERATION:
-        return llvm_codegen_generate_binary_operation(codegen, (BinaryOperationNode*)node);
+        return llvm_codegen_generate_binary_operation(codegen, (BinaryOperationNode*)node, expected_type);
 
     default: {
-        Diagnostic diagnostic = {
-            .position = node->position,
-            .is_terminal = true,
-            .message = format_string("unable to generate code for node '%s'", node_to_string(node)),
-        };
+        diagnostic_stream_push(&codegen->diagnostics, node->position, true, "unable to generate value for node: '%s'",
+                               node_to_string(node));
+        return 0;
+    }
+    }
+}
 
-        diagnostic_stream_append(&codegen->diagnostics, diagnostic);
+// Generates an LLVM value for a statement-node.
+LLVMValueRef llvm_codegen_generate_statement(LLVMCodegen* codegen, Node* node) {
+    switch (node->node_type) {
+    case NODE_FUNCTION_DECLARATION:
+        return llvm_codegen_generate_function_declaration(codegen, (FunctionDeclarationNode*)node);
+
+    case NODE_RETURN:
+        return llvm_codegen_generate_return(codegen, (ReturnNode*)node);
+
+    case NODE_FUNCTION_CALL:
+        return llvm_codegen_generate_function_call(codegen, (FunctionCallNode*)node, false);
+
+    case NODE_VARIABLE_DECLARATION:
+        return llvm_codegen_generate_variable_declaration(codegen, (VariableDeclarationNode*)node);
+
+    default: {
+        diagnostic_stream_push(&codegen->diagnostics, node->position, true,
+                               "unable to generate statement for node: '%s'", node_to_string(node));
         return 0;
     }
     }
@@ -191,7 +199,7 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
 
     if (node->function_body) {
         for (size_t i = 0; i < node->function_body->body.length; i++) {
-            if (!llvm_codegen_generate_node(codegen, node->function_body->body.data[i], false)) {
+            if (!llvm_codegen_generate_statement(codegen, node->function_body->body.data[i])) {
                 return 0;
             }
         }
@@ -245,7 +253,9 @@ LLVMValueRef llvm_codegen_generate_function_call(LLVMCodegen* codegen, FunctionC
     LLVMValueRef arguments[node->arguments.length] = {};
     for (size_t i = 0; i < node->arguments.length; i++) {
         Node* argument = node->arguments.data[i];
-        LLVMValueRef value = llvm_codegen_generate_node(codegen, argument, true);
+
+        // TODO: Get the expected parameter type.
+        LLVMValueRef value = llvm_codegen_generate_value(codegen, argument, 0);
         if (value == 0) {
             return 0;
         }
@@ -288,7 +298,8 @@ LLVMValueRef llvm_codegen_generate_return(LLVMCodegen* codegen, ReturnNode* node
 
     LOG_DEBUG("llvm-codegen", "generating return statement with value '%s'", node_to_string(node->value));
 
-    LLVMValueRef value = llvm_codegen_generate_node(codegen, node->value, true);
+    // FIXME: Infer the expected value from the function's return type.
+    LLVMValueRef value = llvm_codegen_generate_value(codegen, node->value, 0);
     if (value == 0) {
         return 0;
     }
@@ -307,7 +318,7 @@ LLVMValueRef llvm_codegen_generate_variable_declaration(LLVMCodegen* codegen, Va
     LLVMValueRef variable_declaration = LLVMBuildAlloca(codegen->builder, variable_type, node->name);
 
     // 2. Convert the initial value for this variable into an LLVMValueRef.
-    LLVMValueRef initial_value = llvm_codegen_generate_node(codegen, node->value, true);
+    LLVMValueRef initial_value = llvm_codegen_generate_value(codegen, node->value, &variable_type);
     if (!initial_value) {
         return 0;
     }
@@ -322,9 +333,10 @@ LLVMValueRef llvm_codegen_generate_variable_declaration(LLVMCodegen* codegen, Va
     return variable_declaration;
 }
 
-LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, BinaryOperationNode* node) {
-    LLVMValueRef left = llvm_codegen_generate_node(codegen, node->left, true);
-    LLVMValueRef right = llvm_codegen_generate_node(codegen, node->right, true);
+LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, BinaryOperationNode* node,
+                                                    LLVMTypeRef* expected_type) {
+    LLVMValueRef left = llvm_codegen_generate_value(codegen, node->left, expected_type);
+    LLVMValueRef right = llvm_codegen_generate_value(codegen, node->right, expected_type);
 
     // TODO: The types here should change based on the value types.
     switch (node->operator_) {
@@ -407,4 +419,34 @@ LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, Type type, Position p
     } else {
         return type_ref;
     }
+}
+
+char* llvm_codegen_emit(LLVMCodegen* codegen, char* out_file_path) {
+    char* error_message;
+    char* host_triple = LLVMGetDefaultTargetTriple();
+
+    LLVMInitializeAllTargetInfos();
+    LLVMInitializeAllTargets();
+    LLVMInitializeAllAsmPrinters();
+    LLVMInitializeAllTargetMCs();
+
+    LLVMTargetRef target;
+    if (LLVMGetTargetFromTriple(host_triple, &target, &error_message)) {
+        char* formatted_message = format_string("Failed to produce binary: %s", error_message);
+        LLVMDisposeMessage(error_message);
+
+        return formatted_message;
+    }
+
+    LLVMTargetMachineRef target_machine = LLVMCreateTargetMachine(target, host_triple, "", "", LLVMCodeGenLevelDefault,
+                                                                  LLVMRelocPIC, LLVMCodeModelDefault);
+
+    if (LLVMTargetMachineEmitToFile(target_machine, codegen->module, out_file_path, LLVMObjectFile, &error_message)) {
+        char* formatted_message = format_string("Failed to produce binary: %s", error_message);
+        LLVMDisposeMessage(error_message);
+
+        return formatted_message;
+    }
+
+    return 0;
 }
