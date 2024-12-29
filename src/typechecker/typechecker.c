@@ -47,14 +47,16 @@ void typechecker_run(Typechecker* typechecker, NodeStream* node_stream) {
 }
 
 bool typechecker_check(Typechecker* typechecker, NodeStream* node_stream, Type return_type) {
+    bool success = true;
+
     for (size_t i = 0; i < node_stream->length; i++) {
         Node* node = node_stream->data[i];
         if (!typechecker_check_statement(typechecker, node, return_type)) {
-            return false;
+            success = false;
         }
     }
 
-    return true;
+    return success;
 }
 
 bool typechecker_check_statement(Typechecker* typechecker, Node* node, Type return_type) {
@@ -124,6 +126,9 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
 }
 
 bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDeclarationNode* node) {
+    // Record this as a declared variable within this scope.
+    declared_variables_append(&typechecker->variables, (DeclaredVariable){.name = node->name, .type = node->type});
+
     // A variable declaration always has an expected type.
     // If the value does not match the expected type, we must throw an error.
     Type value_type = typechecker_check_value(typechecker, node->value, node->type);
@@ -133,14 +138,12 @@ bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDe
 
     if (value_type.kind != node->type.kind || value_type.is_pointer != node->type.is_pointer) {
         // These types are not matching!
-        diagnostic_stream_push(&typechecker->diagnostics, node->position, true,
+        diagnostic_stream_push(&typechecker->diagnostics, node->value->position, true,
                                "unable to assign value of type '%s' to type '%s'", type_to_string(value_type),
                                type_to_string(node->type));
         return false;
     }
 
-    // Record this as a declared variable within this scope.
-    declared_variables_append(&typechecker->variables, (DeclaredVariable){.name = node->name, .type = value_type});
     return true;
 }
 
@@ -159,7 +162,7 @@ bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node, Type r
 
     if (value_type.kind != return_type.kind || value_type.is_pointer != return_type.is_pointer) {
         // These types are not matching!
-        diagnostic_stream_push(&typechecker->diagnostics, node->position, true,
+        diagnostic_stream_push(&typechecker->diagnostics, node->value->position, true,
                                "type '%s' cannot be returned from a function with return type '%s'",
                                type_to_string(value_type), type_to_string(return_type));
         return false;
