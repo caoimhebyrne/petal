@@ -1,13 +1,6 @@
 #include "arguments.h"
 #include "ast/ast.h"
 #include "ast/node.h"
-#include "ast/node/binary_operation.h"
-#include "ast/node/function_declaration.h"
-#include "ast/node/identifier_reference.h"
-#include "ast/node/number_literal.h"
-#include "ast/node/return.h"
-#include "ast/node/variable_declaration.h"
-#include "ast/type.h"
 #include "codegen/llvm_codegen.h"
 #include "diagnostics.h"
 #include "lexer/lexer.h"
@@ -25,82 +18,6 @@
     "Petal v" VERSION "\n"                                                                                             \
     "This project is licensed under the MIT license.\n"                                                                \
     "GitHub: https://github.com/caoimhebyrne/petal/\n"
-
-void dump_node_as_tree(Node* node, size_t depth) {
-    for (size_t i = 0; i < depth * 2; i++) {
-        printf(" ");
-    }
-
-    if (depth > 0) {
-        printf("- ");
-    }
-
-    switch (node->node_type) {
-    case NODE_NUMBER_LITERAL: {
-        NumberLiteralNode* number_literal_node = (NumberLiteralNode*)node;
-        printf("number literal: '%f'\n", number_literal_node->value);
-
-        break;
-    }
-
-    case NODE_IDENTIFIER_REFERENCE: {
-        IdentifierReferenceNode* identifier_reference_node = (IdentifierReferenceNode*)node;
-        printf("identifier reference: '%s'\n", identifier_reference_node->name);
-        break;
-    }
-
-    case NODE_RETURN: {
-        ReturnNode* return_node = (ReturnNode*)node;
-
-        printf("return\n");
-        if (return_node->value) {
-            dump_node_as_tree(return_node->value, depth + 1);
-        }
-
-        break;
-    }
-
-    case NODE_VARIABLE_DECLARATION: {
-        VariableDeclarationNode* variable_declaration_node = (VariableDeclarationNode*)node;
-
-        printf("variable declaration: '%s' (type: '%s')\n", variable_declaration_node->name,
-               type_to_string(variable_declaration_node->type));
-
-        dump_node_as_tree(variable_declaration_node->value, depth + 1);
-
-        break;
-    }
-
-    case NODE_BINARY_OPERATION: {
-        BinaryOperationNode* binary_operation_node = (BinaryOperationNode*)node;
-
-        printf("binary operation: '%s'\n", operator_to_string(binary_operation_node->operator_));
-        dump_node_as_tree(binary_operation_node->left, depth + 1);
-        dump_node_as_tree(binary_operation_node->right, depth + 1);
-
-        break;
-    }
-
-    case NODE_FUNCTION_DECLARATION: {
-        FunctionDeclarationNode* function_declaration_node = (FunctionDeclarationNode*)node;
-
-        printf("%s\n", function_declaration_node_to_string(function_declaration_node));
-
-        if (function_declaration_node->function_body) {
-            for (size_t i = 0; i < function_declaration_node->function_body->body.length; i++) {
-                Node* body_node = function_declaration_node->function_body->body.data[i];
-                dump_node_as_tree(body_node, depth + 1);
-            }
-        }
-
-        break;
-    }
-
-    default:
-        printf("unable to dump node as tree: '%s' \n", node_to_string(node));
-        break;
-    }
-}
 
 int main(int argc, char** argv) {
     char* output_file_name = 0;
@@ -188,15 +105,6 @@ int main(int argc, char** argv) {
     }
 
     ast_destroy(&ast);
-
-    LOG_INFO("main", "dumping AST tree:");
-
-    for (size_t i = 0; i < node_stream.length; i++) {
-        Node* node = node_stream.data[i];
-
-        dump_node_as_tree(node, 0);
-        printf("\n");
-    }
 
     LLVMCodegen codegen = llvm_codegen_create(input_file_name, node_stream);
     llvm_codegen_generate(&codegen);
