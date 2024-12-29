@@ -17,7 +17,7 @@
 #include <string.h>
 
 // Forward declarations.
-LLVMValueRef llvm_codegen_generate_value(LLVMCodegen* codegen, Node* node, LLVMTypeRef* expected_type);
+LLVMValueRef llvm_codegen_generate_value(LLVMCodegen* codegen, Node* node);
 LLVMValueRef llvm_codegen_generate_statement(LLVMCodegen* codegen, Node* node);
 
 LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclarationNode* node);
@@ -26,8 +26,7 @@ LLVMValueRef llvm_codegen_generate_return(LLVMCodegen* codegen, ReturnNode* node
 
 LLVMValueRef llvm_codegen_generate_function_call(LLVMCodegen* codegen, FunctionCallNode* node, bool as_value);
 LLVMValueRef llvm_codegen_generate_identifier_reference(LLVMCodegen* codegen, IdentifierReferenceNode* node);
-LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, BinaryOperationNode* node,
-                                                    LLVMTypeRef* expected_type);
+LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, BinaryOperationNode* node);
 
 LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, Type type, Position position);
 
@@ -74,7 +73,7 @@ void llvm_codegen_generate(LLVMCodegen* codegen) {
 // Generates an LLVM value for a value-node.
 // Parameters:
 // - expected_type: The (optional) expected type for this value, may be used for literal coersion.
-LLVMValueRef llvm_codegen_generate_value(LLVMCodegen* codegen, Node* node, LLVMTypeRef* expected_type) {
+LLVMValueRef llvm_codegen_generate_value(LLVMCodegen* codegen, Node* node) {
     switch (node->node_type) {
     case NODE_FUNCTION_CALL:
         return llvm_codegen_generate_function_call(codegen, (FunctionCallNode*)node, true);
@@ -110,7 +109,7 @@ LLVMValueRef llvm_codegen_generate_value(LLVMCodegen* codegen, Node* node, LLVMT
         return llvm_codegen_generate_identifier_reference(codegen, (IdentifierReferenceNode*)node);
 
     case NODE_BINARY_OPERATION:
-        return llvm_codegen_generate_binary_operation(codegen, (BinaryOperationNode*)node, expected_type);
+        return llvm_codegen_generate_binary_operation(codegen, (BinaryOperationNode*)node);
 
     default: {
         diagnostic_stream_push(&codegen->diagnostics, node->position, true, "unable to generate value for node: '%s'",
@@ -251,8 +250,7 @@ LLVMValueRef llvm_codegen_generate_function_call(LLVMCodegen* codegen, FunctionC
     for (size_t i = 0; i < node->arguments.length; i++) {
         Node* argument = node->arguments.data[i];
 
-        // TODO: Get the expected parameter type.
-        LLVMValueRef value = llvm_codegen_generate_value(codegen, argument, 0);
+        LLVMValueRef value = llvm_codegen_generate_value(codegen, argument);
         if (value == 0) {
             return 0;
         }
@@ -295,8 +293,7 @@ LLVMValueRef llvm_codegen_generate_return(LLVMCodegen* codegen, ReturnNode* node
 
     LOG_DEBUG("llvm-codegen", "generating return statement with value '%s'", node_to_string(node->value));
 
-    // FIXME: Infer the expected value from the function's return type.
-    LLVMValueRef value = llvm_codegen_generate_value(codegen, node->value, 0);
+    LLVMValueRef value = llvm_codegen_generate_value(codegen, node->value);
     if (value == 0) {
         return 0;
     }
@@ -315,7 +312,7 @@ LLVMValueRef llvm_codegen_generate_variable_declaration(LLVMCodegen* codegen, Va
     LLVMValueRef variable_declaration = LLVMBuildAlloca(codegen->builder, variable_type, node->name);
 
     // 2. Convert the initial value for this variable into an LLVMValueRef.
-    LLVMValueRef initial_value = llvm_codegen_generate_value(codegen, node->value, &variable_type);
+    LLVMValueRef initial_value = llvm_codegen_generate_value(codegen, node->value);
     if (!initial_value) {
         return 0;
     }
@@ -330,10 +327,9 @@ LLVMValueRef llvm_codegen_generate_variable_declaration(LLVMCodegen* codegen, Va
     return variable_declaration;
 }
 
-LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, BinaryOperationNode* node,
-                                                    LLVMTypeRef* expected_type) {
-    LLVMValueRef left = llvm_codegen_generate_value(codegen, node->left, expected_type);
-    LLVMValueRef right = llvm_codegen_generate_value(codegen, node->right, expected_type);
+LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, BinaryOperationNode* node) {
+    LLVMValueRef left = llvm_codegen_generate_value(codegen, node->left);
+    LLVMValueRef right = llvm_codegen_generate_value(codegen, node->right);
 
     // TODO: The types here should change based on the value types.
     switch (node->operator_) {
