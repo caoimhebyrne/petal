@@ -97,7 +97,12 @@ ResolvedType* typechecker_resolve_type(Typechecker* typechecker, Type* type, Pos
         return 0;
     }
 
-    return type_create_resolved(unresolved_type->is_pointer, resolved_type_kind);
+    ResolvedType* resolved_type = type_create_resolved(unresolved_type->is_pointer, resolved_type_kind);
+
+    // Now that we have resolved the type, we can update the original type pointer to be the new type.
+    type = (Type*)resolved_type;
+
+    return resolved_type;
 }
 
 bool typechecker_check_statement(Typechecker* typechecker, Node* node, ResolvedType* return_type) {
@@ -146,26 +151,13 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
         return false;
     }
 
-    // The node's return type has now been resolved.
-    node->return_type = (Type*)return_type;
-
-    // Next, we must type-check the function's parameters.
-    Parameters resolved_parameters;
-    parameters_initialize(&resolved_parameters, node->parameters.length);
-
     for (size_t i = 0; i < node->parameters.length; i++) {
         Parameter parameter = node->parameters.data[i];
-
         ResolvedType* parameter_type = typechecker_resolve_type(typechecker, parameter.type, node->position);
         if (!parameter_type) {
             return 0;
         }
-
-        parameters_append(&resolved_parameters, parameter_create(parameter.name, (Type*)parameter_type));
     }
-
-    // We have resolved all of the node's parameters.
-    node->parameters = resolved_parameters;
 
     declared_functions_append(
         &typechecker->functions,
@@ -187,6 +179,7 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
             "non-external function '%s' has no function body",
             node->name
         );
+
         return false;
     }
 
@@ -219,9 +212,6 @@ bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDe
     if (!variable_type) {
         return false;
     }
-
-    // The node's type has now been resolved.
-    node->type = (Type*)variable_type;
 
     // Record this as a declared variable within this scope.
     declared_variables_append(&typechecker->variables, (DeclaredVariable){.name = node->name, .type = variable_type});
