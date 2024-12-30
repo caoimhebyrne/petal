@@ -7,6 +7,7 @@
 #include "../ast/node/return.h"
 #include "../ast/node/string_literal.h"
 #include "../ast/node/variable_declaration.h"
+#include "../ast/node/variable_reassignment.h"
 #include "../string/format_string.h"
 #include "stored_values.h"
 #include <llvm-c/Analysis.h>
@@ -24,6 +25,7 @@ LLVMValueRef llvm_codegen_generate_statement(LLVMCodegen* codegen, Node* node);
 LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, FunctionDeclarationNode* node);
 LLVMValueRef llvm_codegen_generate_variable_declaration(LLVMCodegen* codegen, VariableDeclarationNode* node);
 LLVMValueRef llvm_codegen_generate_return(LLVMCodegen* codegen, ReturnNode* node);
+LLVMValueRef llvm_codegen_generate_variable_reassignment(LLVMCodegen* codegen, VariableReassignmentNode* node);
 
 LLVMValueRef llvm_codegen_generate_function_call(LLVMCodegen* codegen, FunctionCallNode* node, bool as_value);
 LLVMValueRef llvm_codegen_generate_identifier_reference(LLVMCodegen* codegen, IdentifierReferenceNode* node);
@@ -145,6 +147,9 @@ LLVMValueRef llvm_codegen_generate_statement(LLVMCodegen* codegen, Node* node) {
 
     case NODE_VARIABLE_DECLARATION:
         return llvm_codegen_generate_variable_declaration(codegen, (VariableDeclarationNode*)node);
+
+    case NODE_VARIABLE_REASSIGNMENT:
+        return llvm_codegen_generate_variable_reassignment(codegen, (VariableReassignmentNode*)node);
 
     default: {
         diagnostic_stream_push(&codegen->diagnostics, node->position, true,
@@ -315,6 +320,24 @@ LLVMValueRef llvm_codegen_generate_return(LLVMCodegen* codegen, ReturnNode* node
     }
 
     return LLVMBuildRet(codegen->builder, value);
+}
+
+LLVMValueRef llvm_codegen_generate_variable_reassignment(LLVMCodegen* codegen, VariableReassignmentNode* node) {
+    // The `alloca` for this variable must exist.
+    StoredValue* variable = stored_values_find_by_name(codegen->stored_values, node->variable_name);
+    if (!variable) {
+        diagnostic_stream_push(&codegen->diagnostics, node->position, true,
+                               "undeclared variable: '%s', possibly a code generation bug!", node->variable_name);
+        return 0;
+    }
+
+    LLVMValueRef new_value = llvm_codegen_generate_value(codegen, node->value);
+    if (!new_value) {
+        return 0;
+    }
+
+    // Build a `store` for the new value.
+    return LLVMBuildStore(codegen->builder, new_value, variable->value);
 }
 
 LLVMValueRef llvm_codegen_generate_variable_declaration(LLVMCodegen* codegen, VariableDeclarationNode* node) {

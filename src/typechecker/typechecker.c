@@ -9,6 +9,7 @@
 #include "../ast/node/string_literal.h"
 #include "../ast/node/type_alias_declaration.h"
 #include "../ast/node/variable_declaration.h"
+#include "../ast/node/variable_reassignment.h"
 #include "declared_function.h"
 #include "declared_variable.h"
 #include "type_alias.h"
@@ -25,6 +26,7 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
 bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDeclarationNode* node);
 bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node, ResolvedType* return_type);
 bool typechecker_check_type_alias_declaration(Typechecker* typechecker, TypeAliasDeclarationNode* node);
+bool typechecker_check_variable_reassignment(Typechecker* typechecker, VariableReassignmentNode* node);
 
 ResolvedType* typechecker_check_value(Typechecker* typechecker, Node* value, ResolvedType* expected_type);
 ResolvedType* typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNode* node,
@@ -114,6 +116,9 @@ bool typechecker_check_statement(Typechecker* typechecker, Node* node, ResolvedT
 
     case NODE_TYPE_ALIAS_DECLARATION:
         return typechecker_check_type_alias_declaration(typechecker, (TypeAliasDeclarationNode*)node);
+
+    case NODE_VARIABLE_REASSIGNMENT:
+        return typechecker_check_variable_reassignment(typechecker, (VariableReassignmentNode*)node);
 
     default: {
         diagnostic_stream_push(&typechecker->diagnostics, node->position, true, "unable to type-check node: '%s'",
@@ -253,6 +258,32 @@ bool typechecker_check_type_alias_declaration(Typechecker* typechecker, TypeAlia
 
     // The type alias can now be recorded for future use.
     type_aliases_append(&typechecker->type_aliases, (TypeAlias){.name = node->name, .type = aliased_type});
+    return true;
+}
+
+bool typechecker_check_variable_reassignment(Typechecker* typechecker, VariableReassignmentNode* node) {
+    // The variable must already be declared.
+    DeclaredVariable* variable = declared_variables_find_by_name(typechecker->variables, node->variable_name);
+    if (!variable) {
+        diagnostic_stream_push(&typechecker->diagnostics, node->position, true,
+                               "unable to assign value to undeclared variable: '%s'", node->variable_name);
+        return false;
+    }
+
+    // The type of the variable must match the type of the value.
+    ResolvedType* value_type = typechecker_check_value(typechecker, node->value, variable->type);
+    if (!value_type) {
+        return false;
+    }
+
+    if (!type_equal((Type*)variable->type, (Type*)value_type)) {
+        diagnostic_stream_push(&typechecker->diagnostics, node->position, true,
+                               "unable to assign value of type '%s' to variable of type '%s'",
+                               type_to_string((Type*)value_type), type_to_string((Type*)variable->type));
+
+        return false;
+    }
+
     return true;
 }
 

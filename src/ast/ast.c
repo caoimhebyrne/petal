@@ -11,6 +11,7 @@
 #include "node/string_literal.h"
 #include "node/type_alias_declaration.h"
 #include "node/variable_declaration.h"
+#include "node/variable_reassignment.h"
 #include "parameter.h"
 #include "type.h"
 #include <stdbool.h>
@@ -33,6 +34,7 @@ Node* ast_parse_statement(AST* ast);
 Node* ast_parse_expression(AST* ast);
 Node* ast_parse_value(AST* ast);
 
+Node* ast_parse_variable_reassignment_statement(AST* ast);
 Node* ast_parse_type_alias_declaration_statement(AST* ast);
 Node* ast_parse_return_statement(AST* ast);
 Node* ast_parse_variable_declaration_statement(AST* ast);
@@ -204,6 +206,9 @@ Node* ast_parse_statement(AST* ast) {
 
     else if (ast_next_is(ast, TOKEN_IDENTIFIER) && ast_after_next_is(ast, TOKEN_OPEN_PARENTHESIS))
         statement = ast_parse_function_call(ast);
+
+    else if (ast_next_is(ast, TOKEN_IDENTIFIER) && ast_after_next_is(ast, TOKEN_EQUALS))
+        statement = ast_parse_variable_reassignment_statement(ast);
 
     else if (ast_next_is_string(ast, TOKEN_KEYWORD, "type"))
         statement = ast_parse_type_alias_declaration_statement(ast);
@@ -548,6 +553,28 @@ Node* ast_parse_function_declaration_statement(AST* ast) {
 
     return (Node*)function_declaration_node_create(func_keyword_token.position, name_token.string, parameters,
                                                    return_type, function_body, false);
+}
+
+// <identifier> = (expression)
+Node* ast_parse_variable_reassignment_statement(AST* ast) {
+    // The first token must be a valid identifier.
+    Token name_token = ast_consume_type(ast, TOKEN_IDENTIFIER);
+    if (name_token.type == TOKEN_INVALID) {
+        return 0;
+    }
+
+    Token equals_token = ast_consume_type(ast, TOKEN_EQUALS);
+    if (equals_token.type == TOKEN_INVALID) {
+        return 0;
+    }
+
+    // The last token(s) must represent a valid expression.
+    Node* value = ast_parse_expression(ast);
+    if (!value) {
+        return 0;
+    }
+
+    return (Node*)variable_reassignment_node_create(equals_token.position, name_token.string, value);
 }
 
 // <keyword: type> <identifier> = <identifier>

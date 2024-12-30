@@ -11,6 +11,7 @@
 #include "node/string_literal.h"
 #include "node/type_alias_declaration.h"
 #include "node/variable_declaration.h"
+#include "node/variable_reassignment.h"
 #include "type.h"
 
 CREATE_STREAM(NodeStream, node_stream, Node*);
@@ -103,6 +104,13 @@ void node_destroy(Node* node) {
 
         break;
     }
+
+    case NODE_VARIABLE_REASSIGNMENT: {
+        VariableReassignmentNode* variable_reassignment = (VariableReassignmentNode*)node;
+
+        node_destroy(variable_reassignment->value);
+        free(variable_reassignment->variable_name);
+    }
     }
 
     free(node);
@@ -150,6 +158,9 @@ char* node_to_string(Node* node) {
 
     case NODE_TYPE_ALIAS_DECLARATION:
         return type_alias_declaration_node_to_string((TypeAliasDeclarationNode*)node);
+
+    case NODE_VARIABLE_REASSIGNMENT:
+        return variable_reassignment_node_to_string((VariableReassignmentNode*)node);
     }
 
     return format_string("unknown node (%d)", node->node_type);

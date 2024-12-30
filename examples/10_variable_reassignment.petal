@@ -1,0 +1,14 @@
+// Defined variables must have an initial value, but they can also have
+// values re-assigned to them.
+// This works the same as in any other language, see the `main` function for an example.
+
+// void printf(char* format, ...);
+extern func printf(format: *i8, value: i8);
+
+func main() {
+    i8 value = 5;
+    printf("before re-assignment = %d\n", value);
+
+    value = 5.5;
+    printf("after re-assignment = %d\n", value);
+}

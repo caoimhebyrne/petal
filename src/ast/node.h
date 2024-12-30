@@ -48,6 +48,10 @@ typedef enum {
     // A type alias declaration noed.
     // See TypeAliasDeclarationNode.
     NODE_TYPE_ALIAS_DECLARATION,
+
+    // A variable re-assignment node.
+    // See VariableReassignmentNode.
+    NODE_VARIABLE_REASSIGNMENT,
 } NodeType;
 
 typedef struct {
