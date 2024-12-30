@@ -35,6 +35,7 @@ typedef enum {
     TOKEN_COLON,               // ;
     TOKEN_COMMA,               // ,
     TOKEN_PLUS,                // +
+    TOKEN_AMPERSAND,           // &
 } TokenType;
 
 // Represents a single Token produced by the Lexer.

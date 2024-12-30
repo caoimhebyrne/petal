@@ -147,6 +147,10 @@ TokenStream lexer_parse(Lexer* lexer) {
             token_stream_append(&stream, (Token){.type = TOKEN_PLUS, .position = lexer->position});
             break;
 
+        case '&':
+            token_stream_append(&stream, (Token){.type = TOKEN_AMPERSAND, .position = lexer->position});
+            break;
+
         case '"': {
             lexer->position.index += 1;
             Token token = lexer_parse_string_literal(lexer);

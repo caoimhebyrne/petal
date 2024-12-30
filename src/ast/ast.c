@@ -321,6 +321,9 @@ Node* ast_parse_value(AST* ast) {
     if (ast_next_is_string(ast, TOKEN_KEYWORD, "true") || ast_next_is_string(ast, TOKEN_KEYWORD, "false"))
         return ast_parse_boolean_literal_expression(ast);
 
+    if (ast_next_is(ast, TOKEN_AMPERSAND))
+        return ast_parse_identifier_reference_expression(ast);
+
     Token next = ast_peek(ast);
     switch (next.type) {
     case TOKEN_NUMBER_LITERAL:
@@ -385,15 +388,22 @@ Node* ast_parse_string_literal_expression(AST* ast) {
     return (Node*)string_literal_node_create(token.position, token.string);
 }
 
-// <identifier>
+// [&]<identifier>
 Node* ast_parse_identifier_reference_expression(AST* ast) {
-    // The first token must be an identifier.
+    // The first token may be an ampersand, indicating that this should be passed by reference.
+    bool by_reference = false;
+    if (ast_next_is(ast, TOKEN_AMPERSAND)) {
+        ast_consume(ast);
+        by_reference = true;
+    }
+
+    // The first token (or the one after the ampersand) must be an identifier.
     Token token = ast_consume_type(ast, TOKEN_IDENTIFIER);
     if (token.type == TOKEN_INVALID) {
         return 0;
     }
 
-    return (Node*)identifier_reference_node_create(token.position, token.string);
+    return (Node*)identifier_reference_node_create(token.position, token.string, by_reference);
 }
 
 Node* ast_parse_function_call(AST* ast) {

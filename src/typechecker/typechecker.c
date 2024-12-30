@@ -227,7 +227,6 @@ bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDe
     }
 
     if (!type_equal((Type*)variable_type, (Type*)value_type)) {
-        // These types are not matching!
         diagnostic_stream_push(
             &typechecker->diagnostics,
             node->value->position,
@@ -308,16 +307,21 @@ bool typechecker_check_variable_reassignment(Typechecker* typechecker, VariableR
     }
 
     if (!type_equal((Type*)variable->type, (Type*)value_type)) {
-        diagnostic_stream_push(
-            &typechecker->diagnostics,
-            node->position,
-            true,
-            "unable to assign value of type '%s' to variable of type '%s'",
-            type_to_string((Type*)value_type),
-            type_to_string((Type*)variable->type)
-        );
+        // If the left side is a pointer, but the right side is not, then we can allow that.
+        // The code generator should allow values to be assigned to pointers.
+        bool is_value_to_pointer_assignment = variable->type->is_pointer && !value_type->is_pointer;
+        if (!is_value_to_pointer_assignment) {
+            diagnostic_stream_push(
+                &typechecker->diagnostics,
+                node->position,
+                true,
+                "unable to assign value of type '%s' to variable of type '%s'",
+                type_to_string((Type*)value_type),
+                type_to_string((Type*)variable->type)
+            );
 
-        return false;
+            return false;
+        }
     }
 
     return true;
@@ -371,7 +375,7 @@ ResolvedType* typechecker_check_number_literal(
     if (floor(node->value) != node->value) {
         // If the expected type is f64, we can coerce it to that.
         if (expected_type->kind == TYPE_KIND_FLOAT_64) {
-            value_type = expected_type;
+            value_type = type_create_resolved(false, TYPE_KIND_FLOAT_64);
         } else {
             value_type = type_create_resolved(false, TYPE_KIND_FLOAT_32);
         }
@@ -387,7 +391,8 @@ ResolvedType* typechecker_check_number_literal(
                 "expected type for number literal is '%s', coercing to that type as it is safe to do so",
                 type_to_string((Type*)expected_type)
             );
-            value_type = expected_type;
+
+            value_type = type_create_resolved(false, expected_type->kind);
         }
     }
 
@@ -424,6 +429,11 @@ ResolvedType* typechecker_check_identifier_reference(Typechecker* typechecker, I
             node->name
         );
         return 0;
+    }
+
+    // If this identifier reference node is by reference, the type must be a pointer.
+    if (node->by_reference) {
+        return type_create_resolved(true, variable->type->kind);
     }
 
     // The type of this identifier reference is the type of the variable.

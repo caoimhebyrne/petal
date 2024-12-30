@@ -217,15 +217,32 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
                 LLVMPrintTypeToString(parameter_type)
             );
 
-            // In order to access this properly, we need to build an alloca and store for this parameter.
-            LLVMValueRef alloca = LLVMBuildAlloca(codegen->builder, parameter_type, node_parameter.name);
+            if (node_parameter.type->is_pointer) {
+                // This part is kinda confusing, I just stole it from an LLVM dump from clang.
 
-            // We can then store the parameter reference into this alloca.
-            LLVMBuildStore(codegen->builder, parameter, alloca);
+                // Allocate memory on the stack for this parameter.
+                LLVMValueRef alloca = LLVMBuildAlloca(codegen->builder, parameter_type, "ref");
 
-            // The alloca can now be referenced through the stored value.
-            StoredValue stored_value = stored_value_create(node_parameter.name, alloca);
-            stored_values_append(&codegen->stored_values, stored_value);
+                // Store the parameter's value into this memory.
+                LLVMBuildStore(codegen->builder, parameter, alloca);
+
+                // Load the parameter's value back into the memory as a pointer..?
+                LLVMValueRef load = LLVMBuildLoad2(codegen->builder, parameter_type, alloca, node_parameter.name);
+
+                // The load can now be referenced through the stored value.
+                StoredValue stored_value = stored_value_create(node_parameter.name, load);
+                stored_values_append(&codegen->stored_values, stored_value);
+            } else {
+                // To access this value, we need to build an alloca for the parameter.
+                LLVMValueRef alloca = LLVMBuildAlloca(codegen->builder, parameter_type, node_parameter.name);
+
+                // We can then store the parameter reference into this alloca.
+                LLVMBuildStore(codegen->builder, parameter, alloca);
+
+                // The alloca can now be referenced through the stored value.
+                StoredValue stored_value = stored_value_create(node_parameter.name, alloca);
+                stored_values_append(&codegen->stored_values, stored_value);
+            }
         }
     }
 
@@ -329,6 +346,12 @@ LLVMValueRef llvm_codegen_generate_identifier_reference(LLVMCodegen* codegen, Id
 
         diagnostic_stream_append(&codegen->diagnostics, diagnostic);
         return 0;
+    }
+
+    // If this identifier reference is being passed... by a reference, only pass a pointer to the value,
+    // not a copy of the value.
+    if (node->by_reference) {
+        return stored_value->value;
     }
 
     LLVMTypeRef type = LLVMGetAllocatedType(stored_value->value);

@@ -14,12 +14,16 @@ typedef struct {
 
     // The name of the identifier referenced.
     char* name;
+
+    // Whether this should be passed by reference or not.
+    bool by_reference;
 } IdentifierReferenceNode;
 
 // Creates a new IdentifierReferenceNode.
 // Parameters:
 // - name: The name of the identifier referenced.
-IdentifierReferenceNode* identifier_reference_node_create(Position position, char* name);
+// - by_reference: Whether this should be passed by reference or not.
+IdentifierReferenceNode* identifier_reference_node_create(Position position, char* name, bool by_reference);
 
 // Returns a string representation of the provided IdentifierReferenceNode.
 // Parameters:

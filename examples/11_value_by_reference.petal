@@ -1,0 +1,40 @@
+// As shown in previous examples, Petal has support for pointers as values.
+// A pointer is just a value that indicates where the requested value is in memory, it *points* to the value.
+//
+// When values are passed to functions in Petal, they are passed as a copy of the value.
+// Example 1:
+// ```petal
+// func modifier(value: i64) {
+//     value = 5;
+// }
+//
+// func main() {
+//     i64 my_value = 500;
+//     modifier(my_value);
+// }
+// ```
+// `my_value` is still `500` after `main` invokes `modifier`, this is because a copy of the value was passed, 
+// not a pointer.
+//
+// To pass values by reference (or as a pointer), prefix the variable's name with an `&`.
+
+// void printf(char* format, ...);
+extern func printf(format: *i8, value: i64);
+
+func modifier(value: *i64) {
+    value = 5;
+}
+
+func main() {
+    i64 my_value = 500;
+
+    printf("my_value before modifier: %d\n", my_value);
+    modifier(&my_value);
+    printf("my_value after modifier: %d\n", my_value);
+}
+
+// Running this example should yield the following output:
+// $ petal -o 11_pointers ./examples/11_pointers.petal
+// $ ./11_pointers
+// my_value before modifier: 500
+// my_value after modifier: 5
