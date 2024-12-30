@@ -19,7 +19,7 @@
 // Forward declarations:
 bool typechecker_check(Typechecker* typechecker, NodeStream* node_stream, ResolvedType* return_type);
 
-ResolvedType* typechecker_resolve_type(Typechecker* typechecker, Type* type, Position position);
+ResolvedType* typechecker_resolve_type(Typechecker* typechecker, Type** type_reference, Position position);
 
 bool typechecker_check_statement(Typechecker* typechecker, Node* node, ResolvedType* return_type);
 bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDeclarationNode* node);
@@ -77,16 +77,20 @@ bool typechecker_check(Typechecker* typechecker, NodeStream* node_stream, Resolv
     return success;
 }
 
-ResolvedType* typechecker_resolve_type(Typechecker* typechecker, Type* type, Position position) {
+ResolvedType* typechecker_resolve_type(Typechecker* typechecker, Type** type_reference, Position position) {
+    // If the type is already resolved, just return it.
+    Type* type = *type_reference;
     if (type->is_resolved) {
         return (ResolvedType*)type;
     }
 
+    // This is an unresolved type.
     UnresolvedType* unresolved_type = (UnresolvedType*)type;
 
     // The name may be referring to a type alias.
     TypeAlias* alias = type_aliases_find_by_name(typechecker->type_aliases, unresolved_type->name);
     if (alias) {
+        *type_reference = (Type*)alias->type;
         return alias->type;
     }
 
@@ -100,8 +104,7 @@ ResolvedType* typechecker_resolve_type(Typechecker* typechecker, Type* type, Pos
     ResolvedType* resolved_type = type_create_resolved(unresolved_type->is_pointer, resolved_type_kind);
 
     // Now that we have resolved the type, we can update the original type pointer to be the new type.
-    type = (Type*)resolved_type;
-
+    *type_reference = (Type*)resolved_type;
     return resolved_type;
 }
 
@@ -146,14 +149,14 @@ bool typechecker_check_statement(Typechecker* typechecker, Node* node, ResolvedT
 }
 
 bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDeclarationNode* node) {
-    ResolvedType* return_type = typechecker_resolve_type(typechecker, node->return_type, node->position);
+    ResolvedType* return_type = typechecker_resolve_type(typechecker, &node->return_type, node->position);
     if (!return_type) {
         return false;
     }
 
     for (size_t i = 0; i < node->parameters.length; i++) {
-        Parameter parameter = node->parameters.data[i];
-        ResolvedType* parameter_type = typechecker_resolve_type(typechecker, parameter.type, node->position);
+        Parameter* parameter = &node->parameters.data[i];
+        ResolvedType* parameter_type = typechecker_resolve_type(typechecker, &parameter->type, node->position);
         if (!parameter_type) {
             return 0;
         }
@@ -208,7 +211,7 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
 
 bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDeclarationNode* node) {
     // The variable's type must be a resolvable type.
-    ResolvedType* variable_type = typechecker_resolve_type(typechecker, node->type, node->position);
+    ResolvedType* variable_type = typechecker_resolve_type(typechecker, &node->type, node->position);
     if (!variable_type) {
         return false;
     }
@@ -274,7 +277,7 @@ bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node, Resolv
 
 bool typechecker_check_type_alias_declaration(Typechecker* typechecker, TypeAliasDeclarationNode* node) {
     // The type being aliased must be resolvable.
-    ResolvedType* aliased_type = typechecker_resolve_type(typechecker, node->type, node->position);
+    ResolvedType* aliased_type = typechecker_resolve_type(typechecker, &node->type, node->position);
     if (!aliased_type) {
         return false;
     }
