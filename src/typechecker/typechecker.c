@@ -101,7 +101,8 @@ ResolvedType* typechecker_resolve_type(Typechecker* typechecker, Type** type_ref
         return 0;
     }
 
-    ResolvedType* resolved_type = type_create_resolved(unresolved_type->is_pointer, resolved_type_kind);
+    ResolvedType* resolved_type =
+        type_create_resolved(unresolved_type->is_optional, unresolved_type->is_pointer, resolved_type_kind);
 
     // Now that we have resolved the type, we can update the original type pointer to be the new type.
     *type_reference = (Type*)resolved_type;
@@ -215,9 +216,26 @@ bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDe
     if (!variable_type) {
         return false;
     }
-
     // Record this as a declared variable within this scope.
     declared_variables_append(&typechecker->variables, (DeclaredVariable){.name = node->name, .type = variable_type});
+
+    // If the declaration does not have a value, it must be of an optional type.
+    if (!node->value && !variable_type->is_optional) {
+        diagnostic_stream_push(
+            &typechecker->diagnostics,
+            node->position,
+            true,
+            "variable '%s' does not have an initial value",
+            node->name
+        );
+
+        return false;
+    }
+
+    // If there is no value, there is nothing left to check.
+    if (!node->value) {
+        return true;
+    }
 
     // A variable declaration always has an expected type.
     // If the value does not match the expected type, we must throw an error.
@@ -226,7 +244,9 @@ bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDe
         return false;
     }
 
-    if (!type_equal((Type*)variable_type, (Type*)value_type)) {
+    // Allow non-null values to be assigned to nullable variables.
+    // Anything else is a type mismatch.
+    if (variable_type->is_pointer != value_type->is_pointer || variable_type->kind != value_type->kind) {
         diagnostic_stream_push(
             &typechecker->diagnostics,
             node->value->position,
@@ -306,11 +326,14 @@ bool typechecker_check_variable_reassignment(Typechecker* typechecker, VariableR
         return false;
     }
 
-    if (!type_equal((Type*)variable->type, (Type*)value_type)) {
-        // If the left side is a pointer, but the right side is not, then we can allow that.
+    if (variable->type->kind != value_type->kind) {
         // The code generator should allow values to be assigned to pointers.
         bool is_value_to_pointer_assignment = variable->type->is_pointer && !value_type->is_pointer;
-        if (!is_value_to_pointer_assignment) {
+
+        // Non-optionals should be allowed to be assigned to optionals.
+        bool is_non_optional_to_optional_assignment = variable->type->is_optional && !value_type->is_optional;
+
+        if (!is_value_to_pointer_assignment && !is_non_optional_to_optional_assignment) {
             diagnostic_stream_push(
                 &typechecker->diagnostics,
                 node->position,
@@ -375,13 +398,13 @@ ResolvedType* typechecker_check_number_literal(
     if (floor(node->value) != node->value) {
         // If the expected type is f64, we can coerce it to that.
         if (expected_type->kind == TYPE_KIND_FLOAT_64) {
-            value_type = type_create_resolved(false, TYPE_KIND_FLOAT_64);
+            value_type = type_create_resolved(false, false, TYPE_KIND_FLOAT_64);
         } else {
-            value_type = type_create_resolved(false, TYPE_KIND_FLOAT_32);
+            value_type = type_create_resolved(false, false, TYPE_KIND_FLOAT_32);
         }
     } else {
         // Integer literals have a default type of i32.
-        value_type = type_create_resolved(false, TYPE_KIND_INT_32);
+        value_type = type_create_resolved(false, false, TYPE_KIND_INT_32);
 
         // If the expected type is a supported integer type, we can coerce it to that.
         if (expected_type->kind == TYPE_KIND_INT_8 || expected_type->kind == TYPE_KIND_INT_32 ||
@@ -392,7 +415,7 @@ ResolvedType* typechecker_check_number_literal(
                 type_to_string((Type*)expected_type)
             );
 
-            value_type = type_create_resolved(false, expected_type->kind);
+            value_type = type_create_resolved(false, false, expected_type->kind);
         }
     }
 
@@ -406,7 +429,7 @@ ResolvedType* typechecker_check_string_literal(Typechecker* typechecker, StringL
     (void)node;
 
     // String literals are always i8 pointers.
-    return type_create_resolved(true, TYPE_KIND_INT_8);
+    return type_create_resolved(false, true, TYPE_KIND_INT_8);
 }
 
 ResolvedType* typechecker_check_boolean_literal(Typechecker* typechecker, BooleanLiteralNode* node) {
@@ -414,7 +437,7 @@ ResolvedType* typechecker_check_boolean_literal(Typechecker* typechecker, Boolea
     (void)node;
 
     // Boolean literals are always `bool`.
-    return type_create_resolved(false, TYPE_KIND_BOOL);
+    return type_create_resolved(false, false, TYPE_KIND_BOOL);
 }
 
 ResolvedType* typechecker_check_identifier_reference(Typechecker* typechecker, IdentifierReferenceNode* node) {
@@ -433,7 +456,7 @@ ResolvedType* typechecker_check_identifier_reference(Typechecker* typechecker, I
 
     // If this identifier reference node is by reference, the type must be a pointer.
     if (node->by_reference) {
-        return type_create_resolved(true, variable->type->kind);
+        return type_create_resolved(variable->type->is_optional, true, variable->type->kind);
     }
 
     // The type of this identifier reference is the type of the variable.

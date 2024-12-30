@@ -1,29 +1,32 @@
 #include "type.h"
 #include "../string/format_string.h"
+#include "../string/string_builder.h"
 #include "type-kind.h"
 #include <stdlib.h>
 #include <string.h>
 
-UnresolvedType* type_create_unresolved(bool is_pointer, char* name) {
+UnresolvedType* type_create_unresolved(bool is_optional, bool is_pointer, char* name) {
     UnresolvedType* type = malloc(sizeof(UnresolvedType));
     if (!type) {
         return 0;
     }
 
     type->is_resolved = false;
+    type->is_optional = is_optional;
     type->is_pointer = is_pointer;
     type->name = strdup(name);
 
     return type;
 }
 
-ResolvedType* type_create_resolved(bool is_pointer, TypeKind kind) {
+ResolvedType* type_create_resolved(bool is_optional, bool is_pointer, TypeKind kind) {
     ResolvedType* type = malloc(sizeof(ResolvedType));
     if (!type) {
         return 0;
     }
 
     type->is_resolved = true;
+    type->is_optional = is_optional;
     type->is_pointer = is_pointer;
     type->kind = kind;
 
@@ -31,6 +34,11 @@ ResolvedType* type_create_resolved(bool is_pointer, TypeKind kind) {
 }
 
 bool type_equal(Type* type_a, Type* type_b) {
+    // If one type is optional, and the other isn't, they do not match.
+    if (type_a->is_optional != type_b->is_optional) {
+        return false;
+    }
+
     // If one type is a pointer, and the other isn't, they do not match.
     if (type_a->is_pointer != type_b->is_pointer) {
         return false;
@@ -57,16 +65,24 @@ bool type_equal(Type* type_a, Type* type_b) {
 }
 
 char* type_to_string(Type* type) {
+    StringBuilder builder;
+    string_builder_initialize(&builder, 2);
+
+    if (type->is_pointer) {
+        string_builder_append(&builder, '*');
+    }
+
+    if (type->is_optional) {
+        string_builder_append(&builder, '?');
+    }
+
+    char* prefix = string_builder_finish(&builder);
     if (type->is_resolved) {
         ResolvedType* resolved_type = (ResolvedType*)type;
-        if (resolved_type->is_pointer) {
-            return format_string("*%s", type_kind_to_string(resolved_type->kind));
-        } else {
-            return type_kind_to_string(resolved_type->kind);
-        }
+        return format_string("%s%s", prefix, type_kind_to_string(resolved_type->kind));
     } else {
         UnresolvedType* unresolved_type = (UnresolvedType*)type;
-        return format_string("unresolved ('*%s')", unresolved_type->name);
+        return format_string("unresolved ('%s%s')", prefix, unresolved_type->name);
     }
 }
 

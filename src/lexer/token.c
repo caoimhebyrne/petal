@@ -84,6 +84,9 @@ char* token_type_to_string(TokenType token_type) {
 
     case TOKEN_AMPERSAND:
         return "ampersand";
+
+    case TOKEN_QUESTION_MARK:
+        return "question mark";
     }
 
     return "unknown";

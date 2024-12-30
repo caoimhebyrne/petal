@@ -408,18 +408,23 @@ LLVMValueRef llvm_codegen_generate_variable_declaration(LLVMCodegen* codegen, Va
     LOG_DEBUG("llvm-codegen", "generating variable declaration '%s'", node->name);
     LLVMValueRef variable_declaration = LLVMBuildAlloca(codegen->builder, variable_type, node->name);
 
-    // 2. Convert the initial value for this variable into an LLVMValueRef.
+    // 2. Store this in the variable lookup table.
+    StoredValue stored_value = {.value = variable_declaration, .name = node->name};
+    stored_values_append(&codegen->stored_values, stored_value);
+
+    // 3. If there is no value, this is an optional variable.
+    if (!node->value) {
+        return variable_declaration;
+    }
+
+    // 4. Convert the initial value for this variable into an LLVMValueRef.
     LLVMValueRef initial_value = llvm_codegen_generate_value(codegen, node->value);
     if (!initial_value) {
         return 0;
     }
 
-    // 3. Store the initial value into the alloca.
+    // 5. Store the initial value into the alloca.
     LLVMBuildStore(codegen->builder, initial_value, variable_declaration);
-
-    // 4. Store this in the variable lookup table.
-    StoredValue stored_value = {.value = variable_declaration, .name = node->name};
-    stored_values_append(&codegen->stored_values, stored_value);
 
     return variable_declaration;
 }

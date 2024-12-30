@@ -216,7 +216,7 @@ Node* ast_parse_statement(AST* ast) {
 
     // An asterisk at the start of a statement typically indicates a variable declaration, as
     // an asterisk is used for a pointer type.
-    if (ast_next_is(ast, TOKEN_ASTERISK))
+    if (ast_next_is(ast, TOKEN_ASTERISK) || ast_next_is(ast, TOKEN_QUESTION_MARK))
         statement = ast_parse_variable_declaration_statement(ast);
 
     else if (ast_next_is(ast, TOKEN_IDENTIFIER) && ast_after_next_is(ast, TOKEN_IDENTIFIER))
@@ -441,13 +441,21 @@ Node* ast_parse_function_call(AST* ast) {
 }
 
 Type* ast_parse_type(AST* ast) {
-    // Variable declarations could be for a pointer type.
+    // Variable declarations could be for a pointer or optional type.
     bool is_pointer_type = false;
+    bool is_optional_type = false;
 
     // If the first token is an asterisk, this declaration is for a pointer type.
     if (ast_next_is(ast, TOKEN_ASTERISK)) {
         ast_consume(ast);
         is_pointer_type = true;
+    }
+
+    // FIXME: This only supports pointers to optional values, not optional pointers.
+    // If the next token is a question mark, the declaration is for an optional type.
+    if (ast_next_is(ast, TOKEN_QUESTION_MARK)) {
+        ast_consume(ast);
+        is_optional_type = true;
     }
 
     // The first token (or the one after the modifier) must be an identifier.
@@ -456,10 +464,10 @@ Type* ast_parse_type(AST* ast) {
         return 0;
     }
 
-    return (Type*)type_create_unresolved(is_pointer_type, type_token.string);
+    return (Type*)type_create_unresolved(is_optional_type, is_pointer_type, type_token.string);
 }
 
-// (*)<identifier> <identifier> = <value>
+// (*|?)<identifier> <identifier> = <value>
 Node* ast_parse_variable_declaration_statement(AST* ast) {
     Type* type = ast_parse_type(ast);
     if (!type) {
@@ -472,6 +480,12 @@ Node* ast_parse_variable_declaration_statement(AST* ast) {
         return 0;
     }
 
+    // If the next token is a semicolon, this declaration has no value.
+    if (ast_next_is(ast, TOKEN_SEMICOLON)) {
+        return (Node*)variable_declaration_node_create(name_token.position, name_token.string, type, 0);
+    }
+
+    // The next token is not a semicolon, must be an equals.
     ast_expect(ast, TOKEN_EQUALS);
 
     // The final token should be a valid value.
@@ -556,7 +570,7 @@ Node* ast_parse_function_declaration_statement(AST* ast) {
     ast_expect(ast, TOKEN_CLOSE_PARENTHESIS);
 
     // The default return type is void.
-    Type* return_type = (Type*)type_create_resolved(false, TYPE_KIND_VOID);
+    Type* return_type = (Type*)type_create_resolved(false, false, TYPE_KIND_VOID);
 
     // If a hyphen is after the closing parenthesis, we should parse a return type.
     if (ast_next_is(ast, TOKEN_HYPHEN)) {

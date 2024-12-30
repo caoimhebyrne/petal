@@ -15,6 +15,9 @@ typedef struct {
     // If false, can be casted to `UnresolvedType`.
     bool is_resolved;
 
+    // Whether this type is optional or not.
+    bool is_optional;
+
     // Whether this type is a pointer or not.
     bool is_pointer;
 } Type;
@@ -24,6 +27,9 @@ typedef struct {
 typedef struct {
     // Whether this type has been resolved or not, always false.
     bool is_resolved;
+
+    // Whether this type is optional or not.
+    bool is_optional;
 
     // Whether this type is a pointer or not.
     bool is_pointer;
@@ -38,7 +44,7 @@ typedef struct {
 // - name: The name being used to refer to this type.
 // Returns:
 // - An unresolved type reference if successful, otherwise 0.
-UnresolvedType* type_create_unresolved(bool is_pointer, char* name);
+UnresolvedType* type_create_unresolved(bool is_optional, bool is_pointer, char* name);
 
 // A resolved type.
 // This has been resolved and verified as valid by the typechecker, and is safe to use
@@ -46,6 +52,9 @@ UnresolvedType* type_create_unresolved(bool is_pointer, char* name);
 typedef struct {
     // Whether this type has been resolved or not, always true.
     bool is_resolved;
+
+    // Whether this type is optional or not.
+    bool is_optional;
 
     // Whether this type is a pointer or not.
     bool is_pointer;
@@ -60,7 +69,7 @@ typedef struct {
 // - kind: The kind of type that has been resolved.
 // Returns:
 // - A resolved type reference if successful, otherwise 0.
-ResolvedType* type_create_resolved(bool is_pointer, TypeKind kind);
+ResolvedType* type_create_resolved(bool is_optional, bool is_pointer, TypeKind kind);
 
 // Checks if two types are equal.
 // If both types are resolved, the kind must be the same.
