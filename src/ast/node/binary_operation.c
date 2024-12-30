@@ -13,7 +13,7 @@ BinaryOperationNode* binary_operation_node_create(Position position, Node* left,
     node->left = left;
     node->right = right;
     node->operator_ = operator_;
-    node->expected_type = TYPE_INVALID;
+    node->type = 0;
 
     return node;
 }

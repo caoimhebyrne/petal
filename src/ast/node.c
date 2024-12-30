@@ -10,6 +10,7 @@
 #include "node/return.h"
 #include "node/string_literal.h"
 #include "node/variable_declaration.h"
+#include "type.h"
 
 CREATE_STREAM(NodeStream, node_stream, Node*);
 
@@ -19,6 +20,7 @@ void node_destroy(Node* node) {
         VariableDeclarationNode* variable_declaration = (VariableDeclarationNode*)node;
         free(variable_declaration->name);
         node_destroy(variable_declaration->value);
+        type_destroy(variable_declaration->type);
 
         break;
     }
@@ -31,14 +33,20 @@ void node_destroy(Node* node) {
             node_destroy((Node*)function_declaration->function_body);
         }
 
+        type_destroy(function_declaration->return_type);
+
         break;
     }
 
     case NODE_BOOLEAN_LITERAL:
         break;
 
-    case NODE_NUMBER_LITERAL:
+    case NODE_NUMBER_LITERAL: {
+        NumberLiteralNode* number_literal = (NumberLiteralNode*)node;
+        type_destroy(number_literal->type);
+
         break;
+    }
 
     case NODE_STRING_LITERAL: {
         StringLiteralNode* string_literal = (StringLiteralNode*)node;
@@ -72,6 +80,8 @@ void node_destroy(Node* node) {
 
     case NODE_BINARY_OPERATION: {
         BinaryOperationNode* binary_operation = (BinaryOperationNode*)node;
+        type_destroy(binary_operation->type);
+
         node_destroy(binary_operation->left);
         node_destroy(binary_operation->right);
 

@@ -13,6 +13,7 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Types.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -28,7 +29,7 @@ LLVMValueRef llvm_codegen_generate_function_call(LLVMCodegen* codegen, FunctionC
 LLVMValueRef llvm_codegen_generate_identifier_reference(LLVMCodegen* codegen, IdentifierReferenceNode* node);
 LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, BinaryOperationNode* node);
 
-LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, Type type, Position position);
+LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, ResolvedType* type, Position position);
 
 LLVMCodegen llvm_codegen_create(char* filename, NodeStream node_stream) {
     LLVMContextRef context = LLVMContextCreate();
@@ -81,17 +82,20 @@ LLVMValueRef llvm_codegen_generate_value(LLVMCodegen* codegen, Node* node) {
     case NODE_NUMBER_LITERAL: {
         NumberLiteralNode* number_literal = (NumberLiteralNode*)node;
 
-        // Default to a 32-bit integer literal if no type was specified.
-        LLVMTypeRef value_type =
-            llvm_codegen_type_to_ref(codegen, number_literal->expected_type, number_literal->position);
+        // If the number literal's type was not resolved for some reason, throw an error.
+        if (!number_literal->type->is_resolved) {
+            diagnostic_stream_push(&codegen->diagnostics, number_literal->position, true, "unresolved type: '%s'",
+                                   type_to_string((Type*)number_literal->type));
+            return 0;
+        }
 
-        // If we could not find a matching type reference, return.
+        ResolvedType* number_literal_type = (ResolvedType*)number_literal->type;
+        LLVMTypeRef value_type = llvm_codegen_type_to_ref(codegen, number_literal_type, number_literal->position);
         if (!value_type) {
             return 0;
         }
 
-        if (number_literal->expected_type.kind == TYPE_KIND_FLOAT_32 ||
-            number_literal->expected_type.kind == TYPE_KIND_FLOAT_64) {
+        if (number_literal_type->kind == TYPE_KIND_FLOAT_32 || number_literal_type->kind == TYPE_KIND_FLOAT_64) {
             return LLVMConstReal(value_type, number_literal->value);
         }
 
@@ -154,7 +158,7 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
     stored_values_destroy(&codegen->stored_values);
     stored_values_initialize(&codegen->stored_values, 1);
 
-    LLVMTypeRef return_type = llvm_codegen_type_to_ref(codegen, node->return_type, node->position);
+    LLVMTypeRef return_type = llvm_codegen_type_to_ref(codegen, (ResolvedType*)node->return_type, node->position);
     if (!return_type) {
         return 0;
     }
@@ -162,7 +166,7 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
     LLVMTypeRef parameters[node->parameters.length] = {};
     for (size_t i = 0; i < node->parameters.length; i++) {
         Parameter parameter = node->parameters.data[i];
-        parameters[i] = llvm_codegen_type_to_ref(codegen, parameter.type, node->position);
+        parameters[i] = llvm_codegen_type_to_ref(codegen, (ResolvedType*)parameter.type, node->position);
     }
 
     LLVMTypeRef function_type = LLVMFunctionType(return_type, parameters, node->parameters.length, false);
@@ -218,7 +222,8 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
         }
 
         if (needs_terminator) {
-            if (node->return_type.kind == TYPE_KIND_VOID) {
+            ResolvedType* return_type = (ResolvedType*)node->return_type;
+            if (return_type->kind == TYPE_KIND_VOID) {
                 LOG_DEBUG("llvm-codegen", "generating terminator for '%s'", node->name);
                 LLVMBuildRetVoid(codegen->builder);
             } else {
@@ -307,7 +312,7 @@ LLVMValueRef llvm_codegen_generate_return(LLVMCodegen* codegen, ReturnNode* node
 }
 
 LLVMValueRef llvm_codegen_generate_variable_declaration(LLVMCodegen* codegen, VariableDeclarationNode* node) {
-    LLVMTypeRef variable_type = llvm_codegen_type_to_ref(codegen, node->type, node->position);
+    LLVMTypeRef variable_type = llvm_codegen_type_to_ref(codegen, (ResolvedType*)node->type, node->position);
     if (!variable_type) {
         return 0;
     }
@@ -339,9 +344,11 @@ LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, Binary
     LOG_DEBUG("llvm-codegen", "generating binary operation between '%s' and '%s'", LLVMPrintValueToString(left),
               LLVMPrintValueToString(right));
 
+    ResolvedType* expected_type = (ResolvedType*)node->type;
+
     switch (node->operator_) {
     case OPERATOR_PLUS:
-        switch (node->expected_type.kind) {
+        switch (expected_type->kind) {
         case TYPE_KIND_FLOAT_32:
         case TYPE_KIND_FLOAT_64:
             return LLVMBuildFAdd(codegen->builder, left, right, "fadd");
@@ -359,7 +366,7 @@ LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, Binary
         }
 
     case OPERATOR_MINUS:
-        switch (node->expected_type.kind) {
+        switch (expected_type->kind) {
         case TYPE_KIND_FLOAT_32:
         case TYPE_KIND_FLOAT_64:
             return LLVMBuildFSub(codegen->builder, left, right, "fsubtract");
@@ -377,7 +384,7 @@ LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, Binary
         }
 
     case OPERATOR_DIVIDE:
-        switch (node->expected_type.kind) {
+        switch (expected_type->kind) {
         case TYPE_KIND_FLOAT_32:
         case TYPE_KIND_FLOAT_64:
             return LLVMBuildFDiv(codegen->builder, left, right, "fdivide");
@@ -395,7 +402,7 @@ LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, Binary
         }
 
     case OPERATOR_MULTIPLY:
-        switch (node->expected_type.kind) {
+        switch (expected_type->kind) {
         case TYPE_KIND_FLOAT_32:
         case TYPE_KIND_FLOAT_64:
             return LLVMBuildFMul(codegen->builder, left, right, "fmultiply");
@@ -434,10 +441,10 @@ void llvm_codegen_destroy(LLVMCodegen* codegen) {
     node_stream_destroy(&codegen->node_stream);
 }
 
-LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, Type type, Position position) {
+LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, ResolvedType* type, Position position) {
     LLVMTypeRef type_ref;
 
-    switch (type.kind) {
+    switch (type->kind) {
     case TYPE_KIND_BOOL:
         type_ref = LLVMInt1TypeInContext(codegen->context);
         break;
@@ -470,7 +477,7 @@ LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, Type type, Position p
         Diagnostic diagnostic = {
             .position = position,
             .is_terminal = true,
-            .message = format_string("unable to convert type '%s' into llvm type", type_to_string(type)),
+            .message = format_string("unable to convert type '%s' into llvm type", type_to_string((Type*)type)),
         };
 
         diagnostic_stream_append(&codegen->diagnostics, diagnostic);
@@ -478,7 +485,7 @@ LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, Type type, Position p
     }
     }
 
-    if (type.is_pointer) {
+    if (type->is_pointer) {
         return LLVMPointerType(type_ref, 0);
     } else {
         return type_ref;

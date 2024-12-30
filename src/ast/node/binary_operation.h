@@ -28,7 +28,7 @@ typedef struct {
     Operator operator_;
 
     // The expected type that this node should produce when the operation is performed.
-    Type expected_type;
+    Type* type;
 } BinaryOperationNode;
 
 // Creates a binary operation node.

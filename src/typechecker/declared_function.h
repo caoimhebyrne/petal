@@ -10,7 +10,7 @@ typedef struct {
     char* name;
 
     // The return type of the function.
-    Type return_type;
+    ResolvedType* return_type;
 
     // The parameters that the function expects.
     Parameters parameters;

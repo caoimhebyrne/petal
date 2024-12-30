@@ -1,61 +1,83 @@
 #ifndef __TYPE_H__
 #define __TYPE_H__
 
+#include "type-kind.h"
 #include <stdbool.h>
 
-typedef enum {
-    // An invalid type.
-    TYPE_KIND_INVALID,
-
-    // void
-    TYPE_KIND_VOID,
-
-    // A boolean, defined as 'bool'.
-    TYPE_KIND_BOOL,
-
-    // A 8-bit integer, defined as 'i8'.
-    TYPE_KIND_INT_8,
-
-    // A 32-bit integer, defined as 'i32'.
-    TYPE_KIND_INT_32,
-
-    // A 64-bit integer, defined as 'i64'.
-    TYPE_KIND_INT_64,
-
-    // A 32-bit float, defined as 'f32'.
-    TYPE_KIND_FLOAT_32,
-
-    // A 64-bit float, defined as 'f64'.
-    TYPE_KIND_FLOAT_64,
-} TypeKind;
-
+// There are two kinds of types, resolved types and unresolved types.
+// - An unresolved type is one that the AST parser recognizes as a type, but it is unsure
+//   of its validity.
+// - A resolved type has been resolved and verified by the typechecker, and is safe
+//   to use during code-generation.
 typedef struct {
-    // The kind of value that this type holds.
-    TypeKind kind;
+    // Whether this type has been resolved or not.
+    // If true, can be casted to `ResolvedType`.
+    // If false, can be casted to `UnresolvedType`.
+    bool is_resolved;
 
-    // Whether this is a pointer or not.
+    // Whether this type is a pointer or not.
     bool is_pointer;
 } Type;
 
-#define TYPE_INVALID                                                                                                   \
-    (Type) { .kind = TYPE_KIND_INVALID, .is_pointer = false }
+// An unresolved type.
+// This has been parsed by the AST parser, but not verified yet (i.e. it may not exist).
+typedef struct {
+    // Whether this type has been resolved or not, always false.
+    bool is_resolved;
 
-// Creates a Type with a certain kind.
+    // Whether this type is a pointer or not.
+    bool is_pointer;
+
+    // The name of the type being referenced.
+    char* name;
+} UnresolvedType;
+
+// Creates a new unresolved type.
 // Parameters:
-// - kind: The kind of value that this type holds.
-// - is_pointer: Whether this is a pointer or not.
-Type type_create(TypeKind kind, bool is_pointer);
+// - is_pointer: Whether the type being referred to is a pointer.
+// - name: The name being used to refer to this type.
+// Returns:
+// - An unresolved type reference if successful, otherwise 0.
+UnresolvedType* type_create_unresolved(bool is_pointer, char* name);
 
-// Returns a human-readable string representation of the provided Type.
+// A resolved type.
+// This has been resolved and verified as valid by the typechecker, and is safe to use
+// for code-generation.
+typedef struct {
+    // Whether this type has been resolved or not, always true.
+    bool is_resolved;
+
+    // Whether this type is a pointer or not.
+    bool is_pointer;
+
+    // The kind of type that this has been resolved to.
+    TypeKind kind;
+} ResolvedType;
+
+// Creates a new resolved type.
+// Parameters:
+// - is_pointer: Whether the type being referred to is a pointer.
+// - kind: The kind of type that has been resolved.
+// Returns:
+// - A resolved type reference if successful, otherwise 0.
+ResolvedType* type_create_resolved(bool is_pointer, TypeKind kind);
+
+// Checks if two types are equal.
+// If both types are resolved, the kind must be the same.
+// If both types are unresolved, the name must be the same.
+// Parameters:
+// - type_a: The first type.
+// - type_b: The second type.
+bool type_equal(Type* type_a, Type* type_b);
+
+// Returns a string representation of the provided type.
 // Parameters:
 // - type: The type to stringify.
-char* type_to_string(Type type);
+char* type_to_string(Type* type);
 
-// Returns a TypeKind for the provided string.
+// De-allocates a type.
 // Parameters:
-// - value: The name of the type kind.
-// Returns:
-// A Type if the name matches an available type kind, otherwise TYPE_INVALID.
-TypeKind type_kind_from_string(char* value);
+// - type: The type to de-allocate.
+void type_destroy(Type* type);
 
 #endif // __TYPE_H__

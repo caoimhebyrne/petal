@@ -16,7 +16,7 @@ typedef struct {
     char* name;
 
     // The type of this variable.
-    Type type;
+    Type* type;
 
     // The value being assigned to this variable.
     Node* value;
@@ -27,7 +27,7 @@ typedef struct {
 // - name: The name of this variable.
 // - type: The type of this variable.
 // - value: The value being assigned to this variable.
-VariableDeclarationNode* variable_declaration_node_create(Position position, char* name, Type type, Node* value);
+VariableDeclarationNode* variable_declaration_node_create(Position position, char* name, Type* type, Node* value);
 
 // Returns a string representation of the provided VariableDeclarationNode.
 // Parameters:

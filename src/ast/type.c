@@ -1,69 +1,82 @@
 #include "type.h"
 #include "../string/format_string.h"
+#include "type-kind.h"
+#include <stdlib.h>
 #include <string.h>
 
-Type type_create(TypeKind kind, bool is_pointer) { return (Type){kind, is_pointer}; }
+UnresolvedType* type_create_unresolved(bool is_pointer, char* name) {
+    UnresolvedType* type = malloc(sizeof(UnresolvedType));
+    if (!type) {
+        return 0;
+    }
 
-TypeKind type_kind_from_string(char* value) {
-    if (strcmp(value, "void") == 0) {
-        return TYPE_KIND_VOID;
-    } else if (strcmp(value, "bool") == 0) {
-        return TYPE_KIND_BOOL;
-    } else if (strcmp(value, "i8") == 0) {
-        return TYPE_KIND_INT_8;
-    } else if (strcmp(value, "i32") == 0) {
-        return TYPE_KIND_INT_32;
-    } else if (strcmp(value, "i64") == 0) {
-        return TYPE_KIND_INT_64;
-    } else if (strcmp(value, "f32") == 0) {
-        return TYPE_KIND_FLOAT_32;
-    } else if (strcmp(value, "f64") == 0) {
-        return TYPE_KIND_FLOAT_64;
+    type->is_resolved = false;
+    type->is_pointer = is_pointer;
+    type->name = strdup(name);
+
+    return type;
+}
+
+ResolvedType* type_create_resolved(bool is_pointer, TypeKind kind) {
+    ResolvedType* type = malloc(sizeof(ResolvedType));
+    if (!type) {
+        return 0;
+    }
+
+    type->is_resolved = true;
+    type->is_pointer = is_pointer;
+    type->kind = kind;
+
+    return type;
+}
+
+bool type_equal(Type* type_a, Type* type_b) {
+    // If one type is a pointer, and the other isn't, they do not match.
+    if (type_a->is_pointer != type_b->is_pointer) {
+        return false;
+    }
+
+    // If one type is resolved, and the other isn't, they do not match.
+    if (type_a->is_resolved != type_b->is_resolved) {
+        return false;
+    }
+
+    if (type_a->is_resolved) {
+        ResolvedType* resolved_a = (ResolvedType*)type_a;
+        ResolvedType* resolved_b = (ResolvedType*)type_b;
+
+        // The kinds must match if the types are resolved.
+        return resolved_a->kind == resolved_b->kind;
     } else {
-        return TYPE_KIND_INVALID;
+        UnresolvedType* unresolved_a = (UnresolvedType*)type_a;
+        UnresolvedType* unresolved_b = (UnresolvedType*)type_b;
+
+        // The names must match if the types are unresolved.
+        return strcmp(unresolved_a->name, unresolved_b->name) == 0;
     }
 }
 
-char* type_to_string(Type type) {
-    char* type_name = "unknown type";
+char* type_to_string(Type* type) {
+    if (type->is_resolved) {
+        ResolvedType* resolved_type = (ResolvedType*)type;
+        if (resolved_type->is_pointer) {
+            return format_string("*%s", type_kind_to_string(resolved_type->kind));
+        } else {
+            return type_kind_to_string(resolved_type->kind);
+        }
+    } else {
+        UnresolvedType* unresolved_type = (UnresolvedType*)type;
+        return format_string("unresolved ('*%s')", unresolved_type->name);
+    }
+}
 
-    switch (type.kind) {
-    case TYPE_KIND_INVALID:
-        type_name = "invalid type";
-        break;
-
-    case TYPE_KIND_BOOL:
-        type_name = "bool";
-        break;
-
-    case TYPE_KIND_INT_8:
-        type_name = "i8";
-        break;
-
-    case TYPE_KIND_INT_32:
-        type_name = "i32";
-        break;
-
-    case TYPE_KIND_INT_64:
-        type_name = "i64";
-        break;
-
-    case TYPE_KIND_FLOAT_32:
-        type_name = "f32";
-        break;
-
-    case TYPE_KIND_FLOAT_64:
-        type_name = "f64";
-        break;
-
-    case TYPE_KIND_VOID:
-        type_name = "void";
-        break;
+void type_destroy(Type* type) {
+    // If this is an unresolved type, we can free its name.
+    if (!type->is_resolved) {
+        UnresolvedType* unresolved = (UnresolvedType*)type;
+        free(unresolved->name);
     }
 
-    if (type.is_pointer) {
-        return format_string("*%s", type_name);
-    }
-
-    return type_name;
+    // Free the type itself.
+    // free(type);
 }

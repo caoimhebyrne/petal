@@ -16,7 +16,7 @@ typedef struct {
     double value;
 
     // The expected type that this node produces.
-    Type expected_type;
+    Type* type;
 } NumberLiteralNode;
 
 // Creates a new variable declaration node.

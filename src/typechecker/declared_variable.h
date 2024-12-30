@@ -9,7 +9,7 @@ typedef struct {
     char* name;
 
     // The type that this variable expects.
-    Type type;
+    ResolvedType* type;
 } DeclaredVariable;
 
 DECLARE_STREAM(DeclaredVariables, declared_variables, DeclaredVariable);

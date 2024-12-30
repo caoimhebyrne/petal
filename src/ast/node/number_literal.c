@@ -11,7 +11,7 @@ NumberLiteralNode* number_literal_node_create(Position position, double value) {
     node->node_type = NODE_NUMBER_LITERAL;
     node->position = position;
     node->value = value;
-    node->expected_type = TYPE_INVALID;
+    node->type = 0;
 
     return node;
 }

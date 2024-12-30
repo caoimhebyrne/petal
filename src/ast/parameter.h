@@ -4,22 +4,21 @@
 #include "../stream.h"
 #include "type.h"
 
-#define PARAMETER_INVALID                                                                                              \
-    (Parameter) { .name = 0, .type = (Type){.kind = TYPE_KIND_INVALID, .is_pointer = 0} }
+#define PARAMETER_INVALID (Parameter){.name = 0, .type = 0}
 
 typedef struct {
     // The name of this parameter.
     char* name;
 
     // The type of this parameter.
-    Type type;
+    Type* type;
 } Parameter;
 
 // Creates a new Parameter with a name and type.
 // Parameters:
 // - name: The name of this parameter.
 // - type: The type of this parameter.
-Parameter parameter_create(char* name, Type type);
+Parameter parameter_create(char* name, Type* type);
 
 DECLARE_STREAM(Parameters, parameters, Parameter)
 

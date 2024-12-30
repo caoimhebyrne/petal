@@ -397,7 +397,7 @@ Node* ast_parse_function_call(AST* ast) {
     return (Node*)function_call_node_create(name_token.position, name_token.string, arguments);
 }
 
-Type ast_parse_type(AST* ast) {
+Type* ast_parse_type(AST* ast) {
     // Variable declarations could be for a pointer type.
     bool is_pointer_type = false;
 
@@ -410,23 +410,16 @@ Type ast_parse_type(AST* ast) {
     // The first token (or the one after the modifier) must be an identifier.
     Token type_token = ast_consume_type(ast, TOKEN_IDENTIFIER);
     if (type_token.type == TOKEN_INVALID) {
-        return TYPE_INVALID;
+        return 0;
     }
 
-    // The type identifier token provided must be a valid type.
-    TypeKind type_kind = type_kind_from_string(type_token.string);
-    if (type_kind == TYPE_KIND_INVALID) {
-        diagnostic_stream_push(&ast->diagnostics, type_token.position, true, "invalid type: '%s'", type_token.string);
-        return TYPE_INVALID;
-    }
-
-    return type_create(type_kind, is_pointer_type);
+    return (Type*)type_create_unresolved(is_pointer_type, type_token.string);
 }
 
 // (*)<identifier> <identifier> = <value>
 Node* ast_parse_variable_declaration_statement(AST* ast) {
-    Type type = ast_parse_type(ast);
-    if (type.kind == TYPE_KIND_INVALID) {
+    Type* type = ast_parse_type(ast);
+    if (!type) {
         return 0;
     }
 
@@ -463,8 +456,8 @@ Parameter ast_parse_function_parameter(AST* ast) {
     }
 
     // The last token must be a valid type identifier.
-    Type type = ast_parse_type(ast);
-    if (type.kind == TYPE_KIND_INVALID) {
+    Type* type = ast_parse_type(ast);
+    if (type == 0) {
         return PARAMETER_INVALID;
     }
 
@@ -505,7 +498,7 @@ Node* ast_parse_function_declaration_statement(AST* ast) {
         LOG_DEBUG("ast", "attempting to parse parameter from '%s'", token_to_string(ast_peek(ast)));
 
         Parameter parameter = ast_parse_function_parameter(ast);
-        if (parameter.type.kind == TYPE_KIND_INVALID) {
+        if (!parameter.type) {
             return 0;
         }
 
@@ -520,7 +513,7 @@ Node* ast_parse_function_declaration_statement(AST* ast) {
     ast_expect(ast, TOKEN_CLOSE_PARENTHESIS);
 
     // The default return type is void.
-    Type return_type = type_create(TYPE_KIND_VOID, false);
+    Type* return_type = (Type*)type_create_resolved(false, TYPE_KIND_VOID);
 
     // If a hyphen is after the closing parenthesis, we should parse a return type.
     if (ast_next_is(ast, TOKEN_HYPHEN)) {
@@ -531,7 +524,7 @@ Node* ast_parse_function_declaration_statement(AST* ast) {
 
         // The final token must be a valid type.
         return_type = ast_parse_type(ast);
-        if (return_type.kind == TYPE_KIND_INVALID) {
+        if (!return_type) {
             return 0;
         }
     }
