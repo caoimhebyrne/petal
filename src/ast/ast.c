@@ -90,16 +90,27 @@ Token ast_consume_type(AST* ast, TokenType type) {
     if (ast->position >= ast->token_stream.length) {
         Token last_token = ast->token_stream.data[ast->token_stream.length - 1];
 
-        diagnostic_stream_push(&ast->diagnostics, last_token.position, true,
-                               "expected token: '%s', but got end of file", token_type_to_string(type));
+        diagnostic_stream_push(
+            &ast->diagnostics,
+            last_token.position,
+            true,
+            "expected token: '%s', but got end of file",
+            token_type_to_string(type)
+        );
 
         return INVALID_TOKEN;
     }
 
     Token token = ast->token_stream.data[ast->position++];
     if (token.type != type) {
-        diagnostic_stream_push(&ast->diagnostics, token.position, true, "expected token: '%s', but got '%s'",
-                               token_type_to_string(type), token_to_string(token));
+        diagnostic_stream_push(
+            &ast->diagnostics,
+            token.position,
+            true,
+            "expected token: '%s', but got '%s'",
+            token_type_to_string(type),
+            token_to_string(token)
+        );
 
         return INVALID_TOKEN;
     }
@@ -114,8 +125,15 @@ Token ast_consume_type_string(AST* ast, TokenType type, char* string) {
     }
 
     if (strcmp(token.string, string) != 0) {
-        diagnostic_stream_push(&ast->diagnostics, token.position, true, "expected %s of '%s', but got '%s'",
-                               token_type_to_string(token.type), string, token.string);
+        diagnostic_stream_push(
+            &ast->diagnostics,
+            token.position,
+            true,
+            "expected %s of '%s', but got '%s'",
+            token_type_to_string(token.type),
+            string,
+            token.string
+        );
 
         return INVALID_TOKEN;
     }
@@ -325,8 +343,13 @@ Node* ast_parse_value(AST* ast) {
         return 0;
 
     default:
-        diagnostic_stream_push(&ast->diagnostics, next.position, true, "unexpected token for value: '%s'",
-                               token_to_string(next));
+        diagnostic_stream_push(
+            &ast->diagnostics,
+            next.position,
+            true,
+            "unexpected token for value: '%s'",
+            token_to_string(next)
+        );
         return 0;
     }
 }
@@ -542,8 +565,14 @@ Node* ast_parse_function_declaration_statement(AST* ast) {
     // An external function does not have a body and must end in a semicolon.
     if (is_extern_function) {
         ast_expect(ast, TOKEN_SEMICOLON);
-        return (Node*)function_declaration_node_create(func_keyword_token.position, name_token.string, parameters,
-                                                       return_type, 0, true);
+        return (Node*)function_declaration_node_create(
+            func_keyword_token.position,
+            name_token.string,
+            parameters,
+            return_type,
+            0,
+            true
+        );
     }
 
     BlockNode* function_body = ast_parse_block(ast);
@@ -551,8 +580,14 @@ Node* ast_parse_function_declaration_statement(AST* ast) {
         return 0;
     }
 
-    return (Node*)function_declaration_node_create(func_keyword_token.position, name_token.string, parameters,
-                                                   return_type, function_body, false);
+    return (Node*)function_declaration_node_create(
+        func_keyword_token.position,
+        name_token.string,
+        parameters,
+        return_type,
+        function_body,
+        false
+    );
 }
 
 // <identifier> = (expression)

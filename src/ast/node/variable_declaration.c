@@ -15,6 +15,10 @@ VariableDeclarationNode* variable_declaration_node_create(Position position, cha
 }
 
 char* variable_declaration_node_to_string(VariableDeclarationNode* node) {
-    return format_string("variable declaration (type: '%s', name: '%s', value: %s)", type_to_string(node->type),
-                         node->name, node_to_string(node->value));
+    return format_string(
+        "variable declaration (type: '%s', name: '%s', value: %s)",
+        type_to_string(node->type),
+        node->name,
+        node_to_string(node->value)
+    );
 }

@@ -17,6 +17,9 @@ VariableReassignmentNode* variable_reassignment_node_create(Position position, c
 }
 
 char* variable_reassignment_node_to_string(VariableReassignmentNode* node) {
-    return format_string("variable reassignment (name: '%s', value: '%s')", node->variable_name,
-                         node_to_string(node->value));
+    return format_string(
+        "variable reassignment (name: '%s', value: '%s')",
+        node->variable_name,
+        node_to_string(node->value)
+    );
 }

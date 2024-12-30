@@ -20,9 +20,12 @@
 
 #ifdef DEBUG
 #define LOG_DEBUG(group, msg, ...)                                                                                     \
-    printf(ANSI_COLOR_GRAY "debug"                                                                                     \
-                           "(%s): " msg ANSI_COLOR_RESET "\n",                                                         \
-           group, ##__VA_ARGS__)
+    printf(                                                                                                            \
+        ANSI_COLOR_GRAY "debug"                                                                                        \
+                        "(%s): " msg ANSI_COLOR_RESET "\n",                                                            \
+        group,                                                                                                         \
+        ##__VA_ARGS__                                                                                                  \
+    )
 #else
 #define LOG_DEBUG(group, msg, ...)
 #endif

@@ -89,8 +89,13 @@ LLVMValueRef llvm_codegen_generate_value(LLVMCodegen* codegen, Node* node) {
 
         // If the number literal's type was not resolved for some reason, throw an error.
         if (!number_literal->type->is_resolved) {
-            diagnostic_stream_push(&codegen->diagnostics, number_literal->position, true, "unresolved type: '%s'",
-                                   type_to_string((Type*)number_literal->type));
+            diagnostic_stream_push(
+                &codegen->diagnostics,
+                number_literal->position,
+                true,
+                "unresolved type: '%s'",
+                type_to_string((Type*)number_literal->type)
+            );
             return 0;
         }
 
@@ -126,8 +131,13 @@ LLVMValueRef llvm_codegen_generate_value(LLVMCodegen* codegen, Node* node) {
         return llvm_codegen_generate_binary_operation(codegen, (BinaryOperationNode*)node);
 
     default: {
-        diagnostic_stream_push(&codegen->diagnostics, node->position, true, "unable to generate value for node: '%s'",
-                               node_to_string(node));
+        diagnostic_stream_push(
+            &codegen->diagnostics,
+            node->position,
+            true,
+            "unable to generate value for node: '%s'",
+            node_to_string(node)
+        );
         return 0;
     }
     }
@@ -152,8 +162,13 @@ LLVMValueRef llvm_codegen_generate_statement(LLVMCodegen* codegen, Node* node) {
         return llvm_codegen_generate_variable_reassignment(codegen, (VariableReassignmentNode*)node);
 
     default: {
-        diagnostic_stream_push(&codegen->diagnostics, node->position, true,
-                               "unable to generate statement for node: '%s'", node_to_string(node));
+        diagnostic_stream_push(
+            &codegen->diagnostics,
+            node->position,
+            true,
+            "unable to generate statement for node: '%s'",
+            node_to_string(node)
+        );
         return 0;
     }
     }
@@ -195,8 +210,12 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
 
         if (!node->is_external) {
             LLVMTypeRef parameter_type = parameters[i];
-            LOG_DEBUG("llvm-codegen", "building alloca for parameter '%s' with type '%s'", node_parameter.name,
-                      LLVMPrintTypeToString(parameter_type));
+            LOG_DEBUG(
+                "llvm-codegen",
+                "building alloca for parameter '%s' with type '%s'",
+                node_parameter.name,
+                LLVMPrintTypeToString(parameter_type)
+            );
 
             // In order to access this properly, we need to build an alloca and store for this parameter.
             LLVMValueRef alloca = LLVMBuildAlloca(codegen->builder, parameter_type, node_parameter.name);
@@ -238,8 +257,13 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
                 LOG_DEBUG("llvm-codegen", "generating terminator for '%s'", node->name);
                 LLVMBuildRetVoid(codegen->builder);
             } else {
-                diagnostic_stream_push(&codegen->diagnostics, (Position){}, true,
-                                       "function '%s' does not return a value", node->name);
+                diagnostic_stream_push(
+                    &codegen->diagnostics,
+                    (Position){},
+                    true,
+                    "function '%s' does not return a value",
+                    node->name
+                );
 
                 return 0;
             }
@@ -283,8 +307,14 @@ LLVMValueRef llvm_codegen_generate_function_call(LLVMCodegen* codegen, FunctionC
     // The type of (LLVMTypeOf) a global (in this case, a function) is a pointer to a global.
     // LLVMGlobalGetValueType gets the type that LLVMTypeOf is pointing to.
     LLVMTypeRef function_type = LLVMGlobalGetValueType(callee);
-    return LLVMBuildCall2(codegen->builder, function_type, callee, arguments, node->arguments.length,
-                          as_value ? node->name : "");
+    return LLVMBuildCall2(
+        codegen->builder,
+        function_type,
+        callee,
+        arguments,
+        node->arguments.length,
+        as_value ? node->name : ""
+    );
 }
 
 LLVMValueRef llvm_codegen_generate_identifier_reference(LLVMCodegen* codegen, IdentifierReferenceNode* node) {
@@ -326,8 +356,13 @@ LLVMValueRef llvm_codegen_generate_variable_reassignment(LLVMCodegen* codegen, V
     // The `alloca` for this variable must exist.
     StoredValue* variable = stored_values_find_by_name(codegen->stored_values, node->variable_name);
     if (!variable) {
-        diagnostic_stream_push(&codegen->diagnostics, node->position, true,
-                               "undeclared variable: '%s', possibly a code generation bug!", node->variable_name);
+        diagnostic_stream_push(
+            &codegen->diagnostics,
+            node->position,
+            true,
+            "undeclared variable: '%s', possibly a code generation bug!",
+            node->variable_name
+        );
         return 0;
     }
 
@@ -370,8 +405,12 @@ LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, Binary
     LLVMValueRef left = llvm_codegen_generate_value(codegen, node->left);
     LLVMValueRef right = llvm_codegen_generate_value(codegen, node->right);
 
-    LOG_DEBUG("llvm-codegen", "generating binary operation between '%s' and '%s'", LLVMPrintValueToString(left),
-              LLVMPrintValueToString(right));
+    LOG_DEBUG(
+        "llvm-codegen",
+        "generating binary operation between '%s' and '%s'",
+        LLVMPrintValueToString(left),
+        LLVMPrintValueToString(right)
+    );
 
     ResolvedType* expected_type = (ResolvedType*)node->type;
 
@@ -388,8 +427,13 @@ LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, Binary
             return LLVMBuildAdd(codegen->builder, left, right, "add");
 
         default: {
-            diagnostic_stream_push(&codegen->diagnostics, node->position, true, "unable to produce code for node: '%s'",
-                                   node_to_string((Node*)node));
+            diagnostic_stream_push(
+                &codegen->diagnostics,
+                node->position,
+                true,
+                "unable to produce code for node: '%s'",
+                node_to_string((Node*)node)
+            );
             return 0;
         }
         }
@@ -406,8 +450,13 @@ LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, Binary
             return LLVMBuildSub(codegen->builder, left, right, "subtract");
 
         default: {
-            diagnostic_stream_push(&codegen->diagnostics, node->position, true, "unable to produce code for node: '%s'",
-                                   node_to_string((Node*)node));
+            diagnostic_stream_push(
+                &codegen->diagnostics,
+                node->position,
+                true,
+                "unable to produce code for node: '%s'",
+                node_to_string((Node*)node)
+            );
             return 0;
         }
         }
@@ -424,8 +473,13 @@ LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, Binary
             return LLVMBuildSDiv(codegen->builder, left, right, "sdivide");
 
         default: {
-            diagnostic_stream_push(&codegen->diagnostics, node->position, true, "unable to produce code for node: '%s'",
-                                   node_to_string((Node*)node));
+            diagnostic_stream_push(
+                &codegen->diagnostics,
+                node->position,
+                true,
+                "unable to produce code for node: '%s'",
+                node_to_string((Node*)node)
+            );
             return 0;
         }
         }
@@ -442,8 +496,13 @@ LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, Binary
             return LLVMBuildMul(codegen->builder, left, right, "multiply");
 
         default: {
-            diagnostic_stream_push(&codegen->diagnostics, node->position, true, "unable to produce code for node: '%s'",
-                                   node_to_string((Node*)node));
+            diagnostic_stream_push(
+                &codegen->diagnostics,
+                node->position,
+                true,
+                "unable to produce code for node: '%s'",
+                node_to_string((Node*)node)
+            );
             return 0;
         }
         }
@@ -538,8 +597,15 @@ char* llvm_codegen_emit(LLVMCodegen* codegen, char* out_file_path) {
         return formatted_message;
     }
 
-    LLVMTargetMachineRef target_machine = LLVMCreateTargetMachine(target, host_triple, "", "", LLVMCodeGenLevelDefault,
-                                                                  LLVMRelocPIC, LLVMCodeModelDefault);
+    LLVMTargetMachineRef target_machine = LLVMCreateTargetMachine(
+        target,
+        host_triple,
+        "",
+        "",
+        LLVMCodeGenLevelDefault,
+        LLVMRelocPIC,
+        LLVMCodeModelDefault
+    );
 
     if (LLVMTargetMachineEmitToFile(target_machine, codegen->module, out_file_path, LLVMObjectFile, &error_message)) {
         char* formatted_message = format_string("Failed to produce binary: %s", error_message);

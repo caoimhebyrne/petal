@@ -19,8 +19,12 @@ BinaryOperationNode* binary_operation_node_create(Position position, Node* left,
 }
 
 char* binary_operation_node_to_string(BinaryOperationNode* node) {
-    return format_string("binary operation (operator: '%s', left: '%s', right: '%s')",
-                         operator_to_string(node->operator_), node_to_string(node->left), node_to_string(node->right));
+    return format_string(
+        "binary operation (operator: '%s', left: '%s', right: '%s')",
+        operator_to_string(node->operator_),
+        node_to_string(node->left),
+        node_to_string(node->right)
+    );
 }
 
 char* operator_to_string(Operator operator_) {

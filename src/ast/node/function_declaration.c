@@ -3,9 +3,14 @@
 #include "block.h"
 #include <stdlib.h>
 
-FunctionDeclarationNode* function_declaration_node_create(Position position, char* name, Parameters parameters,
-                                                          Type* return_type, BlockNode* function_body,
-                                                          bool is_external) {
+FunctionDeclarationNode* function_declaration_node_create(
+    Position position,
+    char* name,
+    Parameters parameters,
+    Type* return_type,
+    BlockNode* function_body,
+    bool is_external
+) {
     FunctionDeclarationNode* node = malloc(sizeof(FunctionDeclarationNode));
     node->node_type = NODE_FUNCTION_DECLARATION;
     node->position = position;
@@ -19,6 +24,10 @@ FunctionDeclarationNode* function_declaration_node_create(Position position, cha
 }
 
 char* function_declaration_node_to_string(FunctionDeclarationNode* node) {
-    return format_string("function declaration (name: '%s', return type: '%s', is external: %d)", node->name,
-                         type_to_string(node->return_type), node->is_external);
+    return format_string(
+        "function declaration (name: '%s', return type: '%s', is external: %d)",
+        node->name,
+        type_to_string(node->return_type),
+        node->is_external
+    );
 }

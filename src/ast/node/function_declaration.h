@@ -37,9 +37,14 @@ typedef struct {
 // - return_type: The return type of this function.
 // - function_body: A block node representing the function's body, may be null.
 // - is_external: Whether this function is external or not.
-FunctionDeclarationNode* function_declaration_node_create(Position position, char* name, Parameters parameters,
-                                                          Type* return_type, BlockNode* function_body,
-                                                          bool is_external);
+FunctionDeclarationNode* function_declaration_node_create(
+    Position position,
+    char* name,
+    Parameters parameters,
+    Type* return_type,
+    BlockNode* function_body,
+    bool is_external
+);
 
 // Returns a string representation of the provided FunctionDeclarationNode.
 // Parameters:

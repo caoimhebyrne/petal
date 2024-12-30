@@ -29,13 +29,19 @@ bool typechecker_check_type_alias_declaration(Typechecker* typechecker, TypeAlia
 bool typechecker_check_variable_reassignment(Typechecker* typechecker, VariableReassignmentNode* node);
 
 ResolvedType* typechecker_check_value(Typechecker* typechecker, Node* value, ResolvedType* expected_type);
-ResolvedType* typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNode* node,
-                                               ResolvedType* expected_type);
+ResolvedType* typechecker_check_number_literal(
+    Typechecker* typechecker,
+    NumberLiteralNode* node,
+    ResolvedType* expected_type
+);
 ResolvedType* typechecker_check_string_literal(Typechecker* typechecker, StringLiteralNode* node);
 ResolvedType* typechecker_check_boolean_literal(Typechecker* typechecker, BooleanLiteralNode* node);
 ResolvedType* typechecker_check_identifier_reference(Typechecker* typechecker, IdentifierReferenceNode* node);
-ResolvedType* typechecker_check_binary_operation(Typechecker* typechecker, BinaryOperationNode* node,
-                                                 ResolvedType* expected_type);
+ResolvedType* typechecker_check_binary_operation(
+    Typechecker* typechecker,
+    BinaryOperationNode* node,
+    ResolvedType* expected_type
+);
 ResolvedType* typechecker_check_function_call(Typechecker* typechecker, FunctionCallNode* node);
 
 Typechecker typechecker_create() {
@@ -121,8 +127,13 @@ bool typechecker_check_statement(Typechecker* typechecker, Node* node, ResolvedT
         return typechecker_check_variable_reassignment(typechecker, (VariableReassignmentNode*)node);
 
     default: {
-        diagnostic_stream_push(&typechecker->diagnostics, node->position, true, "unable to type-check node: '%s'",
-                               node_to_string(node));
+        diagnostic_stream_push(
+            &typechecker->diagnostics,
+            node->position,
+            true,
+            "unable to type-check node: '%s'",
+            node_to_string(node)
+        );
 
         return false;
     }
@@ -158,7 +169,8 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
 
     declared_functions_append(
         &typechecker->functions,
-        (DeclaredFunction){.name = node->name, .return_type = return_type, .parameters = node->parameters});
+        (DeclaredFunction){.name = node->name, .return_type = return_type, .parameters = node->parameters}
+    );
 
     if (node->is_external) {
         // External functions have nothing to typecheck at the moment.
@@ -168,8 +180,13 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
 
     // If this is not an external function, and there is no function body, that should not be supported.
     if (!node->function_body) {
-        diagnostic_stream_push(&typechecker->diagnostics, node->position, true,
-                               "non-external function '%s' has no function body", node->name);
+        diagnostic_stream_push(
+            &typechecker->diagnostics,
+            node->position,
+            true,
+            "non-external function '%s' has no function body",
+            node->name
+        );
         return false;
     }
 
@@ -185,8 +202,10 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
         Parameter parameter = node->parameters.data[i];
 
         // Casting parameter.type to ResolvedType is safe here, we confirmed above that the type has been resolved.
-        declared_variables_append(&typechecker->variables,
-                                  (DeclaredVariable){.name = parameter.name, .type = (ResolvedType*)parameter.type});
+        declared_variables_append(
+            &typechecker->variables,
+            (DeclaredVariable){.name = parameter.name, .type = (ResolvedType*)parameter.type}
+        );
     }
 
     // Function declarations don't have much to typecheck, their parameters should already have types defined,
@@ -216,9 +235,14 @@ bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDe
 
     if (!type_equal((Type*)variable_type, (Type*)value_type)) {
         // These types are not matching!
-        diagnostic_stream_push(&typechecker->diagnostics, node->value->position, true,
-                               "unable to assign value of type '%s' to type '%s'", type_to_string((Type*)value_type),
-                               type_to_string((Type*)variable_type));
+        diagnostic_stream_push(
+            &typechecker->diagnostics,
+            node->value->position,
+            true,
+            "unable to assign value of type '%s' to type '%s'",
+            type_to_string((Type*)value_type),
+            type_to_string((Type*)variable_type)
+        );
         return false;
     }
 
@@ -227,8 +251,12 @@ bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDe
 
 bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node, ResolvedType* return_type) {
     if (!return_type) {
-        diagnostic_stream_push(&typechecker->diagnostics, node->position, true,
-                               "unable to type check return statement, current function has no known return type?");
+        diagnostic_stream_push(
+            &typechecker->diagnostics,
+            node->position,
+            true,
+            "unable to type check return statement, current function has no known return type?"
+        );
         return false;
     }
 
@@ -240,9 +268,14 @@ bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node, Resolv
 
     if (!type_equal((Type*)return_type, (Type*)value_type)) {
         // These types are not matching!
-        diagnostic_stream_push(&typechecker->diagnostics, node->value->position, true,
-                               "type '%s' cannot be returned from a function with return type '%s'",
-                               type_to_string((Type*)value_type), type_to_string((Type*)return_type));
+        diagnostic_stream_push(
+            &typechecker->diagnostics,
+            node->value->position,
+            true,
+            "type '%s' cannot be returned from a function with return type '%s'",
+            type_to_string((Type*)value_type),
+            type_to_string((Type*)return_type)
+        );
         return false;
     }
 
@@ -265,8 +298,13 @@ bool typechecker_check_variable_reassignment(Typechecker* typechecker, VariableR
     // The variable must already be declared.
     DeclaredVariable* variable = declared_variables_find_by_name(typechecker->variables, node->variable_name);
     if (!variable) {
-        diagnostic_stream_push(&typechecker->diagnostics, node->position, true,
-                               "unable to assign value to undeclared variable: '%s'", node->variable_name);
+        diagnostic_stream_push(
+            &typechecker->diagnostics,
+            node->position,
+            true,
+            "unable to assign value to undeclared variable: '%s'",
+            node->variable_name
+        );
         return false;
     }
 
@@ -277,9 +315,14 @@ bool typechecker_check_variable_reassignment(Typechecker* typechecker, VariableR
     }
 
     if (!type_equal((Type*)variable->type, (Type*)value_type)) {
-        diagnostic_stream_push(&typechecker->diagnostics, node->position, true,
-                               "unable to assign value of type '%s' to variable of type '%s'",
-                               type_to_string((Type*)value_type), type_to_string((Type*)variable->type));
+        diagnostic_stream_push(
+            &typechecker->diagnostics,
+            node->position,
+            true,
+            "unable to assign value of type '%s' to variable of type '%s'",
+            type_to_string((Type*)value_type),
+            type_to_string((Type*)variable->type)
+        );
 
         return false;
     }
@@ -309,16 +352,24 @@ ResolvedType* typechecker_check_value(Typechecker* typechecker, Node* node, Reso
         return typechecker_check_function_call(typechecker, (FunctionCallNode*)node);
 
     default: {
-        diagnostic_stream_push(&typechecker->diagnostics, node->position, true,
-                               "unable to type-check node as value: '%s'", node_to_string(node));
+        diagnostic_stream_push(
+            &typechecker->diagnostics,
+            node->position,
+            true,
+            "unable to type-check node as value: '%s'",
+            node_to_string(node)
+        );
 
         return 0;
     }
     }
 }
 
-ResolvedType* typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNode* node,
-                                               ResolvedType* expected_type) {
+ResolvedType* typechecker_check_number_literal(
+    Typechecker* typechecker,
+    NumberLiteralNode* node,
+    ResolvedType* expected_type
+) {
     (void)typechecker;
 
     ResolvedType* value_type;
@@ -338,9 +389,11 @@ ResolvedType* typechecker_check_number_literal(Typechecker* typechecker, NumberL
         // If the expected type is a supported integer type, we can coerce it to that.
         if (expected_type->kind == TYPE_KIND_INT_8 || expected_type->kind == TYPE_KIND_INT_32 ||
             expected_type->kind == TYPE_KIND_INT_64) {
-            LOG_DEBUG("typechecker",
-                      "expected type for number literal is '%s', coercing to that type as it is safe to do so",
-                      type_to_string((Type*)expected_type));
+            LOG_DEBUG(
+                "typechecker",
+                "expected type for number literal is '%s', coercing to that type as it is safe to do so",
+                type_to_string((Type*)expected_type)
+            );
             value_type = expected_type;
         }
     }
@@ -370,8 +423,13 @@ ResolvedType* typechecker_check_identifier_reference(Typechecker* typechecker, I
     // An identifier reference always refers to a previous variable declaration.
     DeclaredVariable* variable = declared_variables_find_by_name(typechecker->variables, node->name);
     if (!variable) {
-        diagnostic_stream_push(&typechecker->diagnostics, node->position, true, "undeclared variable: '%s'",
-                               node->name);
+        diagnostic_stream_push(
+            &typechecker->diagnostics,
+            node->position,
+            true,
+            "undeclared variable: '%s'",
+            node->name
+        );
         return 0;
     }
 
@@ -379,8 +437,11 @@ ResolvedType* typechecker_check_identifier_reference(Typechecker* typechecker, I
     return variable->type;
 }
 
-ResolvedType* typechecker_check_binary_operation(Typechecker* typechecker, BinaryOperationNode* node,
-                                                 ResolvedType* expected_type) {
+ResolvedType* typechecker_check_binary_operation(
+    Typechecker* typechecker,
+    BinaryOperationNode* node,
+    ResolvedType* expected_type
+) {
     // Both sides of the operation must be the same type.
     // This could be expanded to "compatible" types in the future, but for now, we will just make sure
     // that they are the same type.
@@ -395,9 +456,14 @@ ResolvedType* typechecker_check_binary_operation(Typechecker* typechecker, Binar
     }
 
     if (!type_equal((Type*)left_type, (Type*)right_type)) {
-        diagnostic_stream_push(&typechecker->diagnostics, node->position, true,
-                               "incompatible types for binary operation: '%s' and '%s'",
-                               type_to_string((Type*)left_type), type_to_string((Type*)right_type));
+        diagnostic_stream_push(
+            &typechecker->diagnostics,
+            node->position,
+            true,
+            "incompatible types for binary operation: '%s' and '%s'",
+            type_to_string((Type*)left_type),
+            type_to_string((Type*)right_type)
+        );
 
         return 0;
     }
@@ -410,16 +476,27 @@ ResolvedType* typechecker_check_function_call(Typechecker* typechecker, Function
     // A function call always refers to a previously declared function.
     DeclaredFunction* function = declared_functions_find_by_name(typechecker->functions, node->name);
     if (!function) {
-        diagnostic_stream_push(&typechecker->diagnostics, node->position, true, "undeclared function: '%s'",
-                               node->name);
+        diagnostic_stream_push(
+            &typechecker->diagnostics,
+            node->position,
+            true,
+            "undeclared function: '%s'",
+            node->name
+        );
         return 0;
     }
 
     // FIXME: Allow for function overloading.
     if (node->arguments.length != function->parameters.length) {
-        diagnostic_stream_push(&typechecker->diagnostics, node->position, true,
-                               "function '%s' expects %d parameters, but %d arguments were passed", function->name,
-                               function->parameters.length, node->arguments.length);
+        diagnostic_stream_push(
+            &typechecker->diagnostics,
+            node->position,
+            true,
+            "function '%s' expects %d parameters, but %d arguments were passed",
+            function->name,
+            function->parameters.length,
+            node->arguments.length
+        );
 
         return 0;
     }
@@ -436,9 +513,14 @@ ResolvedType* typechecker_check_function_call(Typechecker* typechecker, Function
 
         // If the parameter's type does not match the argument passed, this is a problem.
         if (!type_equal((Type*)argument_type, parameter.type)) {
-            diagnostic_stream_push(&typechecker->diagnostics, argument->position, true,
-                                   "type '%s' cannot be passed to a function with parameter of type '%s'",
-                                   type_to_string((Type*)argument_type), type_to_string(parameter.type));
+            diagnostic_stream_push(
+                &typechecker->diagnostics,
+                argument->position,
+                true,
+                "type '%s' cannot be passed to a function with parameter of type '%s'",
+                type_to_string((Type*)argument_type),
+                type_to_string(parameter.type)
+            );
 
             return 0;
         }

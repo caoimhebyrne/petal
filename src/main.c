@@ -11,10 +11,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifndef VERSION
-#define VERSION "local"
-#endif
-
 #define VERSION_MESSAGE                                                                                                \
     "Petal v" VERSION "\n"                                                                                             \
     "This project is licensed under the MIT license.\n"                                                                \
@@ -135,8 +131,13 @@ int main(int argc, char** argv) {
             return -1;
         }
 
-        int linker_status = system(format_string("clang -fuse-ld=lld -o %s %s.o %s", output_file_name, output_file_name,
-                                                 linker_arguments ? linker_arguments : ""));
+        int linker_status = system(format_string(
+            "clang -fuse-ld=lld -o %s %s.o %s",
+            output_file_name,
+            output_file_name,
+            linker_arguments ? linker_arguments : ""
+        ));
+
         if (linker_status != 0) {
             LOG_ERROR("main", "linker failed! (%d)", linker_status);
             return -1;

@@ -42,8 +42,13 @@
                                                                                                                        \
             value_type* new_data = realloc(stream->data, sizeof(value_type) * new_capacity);                           \
             if (!new_data) {                                                                                           \
-                LOG_ERROR("stream", "failed to re-allocated stream buffer from %zu to %zu", stream->capacity,          \
-                          new_capacity);                                                                               \
+                LOG_ERROR(                                                                                             \
+                    "stream",                                                                                          \
+                    "failed to re-allocated stream buffer from %zu to %zu",                                            \
+                    stream->capacity,                                                                                  \
+                    new_capacity                                                                                       \
+                );                                                                                                     \
+                                                                                                                       \
                 return false;                                                                                          \
             }                                                                                                          \
                                                                                                                        \

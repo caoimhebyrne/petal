@@ -8,11 +8,21 @@ void diagnostic_stream_print(DiagnosticStream* stream, char* filename) {
         Diagnostic diagnostic = stream->data[i];
 
         if (diagnostic.is_terminal) {
-            printf(ANSI_COLOR_RED "error" ANSI_COLOR_RESET ": %s(%zu:%zu): %s\n", filename,
-                   diagnostic.position.line + 1, diagnostic.position.column, diagnostic.message);
+            printf(
+                ANSI_COLOR_RED "error" ANSI_COLOR_RESET ": %s(%zu:%zu): %s\n",
+                filename,
+                diagnostic.position.line + 1,
+                diagnostic.position.column,
+                diagnostic.message
+            );
         } else {
-            printf(ANSI_COLOR_YELLOW "warning" ANSI_COLOR_RESET ": %s(%zu:%zu): %s\n", filename,
-                   diagnostic.position.line + 1, diagnostic.position.column, diagnostic.message);
+            printf(
+                ANSI_COLOR_YELLOW "warning" ANSI_COLOR_RESET ": %s(%zu:%zu): %s\n",
+                filename,
+                diagnostic.position.line + 1,
+                diagnostic.position.column,
+                diagnostic.message
+            );
         }
     }
 }
