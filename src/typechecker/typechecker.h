@@ -5,6 +5,7 @@
 #include "../diagnostics.h"
 #include "declared_function.h"
 #include "declared_variable.h"
+#include "type_alias.h"
 
 typedef struct {
     // The diagnostics produced from this typechecker.
@@ -15,6 +16,9 @@ typedef struct {
 
     // The variables found during this typechecking session.
     DeclaredVariables variables;
+
+    // The type aliases found during this typechecking session.
+    TypeAliases type_aliases;
 } Typechecker;
 
 // Creates a new TypeChecker.

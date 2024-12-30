@@ -50,8 +50,11 @@ LLVMCodegen llvm_codegen_create(char* filename, NodeStream node_stream) {
 
 void llvm_codegen_generate(LLVMCodegen* codegen) {
     for (size_t i = 0; i < codegen->node_stream.length; i++) {
-        if (!llvm_codegen_generate_statement(codegen, codegen->node_stream.data[i])) {
-            return;
+        Node* node = codegen->node_stream.data[i];
+        if (node->node_type != NODE_TYPE_ALIAS_DECLARATION) {
+            if (!llvm_codegen_generate_statement(codegen, node)) {
+                return;
+            }
         }
     }
 
@@ -204,8 +207,11 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
 
     if (node->function_body) {
         for (size_t i = 0; i < node->function_body->body.length; i++) {
-            if (!llvm_codegen_generate_statement(codegen, node->function_body->body.data[i])) {
-                return 0;
+            Node* body_node = node->function_body->body.data[i];
+            if (body_node->node_type != NODE_TYPE_ALIAS_DECLARATION) {
+                if (!llvm_codegen_generate_statement(codegen, body_node)) {
+                    return 0;
+                }
             }
         }
 

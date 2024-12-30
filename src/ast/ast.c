@@ -9,6 +9,7 @@
 #include "node/number_literal.h"
 #include "node/return.h"
 #include "node/string_literal.h"
+#include "node/type_alias_declaration.h"
 #include "node/variable_declaration.h"
 #include "parameter.h"
 #include "type.h"
@@ -32,6 +33,7 @@ Node* ast_parse_statement(AST* ast);
 Node* ast_parse_expression(AST* ast);
 Node* ast_parse_value(AST* ast);
 
+Node* ast_parse_type_alias_declaration_statement(AST* ast);
 Node* ast_parse_return_statement(AST* ast);
 Node* ast_parse_variable_declaration_statement(AST* ast);
 Node* ast_parse_function_declaration_statement(AST* ast);
@@ -202,6 +204,9 @@ Node* ast_parse_statement(AST* ast) {
 
     else if (ast_next_is(ast, TOKEN_IDENTIFIER) && ast_after_next_is(ast, TOKEN_OPEN_PARENTHESIS))
         statement = ast_parse_function_call(ast);
+
+    else if (ast_next_is_string(ast, TOKEN_KEYWORD, "type"))
+        statement = ast_parse_type_alias_declaration_statement(ast);
 
     else if (ast_next_is_string(ast, TOKEN_KEYWORD, "return"))
         statement = ast_parse_return_statement(ast);
@@ -543,6 +548,29 @@ Node* ast_parse_function_declaration_statement(AST* ast) {
 
     return (Node*)function_declaration_node_create(func_keyword_token.position, name_token.string, parameters,
                                                    return_type, function_body, false);
+}
+
+// <keyword: type> <identifier> = <identifier>
+Node* ast_parse_type_alias_declaration_statement(AST* ast) {
+    // The first token is the `type` keyword.
+    Token token = ast_consume_type(ast, TOKEN_KEYWORD);
+
+    // The next token must be an identifier.
+    Token name_token = ast_consume_type(ast, TOKEN_IDENTIFIER);
+    if (name_token.type == TOKEN_INVALID) {
+        return 0;
+    }
+
+    // The next token must be an equals.
+    ast_expect(ast, TOKEN_EQUALS);
+
+    // The next token(s) must make up a valid type.
+    Type* type = ast_parse_type(ast);
+    if (!type) {
+        return 0;
+    }
+
+    return (Node*)type_alias_declaration_node_create(token.position, name_token.string, type);
 }
 
 // <keyword: return> (value)

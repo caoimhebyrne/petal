@@ -34,7 +34,7 @@
                 },
                 {
                     "name": "keyword.declaration.petal",
-                    "match": "\\b(func)\\b"
+                    "match": "\\b(func|type)\\b"
                 }
             ]
         },

@@ -44,6 +44,10 @@ typedef enum {
     // A boolean literal node.
     // See BooleanLiteralNode.
     NODE_BOOLEAN_LITERAL,
+
+    // A type alias declaration noed.
+    // See TypeAliasDeclarationNode.
+    NODE_TYPE_ALIAS_DECLARATION,
 } NodeType;
 
 typedef struct {

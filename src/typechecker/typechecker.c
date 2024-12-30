@@ -7,9 +7,11 @@
 #include "../ast/node/number_literal.h"
 #include "../ast/node/return.h"
 #include "../ast/node/string_literal.h"
+#include "../ast/node/type_alias_declaration.h"
 #include "../ast/node/variable_declaration.h"
 #include "declared_function.h"
 #include "declared_variable.h"
+#include "type_alias.h"
 #include <math.h>
 #include <stdbool.h>
 
@@ -22,6 +24,7 @@ bool typechecker_check_statement(Typechecker* typechecker, Node* node, ResolvedT
 bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDeclarationNode* node);
 bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDeclarationNode* node);
 bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node, ResolvedType* return_type);
+bool typechecker_check_type_alias_declaration(Typechecker* typechecker, TypeAliasDeclarationNode* node);
 
 ResolvedType* typechecker_check_value(Typechecker* typechecker, Node* value, ResolvedType* expected_type);
 ResolvedType* typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNode* node,
@@ -43,7 +46,10 @@ Typechecker typechecker_create() {
     DeclaredVariables variables;
     declared_variables_initialize(&variables, 1);
 
-    return (Typechecker){diagnostics, functions, variables};
+    TypeAliases type_aliases;
+    type_aliases_initialize(&type_aliases, 1);
+
+    return (Typechecker){diagnostics, functions, variables, type_aliases};
 }
 
 void typechecker_run(Typechecker* typechecker, NodeStream* node_stream) {
@@ -70,8 +76,13 @@ ResolvedType* typechecker_resolve_type(Typechecker* typechecker, Type* type, Pos
 
     UnresolvedType* unresolved_type = (UnresolvedType*)type;
 
-    // TODO: Resolve type alises.
+    // The name may be referring to a type alias.
+    TypeAlias* alias = type_aliases_find_by_name(typechecker->type_aliases, unresolved_type->name);
+    if (alias) {
+        return alias->type;
+    }
 
+    // There is no type alias for the type, attempt to resolve a valid type-kind from the name.
     TypeKind resolved_type_kind = type_kind_from_string(unresolved_type->name);
     if (resolved_type_kind == TYPE_KIND_INVALID) {
         diagnostic_stream_push(&typechecker->diagnostics, position, true, "unknown type: '%s'", unresolved_type->name);
@@ -100,6 +111,9 @@ bool typechecker_check_statement(Typechecker* typechecker, Node* node, ResolvedT
 
         return true;
     }
+
+    case NODE_TYPE_ALIAS_DECLARATION:
+        return typechecker_check_type_alias_declaration(typechecker, (TypeAliasDeclarationNode*)node);
 
     default: {
         diagnostic_stream_push(&typechecker->diagnostics, node->position, true, "unable to type-check node: '%s'",
@@ -227,6 +241,18 @@ bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node, Resolv
         return false;
     }
 
+    return true;
+}
+
+bool typechecker_check_type_alias_declaration(Typechecker* typechecker, TypeAliasDeclarationNode* node) {
+    // The type being aliased must be resolvable.
+    ResolvedType* aliased_type = typechecker_resolve_type(typechecker, node->type, node->position);
+    if (!aliased_type) {
+        return false;
+    }
+
+    // The type alias can now be recorded for future use.
+    type_aliases_append(&typechecker->type_aliases, (TypeAlias){.name = node->name, .type = aliased_type});
     return true;
 }
 

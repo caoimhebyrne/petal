@@ -9,6 +9,7 @@
 #include "node/number_literal.h"
 #include "node/return.h"
 #include "node/string_literal.h"
+#include "node/type_alias_declaration.h"
 #include "node/variable_declaration.h"
 #include "type.h"
 
@@ -91,6 +92,16 @@ void node_destroy(Node* node) {
     case NODE_BLOCK: {
         BlockNode* block = (BlockNode*)node;
         node_stream_destroy(&block->body);
+
+        break;
+    }
+
+    case NODE_TYPE_ALIAS_DECLARATION: {
+        TypeAliasDeclarationNode* type_alias_declaration = (TypeAliasDeclarationNode*)node;
+        free(type_alias_declaration->name);
+        type_destroy(type_alias_declaration->type);
+
+        break;
     }
     }
 
@@ -136,6 +147,9 @@ char* node_to_string(Node* node) {
 
     case NODE_BOOLEAN_LITERAL:
         return boolean_literal_node_to_string((BooleanLiteralNode*)node);
+
+    case NODE_TYPE_ALIAS_DECLARATION:
+        return type_alias_declaration_node_to_string((TypeAliasDeclarationNode*)node);
     }
 
     return format_string("unknown node (%d)", node->node_type);
