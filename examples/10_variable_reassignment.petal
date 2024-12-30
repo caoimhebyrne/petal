@@ -9,6 +9,6 @@ func main() {
     i8 value = 5;
     printf("before re-assignment = %d\n", value);
 
-    value = 5.5;
+    value = 10;
     printf("after re-assignment = %d\n", value);
 }
