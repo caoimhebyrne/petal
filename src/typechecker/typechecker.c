@@ -598,4 +598,6 @@ ResolvedType* typechecker_check_force_unwrap(
 void typechecker_destroy(Typechecker* typechecker) {
     diagnostic_stream_destroy(&typechecker->diagnostics);
     declared_variables_destroy(&typechecker->variables);
+    declared_functions_destroy(&typechecker->functions);
+    type_aliases_destroy(&typechecker->type_aliases);
 }

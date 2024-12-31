@@ -22,7 +22,11 @@ void node_destroy(Node* node) {
     case NODE_VARIABLE_DECLARATION: {
         VariableDeclarationNode* variable_declaration = (VariableDeclarationNode*)node;
         free(variable_declaration->name);
-        node_destroy(variable_declaration->value);
+
+        if (variable_declaration->value) {
+            node_destroy(variable_declaration->value);
+        }
+
         type_destroy(variable_declaration->type);
 
         break;

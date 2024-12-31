@@ -150,5 +150,6 @@ int main(int argc, char** argv) {
 
     llvm_codegen_destroy(&codegen);
     ast_destroy(&ast);
+    lexer_destroy(&lexer);
     return 0;
 }

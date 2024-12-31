@@ -604,6 +604,7 @@ void llvm_codegen_destroy(LLVMCodegen* codegen) {
     LLVMDisposeModule(codegen->module);
     LLVMContextDispose(codegen->context);
 
+    diagnostic_stream_destroy(&codegen->diagnostics);
     node_stream_destroy(&codegen->node_stream);
 }
 
