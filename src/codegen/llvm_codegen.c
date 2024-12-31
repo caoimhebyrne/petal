@@ -1,6 +1,7 @@
 #include "llvm_codegen.h"
 #include "../ast/node/binary_operation.h"
 #include "../ast/node/boolean_literal.h"
+#include "../ast/node/force_unwrap.h"
 #include "../ast/node/function_declaration.h"
 #include "../ast/node/identifier_reference.h"
 #include "../ast/node/number_literal.h"
@@ -30,6 +31,7 @@ LLVMValueRef llvm_codegen_generate_variable_reassignment(LLVMCodegen* codegen, V
 LLVMValueRef llvm_codegen_generate_function_call(LLVMCodegen* codegen, FunctionCallNode* node, bool as_value);
 LLVMValueRef llvm_codegen_generate_identifier_reference(LLVMCodegen* codegen, IdentifierReferenceNode* node);
 LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, BinaryOperationNode* node);
+LLVMValueRef llvm_codegen_generate_force_unwrap(LLVMCodegen* codegen, ForceUnwrapNode* node);
 
 LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, ResolvedType* type, Position position);
 
@@ -129,6 +131,9 @@ LLVMValueRef llvm_codegen_generate_value(LLVMCodegen* codegen, Node* node) {
 
     case NODE_BINARY_OPERATION:
         return llvm_codegen_generate_binary_operation(codegen, (BinaryOperationNode*)node);
+
+    case NODE_FORCE_UNWRAP:
+        return llvm_codegen_generate_force_unwrap(codegen, (ForceUnwrapNode*)node);
 
     default: {
         diagnostic_stream_push(
@@ -259,8 +264,7 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
         // All functions need to have a terminator (either return or unreachable).
         // If the last instruction in the last block of the function is not a return, we can
         // generate it if and only if the function's return type is void.
-        LLVMBasicBlockRef block = LLVMGetLastBasicBlock(function);
-        LLVMValueRef last_instruction = LLVMGetLastInstruction(block);
+        LLVMValueRef last_instruction = LLVMGetLastInstruction(LLVMGetInsertBlock(codegen->builder));
 
         bool needs_terminator = true;
         if (last_instruction) {
@@ -414,6 +418,7 @@ LLVMValueRef llvm_codegen_generate_variable_declaration(LLVMCodegen* codegen, Va
 
     // 3. If there is no value, this is an optional variable.
     if (!node->value) {
+        LLVMBuildStore(codegen->builder, LLVMConstNull(variable_type), variable_declaration);
         return variable_declaration;
     }
 
@@ -547,6 +552,51 @@ LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, Binary
         return 0;
     }
     }
+}
+
+// FIXME: This should be moved to a standard library that also prints out a nice error message.
+void llvm_codegen_build_panic(LLVMCodegen* codegen) {
+    LLVMTypeRef i32_type = LLVMInt32TypeInContext(codegen->context);
+
+    LLVMTypeRef exit_parameters[] = {i32_type};
+    LLVMTypeRef exit_function_type =
+        LLVMFunctionType(LLVMVoidTypeInContext(codegen->context), exit_parameters, 1, false);
+    LLVMValueRef exit_function = LLVMAddFunction(codegen->module, "exit", exit_function_type);
+    LLVMSetLinkage(exit_function, LLVMExternalLinkage);
+
+    LLVMValueRef status = LLVMConstInt(i32_type, 200, false);
+    LLVMBuildCall2(codegen->builder, exit_function_type, exit_function, &status, 1, "");
+    LLVMBuildUnreachable(codegen->builder);
+}
+
+LLVMValueRef llvm_codegen_generate_force_unwrap(LLVMCodegen* codegen, ForceUnwrapNode* node) {
+    // Generate a value for the node, this will be used to check for a null value.
+    LLVMValueRef value = llvm_codegen_generate_value(codegen, node->value);
+    if (!value) {
+        return 0;
+    }
+
+    // In order to generate more blocks, we need to know the current function.
+    // FIXME: This should probably be a value within `LLVMCodegen` that is set whenever a function declaration is
+    //        having its body generated.
+    LLVMBasicBlockRef current_block = LLVMGetInsertBlock(codegen->builder);
+    LLVMValueRef current_function = LLVMGetBasicBlockParent(current_block);
+
+    // Generate a value indicating whether the original value is null or not.
+    LLVMValueRef is_null = LLVMBuildIsNull(codegen->builder, value, "force-unwrap");
+
+    // Create two blocks, one if the value is null, and one if the value is not null.
+    LLVMBasicBlockRef null_block = LLVMAppendBasicBlockInContext(codegen->context, current_function, "if-null");
+    LLVMBasicBlockRef non_null_block = LLVMAppendBasicBlockInContext(codegen->context, current_function, "if-not-null");
+    LLVMBuildCondBr(codegen->builder, is_null, null_block, non_null_block);
+
+    // If the value is null, just panic.
+    LLVMPositionBuilderAtEnd(codegen->builder, null_block);
+    llvm_codegen_build_panic(codegen);
+
+    // If the value is not null, just use it as normal.
+    LLVMPositionBuilderAtEnd(codegen->builder, non_null_block);
+    return llvm_codegen_generate_value(codegen, node->value);
 }
 
 void llvm_codegen_destroy(LLVMCodegen* codegen) {

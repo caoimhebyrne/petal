@@ -87,6 +87,9 @@ char* token_type_to_string(TokenType token_type) {
 
     case TOKEN_QUESTION_MARK:
         return "question mark";
+
+    case TOKEN_EXCLAMATION_MARK:
+        return "exclamation mark";
     }
 
     return "unknown";

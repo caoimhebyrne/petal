@@ -3,6 +3,7 @@
 #include "node/binary_operation.h"
 #include "node/block.h"
 #include "node/boolean_literal.h"
+#include "node/force_unwrap.h"
 #include "node/function_call.h"
 #include "node/function_declaration.h"
 #include "node/identifier_reference.h"
@@ -318,43 +319,63 @@ Node* ast_parse_value(AST* ast) {
         return expression;
     }
 
+    Node* value_node;
+
     if (ast_next_is_string(ast, TOKEN_KEYWORD, "true") || ast_next_is_string(ast, TOKEN_KEYWORD, "false"))
-        return ast_parse_boolean_literal_expression(ast);
+        value_node = ast_parse_boolean_literal_expression(ast);
 
-    if (ast_next_is(ast, TOKEN_AMPERSAND))
-        return ast_parse_identifier_reference_expression(ast);
+    else if (ast_next_is(ast, TOKEN_AMPERSAND))
+        value_node = ast_parse_identifier_reference_expression(ast);
 
-    Token next = ast_peek(ast);
-    switch (next.type) {
-    case TOKEN_NUMBER_LITERAL:
-        return ast_parse_number_literal_expression(ast);
+    else if (ast_next_is(ast, TOKEN_NUMBER_LITERAL))
+        value_node = ast_parse_number_literal_expression(ast);
 
-    case TOKEN_IDENTIFIER: {
-        // If the following token is an opening parenthesis, this is a function call.
-        if (ast_after_next_is(ast, TOKEN_OPEN_PARENTHESIS)) {
-            return ast_parse_function_call(ast);
-        }
+    else if (ast_next_is(ast, TOKEN_IDENTIFIER) && ast_after_next_is(ast, TOKEN_OPEN_PARENTHESIS))
+        value_node = ast_parse_function_call(ast);
 
-        return ast_parse_identifier_reference_expression(ast);
-    }
+    else if (ast_next_is(ast, TOKEN_IDENTIFIER))
+        value_node = ast_parse_identifier_reference_expression(ast);
 
-    case TOKEN_STRING_LITERAL:
-        return ast_parse_string_literal_expression(ast);
+    else if (ast_next_is(ast, TOKEN_STRING_LITERAL))
+        value_node = ast_parse_string_literal_expression(ast);
 
-    case TOKEN_INVALID:
-        diagnostic_stream_push(&ast->diagnostics, next.position, true, "expected a value, but got end of file");
-        return 0;
+    else if (ast_next_is(ast, TOKEN_INVALID)) {
+        Token previous_token = ast->token_stream.data[ast->token_stream.length - 1];
 
-    default:
         diagnostic_stream_push(
             &ast->diagnostics,
-            next.position,
+            previous_token.position,
+            true,
+            "expected a value, but got end of file"
+        );
+
+        return 0;
+    } else {
+        Token next_token = ast_peek(ast);
+
+        diagnostic_stream_push(
+            &ast->diagnostics,
+            next_token.position,
             true,
             "unexpected token for value: '%s'",
-            token_to_string(next)
+            token_to_string(next_token)
         );
+
         return 0;
     }
+
+    // If no value node was parsed, don't do any modifications.
+    if (!value_node) {
+        return 0;
+    }
+
+    // If the next token is an exclamation mark, this is a force-unwrap.
+    if (ast_next_is(ast, TOKEN_EXCLAMATION_MARK)) {
+        Token exclamation_token = ast_consume(ast);
+        return (Node*)force_unwrap_node_create(exclamation_token.position, value_node);
+    }
+
+    return value_node;
 }
 
 // <number>

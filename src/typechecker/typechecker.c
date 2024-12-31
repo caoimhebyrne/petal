@@ -1,6 +1,7 @@
 #include "typechecker.h"
 #include "../ast/node/binary_operation.h"
 #include "../ast/node/boolean_literal.h"
+#include "../ast/node/force_unwrap.h"
 #include "../ast/node/function_call.h"
 #include "../ast/node/function_declaration.h"
 #include "../ast/node/identifier_reference.h"
@@ -43,6 +44,11 @@ ResolvedType* typechecker_check_binary_operation(
     ResolvedType* expected_type
 );
 ResolvedType* typechecker_check_function_call(Typechecker* typechecker, FunctionCallNode* node);
+ResolvedType* typechecker_check_force_unwrap(
+    Typechecker* typechecker,
+    ForceUnwrapNode* node,
+    ResolvedType* expected_type
+);
 
 Typechecker typechecker_create() {
     DiagnosticStream diagnostics;
@@ -246,7 +252,8 @@ bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDe
 
     // Allow non-null values to be assigned to nullable variables.
     // Anything else is a type mismatch.
-    if (variable_type->is_reference != value_type->is_reference || variable_type->kind != value_type->kind) {
+    if (variable_type->is_reference != value_type->is_reference || variable_type->kind != value_type->kind ||
+        (!variable_type->is_optional && value_type->is_optional)) {
         diagnostic_stream_push(
             &typechecker->diagnostics,
             node->value->position,
@@ -332,6 +339,7 @@ bool typechecker_check_variable_reassignment(Typechecker* typechecker, VariableR
 
         // Non-optionals should be allowed to be assigned to optionals.
         bool is_non_optional_to_optional_assignment = variable->type->is_optional && !value_type->is_optional;
+        LOG_DEBUG("typechecker", "is_non_optional_to_optional_assignment: %d", is_non_optional_to_optional_assignment);
 
         if (!is_value_to_pointer_assignment && !is_non_optional_to_optional_assignment) {
             diagnostic_stream_push(
@@ -370,6 +378,9 @@ ResolvedType* typechecker_check_value(Typechecker* typechecker, Node* node, Reso
 
     case NODE_FUNCTION_CALL:
         return typechecker_check_function_call(typechecker, (FunctionCallNode*)node);
+
+    case NODE_FORCE_UNWRAP:
+        return typechecker_check_force_unwrap(typechecker, (ForceUnwrapNode*)node, expected_type);
 
     default: {
         diagnostic_stream_push(
@@ -554,6 +565,34 @@ ResolvedType* typechecker_check_function_call(Typechecker* typechecker, Function
 
     // The type of this function call is the return type of the function.
     return function->return_type;
+}
+
+ResolvedType* typechecker_check_force_unwrap(
+    Typechecker* typechecker,
+    ForceUnwrapNode* node,
+    ResolvedType* expected_type
+) {
+    // The value must have a resolvable type.
+    ResolvedType* value_type = typechecker_check_value(typechecker, node->value, expected_type);
+    if (!value_type) {
+        return 0;
+    }
+
+    // The value's type must be optional.
+    if (!value_type->is_optional) {
+        diagnostic_stream_push(
+            &typechecker->diagnostics,
+            node->value->position,
+            true,
+            "unable to unwrap non-optional type: '%s'",
+            type_to_string((Type*)value_type)
+        );
+
+        return 0;
+    }
+
+    // If this node is force-unwrapped, the type is the same, except for the fact that it is non-optional.
+    return type_create_resolved(false, value_type->is_reference, value_type->kind);
 }
 
 void typechecker_destroy(Typechecker* typechecker) {

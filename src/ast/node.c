@@ -3,6 +3,7 @@
 #include "node/binary_operation.h"
 #include "node/block.h"
 #include "node/boolean_literal.h"
+#include "node/force_unwrap.h"
 #include "node/function_call.h"
 #include "node/function_declaration.h"
 #include "node/identifier_reference.h"
@@ -110,6 +111,15 @@ void node_destroy(Node* node) {
 
         node_destroy(variable_reassignment->value);
         free(variable_reassignment->variable_name);
+
+        break;
+    }
+
+    case NODE_FORCE_UNWRAP: {
+        ForceUnwrapNode* force_unwrap = (ForceUnwrapNode*)node;
+        node_destroy(force_unwrap->value);
+
+        break;
     }
     }
 
@@ -161,6 +171,9 @@ char* node_to_string(Node* node) {
 
     case NODE_VARIABLE_REASSIGNMENT:
         return variable_reassignment_node_to_string((VariableReassignmentNode*)node);
+
+    case NODE_FORCE_UNWRAP:
+        return force_unwrap_node_to_string((ForceUnwrapNode*)node);
     }
 
     return format_string("unknown node (%d)", node->node_type);

@@ -52,6 +52,10 @@ typedef enum {
     // A variable re-assignment node.
     // See VariableReassignmentNode.
     NODE_VARIABLE_REASSIGNMENT,
+
+    // A force-unwrap node.
+    // See ForceUnwrapNode.
+    NODE_FORCE_UNWRAP,
 } NodeType;
 
 typedef struct {

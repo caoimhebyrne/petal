@@ -37,6 +37,7 @@ typedef enum {
     TOKEN_PLUS,                // +
     TOKEN_AMPERSAND,           // &
     TOKEN_QUESTION_MARK,       // ?
+    TOKEN_EXCLAMATION_MARK,    // !
 } TokenType;
 
 // Represents a single Token produced by the Lexer.
