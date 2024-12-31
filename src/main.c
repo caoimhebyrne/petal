@@ -8,8 +8,14 @@
 #include "logger.h"
 #include "string/format_string.h"
 #include "typechecker/typechecker.h"
+#include <llvm-c/Core.h>
+#include <llvm-c/Types.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+
+// Attempts to compile a file into an LLVM module.
+LLVMModuleRef compile_module(char* filename);
 
 #define VERSION_MESSAGE                                                                                                \
     "Petal v" VERSION "\n"                                                                                             \
@@ -73,83 +79,92 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    Lexer lexer;
-    if (!lexer_initialize(&lexer, input_file_name)) {
+    LLVMModuleRef module = compile_module(input_file_name);
+    if (!module) {
         return -1;
+    }
+
+    if (!output_file_name) {
+        LOG_WARNING("main", "no output file specified, skipping emit step");
+        return -1;
+    }
+
+    char* object_file_name = format_string("%s.o", output_file_name);
+    char* error_message = llvm_codegen_emit(module, object_file_name);
+    if (error_message) {
+        LOG_ERROR("main", "%s", error_message);
+        return -1;
+    }
+
+    int status = system(format_string("clang -fuse-ld=lld -o %s %s", output_file_name, object_file_name));
+    if (status != 0) {
+        LOG_ERROR("main", "linker failed! (%d)", status);
+        return -1;
+    }
+
+    LOG_SUCCESS("binary created: %s", output_file_name);
+    LLVMDisposeModule(module);
+
+    return 0;
+}
+
+LLVMModuleRef compile_module(char* filename) {
+    Lexer lexer;
+    if (!lexer_initialize(&lexer, filename)) {
+        return 0;
     }
 
     TokenStream token_stream = lexer_parse(&lexer);
     if (lexer.diagnostics.length != 0) {
         token_stream_destroy(&token_stream);
-        diagnostic_stream_print(&lexer.diagnostics, input_file_name);
+        diagnostic_stream_print(&lexer.diagnostics, filename);
         lexer_destroy(&lexer);
 
-        return -1;
+        return 0;
     }
 
     AST ast;
     if (!ast_initialize(&ast, token_stream)) {
-        return -1;
+        return 0;
     }
 
     NodeStream node_stream = ast_parse(&ast);
     if (ast.diagnostics.length != 0) {
         node_stream_destroy(&node_stream);
-        diagnostic_stream_print(&ast.diagnostics, input_file_name);
+        diagnostic_stream_print(&ast.diagnostics, filename);
         ast_destroy(&ast);
 
-        return -1;
+        return 0;
     }
 
     Typechecker typechecker = typechecker_create();
     typechecker_run(&typechecker, &node_stream);
 
     if (typechecker.diagnostics.length != 0) {
-        diagnostic_stream_print(&typechecker.diagnostics, input_file_name);
+        diagnostic_stream_print(&typechecker.diagnostics, filename);
         typechecker_destroy(&typechecker);
 
-        return -1;
+        return 0;
     }
 
     typechecker_destroy(&typechecker);
 
-    LLVMCodegen codegen = llvm_codegen_create(input_file_name, node_stream);
+    LLVMCodegen codegen = llvm_codegen_create(filename, node_stream);
     llvm_codegen_generate(&codegen);
 
     if (codegen.diagnostics.length != 0) {
-        diagnostic_stream_print(&codegen.diagnostics, input_file_name);
-        // llvm_codegen_destroy(&codegen);
-        // ast_destroy(&ast);
+        diagnostic_stream_print(&codegen.diagnostics, filename);
 
-        return -1;
-    }
+        llvm_codegen_destroy(&codegen);
+        ast_destroy(&ast);
+        lexer_destroy(&lexer);
 
-    if (output_file_name) {
-        char* error_message = llvm_codegen_emit(&codegen, format_string("%s.o", output_file_name));
-        if (error_message) {
-            LOG_ERROR("main", "%s", error_message);
-            return -1;
-        }
-
-        int linker_status = system(format_string(
-            "clang -fuse-ld=lld -o %s %s.o %s",
-            output_file_name,
-            output_file_name,
-            linker_arguments ? linker_arguments : ""
-        ));
-
-        if (linker_status != 0) {
-            LOG_ERROR("main", "linker failed! (%d)", linker_status);
-            return -1;
-        }
-
-        LOG_SUCCESS("binary created: %s", output_file_name);
-    } else {
-        LOG_WARNING("main", "no output file specified, skipping emit step");
+        return 0;
     }
 
     llvm_codegen_destroy(&codegen);
     ast_destroy(&ast);
     lexer_destroy(&lexer);
-    return 0;
+
+    return codegen.module;
 }

@@ -51,7 +51,7 @@ void llvm_codegen_generate(LLVMCodegen* codegen);
 // - out_file_path: The path (relative to the current working directory) that the object file should be written to.
 // Returns:
 // - An error message if one occurred, otherwise 0.
-char* llvm_codegen_emit(LLVMCodegen* codegen, char* out_file_path);
+char* llvm_codegen_emit(LLVMModuleRef module, char* out_file_path);
 
 // Destroys the provided LLVM code generator.
 void llvm_codegen_destroy(LLVMCodegen* codegen);

@@ -601,8 +601,7 @@ LLVMValueRef llvm_codegen_generate_force_unwrap(LLVMCodegen* codegen, ForceUnwra
 
 void llvm_codegen_destroy(LLVMCodegen* codegen) {
     LLVMDisposeBuilder(codegen->builder);
-    LLVMDisposeModule(codegen->module);
-    LLVMContextDispose(codegen->context);
+    // LLVMContextDispose(codegen->context);
 
     diagnostic_stream_destroy(&codegen->diagnostics);
     node_stream_destroy(&codegen->node_stream);
@@ -659,7 +658,7 @@ LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, ResolvedType* type, P
     }
 }
 
-char* llvm_codegen_emit(LLVMCodegen* codegen, char* out_file_path) {
+char* llvm_codegen_emit(LLVMModuleRef module, char* out_file_path) {
     char* error_message;
     char* host_triple = LLVMGetDefaultTargetTriple();
 
@@ -686,7 +685,7 @@ char* llvm_codegen_emit(LLVMCodegen* codegen, char* out_file_path) {
         LLVMCodeModelDefault
     );
 
-    if (LLVMTargetMachineEmitToFile(target_machine, codegen->module, out_file_path, LLVMObjectFile, &error_message)) {
+    if (LLVMTargetMachineEmitToFile(target_machine, module, out_file_path, LLVMObjectFile, &error_message)) {
         char* formatted_message = format_string("Failed to produce binary: %s", error_message);
         LLVMDisposeMessage(error_message);
 
