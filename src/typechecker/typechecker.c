@@ -141,6 +141,9 @@ bool typechecker_check_statement(Typechecker* typechecker, Node* node, ResolvedT
     case NODE_VARIABLE_REASSIGNMENT:
         return typechecker_check_variable_reassignment(typechecker, (VariableReassignmentNode*)node);
 
+    case NODE_IMPORT:
+        return true; // ignore
+
     default: {
         diagnostic_stream_push(
             &typechecker->diagnostics,

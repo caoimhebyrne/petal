@@ -56,6 +56,10 @@ typedef enum {
     // A force-unwrap node.
     // See ForceUnwrapNode.
     NODE_FORCE_UNWRAP,
+
+    // An import node.
+    // See ImportNode.
+    NODE_IMPORT,
 } NodeType;
 
 typedef struct {

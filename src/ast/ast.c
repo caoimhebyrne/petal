@@ -7,6 +7,7 @@
 #include "node/function_call.h"
 #include "node/function_declaration.h"
 #include "node/identifier_reference.h"
+#include "node/import.h"
 #include "node/number_literal.h"
 #include "node/return.h"
 #include "node/string_literal.h"
@@ -40,6 +41,7 @@ Node* ast_parse_type_alias_declaration_statement(AST* ast);
 Node* ast_parse_return_statement(AST* ast);
 Node* ast_parse_variable_declaration_statement(AST* ast);
 Node* ast_parse_function_declaration_statement(AST* ast);
+Node* ast_parse_import_statement(AST* ast);
 
 Node* ast_parse_addition_subtraction(AST* ast);
 Node* ast_parse_multiplication_division(AST* ast);
@@ -228,6 +230,9 @@ Node* ast_parse_statement(AST* ast) {
 
     else if (ast_next_is(ast, TOKEN_IDENTIFIER) && ast_after_next_is(ast, TOKEN_EQUALS))
         statement = ast_parse_variable_reassignment_statement(ast);
+
+    else if (ast_next_is_string(ast, TOKEN_KEYWORD, "import"))
+        statement = ast_parse_import_statement(ast);
 
     else if (ast_next_is_string(ast, TOKEN_KEYWORD, "type"))
         statement = ast_parse_type_alias_declaration_statement(ast);
@@ -641,6 +646,20 @@ Node* ast_parse_function_declaration_statement(AST* ast) {
         function_body,
         false
     );
+}
+
+// import <identifier>
+Node* ast_parse_import_statement(AST* ast) {
+    // The first token is the import keyword.
+    Token keyword_token = ast_consume(ast);
+
+    // The next token must be a valid identifier, this is the module's name.
+    Token module_name_token = ast_consume_type(ast, TOKEN_IDENTIFIER);
+    if (module_name_token.type == TOKEN_INVALID) {
+        return 0;
+    }
+
+    return (Node*)import_node_create(keyword_token.position, module_name_token.string);
 }
 
 // <identifier> = (expression)

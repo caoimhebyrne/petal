@@ -166,6 +166,9 @@ LLVMValueRef llvm_codegen_generate_statement(LLVMCodegen* codegen, Node* node) {
     case NODE_VARIABLE_REASSIGNMENT:
         return llvm_codegen_generate_variable_reassignment(codegen, (VariableReassignmentNode*)node);
 
+    case NODE_IMPORT:
+        return LLVMConstNull(LLVMIntTypeInContext(codegen->context, 0)); // ignore
+
     default: {
         diagnostic_stream_push(
             &codegen->diagnostics,

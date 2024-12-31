@@ -7,6 +7,7 @@
 #include "node/function_call.h"
 #include "node/function_declaration.h"
 #include "node/identifier_reference.h"
+#include "node/import.h"
 #include "node/number_literal.h"
 #include "node/return.h"
 #include "node/string_literal.h"
@@ -125,6 +126,13 @@ void node_destroy(Node* node) {
 
         break;
     }
+
+    case NODE_IMPORT: {
+        ImportNode* import = (ImportNode*)node;
+        free(import->module_name);
+
+        break;
+    }
     }
 
     free(node);
@@ -178,6 +186,9 @@ char* node_to_string(Node* node) {
 
     case NODE_FORCE_UNWRAP:
         return force_unwrap_node_to_string((ForceUnwrapNode*)node);
+
+    case NODE_IMPORT:
+        return import_node_to_string((ImportNode*)node);
     }
 
     return format_string("unknown node (%d)", node->node_type);
