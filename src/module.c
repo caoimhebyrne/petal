@@ -21,7 +21,7 @@ CREATE_STREAM(ModuleDependencies, module_dependencies, Module);
 bool module_resolve_dependencies(Module* module);
 bool module_link_with_dependencies(Module* module);
 
-Module module_create(char* file_name) {
+Module module_create(char* file_name, char* standard_library_path) {
     ModuleDependencies dependencies;
     module_dependencies_initialize(&dependencies, 1);
 
@@ -33,6 +33,7 @@ Module module_create(char* file_name) {
         .llvm_context = LLVMContextCreate(),
         .node_stream = (NodeStream){},
         .dependencies = dependencies,
+        .standard_library_path = standard_library_path,
     };
 }
 
@@ -48,6 +49,7 @@ Module module_create_dependency(Module* parent, char* file_name) {
         .llvm_context = parent->llvm_context,
         .node_stream = (NodeStream){},
         .dependencies = dependencies,
+        .standard_library_path = parent->standard_library_path,
     };
 }
 
@@ -134,7 +136,17 @@ bool module_resolve_dependencies(Module* module) {
         ImportNode* import_node = (ImportNode*)node;
 
         // The imported module can be resolved relative to the current working directory.
-        char* dependency_path = format_string("%s/%s.petal", working_directory, import_node->module_name);
+        char* dependency_path;
+        if (strcmp(import_node->module_name, "stdlib") == 0) {
+            if (!module->standard_library_path) {
+                LOG_ERROR("module", "no standard library path set! unable to import standard library...");
+                return false;
+            }
+
+            dependency_path = module->standard_library_path;
+        } else {
+            dependency_path = format_string("%s/%s.petal", working_directory, import_node->module_name);
+        }
 
         // We must compile the module before we can use it as a dependency.
         Module dependency = module_create_dependency(module, dependency_path);

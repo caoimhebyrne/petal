@@ -1,0 +1,7 @@
+// Petal also has a standard library that can be imported (see Example 13 - Imports if you haven't already).
+import stdlib;
+
+func main() {
+    // `print` is a standard library function that prints the provided message to standard output, followed by a newline.
+    print("Hello, World!");
+}

@@ -27,12 +27,15 @@ struct Module {
 
     // The dependencies required to finish compiling this module.
     ModuleDependencies dependencies;
+
+    // The path to the standard library.
+    char* standard_library_path;
 };
 
 // Creates a new Module.
 // Parameters:
 // - file_name: The file to read source code from.
-Module module_create(char* file_name);
+Module module_create(char* file_name, char* standard_library_path);
 
 // Creates a Module as a dependency of another Module.
 Module module_create_dependency(Module* parent, char* file_name);

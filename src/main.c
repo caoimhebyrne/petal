@@ -21,6 +21,7 @@ LLVMModuleRef compile_module(char* filename);
 
 int main(int argc, char** argv) {
     char* output_file_name = 0;
+    char* standard_library_path = 0;
     bool display_help = false;
     bool display_version = false;
 
@@ -51,6 +52,14 @@ int main(int argc, char** argv) {
             .message = "Display the version of the compiler",
             .value = &display_version,
         },
+
+        (Argument){
+            .name = "stdlib-path",
+            .short_name = 's',
+            .type = ARGUMENT_TYPE_STRING,
+            .message = "Use the standard library at <path>",
+            .value = &standard_library_path,
+        },
     };
 
     size_t arguments_length = sizeof(arguments) / sizeof(Argument);
@@ -73,7 +82,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    Module module = module_create(extra_arguments.data[0]);
+    Module module = module_create(extra_arguments.data[0], standard_library_path);
     if (!module_compile(&module)) {
         return -1;
     }
