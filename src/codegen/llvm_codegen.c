@@ -217,7 +217,7 @@ LLVMValueRef llvm_codegen_generate_function_declaration(LLVMCodegen* codegen, Fu
                 LLVMPrintTypeToString(parameter_type)
             );
 
-            if (node_parameter.type->is_pointer) {
+            if (node_parameter.type->is_reference) {
                 // This part is kinda confusing, I just stole it from an LLVM dump from clang.
 
                 // Allocate memory on the stack for this parameter.
@@ -601,7 +601,7 @@ LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, ResolvedType* type, P
     }
     }
 
-    if (type->is_pointer) {
+    if (type->is_reference) {
         return LLVMPointerType(type_ref, 0);
     } else {
         return type_ref;

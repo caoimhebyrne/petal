@@ -1,5 +1,9 @@
-extern func printf(format: *i8);
+// String Literals are treated as references to characters, to learn more about references, see the next example.
+
+// void printf(char* format, ...);
+extern func printf(&format: i8);
 
 func main() {
+    // A string literal is defined using double quotes, all text within the double quotes is captured.
     printf("Hello world!\n");
 }

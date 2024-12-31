@@ -102,7 +102,7 @@ ResolvedType* typechecker_resolve_type(Typechecker* typechecker, Type** type_ref
     }
 
     ResolvedType* resolved_type =
-        type_create_resolved(unresolved_type->is_optional, unresolved_type->is_pointer, resolved_type_kind);
+        type_create_resolved(unresolved_type->is_optional, unresolved_type->is_reference, resolved_type_kind);
 
     // Now that we have resolved the type, we can update the original type pointer to be the new type.
     *type_reference = (Type*)resolved_type;
@@ -246,7 +246,7 @@ bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDe
 
     // Allow non-null values to be assigned to nullable variables.
     // Anything else is a type mismatch.
-    if (variable_type->is_pointer != value_type->is_pointer || variable_type->kind != value_type->kind) {
+    if (variable_type->is_reference != value_type->is_reference || variable_type->kind != value_type->kind) {
         diagnostic_stream_push(
             &typechecker->diagnostics,
             node->value->position,
@@ -328,7 +328,7 @@ bool typechecker_check_variable_reassignment(Typechecker* typechecker, VariableR
 
     if (variable->type->kind != value_type->kind) {
         // The code generator should allow values to be assigned to pointers.
-        bool is_value_to_pointer_assignment = variable->type->is_pointer && !value_type->is_pointer;
+        bool is_value_to_pointer_assignment = variable->type->is_reference && !value_type->is_reference;
 
         // Non-optionals should be allowed to be assigned to optionals.
         bool is_non_optional_to_optional_assignment = variable->type->is_optional && !value_type->is_optional;

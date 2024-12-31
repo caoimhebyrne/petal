@@ -18,8 +18,8 @@ typedef struct {
     // Whether this type is optional or not.
     bool is_optional;
 
-    // Whether this type is a pointer or not.
-    bool is_pointer;
+    // Whether this type is a reference or not.
+    bool is_reference;
 } Type;
 
 // An unresolved type.
@@ -31,8 +31,8 @@ typedef struct {
     // Whether this type is optional or not.
     bool is_optional;
 
-    // Whether this type is a pointer or not.
-    bool is_pointer;
+    // Whether this type is a reference or not.
+    bool is_reference;
 
     // The name of the type being referenced.
     char* name;
@@ -40,11 +40,11 @@ typedef struct {
 
 // Creates a new unresolved type.
 // Parameters:
-// - is_pointer: Whether the type being referred to is a pointer.
+// - is_reference: Whether the type being referred to is a reference.
 // - name: The name being used to refer to this type.
 // Returns:
 // - An unresolved type reference if successful, otherwise 0.
-UnresolvedType* type_create_unresolved(bool is_optional, bool is_pointer, char* name);
+UnresolvedType* type_create_unresolved(bool is_optional, bool is_reference, char* name);
 
 // A resolved type.
 // This has been resolved and verified as valid by the typechecker, and is safe to use
@@ -56,8 +56,8 @@ typedef struct {
     // Whether this type is optional or not.
     bool is_optional;
 
-    // Whether this type is a pointer or not.
-    bool is_pointer;
+    // Whether this type is a reference or not.
+    bool is_reference;
 
     // The kind of type that this has been resolved to.
     TypeKind kind;
@@ -65,11 +65,11 @@ typedef struct {
 
 // Creates a new resolved type.
 // Parameters:
-// - is_pointer: Whether the type being referred to is a pointer.
+// - is_reference: Whether the type being referred to is a reference.
 // - kind: The kind of type that has been resolved.
 // Returns:
 // - A resolved type reference if successful, otherwise 0.
-ResolvedType* type_create_resolved(bool is_optional, bool is_pointer, TypeKind kind);
+ResolvedType* type_create_resolved(bool is_optional, bool is_reference, TypeKind kind);
 
 // Checks if two types are equal.
 // If both types are resolved, the kind must be the same.

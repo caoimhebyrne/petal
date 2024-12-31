@@ -216,7 +216,7 @@ Node* ast_parse_statement(AST* ast) {
 
     // An asterisk at the start of a statement typically indicates a variable declaration, as
     // an asterisk is used for a pointer type.
-    if (ast_next_is(ast, TOKEN_ASTERISK) || ast_next_is(ast, TOKEN_QUESTION_MARK))
+    if (ast_next_is(ast, TOKEN_AMPERSAND) || ast_next_is(ast, TOKEN_QUESTION_MARK))
         statement = ast_parse_variable_declaration_statement(ast);
 
     else if (ast_next_is(ast, TOKEN_IDENTIFIER) && ast_after_next_is(ast, TOKEN_IDENTIFIER))
@@ -442,13 +442,13 @@ Node* ast_parse_function_call(AST* ast) {
 
 Type* ast_parse_type(AST* ast) {
     // Variable declarations could be for a pointer or optional type.
-    bool is_pointer_type = false;
+    bool is_reference_type = false;
     bool is_optional_type = false;
 
     // If the first token is an asterisk, this declaration is for a pointer type.
-    if (ast_next_is(ast, TOKEN_ASTERISK)) {
+    if (ast_next_is(ast, TOKEN_AMPERSAND)) {
         ast_consume(ast);
-        is_pointer_type = true;
+        is_reference_type = true;
     }
 
     // FIXME: This only supports pointers to optional values, not optional pointers.
@@ -464,10 +464,10 @@ Type* ast_parse_type(AST* ast) {
         return 0;
     }
 
-    return (Type*)type_create_unresolved(is_optional_type, is_pointer_type, type_token.string);
+    return (Type*)type_create_unresolved(is_optional_type, is_reference_type, type_token.string);
 }
 
-// (*|?)<identifier> <identifier> = <value>
+// (&|?)<identifier> <identifier> = <value>
 Node* ast_parse_variable_declaration_statement(AST* ast) {
     Type* type = ast_parse_type(ast);
     if (!type) {
@@ -500,6 +500,13 @@ Node* ast_parse_variable_declaration_statement(AST* ast) {
 }
 
 Parameter ast_parse_function_parameter(AST* ast) {
+    // The first token may be an ampersand, this indicates that the resulting type should be a reference.
+    bool is_reference = false;
+    if (ast_next_is(ast, TOKEN_AMPERSAND)) {
+        ast_consume(ast);
+        is_reference = true;
+    }
+
     // The first token must be the parameter's name.
     Token name_token = ast_consume_type(ast, TOKEN_IDENTIFIER);
     if (name_token.type == TOKEN_INVALID) {
@@ -518,6 +525,7 @@ Parameter ast_parse_function_parameter(AST* ast) {
         return PARAMETER_INVALID;
     }
 
+    type->is_reference = is_reference;
     return parameter_create(name_token.string, type);
 }
 

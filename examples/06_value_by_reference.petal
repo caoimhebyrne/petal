@@ -1,0 +1,33 @@
+// When passing values around in Petal (e.g. when calling a function), the compiler copies the value, meaning even if
+// the function attempts to modify it, it will not reflect the original value. However, you may want the value to be 
+// modifiable by another function. To do this, you can pass a value by reference.
+//
+// Passing a value by reference is similar to how pointers work in C, except for the fact that it has different syntax.
+// 
+// If your function takes a reference, you can prefix the parameter's name with an ampersand (&), this tells the compiler
+// that this value should be passed by reference when calling the function. Then, to pass a value by reference as an
+// argument, prefix the variable name with an ampersand.
+
+// printf takes a reference to an `i8`, which is a string literal.
+extern func printf(&format: i8, value: i64);
+
+// This function takes a value by reference, it shares the same pointer to memory as the original declaration (i.e. the
+// value is not copied).
+func modifier(&value: i64) {
+    value = 519;
+    //    ^ The compiler is able to tell the difference between assigning a value to the reference, and assigning
+    //      a value to the `value` variable. The type on the right-hand side is not a reference type, so the compiler
+    //      assigns the value to the reference.
+    //      If the value on the right-hand side was a reference, the `value` variable would be set to that reference.
+}
+
+func main() {
+    i64 my_secret_value = 12;
+    printf("You will never modify my secret value! It is %d!\n", my_secret_value);
+
+    // Passing a value by reference is easy.
+    modifier(&my_secret_value);
+
+    // Since we passed the value by reference, the value has been updated.
+    printf("Oh... I guess you did... it is now %d.\n", my_secret_value);
+}

@@ -3,7 +3,7 @@
 // This works the same as in any other language, see the `main` function for an example.
 
 // void printf(char* format, ...);
-extern func printf(format: *i8, value: i8);
+extern func printf(&format: i8, value: i8);
 
 func main() {
     i8 value = 5;

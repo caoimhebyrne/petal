@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-UnresolvedType* type_create_unresolved(bool is_optional, bool is_pointer, char* name) {
+UnresolvedType* type_create_unresolved(bool is_optional, bool is_reference, char* name) {
     UnresolvedType* type = malloc(sizeof(UnresolvedType));
     if (!type) {
         return 0;
@@ -13,13 +13,13 @@ UnresolvedType* type_create_unresolved(bool is_optional, bool is_pointer, char* 
 
     type->is_resolved = false;
     type->is_optional = is_optional;
-    type->is_pointer = is_pointer;
+    type->is_reference = is_reference;
     type->name = strdup(name);
 
     return type;
 }
 
-ResolvedType* type_create_resolved(bool is_optional, bool is_pointer, TypeKind kind) {
+ResolvedType* type_create_resolved(bool is_optional, bool is_reference, TypeKind kind) {
     ResolvedType* type = malloc(sizeof(ResolvedType));
     if (!type) {
         return 0;
@@ -27,7 +27,7 @@ ResolvedType* type_create_resolved(bool is_optional, bool is_pointer, TypeKind k
 
     type->is_resolved = true;
     type->is_optional = is_optional;
-    type->is_pointer = is_pointer;
+    type->is_reference = is_reference;
     type->kind = kind;
 
     return type;
@@ -39,8 +39,8 @@ bool type_equal(Type* type_a, Type* type_b) {
         return false;
     }
 
-    // If one type is a pointer, and the other isn't, they do not match.
-    if (type_a->is_pointer != type_b->is_pointer) {
+    // If one type is a reference, and the other isn't, they do not match.
+    if (type_a->is_reference != type_b->is_reference) {
         return false;
     }
 
@@ -68,8 +68,8 @@ char* type_to_string(Type* type) {
     StringBuilder builder;
     string_builder_initialize(&builder, 2);
 
-    if (type->is_pointer) {
-        string_builder_append(&builder, '*');
+    if (type->is_reference) {
+        string_builder_append(&builder, '&');
     }
 
     if (type->is_optional) {

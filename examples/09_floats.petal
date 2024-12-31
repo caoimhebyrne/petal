@@ -3,7 +3,7 @@
 // `f32` is still available for certain operations.
 
 // void printf(format: char*, ...);
-extern func printf(format: *i8, value: f64);
+extern func printf(&format: i8, value: f64);
 
 func main() {
     f64 value = 3.14 / 6.69;
