@@ -20,3 +20,4 @@ BinPackParameters: false
 # Ensure that the return type is always on the same line as the function name.
 AlwaysBreakAfterDefinitionReturnType: None
 PenaltyReturnTypeOnItsOwnLine: 10000000
+PenaltyBreakAssignment: 10000000

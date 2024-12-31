@@ -1,0 +1,14 @@
+// If you have multiple modules, you can import them using the `import` keyword.
+// This will tell the compiler to generate code for that module, and also allows you to use its functions within
+// your file.
+import numbers;
+//     ^ This must match the name of the Petal file, without the `.petal` extension, relative to the current module
+//       path.
+
+extern func printf(&format: i8, value: i32);
+
+// You can now use functions from that module.
+func main() {
+    printf("result of add(4, 3) = %d\n", add(4, 3));
+    //                                 ^ This is a function from the `numbers` module.
+}

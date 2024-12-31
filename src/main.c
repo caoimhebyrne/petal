@@ -1,12 +1,9 @@
 #include "arguments.h"
-#include "ast/ast.h"
-#include "ast/node.h"
 #include "codegen/llvm_codegen.h"
-#include "diagnostics.h"
-#include "lexer/lexer.h"
-#include "lexer/token.h"
 #include "logger.h"
-#include "typechecker/typechecker.h"
+#include "module.h"
+#include "string/format_string.h"
+#include <libgen.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/Linker.h>
 #include <llvm-c/Types.h>
@@ -76,32 +73,20 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    LLVMModuleRef modules[extra_arguments.length];
-    for (size_t i = 0; i < extra_arguments.length; i++) {
-        LLVMModuleRef module = compile_module(extra_arguments.data[i]);
-        if (!module) {
-            return -1;
-        }
-
-        modules[i] = module;
+    Module module = module_create(extra_arguments.data[0]);
+    if (!module_compile(&module)) {
+        return -1;
     }
+
+    LOG_DEBUG("main", "compiled module '%s' with %zu dependencies", module.file_name, module.dependencies.length);
 
     if (!output_file_name) {
         LOG_WARNING("main", "no output file specified, skipping emit step");
         return -1;
     }
 
-    LLVMModuleRef final_module;
-    for (size_t i = 0; i < extra_arguments.length; i++) {
-        LLVMModuleRef destination = modules[i++];
-        LLVMModuleRef source = modules[i];
-
-        LLVMLinkModules2(destination, source);
-        final_module = destination;
-    }
-
     char* object_file_name = format_string("%s.o", output_file_name);
-    char* error_message = llvm_codegen_emit(final_module, object_file_name);
+    char* error_message = llvm_codegen_emit(module, object_file_name);
     if (error_message) {
         LOG_ERROR("main", "%s", error_message);
         return -1;
@@ -114,68 +99,7 @@ int main(int argc, char** argv) {
     }
 
     LOG_SUCCESS("binary created: %s", output_file_name);
-    LLVMDisposeModule(final_module);
+    // LLVMDisposeModule(module.llvm_ref);
 
     return 0;
-}
-
-LLVMModuleRef compile_module(char* filename) {
-    Lexer lexer;
-    if (!lexer_initialize(&lexer, filename)) {
-        return 0;
-    }
-
-    TokenStream token_stream = lexer_parse(&lexer);
-    if (lexer.diagnostics.length != 0) {
-        token_stream_destroy(&token_stream);
-        diagnostic_stream_print(&lexer.diagnostics, filename);
-        lexer_destroy(&lexer);
-
-        return 0;
-    }
-
-    AST ast;
-    if (!ast_initialize(&ast, token_stream)) {
-        return 0;
-    }
-
-    NodeStream node_stream = ast_parse(&ast);
-    if (ast.diagnostics.length != 0) {
-        node_stream_destroy(&node_stream);
-        diagnostic_stream_print(&ast.diagnostics, filename);
-        ast_destroy(&ast);
-
-        return 0;
-    }
-
-    Typechecker typechecker = typechecker_create();
-    typechecker_run(&typechecker, &node_stream);
-
-    if (typechecker.diagnostics.length != 0) {
-        diagnostic_stream_print(&typechecker.diagnostics, filename);
-        typechecker_destroy(&typechecker);
-
-        return 0;
-    }
-
-    typechecker_destroy(&typechecker);
-
-    LLVMCodegen codegen = llvm_codegen_create(filename, node_stream);
-    llvm_codegen_generate(&codegen);
-
-    if (codegen.diagnostics.length != 0) {
-        diagnostic_stream_print(&codegen.diagnostics, filename);
-
-        llvm_codegen_destroy(&codegen);
-        ast_destroy(&ast);
-        lexer_destroy(&lexer);
-
-        return 0;
-    }
-
-    // llvm_codegen_destroy(&codegen);
-    ast_destroy(&ast);
-    lexer_destroy(&lexer);
-
-    return codegen.module;
 }

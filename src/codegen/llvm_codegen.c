@@ -13,6 +13,7 @@
 #include "stored_values.h"
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Core.h>
+#include <llvm-c/Support.h>
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Types.h>
 #include <stdbool.h>
@@ -35,9 +36,8 @@ LLVMValueRef llvm_codegen_generate_force_unwrap(LLVMCodegen* codegen, ForceUnwra
 
 LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, ResolvedType* type, Position position);
 
-LLVMCodegen llvm_codegen_create(char* filename, NodeStream node_stream) {
-    LLVMContextRef context = LLVMContextCreate();
-    LLVMModuleRef module = LLVMModuleCreateWithNameInContext("module", context);
+LLVMCodegen llvm_codegen_create(LLVMContextRef context, char* filename, NodeStream node_stream) {
+    LLVMModuleRef module = LLVMModuleCreateWithNameInContext(filename, context);
     LLVMBuilderRef builder = LLVMCreateBuilderInContext(context);
 
     LLVMSetSourceFileName(module, filename, strlen(filename));
@@ -547,8 +547,10 @@ LLVMValueRef llvm_codegen_generate_binary_operation(LLVMCodegen* codegen, Binary
         Diagnostic diagnostic = {
             .position = node->position,
             .is_terminal = true,
-            .message =
-                format_string("unsupported operator for binary operation: '%s'", operator_to_string(node->operator_)),
+            .message = format_string(
+                "unsupported operator for binary operation: '%s'",
+                operator_to_string(node->operator_)
+            ),
         };
 
         diagnostic_stream_append(&codegen->diagnostics, diagnostic);
@@ -562,8 +564,8 @@ void llvm_codegen_build_panic(LLVMCodegen* codegen) {
     LLVMTypeRef i32_type = LLVMInt32TypeInContext(codegen->context);
 
     LLVMTypeRef exit_parameters[] = {i32_type};
-    LLVMTypeRef exit_function_type =
-        LLVMFunctionType(LLVMVoidTypeInContext(codegen->context), exit_parameters, 1, false);
+    LLVMTypeRef
+        exit_function_type = LLVMFunctionType(LLVMVoidTypeInContext(codegen->context), exit_parameters, 1, false);
     LLVMValueRef exit_function = LLVMAddFunction(codegen->module, "exit", exit_function_type);
     LLVMSetLinkage(exit_function, LLVMExternalLinkage);
 
@@ -607,7 +609,6 @@ void llvm_codegen_destroy(LLVMCodegen* codegen) {
     // LLVMContextDispose(codegen->context);
 
     diagnostic_stream_destroy(&codegen->diagnostics);
-    node_stream_destroy(&codegen->node_stream);
 }
 
 LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, ResolvedType* type, Position position) {
@@ -661,7 +662,7 @@ LLVMTypeRef llvm_codegen_type_to_ref(LLVMCodegen* codegen, ResolvedType* type, P
     }
 }
 
-char* llvm_codegen_emit(LLVMModuleRef module, char* out_file_path) {
+char* llvm_codegen_emit(Module module, char* out_file_path) {
     char* error_message;
     char* host_triple = LLVMGetDefaultTargetTriple();
 
@@ -688,9 +689,20 @@ char* llvm_codegen_emit(LLVMModuleRef module, char* out_file_path) {
         LLVMCodeModelDefault
     );
 
-    if (LLVMTargetMachineEmitToFile(target_machine, module, out_file_path, LLVMObjectFile, &error_message)) {
-        char* formatted_message = format_string("Failed to produce binary: %s", error_message);
-        LLVMDisposeMessage(error_message);
+    LOG_DEBUG("llvm-codegen", "emitting to file: '%s'", out_file_path);
+
+    bool emit_failed = LLVMTargetMachineEmitToFile(
+        target_machine,
+        module.llvm_module,
+        out_file_path,
+        LLVMObjectFile,
+        &error_message
+    );
+
+    if (emit_failed) {
+        LOG_DEBUG("llvm-codegen", "failed to emit!");
+        char* formatted_message = format_string("failed to produce binary: %s", error_message);
+        // LLVMDisposeMessage(error_message);
 
         return formatted_message;
     }

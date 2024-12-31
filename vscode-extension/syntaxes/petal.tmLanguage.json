@@ -30,7 +30,7 @@
                 },
                 {
                     "name": "keyword.import.petal",
-                    "match": "\\b(extern)\\b"
+                    "match": "\\b(extern|import)\\b"
                 },
                 {
                     "name": "keyword.declaration.petal",
