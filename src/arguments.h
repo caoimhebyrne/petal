@@ -1,7 +1,10 @@
 #ifndef __ARGUMENTS_H__
 #define __ARGUMENTS_H__
 
+#include "stream.h"
 #include <stddef.h>
+
+DECLARE_STREAM(ExtraArguments, extra_arguments, char*);
 
 typedef enum {
     // An argument where a string value is expected.
@@ -14,7 +17,10 @@ typedef enum {
 
 typedef struct {
     // The name of this argument, must not be null.
-    char name;
+    char* name;
+
+    // The short name of this argument, can be null.
+    char short_name;
 
     // The type that this argument's value should be, must not be null.
     ArgumentType type;
@@ -32,9 +38,14 @@ typedef struct {
 // - argv: The arguments passed to this program.
 // - arguments: The arguments to parse values for.
 // - arguments_length: The number of Arguments in arguments.
-// - dangling_argument: A pointer to the variable to store a dangling argument in
-//   (e.g. one without an option associated with it).
-void parse_arguments(size_t argc, char** argv, Argument* arguments, size_t arguments_length, char** dangling_argument);
+// - extra_arguments: A dynamic array to store extra arguments in.
+void parse_arguments(
+    size_t argc,
+    char** argv,
+    Argument* arguments,
+    size_t arguments_length,
+    ExtraArguments* extra_arguments
+);
 
 // Prints a help message to stderr with the arguments that this program takes.
 // Parameters:

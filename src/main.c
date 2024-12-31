@@ -6,9 +6,9 @@
 #include "lexer/lexer.h"
 #include "lexer/token.h"
 #include "logger.h"
-#include "string/format_string.h"
 #include "typechecker/typechecker.h"
 #include <llvm-c/Core.h>
+#include <llvm-c/Linker.h>
 #include <llvm-c/Types.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,35 +24,32 @@ LLVMModuleRef compile_module(char* filename);
 
 int main(int argc, char** argv) {
     char* output_file_name = 0;
-    char* input_file_name = 0;
-    char* linker_arguments = 0;
     bool display_help = false;
     bool display_version = false;
 
+    ExtraArguments extra_arguments;
+    extra_arguments_initialize(&extra_arguments, 1);
+
     Argument arguments[] = {
         (Argument){
-            .name = 'o',
+            .name = "output",
+            .short_name = 'o',
             .type = ARGUMENT_TYPE_STRING,
             .message = "Place the output into <file>",
             .value = &output_file_name,
         },
 
         (Argument){
-            .name = 'h',
+            .name = "help",
+            .short_name = 'h',
             .type = ARGUMENT_TYPE_FLAG,
             .message = "Display this message",
             .value = &display_help,
         },
 
         (Argument){
-            .name = 'l',
-            .type = ARGUMENT_TYPE_STRING,
-            .message = "Extra arguments to pass to the linker",
-            .value = &linker_arguments,
-        },
-
-        (Argument){
-            .name = 'v',
+            .name = "version",
+            .short_name = 'v',
             .type = ARGUMENT_TYPE_FLAG,
             .message = "Display the version of the compiler",
             .value = &display_version,
@@ -60,7 +57,7 @@ int main(int argc, char** argv) {
     };
 
     size_t arguments_length = sizeof(arguments) / sizeof(Argument);
-    parse_arguments(argc, argv, arguments, arguments_length, &input_file_name);
+    parse_arguments(argc, argv, arguments, arguments_length, &extra_arguments);
 
     if (display_version) {
         printf(VERSION_MESSAGE);
@@ -72,16 +69,21 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    if (!input_file_name) {
+    if (extra_arguments.length == 0) {
         LOG_ERROR("main", "no input file(s) provided!");
         print_help_message(argv[0], arguments, arguments_length);
 
         return -1;
     }
 
-    LLVMModuleRef module = compile_module(input_file_name);
-    if (!module) {
-        return -1;
+    LLVMModuleRef modules[extra_arguments.length];
+    for (size_t i = 0; i < extra_arguments.length; i++) {
+        LLVMModuleRef module = compile_module(extra_arguments.data[i]);
+        if (!module) {
+            return -1;
+        }
+
+        modules[i] = module;
     }
 
     if (!output_file_name) {
@@ -89,8 +91,17 @@ int main(int argc, char** argv) {
         return -1;
     }
 
+    LLVMModuleRef final_module;
+    for (size_t i = 0; i < extra_arguments.length; i++) {
+        LLVMModuleRef destination = modules[i++];
+        LLVMModuleRef source = modules[i];
+
+        LLVMLinkModules2(destination, source);
+        final_module = destination;
+    }
+
     char* object_file_name = format_string("%s.o", output_file_name);
-    char* error_message = llvm_codegen_emit(module, object_file_name);
+    char* error_message = llvm_codegen_emit(final_module, object_file_name);
     if (error_message) {
         LOG_ERROR("main", "%s", error_message);
         return -1;
@@ -103,7 +114,7 @@ int main(int argc, char** argv) {
     }
 
     LOG_SUCCESS("binary created: %s", output_file_name);
-    LLVMDisposeModule(module);
+    LLVMDisposeModule(final_module);
 
     return 0;
 }
@@ -162,7 +173,7 @@ LLVMModuleRef compile_module(char* filename) {
         return 0;
     }
 
-    llvm_codegen_destroy(&codegen);
+    // llvm_codegen_destroy(&codegen);
     ast_destroy(&ast);
     lexer_destroy(&lexer);
 

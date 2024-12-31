@@ -1,8 +1,19 @@
 #include "arguments.h"
+#include "stream.h"
+#include "string/format_string.h"
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
-void parse_arguments(size_t argc, char** argv, Argument* arguments, size_t arguments_length, char** dangling_argument) {
+CREATE_STREAM(ExtraArguments, extra_arguments, char*);
+
+void parse_arguments(
+    size_t argc,
+    char** argv,
+    Argument* arguments,
+    size_t arguments_length,
+    ExtraArguments* extra_arguments
+) {
     if (argc == 1) {
         // The first argument is the binary filename: there are no options to parse.
         return;
@@ -16,14 +27,20 @@ void parse_arguments(size_t argc, char** argv, Argument* arguments, size_t argum
         for (size_t j = 0; j < arguments_length; j++) {
             Argument argument = arguments[j];
 
-            // If this argument does not have a `-` at the start of it, we don't care about it here.
-            if (program_argument[0] != '-') {
-                continue;
-            }
-
-            // If the argument's name does not match the option's name, keep searching.
-            if (program_argument[1] != argument.name) {
-                continue;
+            // If the first character and the second character is a `-`, we can match it based on the long name.
+            if (program_argument[0] == '-' && program_argument[1] == '-') {
+                char* name = program_argument + 2;
+                if (strcmp(name, argument.name) != 0) {
+                    continue;
+                }
+            } else if (program_argument[0] == '-') {
+                // If the first character is just a `-`, this should be matched based on the short name.
+                if (program_argument[1] != argument.short_name) {
+                    continue;
+                }
+            } else {
+                // This is not an argument.
+                break;
             }
 
             // If this is a flag, we do not need to check for a value.
@@ -66,9 +83,7 @@ void parse_arguments(size_t argc, char** argv, Argument* arguments, size_t argum
             continue;
         }
 
-        if (*dangling_argument == 0) {
-            *dangling_argument = program_argument;
-        }
+        extra_arguments_append(extra_arguments, program_argument);
     }
 }
 
@@ -88,6 +103,7 @@ void print_help_message(char* executable_name, Argument* arguments, size_t argum
             break;
         }
 
-        fprintf(stderr, "  -%c%-15s%s\n", argument.name, value_name, argument.message);
+        char* name = format_string("--%s, -%c %s", argument.name, argument.short_name, value_name);
+        fprintf(stderr, "  %-30s %s\n", name, argument.message);
     }
 }
