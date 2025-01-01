@@ -1,299 +1,156 @@
-#include "lexer.h"
-#include "../logger.h"
-#include "../string/format_string.h"
-#include "../string/string_builder.h"
-#include "token.h"
+#include "lexer/lexer.h"
+#include "core/position.h"
+#include "lexer/token.h"
+#include "util/file.h"
+#include "util/string_builder.h"
+#include "util/vector.h"
 #include <ctype.h>
-#include <errno.h> // IWYU pragma: keep
+#include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
 
-char* keywords[] = {"func", "extern", "return", "type", "true", "false", "import"};
-size_t keywords_length = sizeof(keywords) / sizeof(char*);
+// Parsing functions:
+Token lexer_parse_identifier(Lexer* lexer);
 
-bool lexer_initialize(Lexer* lexer, char* filename) {
-    FILE* file = fopen(filename, "r");
-    if (!file) {
-        LOG_ERROR("lexer", "failed to open file %s: %s", filename, strerror(errno));
-        return false;
-    }
+// Forward declarations:
+// Whether the lexer has reached the end of the file or not.
+bool lexer_is_eof(Lexer* lexer);
 
-    // In order to use the `stat` API, we need to get the file descriptor for the opened file.
-    int file_descriptor = fileno(file);
+// Returns the next character to be parsed, lexer_is_eof should be called before this.
+char lexer_peek(Lexer* lexer);
 
-    struct stat stat_result;
-    if (fstat(file_descriptor, &stat_result) != 0) {
-        LOG_ERROR("lexer", "failed to read file %s: %s", filename, strerror(errno));
-        return false;
-    }
+// Consumes a character from the file, advancing the position cursor.
+char lexer_consume(Lexer* lexer);
 
-    // Ensure that the filename passed is not actually a directory.
-    if (S_ISDIR(stat_result.st_mode)) {
-        LOG_ERROR("lexer", "%s is a directory, expected a file", filename);
+// Produces a single-character token while consuming the current token.
+Token lexer_create_token(Lexer* lexer, TokenType token_type);
+
+Lexer lexer_create(FileContents contents) {
+    return (Lexer){
+        .contents = contents,
+        .position = (Position){0},
+    };
+}
+
+Vector* lexer_parse(Lexer* lexer) {
+    Vector* vector = vector_create(1);
+    if (!vector) {
         return 0;
     }
 
-    size_t file_size = stat_result.st_size;
-
-    char* contents = malloc(file_size);
-    if (!contents) {
-        LOG_ERROR("lexer", "failed to allocate buffer of %zu for file %s", file_size, filename);
-        return false;
-    }
-
-    if (fread(contents, file_size, sizeof(char), file) != 1) {
-        LOG_ERROR("lexer", "failed to read %zu bytes from %s: %s", file_size, filename, strerror(errno));
-        return false;
-    }
-
-    fclose(file);
-
-    lexer->contents = contents;
-    lexer->contents_length = file_size;
-    lexer->position = (Position){.line = 0, .column = 0, .index = 0};
-    lexer->diagnostics = (DiagnosticStream){};
-    diagnostic_stream_initialize(&lexer->diagnostics, 2);
-
-    LOG_DEBUG("lexer", "initialized lexer with %zu bytes from %s", file_size, filename);
-
-    return true;
-}
-
-TokenStream lexer_parse(Lexer* lexer) {
-    TokenStream stream;
-    token_stream_initialize(&stream, 2);
-
-    for (; lexer->position.index < lexer->contents_length; position_advance(&lexer->position)) {
-        char character = lexer->contents[lexer->position.index];
+    // Keep parsing until the lexer reaches the end of the file.
+    while (!lexer_is_eof(lexer)) {
+        char character = lexer_peek(lexer);
         switch (character) {
-
-        case '/': {
-            if (lexer->contents[lexer->position.index + 1] == '/') {
-                // If this is a comment (//), skip until the next new-line.
-                while (lexer->position.index < lexer->contents_length) {
-                    position_advance(&lexer->position);
-
-                    // NOTE: This also works for carraige returns, \r is skipped as part of the comment.
-                    if (lexer->contents[lexer->position.index] == '\n') {
-                        position_advance_line(&lexer->position);
-                        break;
-                    }
-                }
-            } else {
-                // This is a single `/`, not a comment.
-                token_stream_append(&stream, (Token){.type = TOKEN_SLASH});
-            }
-
-            break;
-        }
-
-        // Ignore any whitespace!
+        // Ignore whitespace (including tabs and CR).
         case ' ':
         case '\t':
         case '\r':
+            lexer_consume(lexer);
             break;
 
         case '\n':
-            position_advance_line(&lexer->position);
+            lexer_consume(lexer);
+
+            // We must also advance the line cursor, and reset the column.
+            lexer->position.line++;
+            lexer->position.column = 0;
+
             break;
 
-        case '=':
-            token_stream_append(&stream, (Token){.type = TOKEN_EQUALS, .position = lexer->position});
-            break;
-
-        case ';':
-            token_stream_append(&stream, (Token){.type = TOKEN_SEMICOLON, .position = lexer->position});
-            break;
-
-        case '(':
-            token_stream_append(&stream, (Token){.type = TOKEN_OPEN_PARENTHESIS, .position = lexer->position});
-            break;
-
-        case ')':
-            token_stream_append(&stream, (Token){.type = TOKEN_CLOSE_PARENTHESIS, .position = lexer->position});
-            break;
-
-        case '{':
-            token_stream_append(&stream, (Token){.type = TOKEN_OPEN_BRACE, .position = lexer->position});
-            break;
-
-        case '}':
-            token_stream_append(&stream, (Token){.type = TOKEN_CLOSE_BRACE, .position = lexer->position});
-            break;
-
-        case '*':
-            token_stream_append(&stream, (Token){.type = TOKEN_ASTERISK, .position = lexer->position});
-            break;
-
-        case '-':
-            token_stream_append(&stream, (Token){.type = TOKEN_HYPHEN, .position = lexer->position});
-            break;
-
-        case '>':
-            token_stream_append(&stream, (Token){.type = TOKEN_RIGHT_ANGLE_BRACKET, .position = lexer->position});
-            break;
-
-        case ':':
-            token_stream_append(&stream, (Token){.type = TOKEN_COLON, .position = lexer->position});
-            break;
-
-        case ',':
-            token_stream_append(&stream, (Token){.type = TOKEN_COMMA, .position = lexer->position});
-            break;
-
-        case '+':
-            token_stream_append(&stream, (Token){.type = TOKEN_PLUS, .position = lexer->position});
-            break;
-
-        case '&':
-            token_stream_append(&stream, (Token){.type = TOKEN_AMPERSAND, .position = lexer->position});
-            break;
-
-        case '?':
-            token_stream_append(&stream, (Token){.type = TOKEN_QUESTION_MARK, .position = lexer->position});
-            break;
-
-        case '!':
-            token_stream_append(&stream, (Token){.type = TOKEN_EXCLAMATION_MARK, .position = lexer->position});
-            break;
-
-        case '"': {
-            lexer->position.index += 1;
-            Token token = lexer_parse_string_literal(lexer);
-            if (token.type != TOKEN_INVALID) {
-                token_stream_append(&stream, token);
-                continue;
-            }
-
+        case '=': {
+            Token token = lexer_create_token(lexer, TOKEN_TYPE_EQUALS);
+            vector_append(vector, &token, sizeof(Token));
             break;
         }
 
-        default: {
+        default:
+            // If the character is an alphabetic character, it is most likely an identifier.
             if (isalpha(character)) {
-                // If the character is an alphabetic character, attempt to parse an identifier.
                 Token token = lexer_parse_identifier(lexer);
-                if (token.type != TOKEN_INVALID) {
-                    token_stream_append(&stream, token);
-                    continue;
-                }
-            } else if (isdigit(character)) {
-                // If the character is a digit, attempt to parse a number literal.
-                Token token = lexer_parse_number_literal(lexer);
-                if (token.type != TOKEN_INVALID) {
-                    token_stream_append(&stream, token);
+                if (token.type != TOKEN_TYPE_INVALID) {
+                    vector_append(vector, &token, sizeof(Token));
                     continue;
                 }
             }
 
-            Diagnostic diagnostic = {
-                .position = lexer->position,
-                .message = format_string("unknown character: '%c'", character),
-                .is_terminal = true,
-            };
-
-            diagnostic_stream_append(&lexer->diagnostics, diagnostic);
-            break;
-        }
+            fprintf(stderr, "error: unknown character: '%c'\n", character);
+            token_vector_destroy(vector);
+            return 0;
         }
     }
 
-    return stream;
+    return vector;
+}
+
+Token lexer_create_token(Lexer* lexer, TokenType token_type) {
+    // The current position is the token's position.
+    Position position = lexer->position;
+    position.length = 1;
+
+    // Advance the cursor.
+    lexer_consume(lexer);
+
+    return (Token){
+        .type = token_type,
+        .position = position,
+    };
+}
+
+bool lexer_next_is_identifier(Lexer* lexer) {
+    char character = lexer_peek(lexer);
+    return isalpha(character) || isdigit(character) || character == '_';
 }
 
 Token lexer_parse_identifier(Lexer* lexer) {
-    StringBuilder string_builder;
-    if (!string_builder_initialize(&string_builder, 2)) {
-        return INVALID_TOKEN;
+    // This token starts at the lexer's current position.
+    Position position = lexer->position;
+
+    // An identifier must only contain alphanumeric characters or underscores.
+    StringBuilder builder = string_builder_create();
+    if (string_builder_is_invalid(builder)) {
+        return TOKEN_INVALID;
     }
 
-    Position starting_position = lexer->position;
-    for (; lexer->position.index < lexer->contents_length; position_advance(&lexer->position)) {
-        char character = lexer->contents[lexer->position.index];
-        if (!isalpha(character) && !isdigit(character) && character != '_') {
-            position_retreat(&lexer->position); // Don't consume the character, it is not part of the identifier.
-            break;
-        }
-
-        string_builder_append(&string_builder, character);
+    while (lexer_next_is_identifier(lexer)) {
+        string_builder_append(&builder, lexer_consume(lexer));
     }
 
-    TokenType token_type = TOKEN_IDENTIFIER;
-    char* identifier_name = string_builder_finish(&string_builder);
+    // The position's length can be inferred from the length of the string buffer.
+    position.length = string_builder_length(builder);
 
-    for (size_t i = 0; i < keywords_length; i++) {
-        // TODO: Hashtable
-        char* keyword = keywords[i];
-        if (strcmp(identifier_name, keyword) == 0) {
-            token_type = TOKEN_KEYWORD;
-            break;
-        }
+    // Finalizing the builder can fail if it fails to allocate a string of the required length.
+    // The builder is no longer safe to use after this.
+    char* identifier = string_builder_finish(&builder);
+    if (!identifier) {
+        return TOKEN_INVALID;
     }
 
-    return (Token){.type = token_type, .string = identifier_name, .position = starting_position};
+    return (Token){
+        .type = TOKEN_TYPE_IDENTIFIER,
+        .position = position,
+        .string = identifier,
+    };
 }
 
-Token lexer_parse_number_literal(Lexer* lexer) {
-    StringBuilder string_builder;
-    if (!string_builder_initialize(&string_builder, 2)) {
-        return INVALID_TOKEN;
-    }
-
-    Position starting_position = lexer->position;
-    for (; lexer->position.index < lexer->contents_length; position_advance(&lexer->position)) {
-        char character = lexer->contents[lexer->position.index];
-        if (!isdigit(character) && character != '.') {
-            position_retreat(&lexer->position); // Don't consume the character, it is not part of the number.
-            break;
-        }
-
-        string_builder_append(&string_builder, character);
-    }
-
-    char* string_value = string_builder_finish(&string_builder);
-
-    // strtod will set end_ptr to the first character after the numeric value has been parsed.
-    char* end_ptr = string_value;
-    double value = strtod(string_value, &end_ptr);
-
-    // If the end_ptr is still equal to the string_value, this is an invalid number.
-    if (end_ptr == string_value) {
-        LOG_ERROR("lexer", "invalid number: '%s'", string_value);
-        return INVALID_TOKEN;
-    }
-
-    return (Token){.type = TOKEN_NUMBER_LITERAL, .number = value, .position = starting_position};
+bool lexer_is_eof(Lexer* lexer) {
+    // The lexer is considered to be at the end of the file if there are no characters left.
+    return lexer->position.index >= lexer->contents.length;
 }
 
-Token lexer_parse_string_literal(Lexer* lexer) {
-    StringBuilder string_builder;
-    if (!string_builder_initialize(&string_builder, 2)) {
-        return INVALID_TOKEN;
-    }
-
-    Position starting_position = lexer->position;
-    for (; lexer->position.index < lexer->contents_length; position_advance(&lexer->position)) {
-        char character = lexer->contents[lexer->position.index];
-        if (character == '\n' || character == '"') {
-            break;
-        }
-
-        // FIXME: We need a better way to parse escape sequences like \n.
-        //        Also need to be able to escape them with an extra \.
-        if (character == '\\' && lexer->contents[lexer->position.index + 1] == 'n') {
-            string_builder_append(&string_builder, '\n');
-            position_advance(&lexer->position);
-        } else {
-            string_builder_append(&string_builder, character);
-        }
-    }
-
-    char* value = string_builder_finish(&string_builder);
-    return (Token){.type = TOKEN_STRING_LITERAL, .string = value, .position = starting_position};
+char lexer_peek(Lexer* lexer) {
+    return lexer->contents.data[lexer->position.index];
 }
 
-void lexer_destroy(Lexer* lexer) {
-    free(lexer->contents);
-    diagnostic_stream_destroy(&lexer->diagnostics);
+char lexer_consume(Lexer* lexer) {
+    char character = lexer_peek(lexer);
+
+    // We must advance the index and the column.
+    lexer->position.index++;
+    lexer->position.column++;
+
+    return character;
+}
+
+void lexer_destroy(Lexer lexer) {
+    file_contents_destroy(lexer.contents);
 }

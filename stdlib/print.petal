@@ -1,7 +1,0 @@
-// void printf(char* format, ...);
-extern func printf(&format: i8, &value: i8);
-
-// Prints a message to standard output, followed by a new line (\n).
-func print(&message: i8) {
-    printf("%s\n", &message);
-}

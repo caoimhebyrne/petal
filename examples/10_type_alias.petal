@@ -1,9 +1,0 @@
-// Sometimes, you might want to alias a type to be something else, for example:
-type string = &i8;
-
-// Now, this type alias can be used wherever you want to refer to this type.
-extern func printf(format: string); // void printf(char* format);
-
-func main() {
-    printf("Hello world! This was compiled with a typealias from `string` to `&i8`.\n");
-}

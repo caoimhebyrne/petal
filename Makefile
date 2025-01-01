@@ -1,25 +1,24 @@
-VERSION=0.1.0
-
+# Change this to `gcc` if you would prefer to use `gcc` for building.
 CC = clang
-CFLAGS = -Wall -Wextra -Werror -Wno-pointer-to-int-cast -D VERSION=\"$(VERSION)\" -D DEBUG=1 $(shell llvm-config --cflags --ldflags --system-libs --libs core) -lm
-INSTALL_DIR = $(HOME)/.local/bin
 
-# All C files within the src directory.
-SOURCES=$(shell find src -type f -iname '*.c')
+# Enable all warnings and treat them as errors.
+# NOTE: To enable AddressSanitizer, add `-fsanitize=address` | `-fsanitize=undefined`.
+CFLAGS = -I./src -Wall -Wextra -Werror -g -fsanitize=address $(shell llvm-config --cflags)
 
+# Link with libLLVM.
+LDFLAGS = $(shell llvm-config --libs)
+
+.PHONY: clangd
+setup-clangd:
+	bear --output ./build/compile_commands.json -- make build
+
+.PHONY: prepare
 prepare:
 	mkdir -p build
 
+# Compile all C files within the source directory.
+SOURCES = $(shell find ./src -iname "*.c")
+
+.PHONY: build
 build: prepare
-	$(CC) $(LDFLAGS) $(CFLAGS) $(SOURCES) -o ./build/petal
-
-run: build
-	./build/petal
-
-.PHONY: install
-install: build
-	install -Dm755 ./build/petal $(INSTALL_DIR)/petal
-
-.PHONY: install-vscode-extension
-install_vscode_extension:
-	cp -r ./vscode-extension $(HOME)/.vscode/extensions/petal-0.1.0
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o ./build/petal

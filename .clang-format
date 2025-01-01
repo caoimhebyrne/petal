@@ -21,3 +21,6 @@ BinPackParameters: false
 AlwaysBreakAfterDefinitionReturnType: None
 PenaltyReturnTypeOnItsOwnLine: 10000000
 PenaltyBreakAssignment: 10000000
+
+# Don't put functions on one line.
+AllowShortFunctionsOnASingleLine: Empty

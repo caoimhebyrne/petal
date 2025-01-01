@@ -26,6 +26,11 @@ func main() -> i32 {
    ```sh
    $ make build
    ```
+3. If you are planning to use `clangd` within your code editor, install [Bear](https://github.com/rizsotto/Bear) and run
+   the `setup-clangd` target.
+   ```sh
+   $ make setup-clangd
+   ```
 
 ### Installation
 

@@ -1,62 +1,35 @@
 #ifndef __LEXER_H__
 #define __LEXER_H__
 
-#include "../diagnostics.h"
-#include "token.h"
-#include <stdbool.h>
-#include <stddef.h>
+#include "core/position.h"
+#include "util/file.h"
+#include "util/vector.h"
 
+// The Lexer takes an array of character and produces tokens that can be used for parsing.
 typedef struct {
-    // The contents of the file to parse.
-    char* contents;
+    // The contents to lex.
+    FileContents contents;
 
-    // The amount of bytes contained within `contents`.
-    size_t contents_length;
-
-    // The position that the lexer is at within the contents.
+    // The position that the lexer is currently at in the file.
     Position position;
-
-    // The diagnostics emitted by this lexer.
-    DiagnosticStream diagnostics;
 } Lexer;
 
-// Initializes the provided lexer with the contents of the provided filename.
+// Initializes a new Lexer.
 // Parameters:
-// - lexer: The lexer to initialize.
-// - filename: The filename to read the contents of.
-bool lexer_initialize(Lexer* lexer, char* filename);
+// - contents: The characters to transform into a stream of tokens.
+Lexer lexer_create(FileContents contents);
 
-// Iterates over the contents within the Lexer, producing a stream of tokens.
+// Parses the lexer's contents into a vector of tokens.
+// When you are no longer using the returned vector, call token_vector_destroy.
 // Parameters:
-// - lexer: The lexer to use when parsing.
+// - lexer: The lexer to use for parsing.
 // Returns:
-// - A token stream, if the diagnostics's length is greater than zero, this stream is incomplete.
-TokenStream lexer_parse(Lexer* lexer);
+// - A pointer to a vector if successful, otherwise null.
+Vector* lexer_parse(Lexer* lexer);
 
-// Attempts to parse an identifier token from the contents at the current position in the Lexer.
-// Parameters:
-// - lexer: The lexer to use when parsing;
-// Returns:
-// - A token if an identifier could be parsed, otherwise 0.
-Token lexer_parse_identifier(Lexer* lexer);
-
-// Attempts to parse a number literal token from the contents at the current position in the Lexer.
-// Parameters:
-// - lexer: The lexer to use when parsing;
-// Returns:
-// - A token if a number literal could be parsed, otherwise 0.
-Token lexer_parse_number_literal(Lexer* lexer);
-
-// Attempts to parse a string literal token from the contents at the current position in the Lexer.
-// Parameters:
-// - lexer: The lexer to use when parsing;
-// Returns:
-// - A token if a number literal could be parsed, otherwise 0.
-Token lexer_parse_string_literal(Lexer* lexer);
-
-// De-allocates the contents held within the provided Lexer.
+// Destroys a Lexer.
 // Parameters:
 // - lexer: The lexer to destroy.
-void lexer_destroy(Lexer* lexer);
+void lexer_destroy(Lexer lexer);
 
 #endif // __LEXER_H__

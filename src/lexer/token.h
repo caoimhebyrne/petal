@@ -1,80 +1,44 @@
-#ifndef __TOKEN_H__
-#define __TOKEN_H__
+#ifndef __LEXER_TOKEN_H__
+#define __LEXER_TOKEN_H__
 
-#include "../position.h"
-#include "../stream.h"
+#include "core/position.h"
+#include "util/vector.h"
 
-// Represents the type of a single Token.
+// The type of a token produced by the Lexer.
 typedef enum {
     // An invalid token.
-    TOKEN_INVALID,
+    TOKEN_TYPE_INVALID = 0,
 
-    // An identifier, e.g. "my_variable".
-    TOKEN_IDENTIFIER,
+    // An identifier token, e.g. "my_variable"
+    TOKEN_TYPE_IDENTIFIER,
 
-    // A keyword, e.g. "func".
-    TOKEN_KEYWORD,
-
-    // A number literal, e.g. 123.456.
-    TOKEN_NUMBER_LITERAL,
-
-    // A string literal, e.g: 'Hello World'.
-    TOKEN_STRING_LITERAL,
-
-    // Symbols
-    TOKEN_EQUALS,              // =
-    TOKEN_SEMICOLON,           // ;
-    TOKEN_SLASH,               // /
-    TOKEN_OPEN_PARENTHESIS,    // (
-    TOKEN_CLOSE_PARENTHESIS,   // )
-    TOKEN_OPEN_BRACE,          // {
-    TOKEN_CLOSE_BRACE,         // }
-    TOKEN_ASTERISK,            // *
-    TOKEN_HYPHEN,              // -
-    TOKEN_RIGHT_ANGLE_BRACKET, // >
-    TOKEN_COLON,               // ;
-    TOKEN_COMMA,               // ,
-    TOKEN_PLUS,                // +
-    TOKEN_AMPERSAND,           // &
-    TOKEN_QUESTION_MARK,       // ?
-    TOKEN_EXCLAMATION_MARK,    // !
+    TOKEN_TYPE_EQUALS, // =
 } TokenType;
 
-// Represents a single Token produced by the Lexer.
+// A single token produced by the Lexer.
 typedef struct {
     // The type of this token.
-    // This indicates which value properties are available for access.
     TokenType type;
 
-    // The position in the file that this token occurred at.
+    // The position that this token occurred at within the source file.
     Position position;
 
     union {
-        // Only available on TOKEN_IDENTIFIER, TOKEN_KEYWORD, and TOKEN_STRING_LITERAL.
+        // Only available on TOKEN_IDENTIFIER tokens.
         char* string;
-
-        // Only available on TOKEN_NUMBER_LITERAL.
-        double number;
     };
 } Token;
 
-// An invalid token.
-#define INVALID_TOKEN (Token){.type = TOKEN_INVALID, .position = (Position){}};
+#define TOKEN_INVALID (Token){0}
 
-// Returns a string representation of the provided Token.
+// Destroys a single token.
+// This will de-allocate any data stored within the token, e.g. `string`.
 // Parameters:
-// - token: The token to turn into a string.
-// Returns:
-// - A string representing the provided token.
-char* token_to_string(Token token);
+// - token: The token to destroy.
+void token_destroy(Token token);
 
-// Returns a string representation of the provided TokenType.
-// Parameters:
-// - token_type: The token type to turn into a string.
-// Returns:
-// - A string representing the provided token type.
-char* token_type_to_string(TokenType token_type);
+// Destroys a vector of tokens.
+// This will call token_destroy on each element, and will call vector_destroy when complete.
+void token_vector_destroy(Vector* vector);
 
-DECLARE_STREAM(TokenStream, token_stream, Token);
-
-#endif // __TOKEN_H__
+#endif // __LEXER_TOKEN_H__

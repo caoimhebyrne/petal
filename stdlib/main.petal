@@ -1,3 +1,0 @@
-// This is the entrypoint for the Petal Standard Library.
-// All other modules imported into this will be compiled.
-import print;
