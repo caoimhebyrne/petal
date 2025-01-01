@@ -19,17 +19,17 @@ void module_compile(Module* module) {
 
     // The first stage of compilation is lexing, this produces a stream of tokens that can be parsed by the AST parser.
     Lexer lexer = lexer_create(file_contents);
-    Vector* tokens = lexer_parse(&lexer);
+    TokenVector tokens = lexer_parse(&lexer);
     lexer_destroy(lexer);
 
     // If no vector was returned from lexer_parse, an error occurred during parsing.
-    if (!tokens) {
+    if (tokens.capacity == 0) {
         return;
     }
 
     // We have finished lexing the file, we can now take the tokens and construct an AST.
-    printf("module: parsed %zu token(s)\n", tokens->size);
-    token_vector_destroy(tokens);
+    printf("module: parsed %zu token(s)\n", tokens.length);
+    vector_destroy(tokens, token_destroy);
 }
 
 void module_destroy(Module module) {

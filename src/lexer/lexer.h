@@ -2,8 +2,8 @@
 #define __LEXER_H__
 
 #include "core/position.h"
+#include "lexer/token.h"
 #include "util/file.h"
-#include "util/vector.h"
 
 // The Lexer takes an array of character and produces tokens that can be used for parsing.
 typedef struct {
@@ -25,7 +25,7 @@ Lexer lexer_create(FileContents contents);
 // - lexer: The lexer to use for parsing.
 // Returns:
 // - A pointer to a vector if successful, otherwise null.
-Vector* lexer_parse(Lexer* lexer);
+TokenVector lexer_parse(Lexer* lexer);
 
 // Destroys a Lexer.
 // Parameters:

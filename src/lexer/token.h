@@ -37,8 +37,6 @@ typedef struct {
 // - token: The token to destroy.
 void token_destroy(Token token);
 
-// Destroys a vector of tokens.
-// This will call token_destroy on each element, and will call vector_destroy when complete.
-void token_vector_destroy(Vector* vector);
+typedef Vector(Token) TokenVector;
 
 #endif // __LEXER_TOKEN_H__

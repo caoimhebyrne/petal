@@ -31,10 +31,10 @@ Lexer lexer_create(FileContents contents) {
     };
 }
 
-Vector* lexer_parse(Lexer* lexer) {
-    Vector* vector = vector_create(1);
-    if (!vector) {
-        return 0;
+TokenVector lexer_parse(Lexer* lexer) {
+    TokenVector vector = vector_create();
+    if (!vector_initialize(vector, 2)) {
+        return (TokenVector){0};
     }
 
     // Keep parsing until the lexer reaches the end of the file.
@@ -58,8 +58,7 @@ Vector* lexer_parse(Lexer* lexer) {
             break;
 
         case '=': {
-            Token token = lexer_create_token(lexer, TOKEN_TYPE_EQUALS);
-            vector_append(vector, &token, sizeof(Token));
+            vector_append(vector, lexer_create_token(lexer, TOKEN_TYPE_EQUALS));
             break;
         }
 
@@ -68,14 +67,14 @@ Vector* lexer_parse(Lexer* lexer) {
             if (isalpha(character)) {
                 Token token = lexer_parse_identifier(lexer);
                 if (token.type != TOKEN_TYPE_INVALID) {
-                    vector_append(vector, &token, sizeof(Token));
+                    vector_append(vector, token);
                     continue;
                 }
             }
 
             fprintf(stderr, "error: unknown character: '%c'\n", character);
-            token_vector_destroy(vector);
-            return 0;
+            vector_destroy(vector, token_destroy);
+            return (TokenVector){0};
         }
     }
 

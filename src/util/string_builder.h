@@ -7,7 +7,7 @@
 
 typedef struct {
     // A vector of characters being built by this string builder.
-    Vector* vector;
+    Vector(char) vector;
 } StringBuilder;
 
 // Initializes a new string builder.
