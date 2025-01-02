@@ -19,6 +19,9 @@
 // Returns the size of one item in the vector.
 #define vector_item_size(vector) sizeof(*(vector).items)
 
+// Returns the item at a certain index in the vector.
+#define vector_get(vector, i) (vector).items[(i)]
+
 // Initializes a vector with a certain capacity.
 #define vector_initialize(vector, initial_capacity)                                                                    \
     ({                                                                                                                 \

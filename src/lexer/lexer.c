@@ -7,6 +7,10 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
+
+// A list of identifiers that should be treated as keywords.
+char* keywords[] = {"func"};
 
 // Parsing functions:
 Token lexer_parse_identifier(Lexer* lexer);
@@ -124,8 +128,18 @@ Token lexer_parse_identifier(Lexer* lexer) {
         return TOKEN_INVALID;
     }
 
+    TokenType type = TOKEN_TYPE_IDENTIFIER;
+
+    // If the identifier matches a keyword value, treat this token as a keyword.
+    for (size_t i = 0; i < sizeof(char*) / sizeof(keywords); i++) {
+        if (strcmp(identifier, keywords[i]) == 0) {
+            type = TOKEN_TYPE_KEYWORD;
+            break;
+        }
+    }
+
     return (Token){
-        .type = TOKEN_TYPE_IDENTIFIER,
+        .type = type,
         .position = position,
         .string = identifier,
     };

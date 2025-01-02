@@ -12,6 +12,9 @@ typedef enum {
     // An identifier token, e.g. "my_variable"
     TOKEN_TYPE_IDENTIFIER,
 
+    // A keyword token, e.g. "func"
+    TOKEN_TYPE_KEYWORD,
+
     TOKEN_TYPE_EQUALS, // =
 } TokenType;
 
@@ -24,7 +27,7 @@ typedef struct {
     Position position;
 
     union {
-        // Only available on TOKEN_IDENTIFIER tokens.
+        // Only available on TOKEN_TYPE_IDENTIFIER and TOKEN_TYPE_KEYWORD tokens.
         char* string;
     };
 } Token;
