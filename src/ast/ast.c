@@ -2,6 +2,7 @@
 #include "ast/node.h"
 #include "ast/node/identifier_reference.h"
 #include "ast/node/variable_declaration.h"
+#include "core/type.h"
 #include "lexer/token.h"
 #include "util/vector.h"
 #include <stdio.h>
@@ -120,12 +121,12 @@ Node* ast_parse_variable_declaration(AST* ast) {
         return nullptr;
     }
 
-    return (Node*)variable_declaration_node_create(
-        equals_token.position,
-        strdup(type_token.string),
-        strdup(name_token.string),
-        value
-    );
+    auto type = (Type*)type_create_unresolved(strdup(type_token.string));
+    if (!type) {
+        return nullptr;
+    }
+
+    return (Node*)variable_declaration_node_create(equals_token.position, type, strdup(name_token.string), value);
 }
 
 Node* ast_parse_value(AST* ast) {
