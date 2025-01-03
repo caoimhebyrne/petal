@@ -1,8 +1,10 @@
 #include "core/module.h"
+#include "ast/ast.h"
+#include "ast/node.h"
 #include "lexer/lexer.h"
 #include "lexer/token.h"
 #include "util/file.h"
-#include <stdio.h>
+#include "util/vector.h"
 #include <stdlib.h>
 #include <sys/stat.h>
 
@@ -22,14 +24,22 @@ void module_compile(Module* module) {
     TokenVector tokens = lexer_parse(&lexer);
     lexer_destroy(lexer);
 
-    // If no vector was returned from lexer_parse, an error occurred during parsing.
+    // If a non-allocated vector was returned, an error occurred.
     if (tokens.capacity == 0) {
         return;
     }
 
     // We have finished lexing the file, we can now take the tokens and construct an AST.
-    printf("module: parsed %zu token(s)\n", tokens.length);
-    vector_destroy(tokens, token_destroy);
+    AST ast = ast_create(tokens);
+    NodeVector nodes = ast_parse(&ast);
+    ast_destroy(ast);
+
+    // If a non-allocated vector was returned, an error occurred.
+    if (nodes.capacity == 0) {
+        return;
+    }
+
+    vector_destroy(nodes, node_destroy);
 }
 
 void module_destroy(Module module) {

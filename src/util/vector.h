@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>  // IWYU pragma: keep
 #include <stdlib.h> // IWYU pragma: keep
 
 // Defines a new vector which has elements of type T.
