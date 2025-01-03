@@ -7,7 +7,7 @@
 StringBuilder string_builder_create() {
     StringBuilder builder = {.vector = vector_create()};
     if (!vector_initialize(builder.vector, 2)) {
-        return (StringBuilder){0};
+        return (StringBuilder){};
     }
 
     return builder;
@@ -39,7 +39,7 @@ char* string_builder_finish(StringBuilder* builder) {
     }
 
     for (size_t i = 0; i < builder->vector.length; i++) {
-        char item = builder->vector.items[i];
+        auto item = builder->vector.items[i];
         buffer[i] = item;
     }
 

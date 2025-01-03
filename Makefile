@@ -3,7 +3,7 @@ CC = clang
 
 # Enable all warnings and treat them as errors.
 # NOTE: To enable AddressSanitizer, add `-fsanitize=address` | `-fsanitize=undefined`.
-CFLAGS = -I./src -Wall -Wextra -Werror -g -fsanitize=address $(shell llvm-config --cflags)
+CFLAGS = -std=c23 -I./src -Wall -Wextra -Werror -g -fsanitize=address $(shell llvm-config --cflags)
 
 # Link with libLLVM.
 LDFLAGS = $(shell llvm-config --libs)

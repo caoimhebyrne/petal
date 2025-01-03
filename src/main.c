@@ -12,7 +12,7 @@ int main(int argc, char** argv) {
     // Arguments passed to the function through `argv` cannot be free'd, so to keep things similar between the
     // main module and the dependencies it resolves, we can duplicate the string, which allows it to be free'd when
     // the module is destroyed.
-    Module main_module = module_create(strdup(argv[1]));
+    auto main_module = module_create(strdup(argv[1]));
     module_compile(&main_module);
     module_destroy(main_module);
 

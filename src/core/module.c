@@ -14,14 +14,14 @@ Module module_create(char* file_name) {
 
 void module_compile(Module* module) {
     // To compile a module, we need to know its contents.
-    FileContents file_contents = file_read(module->file_name);
+    auto file_contents = file_read(module->file_name);
     if (!file_contents.data) {
         return;
     }
 
     // The first stage of compilation is lexing, this produces a stream of tokens that can be parsed by the AST parser.
-    Lexer lexer = lexer_create(file_contents);
-    TokenVector tokens = lexer_parse(&lexer);
+    auto lexer = lexer_create(file_contents);
+    auto tokens = lexer_parse(&lexer);
     lexer_destroy(lexer);
 
     // If a non-allocated vector was returned, an error occurred.
@@ -30,8 +30,8 @@ void module_compile(Module* module) {
     }
 
     // We have finished lexing the file, we can now take the tokens and construct an AST.
-    AST ast = ast_create(tokens);
-    NodeVector nodes = ast_parse(&ast);
+    auto ast = ast_create(tokens);
+    auto nodes = ast_parse(&ast);
     ast_destroy(ast);
 
     // If a non-allocated vector was returned, an error occurred.

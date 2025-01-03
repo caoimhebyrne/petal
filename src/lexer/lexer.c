@@ -31,19 +31,19 @@ Token lexer_create_token(Lexer* lexer, TokenType token_type);
 Lexer lexer_create(FileContents contents) {
     return (Lexer){
         .contents = contents,
-        .position = (Position){0},
+        .position = (Position){},
     };
 }
 
 TokenVector lexer_parse(Lexer* lexer) {
     TokenVector vector = vector_create();
     if (!vector_initialize(vector, 2)) {
-        return (TokenVector){0};
+        return (TokenVector){};
     }
 
     // Keep parsing until the lexer reaches the end of the file.
     while (!lexer_is_eof(lexer)) {
-        char character = lexer_peek(lexer);
+        auto character = lexer_peek(lexer);
         switch (character) {
         // Ignore whitespace (including tabs and CR).
         case ' ':
@@ -69,7 +69,7 @@ TokenVector lexer_parse(Lexer* lexer) {
         default:
             // If the character is an alphabetic character, it is most likely an identifier.
             if (isalpha(character)) {
-                Token token = lexer_parse_identifier(lexer);
+                auto token = lexer_parse_identifier(lexer);
                 if (token.type != TOKEN_TYPE_INVALID) {
                     vector_append(vector, token);
                     continue;
@@ -78,7 +78,7 @@ TokenVector lexer_parse(Lexer* lexer) {
 
             fprintf(stderr, "error: unknown character: '%c'\n", character);
             vector_destroy(vector, token_destroy);
-            return (TokenVector){0};
+            return (TokenVector){};
         }
     }
 
@@ -87,7 +87,7 @@ TokenVector lexer_parse(Lexer* lexer) {
 
 Token lexer_create_token(Lexer* lexer, TokenType token_type) {
     // The current position is the token's position.
-    Position position = lexer->position;
+    auto position = lexer->position;
     position.length = 1;
 
     // Advance the cursor.
@@ -100,16 +100,16 @@ Token lexer_create_token(Lexer* lexer, TokenType token_type) {
 }
 
 bool lexer_next_is_identifier(Lexer* lexer) {
-    char character = lexer_peek(lexer);
+    auto character = lexer_peek(lexer);
     return isalpha(character) || isdigit(character) || character == '_';
 }
 
 Token lexer_parse_identifier(Lexer* lexer) {
     // This token starts at the lexer's current position.
-    Position position = lexer->position;
+    auto position = lexer->position;
 
     // An identifier must only contain alphanumeric characters or underscores.
-    StringBuilder builder = string_builder_create();
+    auto builder = string_builder_create();
     if (string_builder_is_invalid(builder)) {
         return TOKEN_INVALID;
     }
@@ -128,7 +128,7 @@ Token lexer_parse_identifier(Lexer* lexer) {
         return TOKEN_INVALID;
     }
 
-    TokenType type = TOKEN_TYPE_IDENTIFIER;
+    auto type = TOKEN_TYPE_IDENTIFIER;
 
     // If the identifier matches a keyword value, treat this token as a keyword.
     for (size_t i = 0; i < sizeof(char*) / sizeof(keywords); i++) {
@@ -155,7 +155,7 @@ char lexer_peek(Lexer* lexer) {
 }
 
 char lexer_consume(Lexer* lexer) {
-    char character = lexer_peek(lexer);
+    auto character = lexer_peek(lexer);
 
     // We must advance the index and the column.
     lexer->position.index++;
