@@ -2,7 +2,13 @@
 #include <stdlib.h>
 
 void token_destroy(Token token) {
-    if (token.string) {
+    switch (token.type) {
+    case TOKEN_TYPE_KEYWORD:
+    case TOKEN_TYPE_IDENTIFIER:
         free(token.string);
+        break;
+
+    default:
+        break;
     }
 }
