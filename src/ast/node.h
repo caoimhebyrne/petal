@@ -1,22 +1,33 @@
 #ifndef __AST_NODE_H__
 #define __AST_NODE_H__
 
+#include "core/position.h"
 #include "util/vector.h"
 
 // Represents the different types of AST nodes.
 typedef enum {
     // An identifier reference node, see IdentifierReferenceNode.
     NODE_KIND_IDENTIFIER_REFERENCE,
+
+    // A variable declaration node, see VariableDeclarationNode.
+    NODE_KIND_VARIABLE_DECLARATION,
 } NodeKind;
 
 // The "base" for an AST node.
 typedef struct {
     // The kind of Node that this is. The value of this member indicates the type that this `Node*` can be casted to.
     NodeKind kind;
+
+    // The position that this node occurred at within the source file.
+    Position position;
 } Node;
 
 // A vector of `Node*`.
 typedef Vector(Node*) NodeVector;
+
+// Returns a string representation of a Node.
+// The caller should `free` this when it is no longer being used.
+char* node_to_string(Node* node);
 
 // De-allocates a single Node and all of its data.
 // Parameters:

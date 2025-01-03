@@ -5,6 +5,7 @@
 #include "lexer/token.h"
 #include "util/file.h"
 #include "util/vector.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 
@@ -37,6 +38,18 @@ void module_compile(Module* module) {
     // If a non-allocated vector was returned, an error occurred.
     if (nodes.capacity == 0) {
         return;
+    }
+
+    for (size_t i = 0; i < nodes.length; i++) {
+        Node* node = vector_get(nodes, i);
+
+        char* string = node_to_string(node);
+        if (string == nullptr) {
+            printf("- !!! unable to stringify node: %d\n", node->kind);
+        } else {
+            printf("- %s\n", string);
+            free(string);
+        }
     }
 
     vector_destroy(nodes, node_destroy);

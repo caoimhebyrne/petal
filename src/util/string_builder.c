@@ -50,7 +50,7 @@ char* string_builder_finish(StringBuilder* builder) {
     char* buffer = malloc(builder->vector.length + 1);
     if (!buffer) {
         fprintf(stderr, "fatal error: failed to allocate %zu bytes for string", builder->vector.length + 1);
-        return 0;
+        return nullptr;
     }
 
     for (size_t i = 0; i < builder->vector.length; i++) {

@@ -66,6 +66,11 @@ TokenVector lexer_parse(Lexer* lexer) {
             break;
         }
 
+        case ';': {
+            vector_append(vector, lexer_create_token(lexer, TOKEN_TYPE_SEMICOLON));
+            break;
+        }
+
         default:
             // If the character is an alphabetic character, it is most likely an identifier.
             if (isalpha(character)) {

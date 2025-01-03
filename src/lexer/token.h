@@ -15,7 +15,8 @@ typedef enum {
     // A keyword token, e.g. "func"
     TOKEN_TYPE_KEYWORD,
 
-    TOKEN_TYPE_EQUALS, // =
+    TOKEN_TYPE_EQUALS,    // =
+    TOKEN_TYPE_SEMICOLON, // ;
 } TokenType;
 
 // A single token produced by the Lexer.
