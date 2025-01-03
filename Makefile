@@ -6,7 +6,7 @@ CC = clang
 CFLAGS = -std=c23 -I./src -Wall -Wextra -Werror -g -fsanitize=address $(shell llvm-config --cflags)
 
 # Link with libLLVM.
-LDFLAGS = $(shell llvm-config --libs)
+LDFLAGS = $(shell llvm-config --libs --ldflags)
 
 .PHONY: clangd
 setup-clangd:
