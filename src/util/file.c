@@ -36,7 +36,11 @@ FileContents file_read(char* path) {
     // Now that we know the file's size, we can allocate a buffer for its contents.
     char* contents = malloc(stat_result.st_size);
     if (!contents) {
+#ifdef __APPLE__
+        fprintf(stderr, "error: failed to allocate buffer of %lld bytes for '%s'\n", stat_result.st_size, path);
+#else
         fprintf(stderr, "error: failed to allocate buffer of %zu bytes for '%s'\n", stat_result.st_size, path);
+#endif
         return (FileContents){};
     }
 
