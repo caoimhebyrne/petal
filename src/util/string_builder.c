@@ -18,7 +18,7 @@ bool string_builder_is_invalid(StringBuilder builder) {
 }
 
 size_t string_builder_length(StringBuilder builder) {
-    if (!string_builder_is_invalid(builder)) {
+    if (string_builder_is_invalid(builder)) {
         return 0;
     }
 
