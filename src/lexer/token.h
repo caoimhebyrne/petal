@@ -2,6 +2,7 @@
 
 #include "core/position.h"
 #include "util/vector.h"
+#include <stdint.h>
 
 // The type of a token produced by the Lexer.
 typedef enum {
@@ -13,6 +14,12 @@ typedef enum {
 
     // A keyword token, e.g. "func"
     TOKEN_TYPE_KEYWORD,
+
+    // An integer literal, e.g. 123456
+    TOKEN_TYPE_INTEGER_LITERAL,
+
+    // A float literal, e.g. 123.456
+    TOKEN_TYPE_FLOAT_LITERAL,
 
     TOKEN_TYPE_EQUALS,    // =
     TOKEN_TYPE_SEMICOLON, // ;
@@ -29,6 +36,12 @@ typedef struct {
     union {
         // Only available on TOKEN_TYPE_IDENTIFIER and TOKEN_TYPE_KEYWORD tokens.
         char* string;
+
+        // Only available on TOKEN_TYPE_INTEGER_LITERAL tokens.
+        uint64_t integer;
+
+        // Only available on TOKEN_TYPE_FLOAT_LITERAL tokens.
+        double number;
     };
 } Token;
 

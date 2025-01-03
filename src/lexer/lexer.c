@@ -6,7 +6,9 @@
 #include "util/vector.h"
 #include <ctype.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 // A list of identifiers that should be treated as keywords.
@@ -14,6 +16,7 @@ char* keywords[] = {"func"};
 
 // Parsing functions:
 Token lexer_parse_identifier(Lexer* lexer);
+Token lexer_parse_number(Lexer* lexer);
 
 // Forward declarations:
 // Whether the lexer has reached the end of the file or not.
@@ -75,6 +78,12 @@ TokenVector lexer_parse(Lexer* lexer) {
             // If the character is an alphabetic character, it is most likely an identifier.
             if (isalpha(character)) {
                 auto token = lexer_parse_identifier(lexer);
+                if (token.type != TOKEN_TYPE_INVALID) {
+                    vector_append(vector, token);
+                    continue;
+                }
+            } else if (isdigit(character)) {
+                auto token = lexer_parse_number(lexer);
                 if (token.type != TOKEN_TYPE_INVALID) {
                     vector_append(vector, token);
                     continue;
@@ -148,6 +157,68 @@ Token lexer_parse_identifier(Lexer* lexer) {
         .position = position,
         .string = identifier,
     };
+}
+
+bool lexer_next_is_number(Lexer* lexer) {
+    auto character = lexer_peek(lexer);
+    return isdigit(character) || character == '.';
+}
+
+Token lexer_parse_number(Lexer* lexer) {
+    // This token starts at the lexer's current position.
+    auto position = lexer->position;
+
+    // An identifier must only contain alphanumeric characters or underscores.
+    auto builder = string_builder_create();
+    if (string_builder_is_invalid(builder)) {
+        return TOKEN_INVALID;
+    }
+
+    // Set to true if a `.` is consumed, indicating this is a float.
+    auto is_float = false;
+
+    while (lexer_next_is_number(lexer)) {
+        auto character = lexer_consume(lexer);
+        string_builder_append(&builder, character);
+
+        if (!is_float && character == '.') {
+            is_float = true;
+        }
+    }
+
+    // The position's length can be inferred from the length of the string buffer.
+    position.length = string_builder_length(builder);
+
+    // Finalizing the builder can fail if it fails to allocate a string of the required length.
+    // The builder is no longer safe to use after this.
+    char* string_value = string_builder_finish(&builder);
+    if (!string_value) {
+        return TOKEN_INVALID;
+    }
+
+    // strtod will set end_ptr to the first character after the numeric value has been parsed.
+    char* end_ptr = string_value;
+    double value = strtod(string_value, &end_ptr);
+
+    // If the end_ptr is still equal to the string_value, this is an invalid number.
+    if (end_ptr == string_value) {
+        // TODO: Diagnostic.
+        return TOKEN_INVALID;
+    }
+
+    if (is_float) {
+        return (Token){
+            .type = TOKEN_TYPE_FLOAT_LITERAL,
+            .position = position,
+            .number = value,
+        };
+    } else {
+        return (Token){
+            .type = TOKEN_TYPE_INTEGER_LITERAL,
+            .position = position,
+            .integer = (uint64_t)value,
+        };
+    }
 }
 
 bool lexer_is_eof(Lexer* lexer) {
