@@ -1,5 +1,4 @@
-#ifndef __CORE_POSITION_H__
-#define __CORE_POSITION_H__
+#pragma once
 
 #include <stddef.h>
 
@@ -17,5 +16,3 @@ typedef struct {
     // The length of this node in characters.
     size_t length;
 } Position;
-
-#endif // __CORE_POSITION_H__

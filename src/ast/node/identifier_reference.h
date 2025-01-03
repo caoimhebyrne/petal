@@ -1,5 +1,4 @@
-#ifndef __AST_NODE_IDENTIFIER_REFERENCE_H__
-#define __AST_NODE_IDENTIFIER_REFERENCE_H__
+#pragma once
 
 #include "ast/node.h"
 #include "core/position.h"
@@ -27,5 +26,3 @@ char* identifier_reference_node_to_string(IdentifierReferenceNode* node);
 // Parmaeters:
 // - node: The IdentifierReferenceNode to destroy.
 void identifier_reference_node_destroy(IdentifierReferenceNode* node);
-
-#endif // __AST_NODE_IDENTIFIER_REFERENCE_H__

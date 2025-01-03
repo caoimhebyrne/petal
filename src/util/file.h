@@ -1,5 +1,4 @@
-#ifndef __UTIL_FILE_H__
-#define __UTIL_FILE_H__
+#pragma once
 
 #include <stddef.h>
 
@@ -22,5 +21,3 @@ FileContents file_read(char* path);
 
 // De-allocates the data read from a file.
 void file_contents_destroy(FileContents contents);
-
-#endif // __UTIL_FILE_H__

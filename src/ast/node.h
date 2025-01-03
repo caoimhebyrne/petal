@@ -1,5 +1,4 @@
-#ifndef __AST_NODE_H__
-#define __AST_NODE_H__
+#pragma once
 
 #include "core/position.h"
 #include "util/vector.h"
@@ -33,5 +32,3 @@ char* node_to_string(Node* node);
 // Parameters:
 // - node: A reference to the node to destroy.
 void node_destroy(Node* node);
-
-#endif // __AST_NODE_H__

@@ -1,5 +1,4 @@
-#ifndef __AST_NODE_VARIABLE_DECLARATION_H__
-#define __AST_NODE_VARIABLE_DECLARATION_H__
+#pragma once
 
 #include "ast/node.h"
 #include "core/position.h"
@@ -36,5 +35,3 @@ char* variable_declaration_node_to_string(VariableDeclarationNode* node);
 // Parmaeters:
 // - node: The VariableDeclarationNode to destroy.
 void variable_declaration_node_destroy(VariableDeclarationNode* node);
-
-#endif // __AST_NODE_VARIABLE_DECLARATION_H__

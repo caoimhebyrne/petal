@@ -1,5 +1,4 @@
-#ifndef __AST_H__
-#define __AST_H__
+#pragma once
 
 #include "ast/node.h"
 #include "lexer/token.h"
@@ -27,5 +26,3 @@ NodeVector ast_parse(AST* ast);
 // Parameters:
 // - ast: The AST to destroy.
 void ast_destroy(AST ast);
-
-#endif // __AST_H__

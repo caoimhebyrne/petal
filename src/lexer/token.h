@@ -1,5 +1,4 @@
-#ifndef __LEXER_TOKEN_H__
-#define __LEXER_TOKEN_H__
+#pragma once
 
 #include "core/position.h"
 #include "util/vector.h"
@@ -42,5 +41,3 @@ typedef struct {
 void token_destroy(Token token);
 
 typedef Vector(Token) TokenVector;
-
-#endif // __LEXER_TOKEN_H__

@@ -1,5 +1,4 @@
-#ifndef __UTIL_FORMAT_H__
-#define __UTIL_FORMAT_H__
+#pragma once
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -27,5 +26,3 @@ static inline char* format_string(const char* format, ...) {
 
     return buffer;
 }
-
-#endif // __UTIL_FORMAT_H__

@@ -1,5 +1,4 @@
-#ifndef __CORE_MODULE_H__
-#define __CORE_MODULE_H__
+#pragma once
 
 // A "module" is any file that is being compiled, it may be a dependency resolved by another module.
 typedef struct {
@@ -23,5 +22,3 @@ void module_compile(Module* module);
 // Parameters:
 // - module: The module to destroy.
 void module_destroy(Module module);
-
-#endif // __CORE_MODULE_H__

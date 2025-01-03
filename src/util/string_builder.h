@@ -1,5 +1,4 @@
-#ifndef __UTIL_STRING_BUILDER_H__
-#define __UTIL_STRING_BUILDER_H__
+#pragma once
 
 #include "util/vector.h"
 #include <stdbool.h>
@@ -41,5 +40,3 @@ char* string_builder_finish(StringBuilder* builder);
 // Destroys a StringBuilder and its contents.
 // If `string_builder_finish` was called, the contents returned by that function will not be de-allocated.
 void string_builder_destroy(StringBuilder* builder);
-
-#endif // __UTIL_STRING_BUILDER_H__

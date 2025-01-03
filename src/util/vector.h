@@ -1,5 +1,4 @@
-#ifndef __UTIL_VECTOR_H__
-#define __UTIL_VECTOR_H__
+#pragma once
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -84,5 +83,3 @@
                                                                                                                        \
         free(vector.items);                                                                                            \
     })
-
-#endif // __UTIL_VECTOR_H__

@@ -1,5 +1,4 @@
-#ifndef __LEXER_H__
-#define __LEXER_H__
+#pragma once
 
 #include "core/position.h"
 #include "lexer/token.h"
@@ -31,5 +30,3 @@ TokenVector lexer_parse(Lexer* lexer);
 // Parameters:
 // - lexer: The lexer to destroy.
 void lexer_destroy(Lexer lexer);
-
-#endif // __LEXER_H__
