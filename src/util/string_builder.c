@@ -29,6 +29,21 @@ bool string_builder_append(StringBuilder* builder, char character) {
     return vector_append(builder->vector, character);
 }
 
+bool string_builder_append_str(StringBuilder* builder, const char* string) {
+    for (size_t i = 0; i < strlen(string); i++) {
+        auto character = string[i];
+        if (character == '\0') {
+            break;
+        }
+
+        if (!string_builder_append(builder, string[i])) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 typedef void (*func_ptr)(int);
 
 char* string_builder_finish(StringBuilder* builder) {

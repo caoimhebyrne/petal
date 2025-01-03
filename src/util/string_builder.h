@@ -27,6 +27,10 @@ size_t string_builder_length(StringBuilder builder);
 // Returns whether the operation was successful.
 bool string_builder_append(StringBuilder* builder, char character);
 
+// Appends a string to a string builder.
+// Returns whether the operation was successful.
+bool string_builder_append_str(StringBuilder* builder, const char* string);
+
 // Attempts to finalize this string builder.
 // This also calls `string_builder_destroy`.
 // Returns:
