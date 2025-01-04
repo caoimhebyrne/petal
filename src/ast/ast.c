@@ -191,7 +191,7 @@ Node* ast_parse_value(AST* ast) {
 
     auto current_token = ast_peek(ast);
     if (current_token.type == TOKEN_TYPE_INVALID) {
-        auto last_token = ast->tokens.items[ast->tokens.length - 1];
+        auto last_token = vector_last(ast->tokens);
 
         // Use the position of the character after the previous token, which should be the end of the file.
         auto position = last_token.position;
