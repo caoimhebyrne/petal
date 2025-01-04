@@ -4,8 +4,10 @@
 #include "ast/node/identifier_reference.h"
 #include "ast/node/number_literal.h"
 #include "ast/node/variable_declaration.h"
+#include "core/diagnostic.h"
 #include "core/type.h"
 #include "lexer/token.h"
+#include "util/format.h"
 #include "util/vector.h"
 #include <stdio.h>
 #include <string.h>
@@ -21,8 +23,9 @@ Node* ast_parse_value(AST* ast);
 Node* ast_parse_identifier_reference(AST* ast);
 Node* ast_parse_number_literal(AST* ast);
 
-AST ast_create(TokenVector tokens) {
+AST ast_create(DiagnosticVector* diagnostics, TokenVector tokens) {
     return (AST){
+        .diagnostics = diagnostics,
         .tokens = tokens,
         .position = 0,
     };
@@ -186,7 +189,21 @@ Node* ast_parse_value(AST* ast) {
     if (ast_next_is(ast, TOKEN_TYPE_INTEGER_LITERAL) || ast_next_is(ast, TOKEN_TYPE_FLOAT_LITERAL))
         return ast_parse_number_literal(ast);
 
-    fprintf(stderr, "unexpected token: %d\n", ast_peek(ast).type);
+    Token current_token = ast_peek(ast);
+    if (current_token.type == TOKEN_TYPE_INVALID) {
+        Token last_token = ast->tokens.items[ast->tokens.length - 1];
+
+        // FIXME: `LiteralDiagnostic`?
+        vector_append(
+            ast->diagnostics,
+            diagnostic_create(last_token.position, format_string("expected a value, but got end-of-file"))
+        );
+    } else {
+        vector_append(
+            ast->diagnostics,
+            diagnostic_create(current_token.position, format_string("unexpected token: %d", current_token.type))
+        );
+    }
     return nullptr;
 }
 

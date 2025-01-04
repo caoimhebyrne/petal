@@ -13,6 +13,11 @@ int main(int argc, char** argv) {
     // main module and the dependencies it resolves, we can duplicate the string, which allows it to be free'd when
     // the module is destroyed.
     auto main_module = module_create(strdup(argv[1]));
+    if (!module_initialize(&main_module)) {
+        fprintf(stderr, "Failed to initialize Petal compiler.");
+        return -1;
+    }
+
     module_compile(&main_module);
     module_destroy(main_module);
 
