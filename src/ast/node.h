@@ -11,6 +11,9 @@ typedef enum {
     // An identifier reference node, see IdentifierReferenceNode.
     NODE_KIND_IDENTIFIER_REFERENCE,
 
+    // A number literal node, see NumberLiteralNode.
+    NODE_KIND_NUMBER_LITERAL,
+
     // A variable declaration node, see VariableDeclarationNode.
     NODE_KIND_VARIABLE_DECLARATION,
 } NodeKind;

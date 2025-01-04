@@ -2,6 +2,7 @@
 #include "ast/node.h"
 #include "ast/node/binary_operation.h"
 #include "ast/node/identifier_reference.h"
+#include "ast/node/number_literal.h"
 #include "ast/node/variable_declaration.h"
 #include "core/type.h"
 #include "lexer/token.h"
@@ -15,8 +16,10 @@ Node* ast_parse_variable_declaration(AST* ast);
 
 Node* ast_parse_expression(AST* ast);
 Node* ast_parse_addition_subtraction_expression(AST* ast);
+
 Node* ast_parse_value(AST* ast);
 Node* ast_parse_identifier_reference(AST* ast);
+Node* ast_parse_number_literal(AST* ast);
 
 AST ast_create(TokenVector tokens) {
     return (AST){
@@ -174,6 +177,9 @@ Node* ast_parse_value(AST* ast) {
     if (ast_next_is(ast, TOKEN_TYPE_IDENTIFIER))
         return ast_parse_identifier_reference(ast);
 
+    if (ast_next_is(ast, TOKEN_TYPE_INTEGER_LITERAL) || ast_next_is(ast, TOKEN_TYPE_FLOAT_LITERAL))
+        return ast_parse_number_literal(ast);
+
     fprintf(stderr, "unexpected token: %d\n", ast_peek(ast).type);
     return nullptr;
 }
@@ -186,6 +192,22 @@ Node* ast_parse_identifier_reference(AST* ast) {
     }
 
     return (Node*)identifier_reference_node_create(identifier_token.position, strdup(identifier_token.string));
+}
+
+Node* ast_parse_number_literal(AST* ast) {
+    auto token = ast_consume(ast);
+
+    switch (token.type) {
+    case TOKEN_TYPE_INTEGER_LITERAL:
+        return (Node*)number_literal_node_create_integer(token.position, token.integer);
+
+    case TOKEN_TYPE_FLOAT_LITERAL:
+        return (Node*)number_literal_node_create_float(token.position, token.number);
+
+    default:
+        fprintf(stderr, "unexpected token type for number literal: %d -- this is a bad bug...", token.type);
+        return 0;
+    }
 }
 
 void ast_destroy(AST ast) {

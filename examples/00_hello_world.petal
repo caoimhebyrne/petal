@@ -1,1 +1,1 @@
-i32 variable = test + bbb;
+i32 variable = 123 + 123.456;
