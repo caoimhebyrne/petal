@@ -163,6 +163,8 @@ Node* ast_parse_addition_subtraction_expression(AST* ast) {
 
         auto right = ast_parse_expression(ast);
         if (!right) {
+            // If we could not parse a right node, make sure to destroy the left node that was parsed.
+            node_destroy(left);
             return nullptr;
         }
 
