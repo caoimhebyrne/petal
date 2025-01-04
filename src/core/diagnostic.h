@@ -3,8 +3,10 @@
 #include "core/position.h"
 #include "util/vector.h"
 
-#define ANSI_RED "\e[1;31m"
+#define ANSI_RED "\e[0;31m"
+#define ANSI_YELLOW "\e[0;33m"
 #define ANSI_RESET "\e[0m"
+#define ANSI_GRAY "\e[1;30m"
 #define ANSI_LIGHT_GRAY "\e[1;37m"
 
 typedef struct {

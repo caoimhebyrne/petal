@@ -34,7 +34,7 @@ char lexer_consume(Lexer* lexer);
 // Produces a single-character token while consuming the current token.
 Token lexer_create_token(Lexer* lexer, TokenType token_type);
 
-Lexer lexer_create(DiagnosticVector* diagnostics, FileContents contents) {
+Lexer lexer_create(DiagnosticVector* diagnostics, FileContents* contents) {
     return (Lexer){
         .diagnostics = diagnostics,
         .contents = contents,
@@ -256,11 +256,11 @@ Token lexer_parse_number(Lexer* lexer) {
 
 bool lexer_is_eof(Lexer* lexer) {
     // The lexer is considered to be at the end of the file if there are no characters left.
-    return lexer->position.index >= lexer->contents.length;
+    return lexer->position.index >= lexer->contents->length;
 }
 
 char lexer_peek(Lexer* lexer) {
-    return lexer->contents.data[lexer->position.index];
+    return lexer->contents->data[lexer->position.index];
 }
 
 char lexer_consume(Lexer* lexer) {
@@ -274,5 +274,6 @@ char lexer_consume(Lexer* lexer) {
 }
 
 void lexer_destroy(Lexer lexer) {
-    file_contents_destroy(lexer.contents);
+    (void)lexer;
+    // NO-OP.
 }

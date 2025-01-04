@@ -2,10 +2,14 @@
 
 // A "module" is any file that is being compiled, it may be a dependency resolved by another module.
 #include "core/diagnostic.h"
+#include "util/file.h"
 
 typedef struct {
     // A vector of diagnostics produced for this module.
     DiagnosticVector diagnostics;
+
+    // The contents of the source for this module.
+    FileContents file_contents;
 
     // The original filename for this module.
     char* file_name;
