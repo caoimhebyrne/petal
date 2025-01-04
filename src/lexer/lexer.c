@@ -1,6 +1,7 @@
 #include "lexer/lexer.h"
 #include "core/position.h"
 #include "lexer/token.h"
+#include "util/defer.h"
 #include "util/file.h"
 #include "util/string_builder.h"
 #include "util/vector.h"
@@ -205,14 +206,14 @@ Token lexer_parse_number(Lexer* lexer) {
 
     // Finalizing the builder can fail if it fails to allocate a string of the required length.
     // The builder is no longer safe to use after this.
-    char* string_value = string_builder_finish(&builder);
+    defer(free_str) auto string_value = string_builder_finish(&builder);
     if (!string_value) {
         return TOKEN_INVALID;
     }
 
     // strtod will set end_ptr to the first character after the numeric value has been parsed.
-    char* end_ptr = string_value;
-    double value = strtod(string_value, &end_ptr);
+    auto end_ptr = string_value;
+    auto value = strtod(string_value, &end_ptr);
 
     // If the end_ptr is still equal to the string_value, this is an invalid number.
     if (end_ptr == string_value) {
