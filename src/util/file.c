@@ -1,4 +1,6 @@
 #include "file.h"
+#include "util/string_builder.h"
+#include "util/vector.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -55,6 +57,34 @@ FileContents file_read(char* path) {
         .data = contents,
         .length = stat_result.st_size,
     };
+}
+
+StringVector file_contents_lines(FileContents contents) {
+    StringVector vector = vector_create();
+    if (!vector_initialize(vector, 1)) {
+        return vector;
+    }
+
+    auto current_line = string_builder_create();
+    if (string_builder_is_invalid(current_line)) {
+        return vector;
+    }
+
+    for (size_t i = 0; i < contents.length; i++) {
+        // If the current builder is invalid, we need to create a new one for the next character.
+        if (string_builder_is_invalid(current_line)) {
+            current_line = string_builder_create();
+        }
+
+        auto character = contents.data[i];
+        if (character == '\n') {
+            vector_append(&vector, string_builder_finish(&current_line));
+        } else {
+            string_builder_append(&current_line, character);
+        }
+    }
+
+    return vector;
 }
 
 void file_contents_destroy(FileContents contents) {

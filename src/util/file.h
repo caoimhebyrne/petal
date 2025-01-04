@@ -1,6 +1,9 @@
 #pragma once
 
+#include "util/vector.h"
 #include <stddef.h>
+
+typedef Vector(char*) StringVector;
 
 typedef struct {
     // The data read from the file.
@@ -18,6 +21,11 @@ typedef struct {
 // - In all cases, a valid FileContents struct is returned.
 //   If the read operation fails, the `contents` pointer will be a null-pointer.
 FileContents file_read(char* path);
+
+// Creates a vector of lines from a file's contents.
+// Parameters:
+// - contents: The file contents to read from.
+StringVector file_contents_lines(FileContents contents);
 
 // De-allocates the data read from a file.
 void file_contents_destroy(FileContents contents);

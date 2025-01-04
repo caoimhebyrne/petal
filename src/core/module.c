@@ -6,7 +6,6 @@
 #include "lexer/token.h"
 #include "util/defer.h"
 #include "util/file.h"
-#include "util/string_builder.h"
 #include "util/vector.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -74,30 +73,9 @@ void module_print_diagnostics(Module* module) {
         return; // no diagnostics
     }
 
-    Vector(char*) lines = vector_create();
-    if (!vector_initialize(lines, 1)) {
-        fprintf(stderr, "buy more ram if you want diagnostics???\n");
-        return;
-    }
-
-    StringBuilder current_line = string_builder_create();
-    if (string_builder_is_invalid(current_line)) {
-        fprintf(stderr, "buy more ram if you want diagnostics???\n");
-        return;
-    }
-
-    for (size_t i = 0; i < module->file_contents.length; i++) {
-        if (string_builder_is_invalid(current_line)) {
-            current_line = string_builder_create();
-        }
-
-        char character = module->file_contents.data[i];
-        if (character == '\n') {
-            vector_append(&lines, string_builder_finish(&current_line));
-        } else {
-            string_builder_append(&current_line, character);
-        }
-    }
+    // Parse the module's source into lines.
+    // This will be used to print lines when printing diagnostics.
+    auto source_lines = file_contents_lines(module->file_contents);
 
     for (size_t i = 0; i < module->diagnostics.length; i++) {
         auto diagnostic = vector_get(module->diagnostics, i);
@@ -113,10 +91,10 @@ void module_print_diagnostics(Module* module) {
             diagnostic.message
         );
 
-        if (diagnostic.position.line < lines.length) {
-            auto line = vector_get(lines, diagnostic.position.line);
-
-            const char* margin = ANSI_GRAY "|" ANSI_RESET;
+        // Ensure the line index is within the vector bounds.
+        if (diagnostic.position.line < source_lines.length) {
+            auto line = vector_get(source_lines, diagnostic.position.line);
+            auto margin = ANSI_GRAY "|" ANSI_RESET;
 
             printf("   %s%3zu%s  %s  %s\n", ANSI_GRAY, diagnostic.position.line + 1, ANSI_RESET, margin, line);
             printf("        %s  ", margin);
@@ -133,7 +111,7 @@ void module_print_diagnostics(Module* module) {
         }
     }
 
-    vector_destroy(lines, free);
+    vector_destroy(source_lines, free);
 }
 
 void module_destroy(Module module) {
