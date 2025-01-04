@@ -80,7 +80,11 @@ NodeVector ast_parse(AST* ast) {
     while (ast->position < ast->tokens.length) {
         auto statement = ast_parse_statement(ast);
         if (!statement) {
-            break;
+            // Clean up the original vector as it may have items in it.
+            vector_destroy(vector, node_destroy);
+
+            // Return an invalid vector.
+            return (NodeVector){};
         }
 
         vector_append(&vector, statement);
