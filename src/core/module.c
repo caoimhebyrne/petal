@@ -3,6 +3,7 @@
 #include "ast/node.h"
 #include "lexer/lexer.h"
 #include "lexer/token.h"
+#include "util/defer.h"
 #include "util/file.h"
 #include "util/vector.h"
 #include <stdio.h>
@@ -41,14 +42,13 @@ void module_compile(Module* module) {
     }
 
     for (size_t i = 0; i < nodes.length; i++) {
-        Node* node = vector_get(nodes, i);
+        auto node = vector_get(nodes, i);
+        auto string defer(free_str) = node_to_string(node);
 
-        char* string = node_to_string(node);
         if (string == nullptr) {
             printf("- !!! unable to stringify node: %d\n", node->kind);
         } else {
             printf("- %s\n", string);
-            free(string);
         }
     }
 

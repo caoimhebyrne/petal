@@ -1,6 +1,7 @@
 #include "variable_declaration.h"
 #include "ast/node.h"
 #include "core/type.h"
+#include "util/defer.h"
 #include "util/format.h"
 #include <stdlib.h>
 
@@ -20,16 +21,14 @@ VariableDeclarationNode* variable_declaration_node_create(Position position, Typ
 }
 
 char* variable_declaration_node_to_string(VariableDeclarationNode* node) {
-    auto value_string = node_to_string(node->value);
-    auto string = format_string(
-        "VariableDeclarationNode { name = '%s', type = '%s', value = '%s' }",
+    defer(free_str) auto value_string = node_to_string(node->value);
+
+    return format_string(
+        "VariableDeclarationNode { name = '%s', type = '%s', value = %s }",
         node->name,
         node->type,
         value_string
     );
-
-    free(value_string);
-    return string;
 }
 
 void variable_declaration_node_destroy(VariableDeclarationNode* node) {
