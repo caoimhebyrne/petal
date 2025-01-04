@@ -66,27 +66,27 @@ TokenVector lexer_parse(Lexer* lexer) {
             break;
 
         case '=':
-            vector_append(vector, lexer_create_token(lexer, TOKEN_TYPE_EQUALS));
+            vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_EQUALS));
             break;
 
         case ';':
-            vector_append(vector, lexer_create_token(lexer, TOKEN_TYPE_SEMICOLON));
+            vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_SEMICOLON));
             break;
 
         case '+':
-            vector_append(vector, lexer_create_token(lexer, TOKEN_TYPE_PLUS));
+            vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_PLUS));
             break;
 
         case '-':
-            vector_append(vector, lexer_create_token(lexer, TOKEN_TYPE_MINUS));
+            vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_MINUS));
             break;
 
         case '*':
-            vector_append(vector, lexer_create_token(lexer, TOKEN_TYPE_ASTERISK));
+            vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_ASTERISK));
             break;
 
         case '/':
-            vector_append(vector, lexer_create_token(lexer, TOKEN_TYPE_SLASH));
+            vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_SLASH));
             break;
 
         default:
@@ -94,13 +94,13 @@ TokenVector lexer_parse(Lexer* lexer) {
             if (isalpha(character)) {
                 auto token = lexer_parse_identifier(lexer);
                 if (token.type != TOKEN_TYPE_INVALID) {
-                    vector_append(vector, token);
+                    vector_append(&vector, token);
                     continue;
                 }
             } else if (isdigit(character)) {
                 auto token = lexer_parse_number(lexer);
                 if (token.type != TOKEN_TYPE_INVALID) {
-                    vector_append(vector, token);
+                    vector_append(&vector, token);
                     continue;
                 }
             }

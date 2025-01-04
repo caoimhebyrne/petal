@@ -83,7 +83,7 @@ NodeVector ast_parse(AST* ast) {
             break;
         }
 
-        vector_append(vector, statement);
+        vector_append(&vector, statement);
     }
 
     return vector;

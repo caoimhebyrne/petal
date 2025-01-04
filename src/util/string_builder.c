@@ -26,7 +26,7 @@ size_t string_builder_length(StringBuilder builder) {
 }
 
 bool string_builder_append(StringBuilder* builder, char character) {
-    return vector_append(builder->vector, character);
+    return vector_append(&builder->vector, character);
 }
 
 bool string_builder_append_str(StringBuilder* builder, const char* string) {

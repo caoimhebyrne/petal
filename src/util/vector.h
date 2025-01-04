@@ -47,11 +47,11 @@
     ({                                                                                                                 \
         bool success = true;                                                                                           \
                                                                                                                        \
-        vector.items = realloc(vector.items, new_capacity * vector_item_size(vector));                                 \
-        if (vector.items) {                                                                                            \
-            vector.capacity = new_capacity;                                                                            \
+        ((vector))->items = realloc(((vector))->items, new_capacity * vector_item_size(*((vector))));                  \
+        if (((vector))->items) {                                                                                       \
+            ((vector))->capacity = new_capacity;                                                                       \
         } else {                                                                                                       \
-            fprintf(stderr, "failed to resize vector to %zu!\n", new_capacity* vector_item_size(vector));              \
+            fprintf(stderr, "failed to resize vector to %zu!\n", new_capacity* vector_item_size(*((vector))));         \
             success = false;                                                                                           \
         }                                                                                                              \
                                                                                                                        \
@@ -62,12 +62,12 @@
     ({                                                                                                                 \
         bool success = true;                                                                                           \
                                                                                                                        \
-        if (vector.length >= vector.capacity) {                                                                        \
-            success = vector_resize(vector, vector.capacity * 2);                                                      \
+        if (((vector))->length >= ((vector))->capacity) {                                                              \
+            success = vector_resize(((vector)), ((vector))->capacity * 2);                                             \
         }                                                                                                              \
                                                                                                                        \
         if (success) {                                                                                                 \
-            vector.items[vector.length++] = item;                                                                      \
+            ((vector))->items[((vector))->length++] = item;                                                            \
         }                                                                                                              \
                                                                                                                        \
         success;                                                                                                       \
