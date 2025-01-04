@@ -64,15 +64,29 @@ TokenVector lexer_parse(Lexer* lexer) {
 
             break;
 
-        case '=': {
+        case '=':
             vector_append(vector, lexer_create_token(lexer, TOKEN_TYPE_EQUALS));
             break;
-        }
 
-        case ';': {
+        case ';':
             vector_append(vector, lexer_create_token(lexer, TOKEN_TYPE_SEMICOLON));
             break;
-        }
+
+        case '+':
+            vector_append(vector, lexer_create_token(lexer, TOKEN_TYPE_PLUS));
+            break;
+
+        case '-':
+            vector_append(vector, lexer_create_token(lexer, TOKEN_TYPE_MINUS));
+            break;
+
+        case '*':
+            vector_append(vector, lexer_create_token(lexer, TOKEN_TYPE_ASTERISK));
+            break;
+
+        case '/':
+            vector_append(vector, lexer_create_token(lexer, TOKEN_TYPE_SLASH));
+            break;
 
         default:
             // If the character is an alphabetic character, it is most likely an identifier.

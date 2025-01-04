@@ -23,6 +23,10 @@ typedef enum {
 
     TOKEN_TYPE_EQUALS,    // =
     TOKEN_TYPE_SEMICOLON, // ;
+    TOKEN_TYPE_PLUS,      // +
+    TOKEN_TYPE_MINUS,     // -
+    TOKEN_TYPE_ASTERISK,  // *
+    TOKEN_TYPE_SLASH,     // /
 } TokenType;
 
 // A single token produced by the Lexer.
