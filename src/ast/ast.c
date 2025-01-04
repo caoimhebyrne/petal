@@ -5,11 +5,12 @@
 #include "ast/node/number_literal.h"
 #include "ast/node/variable_declaration.h"
 #include "core/diagnostic.h"
+#include "core/position.h"
 #include "core/type.h"
 #include "lexer/token.h"
+#include "util/defer.h"
 #include "util/format.h"
 #include "util/vector.h"
-#include <stdio.h>
 #include <string.h>
 
 // Forward declarations:
@@ -23,12 +24,22 @@ Node* ast_parse_value(AST* ast);
 Node* ast_parse_identifier_reference(AST* ast);
 Node* ast_parse_number_literal(AST* ast);
 
+void ast_diagnostic_expected_token(AST* ast, TokenType expected, Token got);
+
 AST ast_create(DiagnosticVector* diagnostics, TokenVector tokens) {
     return (AST){
         .diagnostics = diagnostics,
         .tokens = tokens,
         .position = 0,
     };
+}
+
+Position ast_last_token_position(AST* ast) {
+    auto position = vector_last(ast->tokens).position;
+    position.column += position.length;
+    position.length = 1;
+
+    return position;
 }
 
 Token ast_peek(AST* ast) {
@@ -42,6 +53,11 @@ Token ast_peek(AST* ast) {
 Token ast_consume(AST* ast) {
     auto token = ast_peek(ast);
     if (token.type == TOKEN_TYPE_INVALID) {
+        vector_append(
+            ast->diagnostics,
+            diagnostic_create(ast_last_token_position(ast), format_string("expected a token, but got end of file"))
+        );
+
         return token;
     }
 
@@ -55,6 +71,29 @@ Token ast_consume_type(AST* ast, TokenType token_type) {
         ast->position++;
         return token;
     }
+
+    // If the token was invalid, this is the end of the file.
+    if (token.type == TOKEN_TYPE_INVALID) {
+        vector_append(
+            ast->diagnostics,
+            diagnostic_create(
+                ast_last_token_position(ast),
+                format_string("expected '%s', but got end of file", token_type_to_string(token_type))
+            )
+        );
+
+        return token;
+    }
+
+    // Otherwise, this is just not the token type that we are looking for.
+    auto token_string defer(free_str) = token_to_string(token);
+    vector_append(
+        ast->diagnostics,
+        diagnostic_create(
+            token.position,
+            format_string("expected '%s', but got '%s'", token_type_to_string(token_type), token_string)
+        )
+    );
 
     return TOKEN_INVALID;
 }
@@ -108,7 +147,7 @@ Node* ast_parse_statement(AST* ast) {
     }
 
     // All statements must end in a semicolon.
-    Token semicolon_token = ast_consume_type(ast, TOKEN_TYPE_SEMICOLON);
+    auto semicolon_token = ast_consume_type(ast, TOKEN_TYPE_SEMICOLON);
     if (semicolon_token.type == TOKEN_TYPE_INVALID) {
         // The statement was still parsed, it is just invalid, we should destroy it to prevent memory leaks.
         node_destroy(statement);
@@ -190,22 +229,17 @@ Node* ast_parse_value(AST* ast) {
         return ast_parse_number_literal(ast);
 
     auto current_token = ast_peek(ast);
-    if (current_token.type == TOKEN_TYPE_INVALID) {
-        auto last_token = vector_last(ast->tokens);
+    if (current_token.type != TOKEN_TYPE_INVALID) {
+        auto token_string defer(free_str) = token_to_string(current_token);
 
-        // Use the position of the character after the previous token, which should be the end of the file.
-        auto position = last_token.position;
-        position.column += 1;
-
-        // FIXME: `LiteralDiagnostic`?
         vector_append(
             ast->diagnostics,
-            diagnostic_create(position, format_string("expected a value, but got end-of-file"))
+            diagnostic_create(current_token.position, format_string("unexpected token: '%s'", token_string))
         );
     } else {
         vector_append(
             ast->diagnostics,
-            diagnostic_create(current_token.position, format_string("unexpected token: %d", current_token.type))
+            diagnostic_create(ast_last_token_position(ast), format_string("expected a value, but got end-of-file"))
         );
     }
 
@@ -233,7 +267,12 @@ Node* ast_parse_number_literal(AST* ast) {
         return (Node*)number_literal_node_create_float(token.position, token.number);
 
     default:
-        fprintf(stderr, "unexpected token type for number literal: %d -- this is a bad bug...", token.type);
+        auto token_string defer(free_str) = token_to_string(token);
+        vector_append(
+            ast->diagnostics,
+            diagnostic_create(token.position, format_string("expected a number literal, but got: '%s'", token_string))
+        );
+
         return 0;
     }
 }

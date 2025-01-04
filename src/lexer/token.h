@@ -21,13 +21,18 @@ typedef enum {
     // A float literal, e.g. 123.456
     TOKEN_TYPE_FLOAT_LITERAL,
 
-    TOKEN_TYPE_EQUALS,    // =
-    TOKEN_TYPE_SEMICOLON, // ;
-    TOKEN_TYPE_PLUS,      // +
-    TOKEN_TYPE_MINUS,     // -
-    TOKEN_TYPE_ASTERISK,  // *
-    TOKEN_TYPE_SLASH,     // /
+    TOKEN_TYPE_EQUALS,            // =
+    TOKEN_TYPE_SEMICOLON,         // ;
+    TOKEN_TYPE_PLUS,              // +
+    TOKEN_TYPE_MINUS,             // -
+    TOKEN_TYPE_ASTERISK,          // *
+    TOKEN_TYPE_SLASH,             // /
+    TOKEN_TYPE_OPEN_PARENTHESIS,  // (
+    TOKEN_TYPE_CLOSE_PARENTHESIS, // )
 } TokenType;
+
+// Returns a string representation of a token type.
+const char* token_type_to_string(TokenType token_type);
 
 // A single token produced by the Lexer.
 typedef struct {
@@ -50,6 +55,9 @@ typedef struct {
 } Token;
 
 #define TOKEN_INVALID (Token){0}
+
+// Returns a heap allocated string representation of a token
+char* token_to_string(Token token);
 
 // Destroys a single token.
 // This will de-allocate any data stored within the token, e.g. `string`.
