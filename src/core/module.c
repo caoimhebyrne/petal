@@ -70,14 +70,15 @@ void module_compile(Module* module) {
 
 void module_print_diagnostics(Module* module) {
     for (size_t i = 0; i < module->diagnostics.length; i++) {
-        Diagnostic diagnostic = vector_get(module->diagnostics, i);
+        auto diagnostic = vector_get(module->diagnostics, i);
+
         printf(
             "%s: %s%s(%zu:%zu)%s: %s\n",
             ANSI_RED "error" ANSI_RESET,
             ANSI_LIGHT_GRAY,
             module->file_name,
             diagnostic.position.line + 1,
-            diagnostic.position.column + 2, // 1 for zero indexing, and 1 for "end of file".
+            diagnostic.position.column + 1,
             ANSI_RESET,
             diagnostic.message
         );

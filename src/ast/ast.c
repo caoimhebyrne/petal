@@ -189,14 +189,18 @@ Node* ast_parse_value(AST* ast) {
     if (ast_next_is(ast, TOKEN_TYPE_INTEGER_LITERAL) || ast_next_is(ast, TOKEN_TYPE_FLOAT_LITERAL))
         return ast_parse_number_literal(ast);
 
-    Token current_token = ast_peek(ast);
+    auto current_token = ast_peek(ast);
     if (current_token.type == TOKEN_TYPE_INVALID) {
-        Token last_token = ast->tokens.items[ast->tokens.length - 1];
+        auto last_token = ast->tokens.items[ast->tokens.length - 1];
+
+        // Use the position of the character after the previous token, which should be the end of the file.
+        auto position = last_token.position;
+        position.column += 1;
 
         // FIXME: `LiteralDiagnostic`?
         vector_append(
             ast->diagnostics,
-            diagnostic_create(last_token.position, format_string("expected a value, but got end-of-file"))
+            diagnostic_create(position, format_string("expected a value, but got end-of-file"))
         );
     } else {
         vector_append(
@@ -204,6 +208,7 @@ Node* ast_parse_value(AST* ast) {
             diagnostic_create(current_token.position, format_string("unexpected token: %d", current_token.type))
         );
     }
+
     return nullptr;
 }
 
