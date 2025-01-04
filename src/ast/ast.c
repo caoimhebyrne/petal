@@ -1,5 +1,6 @@
 #include "ast/ast.h"
 #include "ast/node.h"
+#include "ast/node/binary_operation.h"
 #include "ast/node/identifier_reference.h"
 #include "ast/node/variable_declaration.h"
 #include "core/type.h"
@@ -12,6 +13,8 @@
 Node* ast_parse_statement(AST* ast);
 Node* ast_parse_variable_declaration(AST* ast);
 
+Node* ast_parse_expression(AST* ast);
+Node* ast_parse_addition_subtraction_expression(AST* ast);
 Node* ast_parse_value(AST* ast);
 Node* ast_parse_identifier_reference(AST* ast);
 
@@ -28,6 +31,16 @@ Token ast_peek(AST* ast) {
     }
 
     return vector_get(ast->tokens, ast->position);
+}
+
+Token ast_consume(AST* ast) {
+    auto token = ast_peek(ast);
+    if (token.type == TOKEN_TYPE_INVALID) {
+        return token;
+    }
+
+    ast->position++;
+    return token;
 }
 
 Token ast_consume_type(AST* ast, TokenType token_type) {
@@ -116,7 +129,7 @@ Node* ast_parse_variable_declaration(AST* ast) {
     }
 
     // The next token(s) must be the value.
-    auto value = ast_parse_value(ast);
+    auto value = ast_parse_expression(ast);
     if (!value) {
         return nullptr;
     }
@@ -127,6 +140,34 @@ Node* ast_parse_variable_declaration(AST* ast) {
     }
 
     return (Node*)variable_declaration_node_create(equals_token.position, type, strdup(name_token.string), value);
+}
+
+Node* ast_parse_expression(AST* ast) {
+    return ast_parse_addition_subtraction_expression(ast);
+}
+
+// <left> <operator> <right>
+Node* ast_parse_addition_subtraction_expression(AST* ast) {
+    auto left = ast_parse_value(ast);
+    if (!left) {
+        return nullptr;
+    }
+
+    // If the next token is plus or minus, treat this as a binary operation.
+    if (ast_next_is(ast, TOKEN_TYPE_PLUS) || ast_next_is(ast, TOKEN_TYPE_MINUS)) {
+        auto operator_token = ast_consume(ast);
+        auto operator= operator_token.type == TOKEN_TYPE_PLUS ? OPERATOR_ADD : OPERATOR_SUBTRACT;
+
+        auto right = ast_parse_expression(ast);
+        if (!right) {
+            return nullptr;
+        }
+
+        return (Node*)binary_operation_node_create(operator_token.position, left, operator, right);
+    }
+
+    // There is no operator, return the left value.
+    return left;
 }
 
 Node* ast_parse_value(AST* ast) {

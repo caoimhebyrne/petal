@@ -5,6 +5,9 @@
 
 // Represents the different types of AST nodes.
 typedef enum {
+    // A binary operation node, see BinaryOperationNode.
+    NODE_KIND_BINARY_OPERATION,
+
     // An identifier reference node, see IdentifierReferenceNode.
     NODE_KIND_IDENTIFIER_REFERENCE,
 
