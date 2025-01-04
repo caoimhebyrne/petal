@@ -67,4 +67,5 @@ char* string_builder_finish(StringBuilder* builder) {
 
 void string_builder_destroy(StringBuilder* builder) {
     free(builder->vector.items);
+    builder->vector = (CharVector){};
 }

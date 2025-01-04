@@ -4,9 +4,11 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+typedef Vector(char) CharVector;
+
 typedef struct {
     // A vector of characters being built by this string builder.
-    Vector(char) vector;
+    CharVector vector;
 } StringBuilder;
 
 // Initializes a new string builder.
