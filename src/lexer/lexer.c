@@ -1,8 +1,10 @@
 #include "lexer/lexer.h"
+#include "core/diagnostic.h"
 #include "core/position.h"
 #include "lexer/token.h"
 #include "util/defer.h"
 #include "util/file.h"
+#include "util/format.h"
 #include "util/string_builder.h"
 #include "util/vector.h"
 #include <ctype.h>
@@ -32,8 +34,9 @@ char lexer_consume(Lexer* lexer);
 // Produces a single-character token while consuming the current token.
 Token lexer_create_token(Lexer* lexer, TokenType token_type);
 
-Lexer lexer_create(FileContents contents) {
+Lexer lexer_create(DiagnosticVector* diagnostics, FileContents contents) {
     return (Lexer){
+        .diagnostics = diagnostics,
         .contents = contents,
         .position = (Position){},
     };
@@ -103,10 +106,17 @@ TokenVector lexer_parse(Lexer* lexer) {
                     vector_append(&vector, token);
                     continue;
                 }
+            } else {
+                vector_append(
+                    lexer->diagnostics,
+                    diagnostic_create(lexer->position, format_string("unexpected character: '%c'", character))
+                );
             }
 
-            fprintf(stderr, "error: unknown character: '%c'\n", character);
+            // Destroy the original vector, it may have tokens in it already/
             vector_destroy(vector, token_destroy);
+
+            // Return an invalid vector.
             return (TokenVector){};
         }
     }
@@ -140,6 +150,7 @@ Token lexer_parse_identifier(Lexer* lexer) {
     // An identifier must only contain alphanumeric characters or underscores.
     auto builder = string_builder_create();
     if (string_builder_is_invalid(builder)) {
+        vector_append(lexer->diagnostics, DIAGNOSTIC_INTERNAL_ERROR(position));
         return TOKEN_INVALID;
     }
 
@@ -154,6 +165,7 @@ Token lexer_parse_identifier(Lexer* lexer) {
     // The builder is no longer safe to use after this.
     char* identifier = string_builder_finish(&builder);
     if (!identifier) {
+        vector_append(lexer->diagnostics, DIAGNOSTIC_INTERNAL_ERROR(position));
         return TOKEN_INVALID;
     }
 
@@ -186,6 +198,7 @@ Token lexer_parse_number(Lexer* lexer) {
     // An identifier must only contain alphanumeric characters or underscores.
     auto builder = string_builder_create();
     if (string_builder_is_invalid(builder)) {
+        vector_append(lexer->diagnostics, DIAGNOSTIC_INTERNAL_ERROR(position));
         return TOKEN_INVALID;
     }
 
@@ -208,6 +221,7 @@ Token lexer_parse_number(Lexer* lexer) {
     // The builder is no longer safe to use after this.
     defer(free_str) auto string_value = string_builder_finish(&builder);
     if (!string_value) {
+        vector_append(lexer->diagnostics, DIAGNOSTIC_INTERNAL_ERROR(position));
         return TOKEN_INVALID;
     }
 
@@ -217,7 +231,11 @@ Token lexer_parse_number(Lexer* lexer) {
 
     // If the end_ptr is still equal to the string_value, this is an invalid number.
     if (end_ptr == string_value) {
-        // TODO: Diagnostic.
+        vector_append(
+            lexer->diagnostics,
+            diagnostic_create(position, format_string("invalid number literal: '%s'", string_value))
+        );
+
         return TOKEN_INVALID;
     }
 

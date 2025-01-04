@@ -33,7 +33,7 @@ void module_compile(Module* module) {
     }
 
     // The first stage of compilation is lexing, this produces a stream of tokens that can be parsed by the AST parser.
-    auto lexer = lexer_create(file_contents);
+    auto lexer = lexer_create(&module->diagnostics, file_contents);
     auto tokens = lexer_parse(&lexer);
     lexer_destroy(lexer);
 

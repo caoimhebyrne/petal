@@ -1,11 +1,15 @@
 #pragma once
 
+#include "core/diagnostic.h"
 #include "core/position.h"
 #include "lexer/token.h"
 #include "util/file.h"
 
 // The Lexer takes an array of character and produces tokens that can be used for parsing.
 typedef struct {
+    // A reference to the diagnostic vector to produce on.
+    DiagnosticVector* diagnostics;
+
     // The contents to lex.
     FileContents contents;
 
@@ -16,7 +20,7 @@ typedef struct {
 // Initializes a new Lexer.
 // Parameters:
 // - contents: The characters to transform into a stream of tokens.
-Lexer lexer_create(FileContents contents);
+Lexer lexer_create(DiagnosticVector* diagnostics, FileContents contents);
 
 // Parses the lexer's contents into a vector of tokens.
 // When you are no longer using the returned vector, call token_vector_destroy.

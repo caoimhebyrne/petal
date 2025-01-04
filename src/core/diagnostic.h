@@ -15,6 +15,11 @@ typedef struct {
     char* message;
 } Diagnostic;
 
+#define DIAGNOSTIC_INTERNAL_ERROR(pos)                                                                                 \
+    (Diagnostic) {                                                                                                     \
+        .position = pos, .message = format_string("internal compiler error"),                                          \
+    }
+
 // Creates a new Diagnostic.
 // Parameters:
 // - position: The position in the source file that this diagnostic occurred at.
