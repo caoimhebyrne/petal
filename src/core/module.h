@@ -30,10 +30,10 @@ bool module_initialize(Module* module);
 // Fully compiles this Module from lexing to code-generation.
 // Parameters:
 // - module: The module to compile.
-void module_compile(Module* module);
+bool module_compile(Module* module);
 
 // Destroys a Module.
 // This will call `module_destroy` on all of its dependencies.
 // Parameters:
 // - module: The module to destroy.
-void module_destroy(Module module);
+void module_destroy(Module* module);

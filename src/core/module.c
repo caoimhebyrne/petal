@@ -25,11 +25,11 @@ bool module_initialize(Module* module) {
     return vector_initialize(module->diagnostics, 1);
 }
 
-void module_compile(Module* module) {
+bool module_compile(Module* module) {
     // To compile a module, we need to know its contents.
     module->file_contents = file_read(module->file_name);
     if (!module->file_contents.data) {
-        return;
+        return false;
     }
 
     // The first stage of compilation is lexing, this produces a stream of tokens that can be parsed by the AST parser.
@@ -40,7 +40,7 @@ void module_compile(Module* module) {
     // If a non-allocated vector was returned, an error occurred.
     if (tokens.capacity == 0) {
         module_print_diagnostics(module);
-        return;
+        return false;
     }
 
     // We have finished lexing the file, we can now take the tokens and construct an AST.
@@ -51,7 +51,7 @@ void module_compile(Module* module) {
     // If a non-allocated vector was returned, an error occurred.
     if (nodes.capacity == 0) {
         module_print_diagnostics(module);
-        return;
+        return false;
     }
 
     for (size_t i = 0; i < nodes.length; i++) {
@@ -66,6 +66,7 @@ void module_compile(Module* module) {
     }
 
     vector_destroy(nodes, node_destroy);
+    return true;
 }
 
 void module_print_diagnostics(Module* module) {
@@ -114,10 +115,10 @@ void module_print_diagnostics(Module* module) {
     vector_destroy(source_lines, free);
 }
 
-void module_destroy(Module module) {
-    free(module.file_name);
-    file_contents_destroy(module.file_contents);
-    vector_destroy(module.diagnostics, diagnostic_destroy);
+void module_destroy(Module* module) {
+    free(module->file_name);
+    file_contents_destroy(module->file_contents);
+    vector_destroy(module->diagnostics, diagnostic_destroy);
 
     // FIXME: Destroying a module should also destroy its dependencies.
 }
