@@ -24,6 +24,8 @@ Node* ast_parse_value(AST* ast);
 Node* ast_parse_identifier_reference(AST* ast);
 Node* ast_parse_number_literal(AST* ast);
 
+void ast_diagnostic_expected_any_token(AST* ast, const char* parsing_type);
+
 void ast_diagnostic_expected_token(AST* ast, TokenType expected, Token got);
 
 AST ast_create(DiagnosticVector* diagnostics, TokenVector tokens) {
@@ -141,6 +143,9 @@ Node* ast_parse_statement(AST* ast) {
     if (ast_next_is(ast, TOKEN_TYPE_IDENTIFIER) && ast_after_next_is(ast, TOKEN_TYPE_IDENTIFIER))
         statement = ast_parse_variable_declaration(ast);
 
+    else
+        ast_diagnostic_expected_any_token(ast, "statement");
+
     // If a statement could not be parsed, bail out early.
     if (statement == nullptr) {
         return nullptr;
@@ -228,21 +233,7 @@ Node* ast_parse_value(AST* ast) {
     if (ast_next_is(ast, TOKEN_TYPE_INTEGER_LITERAL) || ast_next_is(ast, TOKEN_TYPE_FLOAT_LITERAL))
         return ast_parse_number_literal(ast);
 
-    auto current_token = ast_peek(ast);
-    if (current_token.type != TOKEN_TYPE_INVALID) {
-        auto token_string defer(free_str) = token_to_string(current_token);
-
-        vector_append(
-            ast->diagnostics,
-            diagnostic_create(current_token.position, format_string("unexpected token: '%s'", token_string))
-        );
-    } else {
-        vector_append(
-            ast->diagnostics,
-            diagnostic_create(ast_last_token_position(ast), format_string("expected a value, but got end-of-file"))
-        );
-    }
-
+    ast_diagnostic_expected_any_token(ast, "value");
     return nullptr;
 }
 
@@ -274,6 +265,26 @@ Node* ast_parse_number_literal(AST* ast) {
         );
 
         return 0;
+    }
+}
+
+void ast_diagnostic_expected_any_token(AST* ast, const char* parsing_type) {
+    auto current_token = ast_peek(ast);
+    if (current_token.type != TOKEN_TYPE_INVALID) {
+        auto token_string defer(free_str) = token_to_string(current_token);
+
+        vector_append(
+            ast->diagnostics,
+            diagnostic_create(current_token.position, format_string("unexpected token: '%s'", token_string))
+        );
+    } else {
+        vector_append(
+            ast->diagnostics,
+            diagnostic_create(
+                ast_last_token_position(ast),
+                format_string("expected a %s, but got end-of-file", parsing_type)
+            )
+        );
     }
 }
 
