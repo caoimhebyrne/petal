@@ -28,6 +28,9 @@ typedef struct {
 // Returns: A reference to an `UnresolvedType` if successful, otherwise nullptr.
 UnresolvedType* type_create_unresolved(char* name);
 
+// Returns a heap-allocated string represenatation of a Type.
+char* type_to_string(Type* type);
+
 // De-allocates a Type.
 // Parameters:
 // - type: The type to destroy.

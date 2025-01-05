@@ -1,4 +1,5 @@
 #include "type.h"
+#include "util/format.h"
 #include <stdlib.h>
 
 UnresolvedType* type_create_unresolved(char* name) {
@@ -11,6 +12,13 @@ UnresolvedType* type_create_unresolved(char* name) {
     type->name = name;
 
     return type;
+}
+
+char* type_to_string(Type* type) {
+    switch (type->kind) {
+    case TYPE_KIND_UNRESOLVED:
+        return format_string("UnresolvedType ('%s')", ((UnresolvedType*)type)->name);
+    }
 }
 
 void type_destroy(Type* type) {
