@@ -21,14 +21,18 @@ typedef enum {
     // A float literal, e.g. 123.456
     TOKEN_TYPE_FLOAT_LITERAL,
 
-    TOKEN_TYPE_EQUALS,            // =
-    TOKEN_TYPE_SEMICOLON,         // ;
-    TOKEN_TYPE_PLUS,              // +
-    TOKEN_TYPE_MINUS,             // -
-    TOKEN_TYPE_ASTERISK,          // *
-    TOKEN_TYPE_SLASH,             // /
-    TOKEN_TYPE_OPEN_PARENTHESIS,  // (
-    TOKEN_TYPE_CLOSE_PARENTHESIS, // )
+    TOKEN_TYPE_EQUALS,              // =
+    TOKEN_TYPE_COLON,               // :
+    TOKEN_TYPE_SEMICOLON,           // ;
+    TOKEN_TYPE_PLUS,                // +
+    TOKEN_TYPE_MINUS,               // -
+    TOKEN_TYPE_ASTERISK,            // *
+    TOKEN_TYPE_SLASH,               // /
+    TOKEN_TYPE_OPEN_PARENTHESIS,    // (
+    TOKEN_TYPE_CLOSE_PARENTHESIS,   // )
+    TOKEN_TYPE_RIGHT_ANGLE_BRACKET, // >
+    TOKEN_TYPE_OPEN_BRACE,          // {
+    TOKEN_TYPE_CLOSE_BRACE,         // }
 } TokenType;
 
 // Returns a string representation of a token type.

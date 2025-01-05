@@ -22,6 +22,9 @@ const char* token_type_to_string(TokenType token_type) {
     case TOKEN_TYPE_EQUALS:
         return "equals";
 
+    case TOKEN_TYPE_COLON:
+        return "colon";
+
     case TOKEN_TYPE_SEMICOLON:
         return "semicolon";
 
@@ -42,6 +45,15 @@ const char* token_type_to_string(TokenType token_type) {
 
     case TOKEN_TYPE_CLOSE_PARENTHESIS:
         return "close parenthesis";
+
+    case TOKEN_TYPE_RIGHT_ANGLE_BRACKET:
+        return "right angle bracket";
+
+    case TOKEN_TYPE_OPEN_BRACE:
+        return "open brace";
+
+    case TOKEN_TYPE_CLOSE_BRACE:
+        return "close brace";
     }
 }
 

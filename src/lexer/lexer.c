@@ -72,6 +72,10 @@ TokenVector lexer_parse(Lexer* lexer) {
             vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_EQUALS));
             break;
 
+        case ':':
+            vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_COLON));
+            break;
+
         case ';':
             vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_SEMICOLON));
             break;
@@ -98,6 +102,18 @@ TokenVector lexer_parse(Lexer* lexer) {
 
         case ')':
             vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_CLOSE_PARENTHESIS));
+            break;
+
+        case '>':
+            vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_RIGHT_ANGLE_BRACKET));
+            break;
+
+        case '{':
+            vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_OPEN_BRACE));
+            break;
+
+        case '}':
+            vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_CLOSE_BRACE));
             break;
 
         default:
