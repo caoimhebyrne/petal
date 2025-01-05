@@ -52,6 +52,25 @@ TokenVector lexer_parse(Lexer* lexer) {
     while (!lexer_is_eof(lexer)) {
         auto character = lexer_peek(lexer);
         switch (character) {
+        case '/':
+            lexer_consume(lexer);
+
+            if (lexer_peek(lexer) == '/') {
+                // This is a comment, keep consuming until a new line.
+                while (lexer_consume(lexer) != '\n') {
+                    continue;
+                }
+
+                // We must also advance the line cursor, and reset the column.
+                lexer->position.line++;
+                lexer->position.column = 0;
+            } else {
+                // This is just a slash.
+                vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_SLASH));
+            }
+
+            break;
+
         // Ignore whitespace (including tabs and CR).
         case ' ':
         case '\t':
@@ -90,10 +109,6 @@ TokenVector lexer_parse(Lexer* lexer) {
 
         case '*':
             vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_ASTERISK));
-            break;
-
-        case '/':
-            vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_SLASH));
             break;
 
         case '(':
