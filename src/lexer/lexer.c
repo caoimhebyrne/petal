@@ -115,9 +115,12 @@ TokenVector lexer_parse(Lexer* lexer) {
                     continue;
                 }
             } else {
+                auto position = lexer->position;
+                position.length = 1;
+
                 vector_append(
                     lexer->diagnostics,
-                    diagnostic_create(lexer->position, format_string("unexpected character: '%c'", character))
+                    diagnostic_create(position, format_string("unexpected character: '%c'", character))
                 );
             }
 
