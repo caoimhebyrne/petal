@@ -35,6 +35,11 @@ FileContents file_read(char* path) {
         return (FileContents){};
     }
 
+    // If there is no file contents to read, return an empty struct.
+    if (stat_result.st_size == 0) {
+        return (FileContents){};
+    }
+
     // Now that we know the file's size, we can allocate a buffer for its contents.
     char* contents = malloc(stat_result.st_size);
     if (!contents) {
