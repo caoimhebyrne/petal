@@ -8,6 +8,9 @@ typedef enum {
     // A binary operation node, see BinaryOperationNode.
     NODE_KIND_BINARY_OPERATION,
 
+    // A function declaration node, see FunctionDeclarationNode.
+    NODE_KIND_FUNCTION_DECLARATION,
+
     // An identifier reference node, see IdentifierReferenceNode.
     NODE_KIND_IDENTIFIER_REFERENCE,
 

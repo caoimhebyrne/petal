@@ -131,6 +131,10 @@ TokenVector lexer_parse(Lexer* lexer) {
             vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_CLOSE_BRACE));
             break;
 
+        case ',':
+            vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_COMMA));
+            break;
+
         default:
             // If the character is an alphabetic character, it is most likely an identifier.
             if (isalpha(character)) {

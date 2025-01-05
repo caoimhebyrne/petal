@@ -54,6 +54,9 @@ const char* token_type_to_string(TokenType token_type) {
 
     case TOKEN_TYPE_CLOSE_BRACE:
         return "close brace";
+
+    case TOKEN_TYPE_COMMA:
+        return "comma";
     }
 }
 

@@ -33,6 +33,7 @@ typedef enum {
     TOKEN_TYPE_RIGHT_ANGLE_BRACKET, // >
     TOKEN_TYPE_OPEN_BRACE,          // {
     TOKEN_TYPE_CLOSE_BRACE,         // }
+    TOKEN_TYPE_COMMA,               // ,
 } TokenType;
 
 // Returns a string representation of a token type.

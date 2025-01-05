@@ -1,10 +1,12 @@
 #include "ast/ast.h"
 #include "ast/node.h"
 #include "ast/node/binary_operation.h"
+#include "ast/node/function_declaration.h"
 #include "ast/node/identifier_reference.h"
 #include "ast/node/number_literal.h"
 #include "ast/node/variable_declaration.h"
 #include "core/diagnostic.h"
+#include "core/parameter.h"
 #include "core/position.h"
 #include "core/type.h"
 #include "lexer/token.h"
@@ -16,6 +18,7 @@
 // Forward declarations:
 Node* ast_parse_statement(AST* ast);
 Node* ast_parse_variable_declaration(AST* ast);
+Node* ast_parse_function_declaration(AST* ast);
 
 Node* ast_parse_expression(AST* ast);
 Node* ast_parse_addition_subtraction_expression(AST* ast);
@@ -27,6 +30,7 @@ Node* ast_parse_number_literal(AST* ast);
 void ast_diagnostic_expected_any_token(AST* ast, const char* parsing_type);
 
 void ast_diagnostic_expected_token(AST* ast, TokenType expected, Token got);
+void ast_diagnostic_internal_error(AST* ast, Position position);
 
 AST ast_create(DiagnosticVector* diagnostics, TokenVector tokens) {
     return (AST){
@@ -104,6 +108,15 @@ bool ast_next_is(AST* ast, TokenType token_type) {
     return ast_peek(ast).type == token_type;
 }
 
+bool ast_next_is_string(AST* ast, TokenType token_type, const char* value) {
+    auto next = ast_peek(ast);
+    if (next.type != token_type) {
+        return false;
+    }
+
+    return strcmp(next.string, value) == 0;
+}
+
 bool ast_after_next_is(AST* ast, TokenType token_type) {
     // If the requested index is outside the bounds of the vector, the token at that index is not valid.
     auto index = ast->position + 1;
@@ -143,6 +156,9 @@ Node* ast_parse_statement(AST* ast) {
     if (ast_next_is(ast, TOKEN_TYPE_IDENTIFIER) && ast_after_next_is(ast, TOKEN_TYPE_IDENTIFIER))
         statement = ast_parse_variable_declaration(ast);
 
+    else if (ast_next_is_string(ast, TOKEN_TYPE_KEYWORD, "func"))
+        statement = ast_parse_function_declaration(ast);
+
     else
         ast_diagnostic_expected_any_token(ast, "statement");
 
@@ -151,7 +167,11 @@ Node* ast_parse_statement(AST* ast) {
         return nullptr;
     }
 
-    // All statements must end in a semicolon.
+    // All statements must end in a semicolon - except for function declarations.
+    if (statement->kind == NODE_KIND_FUNCTION_DECLARATION) {
+        return statement;
+    }
+
     auto semicolon_token = ast_consume_type(ast, TOKEN_TYPE_SEMICOLON);
     if (semicolon_token.type == TOKEN_TYPE_INVALID) {
         // The statement was still parsed, it is just invalid, we should destroy it to prevent memory leaks.
@@ -162,11 +182,27 @@ Node* ast_parse_statement(AST* ast) {
     return statement;
 }
 
+Type* ast_parse_type(AST* ast) {
+    // A type is just an identifier at the moment, in the future it may have modifiers.
+    auto type_token = ast_consume_type(ast, TOKEN_TYPE_IDENTIFIER);
+    if (type_token.type == TOKEN_TYPE_INVALID) {
+        return nullptr;
+    }
+
+    auto type = (Type*)type_create_unresolved(strdup(type_token.string));
+    if (!type) {
+        ast_diagnostic_internal_error(ast, type_token.position);
+        return nullptr;
+    }
+
+    return type;
+}
+
 // <identifier> <identifier> = (value)
 Node* ast_parse_variable_declaration(AST* ast) {
     // The first token must be an identifier, this is the type.
-    auto type_token = ast_consume_type(ast, TOKEN_TYPE_IDENTIFIER);
-    if (type_token.type == TOKEN_TYPE_INVALID) {
+    auto type = ast_parse_type(ast);
+    if (!type) {
         return nullptr;
     }
 
@@ -188,12 +224,153 @@ Node* ast_parse_variable_declaration(AST* ast) {
         return nullptr;
     }
 
-    auto type = (Type*)type_create_unresolved(strdup(type_token.string));
-    if (!type) {
+    return (Node*)variable_declaration_node_create(equals_token.position, type, strdup(name_token.string), value);
+}
+
+Node* ast_parse_function_declaration(AST* ast) {
+    // The first token is the "func" keyword.
+    auto func_token = ast_consume_type(ast, TOKEN_TYPE_KEYWORD);
+    if (func_token.type == TOKEN_TYPE_INVALID) {
         return nullptr;
     }
 
-    return (Node*)variable_declaration_node_create(equals_token.position, type, strdup(name_token.string), value);
+    // The next token is an identifier for the function name.
+    auto name_token = ast_consume_type(ast, TOKEN_TYPE_IDENTIFIER);
+    if (name_token.type == TOKEN_TYPE_INVALID) {
+        return nullptr;
+    }
+
+    // All functions must have an opening parenthesis after their name.
+    // What that is followed by will help us parse the next stage.
+    auto open_parenthesis_token = ast_consume_type(ast, TOKEN_TYPE_OPEN_PARENTHESIS);
+    if (open_parenthesis_token.type == TOKEN_TYPE_INVALID) {
+        return nullptr;
+    }
+
+    ParameterVector parameters = vector_create();
+    if (!vector_initialize(parameters, 1)) {
+        ast_diagnostic_internal_error(ast, open_parenthesis_token.position);
+        return nullptr;
+    }
+
+    while (ast_peek(ast).type != TOKEN_TYPE_CLOSE_PARENTHESIS) {
+        // Each parameter must start with a name.
+        auto parameter_name_token = ast_consume_type(ast, TOKEN_TYPE_IDENTIFIER);
+        if (parameter_name_token.type == TOKEN_TYPE_INVALID) {
+            vector_destroy(parameters, parameter_destroy);
+            return nullptr;
+        }
+
+        // After the name, there must be a colon before the parameter type.
+        auto colon_token = ast_consume_type(ast, TOKEN_TYPE_COLON);
+        if (colon_token.type == TOKEN_TYPE_INVALID) {
+            vector_destroy(parameters, parameter_destroy);
+            return nullptr;
+        }
+
+        // The next token(s) must be the parameter's type.
+        Type* value_type = ast_parse_type(ast);
+        if (!value_type) {
+            vector_destroy(parameters, parameter_destroy);
+            return nullptr;
+        }
+
+        // If the next character is not a closing parenthesis, it must be a comma.
+        if (!ast_next_is(ast, TOKEN_TYPE_CLOSE_PARENTHESIS)) {
+            auto comma_token = ast_consume_type(ast, TOKEN_TYPE_COMMA);
+            if (comma_token.type == TOKEN_TYPE_INVALID) {
+                vector_destroy(parameters, parameter_destroy);
+                type_destroy(value_type);
+
+                return nullptr;
+            }
+        }
+
+        // Add the parameter to the function's parameters.
+        vector_append(
+            &parameters,
+            parameter_create(colon_token.position, strdup(parameter_name_token.string), value_type)
+        );
+    }
+
+    // After the parameters, there must be a closing parenthesis.
+    auto close_parenthesis_token = ast_consume_type(ast, TOKEN_TYPE_CLOSE_PARENTHESIS);
+    if (close_parenthesis_token.type == TOKEN_TYPE_INVALID) {
+        vector_destroy(parameters, parameter_destroy);
+        return nullptr;
+    }
+
+    // If there is a hyphen after the closing parenthesis, we should parse a return type.
+    Type* return_type;
+    if (ast_next_is(ast, TOKEN_TYPE_MINUS)) {
+        ast_consume(ast); // Consume the minus token.
+
+        // There must be a right angle bracket.
+        auto right_angle_bracket = ast_consume_type(ast, TOKEN_TYPE_RIGHT_ANGLE_BRACKET);
+        if (right_angle_bracket.type == TOKEN_TYPE_INVALID) {
+            vector_destroy(parameters, parameter_destroy);
+            return nullptr;
+        }
+
+        // The next token is the return type.
+        return_type = ast_parse_type(ast);
+    } else {
+        // Otherwise, no return type was specified, let's assume void.
+        // TODO: Resolve this to a value type of void.
+        return_type = (Type*)type_create_unresolved(format_string("void"));
+    }
+
+    // If a return type was not found, we can't continue.
+    if (!return_type) {
+        vector_destroy(parameters, parameter_destroy);
+        return nullptr;
+    }
+
+    // A function's body must start with an opening brace.
+    auto open_brace_token = ast_consume_type(ast, TOKEN_TYPE_OPEN_BRACE);
+    if (open_brace_token.type == TOKEN_TYPE_INVALID) {
+        type_destroy(return_type);
+        vector_destroy(parameters, parameter_destroy);
+
+        return nullptr;
+    }
+
+    NodeVector body = vector_create();
+    if (!vector_initialize(body, 1)) {
+        ast_diagnostic_internal_error(ast, open_brace_token.position);
+
+        type_destroy(return_type);
+        vector_destroy(parameters, parameter_destroy);
+        return nullptr;
+    }
+
+    // Keep consuming tokens until there are none left.
+    while (ast_peek(ast).type != TOKEN_TYPE_CLOSE_BRACE) {
+        auto statement = ast_parse_statement(ast);
+        if (!statement) {
+            // Clean up the body vector as it may have items in it.
+            vector_destroy(body, node_destroy);
+            type_destroy(return_type);
+            vector_destroy(parameters, parameter_destroy);
+
+            return nullptr;
+        }
+
+        vector_append(&body, statement);
+    }
+
+    // All functions must end with a closing brace.
+    auto close_brace_token = ast_consume_type(ast, TOKEN_TYPE_CLOSE_BRACE);
+    if (close_brace_token.type == TOKEN_TYPE_INVALID) {
+        vector_destroy(body, node_destroy);
+        type_destroy(return_type);
+        vector_destroy(parameters, parameter_destroy);
+
+        return nullptr;
+    }
+
+    return (Node*)
+        function_declaration_node_create(func_token.position, strdup(name_token.string), return_type, parameters, body);
 }
 
 Node* ast_parse_expression(AST* ast) {
@@ -286,6 +463,10 @@ void ast_diagnostic_expected_any_token(AST* ast, const char* parsing_type) {
             )
         );
     }
+}
+
+void ast_diagnostic_internal_error(AST* ast, Position position) {
+    vector_append(ast->diagnostics, diagnostic_create(position, format_string("unexpected compiler error")));
 }
 
 void ast_destroy(AST ast) {
