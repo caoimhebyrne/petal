@@ -1,1 +1,1 @@
-*.petal linguist -linguist-detectable linguist-language=c++
+*.petal linguist -linguist-detectable linguist-language=swift
