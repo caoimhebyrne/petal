@@ -189,7 +189,7 @@ Type* ast_parse_type(AST* ast) {
         return nullptr;
     }
 
-    auto type = (Type*)type_create_unresolved(strdup(type_token.string));
+    auto type = (Type*)type_create_unresolved(type_token.position, strdup(type_token.string));
     if (!type) {
         ast_diagnostic_internal_error(ast, type_token.position);
         return nullptr;
@@ -317,7 +317,7 @@ Node* ast_parse_function_declaration(AST* ast) {
     } else {
         // Otherwise, no return type was specified, let's assume void.
         // TODO: Resolve this to a value type of void.
-        return_type = (Type*)type_create_unresolved(format_string("void"));
+        return_type = (Type*)type_create_unresolved(close_parenthesis_token.position, format_string("void"));
     }
 
     // If a return type was not found, we can't continue.

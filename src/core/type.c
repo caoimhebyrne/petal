@@ -2,13 +2,14 @@
 #include "util/format.h"
 #include <stdlib.h>
 
-UnresolvedType* type_create_unresolved(char* name) {
+UnresolvedType* type_create_unresolved(Position position, char* name) {
     UnresolvedType* type = malloc(sizeof(UnresolvedType));
     if (!type) {
         return nullptr;
     }
 
     type->header.kind = TYPE_KIND_UNRESOLVED;
+    type->header.position = position;
     type->name = name;
 
     return type;
