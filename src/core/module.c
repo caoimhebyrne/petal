@@ -51,6 +51,8 @@ bool module_compile(Module* module) {
     // If a non-allocated vector was returned, an error occurred.
     if (nodes.capacity == 0) {
         module_print_diagnostics(module);
+
+        vector_destroy(nodes, node_destroy);
         return false;
     }
 
@@ -79,7 +81,7 @@ void module_print_diagnostics(Module* module) {
     auto source_lines = file_contents_lines(module->file_contents);
 
     for (size_t i = 0; i < module->diagnostics.length; i++) {
-        auto diagnostic = vector_get(module->diagnostics, i);
+        auto diagnostic = vector_get(&module->diagnostics, i);
 
         printf(
             "%s: %s%s(%zu:%zu)%s: %s\n",
@@ -94,7 +96,7 @@ void module_print_diagnostics(Module* module) {
 
         // Ensure the line index is within the vector bounds.
         if (diagnostic.position.line < source_lines.length) {
-            auto line = vector_get(source_lines, diagnostic.position.line);
+            auto line = vector_get(&source_lines, diagnostic.position.line);
             auto margin = ANSI_GRAY "|" ANSI_RESET;
 
             printf("   %s%3zu%s  %s  %s\n", ANSI_GRAY, diagnostic.position.line + 1, ANSI_RESET, margin, line);

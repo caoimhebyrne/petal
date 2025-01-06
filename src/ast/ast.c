@@ -53,7 +53,7 @@ Token ast_peek(AST* ast) {
         return TOKEN_INVALID;
     }
 
-    return vector_get(ast->tokens, ast->position);
+    return vector_get(&ast->tokens, ast->position);
 }
 
 Token ast_consume(AST* ast) {
@@ -124,7 +124,7 @@ bool ast_after_next_is(AST* ast, TokenType token_type) {
         return false;
     }
 
-    return vector_get(ast->tokens, index).type == token_type;
+    return vector_get(&ast->tokens, index).type == token_type;
 }
 
 NodeVector ast_parse(AST* ast) {

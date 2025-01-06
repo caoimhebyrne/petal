@@ -41,7 +41,7 @@ char* function_declaration_node_to_string(FunctionDeclarationNode* node) {
     string_builder_append(&parameter_builder, '[');
 
     for (size_t i = 0; i < node->parameters.length; i++) {
-        auto parameter_string defer(free_str) = parameter_to_string(vector_get(node->parameters, i));
+        auto parameter_string defer(free_str) = parameter_to_string(vector_get(&node->parameters, i));
         string_builder_append_str(&parameter_builder, parameter_string);
 
         if (i < node->parameters.length - 1) {

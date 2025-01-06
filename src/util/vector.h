@@ -20,7 +20,7 @@
 #define vector_item_size(vector) sizeof(*(vector).items)
 
 // Returns the item at a certain index in the vector.
-#define vector_get(vector, i) (vector).items[(i)]
+#define vector_get(vector, i) ((vector))->items[i]
 
 // Returns the last item in a vector.
 #define vector_last(vector) (vector).items[(vector).length - 1]
