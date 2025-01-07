@@ -3,6 +3,7 @@
 #include "ast/node/function_declaration.h"
 #include "ast/node/identifier_reference.h"
 #include "ast/node/number_literal.h"
+#include "ast/node/return.h"
 #include "ast/node/variable_declaration.h"
 
 char* node_to_string(Node* node) {
@@ -18,6 +19,9 @@ char* node_to_string(Node* node) {
 
     case NODE_KIND_NUMBER_LITERAL:
         return number_literal_node_to_string((NumberLiteralNode*)node);
+
+    case NODE_KIND_RETURN:
+        return return_node_to_string((ReturnNode*)node);
 
     case NODE_KIND_VARIABLE_DECLARATION:
         return variable_declaration_node_to_string((VariableDeclarationNode*)node);
@@ -39,6 +43,10 @@ void node_destroy(Node* node) {
         break;
 
     case NODE_KIND_NUMBER_LITERAL:
+        break;
+
+    case NODE_KIND_RETURN:
+        return_node_destroy((ReturnNode*)node);
         break;
 
     case NODE_KIND_VARIABLE_DECLARATION:

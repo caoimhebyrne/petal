@@ -8,7 +8,7 @@ func main() -> i32 {
     i32 my_variable = 100;
 
     // Values can be returned either by referencing a variable name, or writing the value inline.
-    // return my_variable;
+    return 100;
 }
 
 // TIP!

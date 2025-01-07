@@ -17,6 +17,9 @@ typedef enum {
     // A number literal node, see NumberLiteralNode.
     NODE_KIND_NUMBER_LITERAL,
 
+    // A return node, see ReturnNode.
+    NODE_KIND_RETURN,
+
     // A variable declaration node, see VariableDeclarationNode.
     NODE_KIND_VARIABLE_DECLARATION,
 } NodeKind;

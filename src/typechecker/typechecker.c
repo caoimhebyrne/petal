@@ -2,6 +2,7 @@
 #include "ast/node.h"
 #include "ast/node/function_declaration.h"
 #include "ast/node/number_literal.h"
+#include "ast/node/return.h"
 #include "ast/node/variable_declaration.h"
 #include "core/diagnostic.h"
 #include "core/type/unresolved.h"
@@ -16,6 +17,7 @@
 bool typechecker_check_statement(Typechecker* typechecker, Node* node);
 bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDeclarationNode* node);
 bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDeclarationNode* node);
+bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node);
 
 Type* typechecker_check_expression(Typechecker* typechecker, Node* node);
 Type* typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNode* node);
@@ -49,6 +51,9 @@ bool typechecker_check_statement(Typechecker* typechecker, Node* node) {
 
     case NODE_KIND_VARIABLE_DECLARATION:
         return typechecker_check_variable_declaration(typechecker, (VariableDeclarationNode*)node);
+
+    case NODE_KIND_RETURN:
+        return typechecker_check_return(typechecker, (ReturnNode*)node);
 
     default:
         auto node_string defer(free_str) = node_to_string(node);
@@ -109,6 +114,23 @@ bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDe
     }
 
     // The types are matching.
+    return true;
+}
+
+bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node) {
+    // If this return statement has no value, there is no type-checking to do.
+    if (!node->return_value) {
+        // TODO: Ensure that the current function has a return value of `void`.
+        return true;
+    }
+
+    // The return value's type must be resolvable.
+    auto value_type = typechecker_check_expression(typechecker, node->return_value);
+    if (!value_type) {
+        return false;
+    }
+
+    // TODO: Ensure that the value matches the current function's return type.
     return true;
 }
 

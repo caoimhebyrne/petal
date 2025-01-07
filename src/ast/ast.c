@@ -4,6 +4,7 @@
 #include "ast/node/function_declaration.h"
 #include "ast/node/identifier_reference.h"
 #include "ast/node/number_literal.h"
+#include "ast/node/return.h"
 #include "ast/node/variable_declaration.h"
 #include "core/diagnostic.h"
 #include "core/parameter.h"
@@ -19,6 +20,7 @@
 Node* ast_parse_statement(AST* ast);
 Node* ast_parse_variable_declaration(AST* ast);
 Node* ast_parse_function_declaration(AST* ast);
+Node* ast_parse_return(AST* ast);
 
 Node* ast_parse_expression(AST* ast);
 Node* ast_parse_addition_subtraction_expression(AST* ast);
@@ -158,6 +160,9 @@ Node* ast_parse_statement(AST* ast) {
 
     else if (ast_next_is_string(ast, TOKEN_TYPE_KEYWORD, "func"))
         statement = ast_parse_function_declaration(ast);
+
+    else if (ast_next_is_string(ast, TOKEN_TYPE_KEYWORD, "return"))
+        statement = ast_parse_return(ast);
 
     else
         ast_diagnostic_expected_any_token(ast, "statement");
@@ -371,6 +376,27 @@ Node* ast_parse_function_declaration(AST* ast) {
 
     return (Node*)
         function_declaration_node_create(func_token.position, strdup(name_token.string), return_type, parameters, body);
+}
+
+Node* ast_parse_return(AST* ast) {
+    // The first token is the return keyword.
+    auto return_token = ast_consume_type(ast, TOKEN_TYPE_KEYWORD);
+    if (return_token.type == TOKEN_TYPE_INVALID) {
+        return nullptr;
+    }
+
+    // If there is a semicolon next, there is no value associated with this return.
+    if (ast_next_is(ast, TOKEN_TYPE_SEMICOLON)) {
+        return (Node*)return_node_create(return_token.position, nullptr);
+    }
+
+    // The next token(s) must be the value.
+    auto value = ast_parse_expression(ast);
+    if (!value) {
+        return nullptr;
+    }
+
+    return (Node*)return_node_create(return_token.position, value);
 }
 
 Node* ast_parse_expression(AST* ast) {
