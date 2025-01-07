@@ -79,7 +79,6 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
     return true;
 }
 
-// FIXME: Improve equality check here, do not cast to ValueType.
 bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDeclarationNode* node) {
     // The variable's expected type must be resolvable.
     auto variable_type = typechecker_resolve_type(typechecker, &node->type);
