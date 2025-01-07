@@ -1,5 +1,4 @@
 #include "core/parameter.h"
-#include "core/type.h"
 #include "util/defer.h"
 #include "util/format.h"
 #include <stdlib.h>

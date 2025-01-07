@@ -4,7 +4,8 @@
 #include "ast/node/number_literal.h"
 #include "ast/node/variable_declaration.h"
 #include "core/diagnostic.h"
-#include "core/type.h"
+#include "core/type/unresolved.h"
+#include "core/type/value.h"
 #include "util/defer.h"
 #include "util/format.h"
 #include "util/vector.h"
@@ -133,9 +134,9 @@ Type* typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNo
 
     // All integer literals are i32 and all float literals are f64 for now.
     if (node->is_float) {
-        return (Type*)type_create_value(node->header.position, VALUE_TYPE_KIND_F64);
+        return (Type*)value_type_create(node->header.position, VALUE_TYPE_KIND_F64);
     } else {
-        return (Type*)type_create_value(node->header.position, VALUE_TYPE_KIND_I32);
+        return (Type*)value_type_create(node->header.position, VALUE_TYPE_KIND_I32);
     }
 }
 
@@ -161,5 +162,5 @@ Type* typechecker_resolve_type(Typechecker* typechecker, Type** type_reference) 
         return nullptr;
     }
 
-    return (Type*)type_create_value(type->position, value_type_kind);
+    return (Type*)value_type_create(type->position, value_type_kind);
 }

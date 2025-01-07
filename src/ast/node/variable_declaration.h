@@ -2,7 +2,7 @@
 
 #include "ast/node.h"
 #include "core/position.h"
-#include "core/type.h"
+#include "core/type/type.h"
 
 typedef struct {
     union {

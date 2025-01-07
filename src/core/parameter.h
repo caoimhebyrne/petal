@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/position.h"
-#include "core/type.h"
+#include "core/type/type.h"
 #include "util/vector.h"
 
 // A parameter defined in a function's declaration.

@@ -1,7 +1,6 @@
 #include "function_declaration.h"
 #include "ast/node.h"
 #include "core/parameter.h"
-#include "core/type.h"
 #include "util/defer.h"
 #include "util/format.h"
 #include "util/string_builder.h"

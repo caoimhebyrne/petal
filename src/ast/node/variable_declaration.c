@@ -1,6 +1,5 @@
 #include "variable_declaration.h"
 #include "ast/node.h"
-#include "core/type.h"
 #include "util/defer.h"
 #include "util/format.h"
 #include <stdlib.h>
