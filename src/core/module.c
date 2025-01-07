@@ -6,6 +6,7 @@
 #include "lexer/token.h"
 #include "typechecker/typechecker.h"
 #include "util/file.h"
+#include "util/logger.h"
 #include "util/vector.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,6 +44,8 @@ bool module_compile(Module* module) {
         return false;
     }
 
+    LOG_DEBUG("module", "parsed %zu token(s) from '%s'", tokens.length, module->file_name);
+
     // We have finished lexing the file, we can now take the tokens and construct an AST.
     auto ast = ast_create(&module->diagnostics, tokens);
     auto nodes = ast_parse(&ast);
@@ -56,6 +59,8 @@ bool module_compile(Module* module) {
         return false;
     }
 
+    LOG_DEBUG("module", "parsed %zu root node(s) from '%s'", nodes.length, module->file_name);
+
     auto typechecker = typechecker_create(&nodes, &module->diagnostics);
     if (!typechecker_check(&typechecker)) {
         module_print_diagnostics(module);
@@ -63,6 +68,8 @@ bool module_compile(Module* module) {
         vector_destroy(nodes, node_destroy);
         return false;
     }
+
+    LOG_DEBUG("module", "typechecking successful on '%s'", module->file_name);
 
     vector_destroy(nodes, node_destroy);
     return true;

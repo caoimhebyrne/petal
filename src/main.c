@@ -1,5 +1,6 @@
 #include "core/module.h"
 #include "util/defer.h"
+#include "util/logger.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -23,6 +24,6 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    printf("success: compilation finished\n");
+    LOG_SUCCESS("compilation finished");
     return 0;
 }

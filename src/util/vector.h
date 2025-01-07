@@ -1,9 +1,13 @@
 #pragma once
 
+#include "util/logger.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>  // IWYU pragma: keep
 #include <stdlib.h> // IWYU pragma: keep
+
+// Whether vector resizes should be logged.
+static bool log_vector_resizing = false;
 
 // Defines a new vector which has elements of type T.
 #define Vector(T)                                                                                                      \
@@ -42,6 +46,16 @@
             success = false;                                                                                           \
         }                                                                                                              \
                                                                                                                        \
+        if (log_vector_resizing) {                                                                                     \
+            LOG_DEBUG(                                                                                                 \
+                "vector",                                                                                              \
+                "(%s:%d) initialized vector with capacity of %d",                                                      \
+                __FILE__,                                                                                              \
+                __LINE__,                                                                                              \
+                initial_capacity                                                                                       \
+            );                                                                                                         \
+        }                                                                                                              \
+                                                                                                                       \
         vector.capacity = initial_capacity;                                                                            \
         success;                                                                                                       \
     })
@@ -52,6 +66,17 @@
                                                                                                                        \
         ((vector))->items = realloc(((vector))->items, new_capacity * vector_item_size(*((vector))));                  \
         if (((vector))->items) {                                                                                       \
+            if (log_vector_resizing) {                                                                                 \
+                LOG_DEBUG(                                                                                             \
+                    "vector",                                                                                          \
+                    "(%s:%d) resized vector from capacity of %zu to %zu",                                              \
+                    __FILE__,                                                                                          \
+                    __LINE__,                                                                                          \
+                    ((vector))->capacity,                                                                              \
+                    new_capacity                                                                                       \
+                );                                                                                                     \
+            }                                                                                                          \
+                                                                                                                       \
             ((vector))->capacity = new_capacity;                                                                       \
         } else {                                                                                                       \
             fprintf(stderr, "failed to resize vector to %zu!\n", new_capacity* vector_item_size(*((vector))));         \
