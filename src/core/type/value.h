@@ -7,6 +7,9 @@ typedef enum {
     // An invalid value type.
     VALUE_TYPE_KIND_INVALID,
 
+    // void.
+    VALUE_TYPE_VOID,
+
     // A signed 32-bit integer.
     VALUE_TYPE_KIND_I32,
 

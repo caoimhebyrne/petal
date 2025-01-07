@@ -16,7 +16,9 @@ ValueType* value_type_create(Position position, ValueTypeKind kind) {
 }
 
 ValueTypeKind value_type_kind_from_string(char* value) {
-    if (strcmp(value, "i32") == 0) {
+    if (strcmp(value, "void") == 0) {
+        return VALUE_TYPE_VOID;
+    } else if (strcmp(value, "i32") == 0) {
         return VALUE_TYPE_KIND_I32;
     } else if (strcmp(value, "f64") == 0) {
         return VALUE_TYPE_KIND_F64;
@@ -29,6 +31,9 @@ const char* value_type_kind_to_string(ValueTypeKind kind) {
     switch (kind) {
     case VALUE_TYPE_KIND_INVALID:
         return "invalid";
+
+    case VALUE_TYPE_VOID:
+        return "void";
 
     case VALUE_TYPE_KIND_I32:
         return "i32";
