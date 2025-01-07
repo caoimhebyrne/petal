@@ -5,8 +5,10 @@
 #include "ast/node/return.h"
 #include "ast/node/variable_declaration.h"
 #include "core/diagnostic.h"
+#include "core/type/type.h"
 #include "core/type/unresolved.h"
 #include "core/type/value.h"
+#include "typechecker/context.h"
 #include "util/defer.h"
 #include "util/format.h"
 #include "util/vector.h"
@@ -30,6 +32,7 @@ Typechecker typechecker_create(NodeVector* nodes, DiagnosticVector* diagnostics)
     return (Typechecker){
         .nodes = nodes,
         .diagnostics = diagnostics,
+        .context = (TypecheckerContext){},
     };
 }
 
@@ -73,6 +76,9 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
         return false;
     }
 
+    // Before typechecking the nodes, we can set the context's return type to the function's return type.
+    typechecker->context.expected_return_type = return_type;
+
     // If the return type is OK, we can type check the function's body.
     for (size_t i = 0; i < node->body.length; i++) {
         auto body_node = vector_get(&node->body, i);
@@ -80,6 +86,9 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
             return false;
         }
     }
+
+    // Once we're finished, reset the return type to ensure that there are no false positives.
+    typechecker->context.expected_return_type = nullptr;
 
     return true;
 }
@@ -118,6 +127,21 @@ bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDe
 }
 
 bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node) {
+    // The current context must have an expected return type.
+    auto expected_return_type = typechecker->context.expected_return_type;
+    if (!expected_return_type) {
+        vector_append(
+            typechecker->diagnostics,
+            diagnostic_create(
+                node->header.position,
+                format_string("internal typechecker error: current context does not have an expected return type. "
+                              "unable to typecheck node.")
+            )
+        );
+
+        return false;
+    }
+
     // If this return statement has no value, there is no type-checking to do.
     if (!node->return_value) {
         // TODO: Ensure that the current function has a return value of `void`.
@@ -130,7 +154,25 @@ bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node) {
         return false;
     }
 
-    // TODO: Ensure that the value matches the current function's return type.
+    if (!type_equals(expected_return_type, value_type)) {
+        auto expected_return_type_string defer(free_str) = type_to_string(expected_return_type);
+        auto value_type_string defer(free_str) = type_to_string(value_type);
+
+        vector_append(
+            typechecker->diagnostics,
+            diagnostic_create(
+                node->header.position,
+                format_string(
+                    "unable to return '%s' from function returning '%s'",
+                    value_type_string,
+                    expected_return_type_string
+                )
+            )
+        );
+
+        return false;
+    }
+
     return true;
 }
 

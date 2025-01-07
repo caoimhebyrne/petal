@@ -2,6 +2,7 @@
 
 #include "ast/node.h"
 #include "core/diagnostic.h"
+#include "typechecker/context.h"
 
 typedef struct {
     // A reference to the vector of nodes to type check.
@@ -9,6 +10,9 @@ typedef struct {
 
     // A reference to a vector of diagnostics.
     DiagnosticVector* diagnostics;
+
+    // The current context of the typechecker.
+    TypecheckerContext context;
 } Typechecker;
 
 // Creates a new Typechecker.
