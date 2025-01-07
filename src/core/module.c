@@ -69,8 +69,6 @@ bool module_compile(Module* module) {
         return false;
     }
 
-    typechecker_destroy(typechecker);
-
     LOG_DEBUG("module", "typechecking successful on '%s'", module->file_name);
 
     vector_destroy(nodes, node_destroy);

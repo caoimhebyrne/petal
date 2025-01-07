@@ -80,16 +80,12 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
     }
 
     // Before typechecking the nodes, we can set the context's return type to the function's return type.
-    typechecker->context.expected_return_type = return_type;
-
-    // We also must re-initialize the declared variables vector.
-    typechecker->context.declared_variables = (DeclaredVariableVector){};
-    if (!vector_initialize(typechecker->context.declared_variables, 1)) {
+    if (!typechecker_context_initialize(&typechecker->context, return_type)) {
         vector_append(
             typechecker->diagnostics,
             diagnostic_create(
                 node->header.position,
-                "internal typechecker error: failed to allocate a vector for declared variables"
+                "internal typechecker error: failed to initialize typechecker context"
             )
         );
 
@@ -100,14 +96,12 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
     for (size_t i = 0; i < node->body.length; i++) {
         auto body_node = vector_get(&node->body, i);
         if (!typechecker_check_statement(typechecker, body_node)) {
+            typechecker_context_destroy(&typechecker->context);
             return false;
         }
     }
 
-    // Once we're finished, reset the return type and declared variables to ensure that there are no false positives.
-    typechecker->context.expected_return_type = nullptr;
-    typechecker->context.declared_variables = (DeclaredVariableVector){};
-
+    typechecker_context_destroy(&typechecker->context);
     return true;
 }
 
@@ -155,6 +149,9 @@ bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDe
 
     // The types are matching, we can record this as a declared variable.
     vector_append(&typechecker->context.declared_variables, declared_variable_create(node->name, variable_type));
+
+    // The value's type is no longer required.
+    type_destroy(value_type);
     return true;
 }
 
@@ -276,9 +273,12 @@ Type* typechecker_resolve_type(Typechecker* typechecker, Type** type_reference) 
         return nullptr;
     }
 
-    return (Type*)value_type_create(type->position, value_type_kind);
-}
+    // The type has been resolved, we can now assign the original type to it.
+    auto resolved_type = (Type*)value_type_create(type->position, value_type_kind);
+    *type_reference = resolved_type;
 
-void typechecker_destroy(Typechecker typechecker) {
-    free(typechecker.context.declared_variables.items);
+    // The original type is no longer needed.
+    type_destroy(type);
+
+    return resolved_type;
 }

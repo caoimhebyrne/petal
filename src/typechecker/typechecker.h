@@ -26,8 +26,3 @@ Typechecker typechecker_create(NodeVector* nodes, DiagnosticVector* diagnostics)
 // - typechecker: The typechecker to use.
 // Returns whether the typechecking was successful.
 bool typechecker_check(Typechecker* typechecker);
-
-// Destroys a Typechecker.
-// Parameters:
-// - typechecker: The typechecker to destroy.
-void typechecker_destroy(Typechecker lexer);
