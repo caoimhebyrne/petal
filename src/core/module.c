@@ -1,6 +1,8 @@
 #include "core/module.h"
 #include "ast/ast.h"
 #include "ast/node.h"
+#include "codegen/codegen.h"
+#include "codegen/result.h"
 #include "core/diagnostic.h"
 #include "lexer/lexer.h"
 #include "lexer/token.h"
@@ -70,6 +72,15 @@ bool module_compile(Module* module) {
     }
 
     LOG_DEBUG("module", "typechecking successful on '%s'", module->file_name);
+
+    auto codegen = codegen_create(&nodes, &module->diagnostics);
+    auto codegen_result = codegen_generate(&codegen);
+    if (codegen_result.status == CODEGEN_RESULT_FAILURE) {
+        module_print_diagnostics(module);
+
+        vector_destroy(nodes, node_destroy);
+        return false;
+    }
 
     vector_destroy(nodes, node_destroy);
     return true;
