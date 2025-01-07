@@ -1,10 +1,14 @@
 #pragma once
 
-// Represents the different kinds of types.
 #include "core/position.h"
+
+// Represents the different kinds of types.
 typedef enum {
     // An unresolved type, just holds a string for the type's name.
     TYPE_KIND_UNRESOLVED,
+
+    // A value type.
+    TYPE_KIND_VALUE,
 } TypeKind;
 
 // Represents a standard type.
@@ -26,14 +30,34 @@ typedef struct {
     char* name;
 } UnresolvedType;
 
-// A type which has been resolved by the typechecker.
+// Represents the different kinds of value types.
+typedef enum {
+    // An invalid value type.
+    VALUE_TYPE_KIND_INVALID,
+
+    // A signed 32-bit integer.
+    VALUE_TYPE_KIND_I32,
+
+    // A 64-bit floating point.
+    VALUE_TYPE_KIND_F64,
+} ValueTypeKind;
+
+// Returns a value type kind from a string.
+// If unsuccessful, VALUE_TYPE_KIND_INVALID is returned.
+ValueTypeKind value_type_kind_from_string(char* value);
+
+// Returns a string representation of a value type kind.
+const char* value_type_kind_to_string(ValueTypeKind kind);
+
+// A simple value type, for example: a signed 32-bit integer.
 typedef struct {
     union {
         Type header;
     };
 
-    // TODO: Add value type?
-} ResolvedType;
+    // The kind of the value type.
+    ValueTypeKind value_kind;
+} ValueType;
 
 // Creates a new unresolved type.
 // Parameters:
@@ -42,10 +66,12 @@ typedef struct {
 // Returns: A reference to an `UnresolvedType` if successful, otherwise nullptr.
 UnresolvedType* type_create_unresolved(Position position, char* name);
 
-// Creates a new resolved type.
+// Creates a new ValueType.
 // Parameters:
-// Returns: A referenced to the `ResolvedType` if successful, otherwise nullptr.
-ResolvedType* type_create_resolved();
+// - position: The position that this file occurred at within the source file.
+// - kind: The kind of value type that this is.
+// Returns: A reference to an `ValueType` if successful, otherwise nullptr.
+ValueType* type_create_value(Position position, ValueTypeKind kind);
 
 // Returns a heap-allocated string represenatation of a Type.
 char* type_to_string(Type* type);
