@@ -5,6 +5,24 @@
 #include <stdlib.h>
 #include <string.h>
 
+bool type_equals(Type* left, Type* right) {
+    // If the two types are not the same kind, they are not compatible.
+    if (left->kind != right->kind) {
+        return false;
+    }
+
+    // We can further check for equality based on the type's kind.
+    switch (left->kind) {
+    case TYPE_KIND_UNRESOLVED:
+        // For unresolved types, their names must be equal.
+        return strcmp(((UnresolvedType*)left)->name, ((UnresolvedType*)right)->name) == 0;
+
+    case TYPE_KIND_VALUE:
+        // For value types, their value kinds must match.
+        return ((ValueType*)left)->value_kind == ((ValueType*)right)->value_kind;
+    }
+}
+
 char* type_to_string(Type* type) {
     switch (type->kind) {
     case TYPE_KIND_UNRESOLVED:

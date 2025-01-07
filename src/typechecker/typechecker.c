@@ -82,26 +82,26 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
 // FIXME: Improve equality check here, do not cast to ValueType.
 bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDeclarationNode* node) {
     // The variable's expected type must be resolvable.
-    auto variable_type = (ValueType*)typechecker_resolve_type(typechecker, &node->type);
+    auto variable_type = typechecker_resolve_type(typechecker, &node->type);
     if (!variable_type) {
         return false;
     }
 
     // The variable's initial value must be resolvable.
-    auto value_type = (ValueType*)typechecker_check_expression(typechecker, node->value);
+    auto value_type = typechecker_check_expression(typechecker, node->value);
     if (!value_type) {
         return false;
     }
 
     // The type of the variable must be the same as the value.
-    if (variable_type->value_kind != value_type->value_kind) {
+    if (!type_equals(variable_type, value_type)) {
         auto variable_type_string defer(free_str) = type_to_string((Type*)variable_type);
         auto value_type_string defer(free_str) = type_to_string((Type*)value_type);
 
         vector_append(
             typechecker->diagnostics,
             diagnostic_create(
-                value_type->header.position,
+                value_type->position,
                 format_string("expected type '%s', but got '%s'", variable_type_string, value_type_string)
             )
         );

@@ -20,6 +20,9 @@ typedef struct {
     Position position;
 } Type;
 
+// Checks whether two `Type` instances are equal or not.
+bool type_equals(Type* left, Type* right);
+
 // Returns a heap-allocated string represenatation of a Type.
 char* type_to_string(Type* type);
 
