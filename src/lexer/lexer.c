@@ -218,7 +218,7 @@ Token lexer_parse_identifier(Lexer* lexer) {
     auto type = TOKEN_TYPE_IDENTIFIER;
 
     // If the identifier matches a keyword value, treat this token as a keyword.
-    for (size_t i = 0; i < sizeof(char*) / sizeof(keywords); i++) {
+    for (size_t i = 0; i < sizeof(keywords) / sizeof(char*); i++) {
         if (strcmp(identifier, keywords[i]) == 0) {
             type = TOKEN_TYPE_KEYWORD;
             break;
