@@ -1,6 +1,7 @@
 #include "typechecker.h"
 #include "ast/node.h"
 #include "ast/node/function_declaration.h"
+#include "ast/node/identifier_reference.h"
 #include "ast/node/number_literal.h"
 #include "ast/node/return.h"
 #include "ast/node/variable_declaration.h"
@@ -9,6 +10,7 @@
 #include "core/type/unresolved.h"
 #include "core/type/value.h"
 #include "typechecker/context.h"
+#include "typechecker/declared_variable.h"
 #include "util/defer.h"
 #include "util/format.h"
 #include "util/vector.h"
@@ -23,6 +25,7 @@ bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node);
 
 Type* typechecker_check_expression(Typechecker* typechecker, Node* node);
 Type* typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNode* node);
+Type* typechecker_check_identifier_reference(Typechecker* typechecker, IdentifierReferenceNode* node);
 
 // Resolves a type.
 // If the type could not be resolved, nullptr is returned.
@@ -79,6 +82,20 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
     // Before typechecking the nodes, we can set the context's return type to the function's return type.
     typechecker->context.expected_return_type = return_type;
 
+    // We also must re-initialize the declared variables vector.
+    typechecker->context.declared_variables = (DeclaredVariableVector){};
+    if (!vector_initialize(typechecker->context.declared_variables, 1)) {
+        vector_append(
+            typechecker->diagnostics,
+            diagnostic_create(
+                node->header.position,
+                "internal typechecker error: failed to allocate a vector for declared variables"
+            )
+        );
+
+        return false;
+    }
+
     // If the return type is OK, we can type check the function's body.
     for (size_t i = 0; i < node->body.length; i++) {
         auto body_node = vector_get(&node->body, i);
@@ -87,13 +104,27 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
         }
     }
 
-    // Once we're finished, reset the return type to ensure that there are no false positives.
+    // Once we're finished, reset the return type and declared variables to ensure that there are no false positives.
     typechecker->context.expected_return_type = nullptr;
+    typechecker->context.declared_variables = (DeclaredVariableVector){};
 
     return true;
 }
 
 bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDeclarationNode* node) {
+    // If the current context does not have a declared variable vector, let's say that they're not allowed here.
+    if (typechecker->context.declared_variables.capacity == 0) {
+        auto position = node->type->position;
+        position.length = (node->value->position.column + node->value->position.length) - node->type->position.column;
+
+        vector_append(
+            typechecker->diagnostics,
+            diagnostic_create(position, format_string("variable declarations are not allowed here"))
+        );
+
+        return false;
+    }
+
     // The variable's expected type must be resolvable.
     auto variable_type = typechecker_resolve_type(typechecker, &node->type);
     if (!variable_type) {
@@ -122,7 +153,8 @@ bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDe
         return false;
     }
 
-    // The types are matching.
+    // The types are matching, we can record this as a declared variable.
+    vector_append(&typechecker->context.declared_variables, declared_variable_create(node->name, variable_type));
     return true;
 }
 
@@ -181,6 +213,9 @@ Type* typechecker_check_expression(Typechecker* typechecker, Node* node) {
     case NODE_KIND_NUMBER_LITERAL:
         return typechecker_check_number_literal(typechecker, (NumberLiteralNode*)node);
 
+    case NODE_KIND_IDENTIFIER_REFERENCE:
+        return typechecker_check_identifier_reference(typechecker, (IdentifierReferenceNode*)node);
+
     default:
         auto node_string defer(free_str) = node_to_string(node);
         vector_append(
@@ -201,6 +236,22 @@ Type* typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNo
     } else {
         return (Type*)value_type_create(node->header.position, VALUE_TYPE_KIND_I32);
     }
+}
+
+Type* typechecker_check_identifier_reference(Typechecker* typechecker, IdentifierReferenceNode* node) {
+    // The identifier must be resolvable to a variable declaration.
+    auto variable = declared_variable_find_by_name(typechecker->context.declared_variables, node->identifier);
+    if (!variable) {
+        vector_append(
+            typechecker->diagnostics,
+            diagnostic_create(node->header.position, format_string("undefined variable: '%s'", node->identifier))
+        );
+
+        return nullptr;
+    }
+
+    // The type of the identifier is the type of the variable.
+    return variable->type;
 }
 
 Type* typechecker_resolve_type(Typechecker* typechecker, Type** type_reference) {
@@ -226,4 +277,8 @@ Type* typechecker_resolve_type(Typechecker* typechecker, Type** type_reference) 
     }
 
     return (Type*)value_type_create(type->position, value_type_kind);
+}
+
+void typechecker_destroy(Typechecker typechecker) {
+    free(typechecker.context.declared_variables.items);
 }

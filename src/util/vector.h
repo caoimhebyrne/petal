@@ -26,6 +26,9 @@ static bool log_vector_resizing = false;
 // Returns the item at a certain index in the vector.
 #define vector_get(vector, i) ((vector))->items[i]
 
+// Returns a reference to the item at a certain index in the vector.
+#define vector_get_ref(vector, i) &((vector))->items[i]
+
 // Returns the last item in a vector.
 #define vector_last(vector) (vector).items[(vector).length - 1]
 
