@@ -86,15 +86,27 @@ LLVMValueRef codegen_generate_function_declaration(Codegen* codegen, FunctionDec
         return nullptr;
     }
 
-    // TODO: Resolve parameter types
+    LLVMTypeRef parameters[node->parameters.length] = {};
+    for (size_t i = 0; i < node->parameters.length; i++) {
+        auto parameter = vector_get(&node->parameters, i);
+        auto type = codegen_type_to_llvm_type(codegen, parameter.value_type);
+        if (!type) {
+            return nullptr;
+        }
 
-    auto function_type = LLVMFunctionType(return_type, 0, 0, false);
+        parameters[i] = type;
+    }
+
+    auto function_type = LLVMFunctionType(return_type, parameters, node->parameters.length, false);
     auto function = LLVMAddFunction(codegen->llvm_module, node->name, function_type);
 
     // All functions must have an entry block.
     // We can then generate statements within that block.
     auto entry = LLVMAppendBasicBlockInContext(codegen->llvm_context, function, "entry");
     LLVMPositionBuilderAtEnd(codegen->llvm_builder, entry);
+
+    // TODO: Generate `alloca` + `store` for function parameters.
+    //       Parameters should basically be treated as normal variables.
 
     for (size_t i = 0; i < node->body.length; i++) {
         if (!codegen_generate_statement(codegen, vector_get(&node->body, i))) {
