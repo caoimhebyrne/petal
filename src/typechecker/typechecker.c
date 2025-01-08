@@ -92,6 +92,14 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
         return false;
     }
 
+    // The function's parameters must also have valid types.
+    for (size_t i = 0; i < node->parameters.length; i++) {
+        auto parameter = vector_get_ref(&node->parameters, i);
+        if (!typechecker_resolve_type(typechecker, &parameter->value_type)) {
+            return false;
+        }
+    }
+
     // If the return type is OK, we can type check the function's body.
     for (size_t i = 0; i < node->body.length; i++) {
         auto body_node = vector_get(&node->body, i);
