@@ -25,6 +25,7 @@ Node* ast_parse_return(AST* ast);
 
 Node* ast_parse_expression(AST* ast);
 Node* ast_parse_addition_subtraction_expression(AST* ast);
+Node* ast_parse_multiplication_division_expression(AST* ast);
 
 Node* ast_parse_value(AST* ast);
 Node* ast_parse_identifier_reference(AST* ast);
@@ -405,7 +406,7 @@ Node* ast_parse_expression(AST* ast) {
 
 // <left> <operator> <right>
 Node* ast_parse_addition_subtraction_expression(AST* ast) {
-    auto left = ast_parse_value(ast);
+    auto left = ast_parse_multiplication_division_expression(ast);
     if (!left) {
         return nullptr;
     }
@@ -429,7 +430,48 @@ Node* ast_parse_addition_subtraction_expression(AST* ast) {
     return left;
 }
 
+// <left> <operator> <right>
+Node* ast_parse_multiplication_division_expression(AST* ast) {
+    auto left = ast_parse_value(ast);
+    if (!left) {
+        return nullptr;
+    }
+
+    // If the next token is plus or minus, treat this as a binary operation.
+    if (ast_next_is(ast, TOKEN_TYPE_ASTERISK) || ast_next_is(ast, TOKEN_TYPE_SLASH)) {
+        auto operator_token = ast_consume(ast);
+        auto operator= operator_token.type == TOKEN_TYPE_ASTERISK ? OPERATOR_MULTIPLY : OPERATOR_DIVIDE;
+
+        auto right = ast_parse_expression(ast);
+        if (!right) {
+            // If we could not parse a right node, make sure to destroy the left node that was parsed.
+            node_destroy(left);
+            return nullptr;
+        }
+
+        return (Node*)binary_operation_node_create(operator_token.position, left, operator, right);
+    }
+
+    // There is no operator, return the left value.
+    return left;
+}
+
 Node* ast_parse_value(AST* ast) {
+    if (ast_next_is(ast, TOKEN_TYPE_OPEN_PARENTHESIS)) {
+        ast_consume(ast);
+
+        // Parse the value within the parenthesis.
+        auto node = ast_parse_expression(ast);
+
+        // Expect a closing parenthesis.
+        auto token = ast_consume_type(ast, TOKEN_TYPE_CLOSE_PARENTHESIS);
+        if (token.type == TOKEN_TYPE_INVALID) {
+            return nullptr;
+        }
+
+        return node;
+    }
+
     if (ast_next_is(ast, TOKEN_TYPE_IDENTIFIER))
         return ast_parse_identifier_reference(ast);
 
