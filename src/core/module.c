@@ -4,10 +4,12 @@
 #include "codegen/codegen.h"
 #include "codegen/result.h"
 #include "core/diagnostic.h"
+#include "core/position.h"
 #include "lexer/lexer.h"
 #include "lexer/token.h"
 #include "typechecker/typechecker.h"
 #include "util/file.h"
+#include "util/format.h"
 #include "util/logger.h"
 #include "util/vector.h"
 #include <stdio.h>
@@ -74,14 +76,25 @@ bool module_compile(Module* module) {
     LOG_DEBUG("module", "typechecking successful on '%s'", module->file_name);
 
     auto codegen = codegen_create(&nodes, &module->diagnostics);
+    if (!codegen_initialize(&codegen)) {
+        vector_append(
+            &module->diagnostics,
+            diagnostic_create((Position){.length = 1}, format_string("failed to initialize codegen context"))
+        );
+
+        return false;
+    }
+
     auto codegen_result = codegen_generate(&codegen);
     if (codegen_result.status == CODEGEN_RESULT_FAILURE) {
         module_print_diagnostics(module);
 
+        codegen_destroy(&codegen);
         vector_destroy(nodes, node_destroy);
         return false;
     }
 
+    codegen_destroy(&codegen);
     vector_destroy(nodes, node_destroy);
     return true;
 }
