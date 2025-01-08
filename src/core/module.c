@@ -94,6 +94,12 @@ bool module_compile(Module* module) {
         return false;
     }
 
+    // TODO: When dependencies are resolved, we should have a "link modules" stage.
+    //       `codegen_emit_object` should not be called on modules with a parent.
+    if (!codegen_emit_object(&codegen, "./build/output.o")) {
+        return false;
+    }
+
     codegen_destroy(&codegen);
     vector_destroy(nodes, node_destroy);
     return true;

@@ -15,7 +15,10 @@
 #include "util/logger.h"
 #include "util/vector.h"
 #include "llvm-c/Core.h"
+#include <llvm-c/Target.h>
+#include <llvm-c/TargetMachine.h>
 #include <llvm-c/Types.h>
+#include <stdio.h>
 
 // Forward declarations.
 LLVMValueRef codegen_generate_statement(Codegen* codegen, Node* node);
@@ -67,9 +70,6 @@ CodegenResult codegen_generate(Codegen* codegen) {
             return (CodegenResult){.status = CODEGEN_RESULT_FAILURE};
         }
     }
-
-    // FIXME: Remove this when emitting modules is done.
-    LLVMDumpModule(codegen->llvm_module);
 
     return (CodegenResult){.status = CODEGEN_RESULT_SUCCESS};
 }
@@ -289,6 +289,61 @@ LLVMTypeRef codegen_type_to_llvm_type(Codegen* codegen, Type* type) {
 
         return nullptr;
     }
+}
+
+bool codegen_emit_object(Codegen* codegen, char* file_name) {
+    if (enable_debug_logging) {
+        LLVMDumpModule(codegen->llvm_module);
+    }
+
+    LOG_DEBUG("llvm-codegen", "emitting object to file: '%s'", file_name);
+
+    auto host_triple = LLVMGetDefaultTargetTriple();
+
+    LLVMInitializeAllTargetInfos();
+    LLVMInitializeAllTargets();
+    LLVMInitializeAllAsmPrinters();
+    LLVMInitializeAllTargetMCs();
+
+    char* error_message;
+    LLVMTargetRef target;
+    if (LLVMGetTargetFromTriple(host_triple, &target, &error_message)) {
+        auto formatted_message = format_string("%s", error_message);
+        LLVMDisposeMessage(error_message);
+
+        fprintf(stderr, "error: %s", formatted_message);
+        return false;
+    }
+
+    LLVMTargetMachineRef target_machine = LLVMCreateTargetMachine(
+        target,
+        host_triple,
+        "",
+        "",
+        LLVMCodeGenLevelDefault,
+        LLVMRelocPIC,
+        LLVMCodeModelDefault
+    );
+
+    bool emit_failed = LLVMTargetMachineEmitToFile(
+        target_machine,
+        codegen->llvm_module,
+        file_name,
+        LLVMObjectFile,
+        &error_message
+    );
+
+    if (emit_failed) {
+        auto formatted_message = format_string("%s", error_message);
+        LLVMDisposeMessage(error_message);
+
+        fprintf(stderr, "error: %s", formatted_message);
+        return false;
+    }
+
+    LLVMDisposeTargetMachine(target_machine);
+    LLVMDisposeMessage(host_triple);
+    return true;
 }
 
 void codegen_destroy(Codegen* codegen) {

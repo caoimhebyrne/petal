@@ -41,5 +41,12 @@ bool codegen_initialize(Codegen* codegen);
 // Returns: A codegen result.
 CodegenResult codegen_generate(Codegen* codegen);
 
+// Emits an object file.
+// Parameters:
+// - codegen: The code-generator instance to use.
+// - file_name: The file name to output to.
+// Returns whether the operation was successful or not.
+bool codegen_emit_object(Codegen* codegen, char* file_name);
+
 // Destroys a Codegen.
 void codegen_destroy(Codegen* codegen);
