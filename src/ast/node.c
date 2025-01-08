@@ -43,6 +43,7 @@ void node_destroy(Node* node) {
         break;
 
     case NODE_KIND_NUMBER_LITERAL:
+        number_literal_node_destroy((NumberLiteralNode*)node);
         break;
 
     case NODE_KIND_RETURN:

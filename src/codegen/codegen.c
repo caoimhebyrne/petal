@@ -1,6 +1,8 @@
 #include "codegen.h"
 #include "ast/node.h"
 #include "ast/node/function_declaration.h"
+#include "ast/node/number_literal.h"
+#include "ast/node/variable_declaration.h"
 #include "codegen/context.h"
 #include "codegen/result.h"
 #include "core/diagnostic.h"
@@ -16,6 +18,10 @@
 // Forward declarations.
 LLVMValueRef codegen_generate_statement(Codegen* codegen, Node* node);
 LLVMValueRef codegen_generate_function_declaration(Codegen* codegen, FunctionDeclarationNode* node);
+LLVMValueRef codegen_generate_variable_declaration(Codegen* codegen, VariableDeclarationNode* node);
+
+LLVMValueRef codegen_generate_expression(Codegen* codegen, Node* node);
+LLVMValueRef codegen_generate_number_literal(Codegen* codegen, NumberLiteralNode* node);
 
 LLVMTypeRef codegen_type_to_llvm_type(Codegen* codegen, Type* type);
 
@@ -69,6 +75,9 @@ LLVMValueRef codegen_generate_statement(Codegen* codegen, Node* node) {
     case NODE_KIND_FUNCTION_DECLARATION:
         return codegen_generate_function_declaration(codegen, (FunctionDeclarationNode*)node);
 
+    case NODE_KIND_VARIABLE_DECLARATION:
+        return codegen_generate_variable_declaration(codegen, (VariableDeclarationNode*)node);
+
     default:
         auto node_string defer(free_str) = node_to_string(node);
         vector_append(
@@ -105,17 +114,100 @@ LLVMValueRef codegen_generate_function_declaration(Codegen* codegen, FunctionDec
     auto entry = LLVMAppendBasicBlockInContext(codegen->llvm_context, function, "entry");
     LLVMPositionBuilderAtEnd(codegen->llvm_builder, entry);
 
+    // Re-initialize the context for this function.
+    if (!codegen_context_initialize(&codegen->context)) {
+        vector_append(
+            codegen->diagnostics,
+            diagnostic_create(
+                node->header.position,
+                format_string("internal code generator error: failed to initialize codegen context!")
+            )
+        );
+
+        return nullptr;
+    }
+
     // TODO: Generate `alloca` + `store` for function parameters.
     //       Parameters should basically be treated as normal variables.
 
     for (size_t i = 0; i < node->body.length; i++) {
         if (!codegen_generate_statement(codegen, vector_get(&node->body, i))) {
+            codegen_context_destroy(&codegen->context);
             return nullptr;
         }
     }
 
     // TODO: If any blocks within the function do not have a terminator, add one if it is trivial to do so.
+
+    // Destroy the context as it is not valid for any other function.
+    codegen_context_destroy(&codegen->context);
     return function;
+}
+
+LLVMValueRef codegen_generate_variable_declaration(Codegen* codegen, VariableDeclarationNode* node) {
+    auto variable_type = codegen_type_to_llvm_type(codegen, node->type);
+    if (!variable_type) {
+        return nullptr;
+    }
+
+    // 1. Create an alloca for this variable.
+    auto declaration = LLVMBuildAlloca(codegen->llvm_builder, variable_type, node->name);
+
+    // 2. Store this as our reference for this variable.
+    auto variable = (Variable){.name = node->name, .value = declaration};
+    vector_append(&codegen->context.variables, variable);
+
+    // 3. Store the initial value into the memory allocated for this variable.
+    auto value = codegen_generate_expression(codegen, node->value);
+    if (!value) {
+        return nullptr;
+    }
+
+    LLVMBuildStore(codegen->llvm_builder, value, declaration);
+    return declaration;
+}
+
+LLVMValueRef codegen_generate_expression(Codegen* codegen, Node* node) {
+    switch (node->kind) {
+    case NODE_KIND_NUMBER_LITERAL:
+        return codegen_generate_number_literal(codegen, (NumberLiteralNode*)node);
+
+    default:
+        auto node_string defer(free_str) = node_to_string(node);
+        vector_append(
+            codegen->diagnostics,
+            diagnostic_create(node->position, format_string("unable to generate code for node: '%s'", node_string))
+        );
+
+        return nullptr;
+    }
+}
+
+LLVMValueRef codegen_generate_number_literal(Codegen* codegen, NumberLiteralNode* node) {
+    if (!node->type) {
+        auto node_string defer(free_str) = node_to_string((Node*)node);
+
+        vector_append(
+            codegen->diagnostics,
+            diagnostic_create(
+                node->header.position,
+                format_string("internal code generator error: no type associated with node: '%s'", node_string)
+            )
+        );
+
+        return nullptr;
+    }
+
+    auto type = codegen_type_to_llvm_type(codegen, node->type);
+    if (!type) {
+        return nullptr;
+    }
+
+    if (node->is_float) {
+        return LLVMConstReal(type, node->number);
+    } else {
+        return LLVMConstInt(type, node->integer, false);
+    }
 }
 
 LLVMTypeRef codegen_type_to_llvm_type(Codegen* codegen, Type* type) {

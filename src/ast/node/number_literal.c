@@ -12,6 +12,7 @@ NumberLiteralNode* number_literal_node_create_float(Position position, double va
     node->header.kind = NODE_KIND_NUMBER_LITERAL;
     node->header.position = position;
     node->is_float = true;
+    node->type = nullptr;
     node->number = value;
 
     return node;
@@ -26,6 +27,7 @@ NumberLiteralNode* number_literal_node_create_integer(Position position, uint64_
     node->header.kind = NODE_KIND_NUMBER_LITERAL;
     node->header.position = position;
     node->is_float = false;
+    node->type = nullptr;
     node->integer = value;
 
     return node;
@@ -37,4 +39,8 @@ char* number_literal_node_to_string(NumberLiteralNode* node) {
     } else {
         return format_string("NumberLiteralNode { value = (integer) %d }", node->integer);
     }
+}
+
+void number_literal_node_destroy(NumberLiteralNode* node) {
+    type_destroy(node->type);
 }

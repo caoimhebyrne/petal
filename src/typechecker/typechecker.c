@@ -157,9 +157,6 @@ bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDe
 
     // The types are matching, we can record this as a declared variable.
     vector_append(&typechecker->context.declared_variables, declared_variable_create(node->name, variable_type));
-
-    // The value's type is no longer required.
-    type_destroy(value_type);
     return true;
 }
 
@@ -236,11 +233,15 @@ Type* typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNo
     (void)typechecker;
 
     // All integer literals are i32 and all float literals are f64 for now.
+    Type* type;
     if (node->is_float) {
-        return (Type*)value_type_create(node->header.position, VALUE_TYPE_KIND_F64);
+        type = (Type*)value_type_create(node->header.position, VALUE_TYPE_KIND_F64);
     } else {
-        return (Type*)value_type_create(node->header.position, VALUE_TYPE_KIND_I32);
+        type = (Type*)value_type_create(node->header.position, VALUE_TYPE_KIND_I32);
     }
+
+    node->type = type;
+    return type;
 }
 
 Type* typechecker_check_identifier_reference(Typechecker* typechecker, IdentifierReferenceNode* node) {
