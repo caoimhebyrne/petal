@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 
+bool enable_debug_logging = false;
+
 int main(int argc, char** argv) {
     ProgramOptions options;
 
@@ -24,6 +26,14 @@ int main(int argc, char** argv) {
             .short_name = 'o',
             .help_message = "Place the output into <file>",
             .value = &options.output_binary_name,
+        },
+
+        (Argument){
+            .kind = ARGUMENT_KIND_FLAG,
+            .name = "debug",
+            .short_name = 'd',
+            .help_message = "Enable debug logging",
+            .value = &enable_debug_logging,
         }
     };
 

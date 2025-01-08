@@ -6,7 +6,7 @@
 #define ANSI_COLOR_YELLOW "\x1b[33m"
 
 // Whether debug logging should be enabled.
-static bool enable_debug_logging = true;
+extern bool enable_debug_logging;
 
 #define LOG_SUCCESS(msg, ...) printf(ANSI_COLOR_GREEN "success" ANSI_COLOR_RESET ": " msg "\n", ##__VA_ARGS__)
 #define LOG_WARNING(msg, ...) printf(ANSI_COLOR_YELLOW "warning" ANSI_COLOR_RESET ": " msg "\n", ##__VA_ARGS__)

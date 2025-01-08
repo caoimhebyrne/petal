@@ -71,6 +71,10 @@ CodegenResult codegen_generate(Codegen* codegen) {
         }
     }
 
+    if (enable_debug_logging) {
+        LLVMDumpModule(codegen->llvm_module);
+    }
+
     return (CodegenResult){.status = CODEGEN_RESULT_SUCCESS};
 }
 
@@ -292,10 +296,6 @@ LLVMTypeRef codegen_type_to_llvm_type(Codegen* codegen, Type* type) {
 }
 
 bool codegen_emit_object(Codegen* codegen, char* file_name) {
-    if (enable_debug_logging) {
-        LLVMDumpModule(codegen->llvm_module);
-    }
-
     LOG_DEBUG("llvm-codegen", "emitting object to file: '%s'", file_name);
 
     auto host_triple = LLVMGetDefaultTargetTriple();
