@@ -1,0 +1,20 @@
+// Numeric types can have operations performed on them.
+// The current supported operations are:
+// - add (+)
+// - subtract (-)
+// - multiply (*)
+// - divide (/)
+
+func main() -> i32 {
+    // Addition
+    i32 a = 5 + 2;
+
+    // Subtraction
+    i32 b = a - 4;
+
+    // Multiplication
+    i32 c = b * 5;
+    
+    // Division
+    return c / 2;
+}

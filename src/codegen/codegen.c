@@ -1,5 +1,6 @@
 #include "codegen.h"
 #include "ast/node.h"
+#include "ast/node/binary_operation.h"
 #include "ast/node/function_declaration.h"
 #include "ast/node/identifier_reference.h"
 #include "ast/node/number_literal.h"
@@ -29,6 +30,7 @@ LLVMValueRef codegen_generate_return(Codegen* codegen, ReturnNode* node);
 LLVMValueRef codegen_generate_expression(Codegen* codegen, Node* node);
 LLVMValueRef codegen_generate_number_literal(Codegen* codegen, NumberLiteralNode* node);
 LLVMValueRef codegen_generate_identifier_reference(Codegen* codegen, IdentifierReferenceNode* node);
+LLVMValueRef codegen_generate_binary_operation(Codegen* codegen, BinaryOperationNode* node);
 
 LLVMTypeRef codegen_type_to_llvm_type(Codegen* codegen, Type* type);
 
@@ -199,6 +201,9 @@ LLVMValueRef codegen_generate_expression(Codegen* codegen, Node* node) {
     case NODE_KIND_IDENTIFIER_REFERENCE:
         return codegen_generate_identifier_reference(codegen, (IdentifierReferenceNode*)node);
 
+    case NODE_KIND_BINARY_OPERATION:
+        return codegen_generate_binary_operation(codegen, (BinaryOperationNode*)node);
+
     default:
         auto node_string defer(free_str) = node_to_string(node);
         vector_append(
@@ -256,6 +261,34 @@ LLVMValueRef codegen_generate_identifier_reference(Codegen* codegen, IdentifierR
 
     auto type = LLVMGetAllocatedType(variable->value);
     return LLVMBuildLoad2(codegen->llvm_builder, type, variable->value, node->identifier);
+}
+
+LLVMValueRef codegen_generate_binary_operation(Codegen* codegen, BinaryOperationNode* node) {
+    // The left side must have a value.
+    auto left_value = codegen_generate_expression(codegen, node->left);
+    if (!left_value) {
+        return nullptr;
+    }
+
+    // The right side must have a value.
+    auto right_value = codegen_generate_expression(codegen, node->right);
+    if (!right_value) {
+        return nullptr;
+    }
+
+    switch (node->operator) {
+    case OPERATOR_ADD:
+        return LLVMBuildAdd(codegen->llvm_builder, left_value, right_value, "add");
+
+    case OPERATOR_SUBTRACT:
+        return LLVMBuildSub(codegen->llvm_builder, left_value, right_value, "subtract");
+
+    case OPERATOR_MULTIPLY:
+        return LLVMBuildMul(codegen->llvm_builder, left_value, right_value, "multiply");
+
+    case OPERATOR_DIVIDE:
+        return LLVMBuildSDiv(codegen->llvm_builder, left_value, right_value, "divide");
+    }
 }
 
 LLVMTypeRef codegen_type_to_llvm_type(Codegen* codegen, Type* type) {
