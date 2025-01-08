@@ -5,7 +5,7 @@ enough basic features to build a self-hosted compiler.
 
 This compiler uses LLVM to generate binaries.
 
-```rust
+```go
 // This is the main function, it is called similar to how it would be called in C.
 // Petal is linked with libc, meaning `main` is called from the `__start` symbol.
 //
