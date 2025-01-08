@@ -1,5 +1,6 @@
 #include "typechecker.h"
 #include "ast/node.h"
+#include "ast/node/binary_operation.h"
 #include "ast/node/function_declaration.h"
 #include "ast/node/identifier_reference.h"
 #include "ast/node/number_literal.h"
@@ -26,6 +27,7 @@ bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node);
 Type* typechecker_check_expression(Typechecker* typechecker, Node* node);
 Type* typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNode* node);
 Type* typechecker_check_identifier_reference(Typechecker* typechecker, IdentifierReferenceNode* node);
+Type* typechecker_check_binary_operation(Typechecker* typechecker, BinaryOperationNode* node);
 
 // Resolves a type.
 // If the type could not be resolved, nullptr is returned.
@@ -218,6 +220,9 @@ Type* typechecker_check_expression(Typechecker* typechecker, Node* node) {
     case NODE_KIND_IDENTIFIER_REFERENCE:
         return typechecker_check_identifier_reference(typechecker, (IdentifierReferenceNode*)node);
 
+    case NODE_KIND_BINARY_OPERATION:
+        return typechecker_check_binary_operation(typechecker, (BinaryOperationNode*)node);
+
     default:
         auto node_string defer(free_str) = node_to_string(node);
         vector_append(
@@ -258,6 +263,43 @@ Type* typechecker_check_identifier_reference(Typechecker* typechecker, Identifie
 
     // The type of the identifier is the type of the variable.
     return variable->type;
+}
+
+Type* typechecker_check_binary_operation(Typechecker* typechecker, BinaryOperationNode* node) {
+    // The value on the left side must have a resolvable type.
+    auto left_type = typechecker_check_expression(typechecker, node->left);
+    if (!left_type) {
+        return nullptr;
+    }
+
+    // The value on the right must have a resolvable type.
+    auto right_type = typechecker_check_expression(typechecker, node->right);
+    if (!right_type) {
+        return nullptr;
+    }
+
+    // The types must be the same.
+    if (!type_equals(left_type, right_type)) {
+        auto left_type_string defer(free_str) = type_to_string(left_type);
+        auto right_type_string defer(free_str) = type_to_string(right_type);
+
+        vector_append(
+            typechecker->diagnostics,
+            diagnostic_create(
+                node->header.position,
+                format_string(
+                    "unable to perform operation '%s' between '%s' and '%s'",
+                    operator_to_string(node->operator),
+                    left_type_string,
+                    right_type_string
+                )
+            )
+        );
+
+        return nullptr;
+    }
+
+    return left_type;
 }
 
 Type* typechecker_resolve_type(Typechecker* typechecker, Type** type_reference) {
