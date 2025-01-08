@@ -39,6 +39,12 @@ You can install the Petal compiler for your user through the `install` target.
 $ make install
 ```
 
+This will build the Petal compiler, and copy its binary (`petal`) to `$HOME/.local/bin`. This may not be on your `PATH`,
+so you might need to add the following line to your shell's init script (`.zshrc`, `.bashrc`, .etc.):
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+```
+
 ### License
 
 This project is licensed under the MIT license. See the [LICENSE](./LICENSE) file for more information.
