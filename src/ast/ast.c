@@ -322,7 +322,7 @@ Node* ast_parse_function_declaration(AST* ast) {
         return_type = ast_parse_type(ast);
     } else {
         // Otherwise, no return type was specified, let's assume void.
-        return_type = (Type*)value_type_create(close_parenthesis_token.position, VALUE_TYPE_VOID);
+        return_type = (Type*)value_type_create(close_parenthesis_token.position, VALUE_TYPE_KIND_VOID);
     }
 
     // If a return type was not found, we can't continue.
