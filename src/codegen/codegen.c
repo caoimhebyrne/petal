@@ -315,7 +315,7 @@ bool codegen_emit_object(Codegen* codegen, char* file_name) {
         return false;
     }
 
-    LLVMTargetMachineRef target_machine = LLVMCreateTargetMachine(
+    auto target_machine = LLVMCreateTargetMachine(
         target,
         host_triple,
         "",
@@ -325,7 +325,7 @@ bool codegen_emit_object(Codegen* codegen, char* file_name) {
         LLVMCodeModelDefault
     );
 
-    bool emit_failed = LLVMTargetMachineEmitToFile(
+    auto emit_failed = LLVMTargetMachineEmitToFile(
         target_machine,
         codegen->llvm_module,
         file_name,
