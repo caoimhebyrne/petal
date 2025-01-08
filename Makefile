@@ -22,3 +22,10 @@ SOURCES = $(shell find ./src -iname "*.c")
 .PHONY: build
 build: prepare
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o ./build/petal
+
+INSTALL_DIR = $(HOME)/.local/bin
+
+.PHONY: install
+install: build
+	mkdir -p $(INSTALL_DIR)
+	install -Dm755 ./build/petal $(INSTALL_DIR)/petal 
