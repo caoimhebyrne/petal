@@ -2,9 +2,13 @@
 
 // A "module" is any file that is being compiled, it may be a dependency resolved by another module.
 #include "core/diagnostic.h"
+#include "options.h"
 #include "util/file.h"
 
 typedef struct {
+    // The program's options.
+    ProgramOptions* options;
+
     // A vector of diagnostics produced for this module.
     DiagnosticVector diagnostics;
 
@@ -17,9 +21,10 @@ typedef struct {
 
 // Creates a new Module.
 // Parameters:
+// - options: The program's options.
 // - file_name: The name of the Petal file to compile.
 //              This `Module` will take ownership of this file name, it must not be used after calling `module_destroy`.
-Module module_create(char* file_name);
+Module module_create(ProgramOptions* options, char* file_name);
 
 // Initializes a module.
 // Parameters:

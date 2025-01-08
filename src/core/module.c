@@ -7,7 +7,9 @@
 #include "core/position.h"
 #include "lexer/lexer.h"
 #include "lexer/token.h"
+#include "options.h"
 #include "typechecker/typechecker.h"
+#include "util/defer.h"
 #include "util/file.h"
 #include "util/format.h"
 #include "util/logger.h"
@@ -18,10 +20,11 @@
 
 // Forward declarations:
 void module_print_diagnostics(Module* module);
-bool module_link_object(Module* module);
+bool module_link_object(Module* module, char* object_name);
 
-Module module_create(char* file_name) {
+Module module_create(ProgramOptions* options, char* file_name) {
     return (Module){
+        .options = options,
         .diagnostics = vector_create(),
         .file_name = file_name,
     };
@@ -95,9 +98,19 @@ bool module_compile(Module* module) {
         return false;
     }
 
+    if (!module->options->output_binary_name) {
+        LOG_WARNING("no output binary name was specified, skipping object emit stage");
+
+        codegen_destroy(&codegen);
+        vector_destroy(nodes, node_destroy);
+
+        return true;
+    }
+
     // TODO: When dependencies are resolved, we should have a "link modules" stage.
     //       `codegen_emit_object` should not be called on modules with a parent.
-    if (!codegen_emit_object(&codegen, "./build/output.o")) {
+    auto object_name defer(free_str) = format_string("%s.o", module->options->output_binary_name);
+    if (!codegen_emit_object(&codegen, object_name)) {
         codegen_destroy(&codegen);
         vector_destroy(nodes, node_destroy);
         return false;
@@ -106,7 +119,7 @@ bool module_compile(Module* module) {
     codegen_destroy(&codegen);
     vector_destroy(nodes, node_destroy);
 
-    return module_link_object(module);
+    return module_link_object(module, object_name);
 }
 
 void module_print_diagnostics(Module* module) {
@@ -155,14 +168,13 @@ void module_print_diagnostics(Module* module) {
     vector_destroy(source_lines, free);
 }
 
-bool module_link_object(Module* module) {
-    (void)module;
+bool module_link_object(Module* module, char* object_name) {
+    LOG_DEBUG("module", "linking '%s' to '%s'", object_name, module->options->output_binary_name);
 
-    LOG_DEBUG("module", "linking ./build/output.o to ./build/output");
-
-    auto status = system(format_string("clang -fuse-ld=lld -o %s %s", "./build/output", "./build/output.o"));
+    auto command = format_string("clang -fuse-ld=lld -o %s %s", module->options->output_binary_name, object_name);
+    auto status = system(command);
     if (status != 0) {
-        fprintf(stderr, "error: linker failed! (%d)", status);
+        fprintf(stderr, "error: linker failed! (%d)\n", status);
         return false;
     }
 
