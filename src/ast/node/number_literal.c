@@ -42,5 +42,7 @@ char* number_literal_node_to_string(NumberLiteralNode* node) {
 }
 
 void number_literal_node_destroy(NumberLiteralNode* node) {
-    type_destroy(node->type);
+    if (node->type) {
+        type_destroy(node->type);
+    }
 }
