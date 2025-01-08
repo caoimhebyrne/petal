@@ -14,6 +14,12 @@ typedef struct {
 
 typedef Vector(Variable) VariableVector;
 
+// Finds a variable by its name.
+// Parameters:
+// - name: The name of the variable.
+// Returns: A reference to a variable if it exists, otherwise nullptr.
+Variable* variable_find_by_name(VariableVector variables, char* name);
+
 typedef struct {
     VariableVector variables;
 } CodegenContext;

@@ -1,7 +1,9 @@
 #include "codegen.h"
 #include "ast/node.h"
 #include "ast/node/function_declaration.h"
+#include "ast/node/identifier_reference.h"
 #include "ast/node/number_literal.h"
+#include "ast/node/return.h"
 #include "ast/node/variable_declaration.h"
 #include "codegen/context.h"
 #include "codegen/result.h"
@@ -19,9 +21,11 @@
 LLVMValueRef codegen_generate_statement(Codegen* codegen, Node* node);
 LLVMValueRef codegen_generate_function_declaration(Codegen* codegen, FunctionDeclarationNode* node);
 LLVMValueRef codegen_generate_variable_declaration(Codegen* codegen, VariableDeclarationNode* node);
+LLVMValueRef codegen_generate_return(Codegen* codegen, ReturnNode* node);
 
 LLVMValueRef codegen_generate_expression(Codegen* codegen, Node* node);
 LLVMValueRef codegen_generate_number_literal(Codegen* codegen, NumberLiteralNode* node);
+LLVMValueRef codegen_generate_identifier_reference(Codegen* codegen, IdentifierReferenceNode* node);
 
 LLVMTypeRef codegen_type_to_llvm_type(Codegen* codegen, Type* type);
 
@@ -77,6 +81,9 @@ LLVMValueRef codegen_generate_statement(Codegen* codegen, Node* node) {
 
     case NODE_KIND_VARIABLE_DECLARATION:
         return codegen_generate_variable_declaration(codegen, (VariableDeclarationNode*)node);
+
+    case NODE_KIND_RETURN:
+        return codegen_generate_return(codegen, (ReturnNode*)node);
 
     default:
         auto node_string defer(free_str) = node_to_string(node);
@@ -167,10 +174,26 @@ LLVMValueRef codegen_generate_variable_declaration(Codegen* codegen, VariableDec
     return declaration;
 }
 
+LLVMValueRef codegen_generate_return(Codegen* codegen, ReturnNode* node) {
+    if (!node->return_value) {
+        return LLVMBuildRetVoid(codegen->llvm_builder);
+    }
+
+    auto value = codegen_generate_expression(codegen, node->return_value);
+    if (!value) {
+        return nullptr;
+    }
+
+    return LLVMBuildRet(codegen->llvm_builder, value);
+}
+
 LLVMValueRef codegen_generate_expression(Codegen* codegen, Node* node) {
     switch (node->kind) {
     case NODE_KIND_NUMBER_LITERAL:
         return codegen_generate_number_literal(codegen, (NumberLiteralNode*)node);
+
+    case NODE_KIND_IDENTIFIER_REFERENCE:
+        return codegen_generate_identifier_reference(codegen, (IdentifierReferenceNode*)node);
 
     default:
         auto node_string defer(free_str) = node_to_string(node);
@@ -208,6 +231,27 @@ LLVMValueRef codegen_generate_number_literal(Codegen* codegen, NumberLiteralNode
     } else {
         return LLVMConstInt(type, node->integer, false);
     }
+}
+
+LLVMValueRef codegen_generate_identifier_reference(Codegen* codegen, IdentifierReferenceNode* node) {
+    auto variable = variable_find_by_name(codegen->context.variables, node->identifier);
+    if (!variable) {
+        vector_append(
+            codegen->diagnostics,
+            diagnostic_create(
+                node->header.position,
+                format_string(
+                    "undefined variable: '%s', this should've been caught by the typechecker!",
+                    node->identifier
+                )
+            )
+        );
+
+        return nullptr;
+    }
+
+    auto type = LLVMGetAllocatedType(variable->value);
+    return LLVMBuildLoad2(codegen->llvm_builder, type, variable->value, node->identifier);
 }
 
 LLVMTypeRef codegen_type_to_llvm_type(Codegen* codegen, Type* type) {

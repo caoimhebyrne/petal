@@ -1,5 +1,6 @@
 #include "codegen/context.h"
 #include "util/vector.h"
+#include <string.h>
 
 bool codegen_context_initialize(CodegenContext* context) {
     *context = (CodegenContext){.variables = vector_create()};
@@ -12,4 +13,17 @@ void codegen_context_destroy(CodegenContext* context) {
     }
 
     free(context->variables.items);
+}
+
+Variable* variable_find_by_name(VariableVector variables, char* name) {
+    for (size_t i = 0; i < variables.length; i++) {
+        auto variable = vector_get_ref(&variables, i);
+
+        // FIXME: Use a hashtable here?
+        if (strcmp(variable->name, name) == 0) {
+            return variable;
+        }
+    }
+
+    return nullptr;
 }
