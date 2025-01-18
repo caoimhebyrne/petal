@@ -17,7 +17,8 @@
 #include "util/format.h"
 #include "util/logger.h"
 #include "util/vector.h"
-#include "llvm-c/Core.h"
+#include <llvm-c/Analysis.h>
+#include <llvm-c/Core.h>
 #include <llvm-c/Target.h>
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Types.h>
@@ -80,6 +81,18 @@ CodegenResult codegen_generate(Codegen* codegen) {
         LLVMDumpModule(codegen->llvm_module);
     }
 
+    char* error_message;
+    bool failed = LLVMVerifyModule(codegen->llvm_module, LLVMReturnStatusAction, &error_message);
+    if (failed) {
+        vector_append(
+            codegen->diagnostics,
+            diagnostic_create((Position){}, format_string("module verification failed: %s", error_message))
+        );
+
+        return (CodegenResult){.status = CODEGEN_RESULT_FAILURE};
+    }
+
+    LLVMDisposeMessage(error_message);
     return (CodegenResult){.status = CODEGEN_RESULT_SUCCESS};
 }
 
