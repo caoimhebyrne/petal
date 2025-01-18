@@ -188,8 +188,6 @@ LLVMValueRef codegen_generate_function_declaration(Codegen* codegen, FunctionDec
         }
     }
 
-    // TODO: If any blocks within the function do not have a terminator, add one if it is trivial to do so.
-
     // Destroy the context as it is not valid for any other function.
     codegen_context_destroy(&codegen->context);
     return function;

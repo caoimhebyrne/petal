@@ -10,6 +10,7 @@
 #include "core/diagnostic.h"
 #include "core/parameter.h"
 #include "core/position.h"
+#include "core/type/type.h"
 #include "core/type/unresolved.h"
 #include "core/type/value.h"
 #include "lexer/token.h"
@@ -369,7 +370,6 @@ Node* ast_parse_function_declaration(AST* ast) {
 
         vector_append(&body, statement);
     }
-
     // All functions must end with a closing brace.
     auto close_brace_token = ast_consume_type(ast, TOKEN_TYPE_CLOSE_BRACE);
     if (close_brace_token.type == TOKEN_TYPE_INVALID) {
@@ -378,6 +378,37 @@ Node* ast_parse_function_declaration(AST* ast) {
         vector_destroy(parameters, parameter_destroy);
 
         return nullptr;
+    }
+
+    // FIXME: Maybe move this to some sort of verification/optimization stage after typechecking?
+    // If the last statement in the function's body is not a return node, we must either:
+    // A) generate a return node if the function's return type is `void`.
+    // B) emit an error, a value must be returned.
+    auto last_statement = body.length == 0 ? nullptr : vector_get(&body, body.length - 1);
+    if (!last_statement || last_statement->kind != NODE_KIND_RETURN) {
+        // If the function's return type is void, we can just generate it.
+        auto void_type = (Type*)value_type_create(return_type->position, VALUE_TYPE_KIND_VOID);
+        auto is_void = type_equals(return_type, void_type);
+        type_destroy(void_type);
+
+        if (is_void) {
+            vector_append(&body, (Node*)return_node_create(close_brace_token.position, nullptr));
+        } else {
+            // Otherwise, this is an error, the function must return a value.
+            vector_append(
+                ast->diagnostics,
+                diagnostic_create(
+                    close_brace_token.position,
+                    format_string("function '%s' must return a value", name_token.string)
+                )
+            );
+
+            vector_destroy(body, node_destroy);
+            type_destroy(return_type);
+            vector_destroy(parameters, parameter_destroy);
+
+            return nullptr;
+        }
     }
 
     return (Node*)

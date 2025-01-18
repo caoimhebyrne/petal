@@ -6,8 +6,6 @@
 // A function call can be used as a statement or as a value.
 
 func my_function() {
-    // This does nothing.
-    return;
 }
 
 func other_function() -> i32 {
