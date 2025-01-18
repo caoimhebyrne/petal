@@ -2,7 +2,7 @@
 
 > [!WARNING]
 > Petal is still an experimental language and is under constant development, this documentation may be out of date.
-> I recommend taking a look at the [language examples](../examples) if you are interested in up-to-date information.\
+> I recommend taking a look at the [language examples](../examples) if you are interested in up-to-date information.
 
 ## Table of Contents
 
