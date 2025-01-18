@@ -6,6 +6,7 @@
 #include "ast/node/number_literal.h"
 #include "ast/node/return.h"
 #include "ast/node/variable_declaration.h"
+#include "ast/node/variable_reassignment.h"
 
 char* node_to_string(Node* node) {
     switch (node->kind) {
@@ -29,6 +30,9 @@ char* node_to_string(Node* node) {
 
     case NODE_KIND_FUNCTION_CALL:
         return function_call_node_to_string((FunctionCallNode*)node);
+
+    case NODE_KIND_VARIABLE_REASSIGNMENT:
+        return variable_reassignment_node_to_string((VariableReassignmentNode*)node);
     }
 }
 
@@ -60,6 +64,10 @@ void node_destroy(Node* node) {
 
     case NODE_KIND_FUNCTION_CALL:
         function_call_node_destroy((FunctionCallNode*)node);
+        break;
+
+    case NODE_KIND_VARIABLE_REASSIGNMENT:
+        variable_reassignment_node_destroy((VariableReassignmentNode*)node);
         break;
     }
 

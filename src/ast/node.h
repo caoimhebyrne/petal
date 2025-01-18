@@ -25,6 +25,9 @@ typedef enum {
 
     // A function call node, see FunctionCallNode.
     NODE_KIND_FUNCTION_CALL,
+
+    // A variable reassignment node, see VariableReassignmentNode.
+    NODE_KIND_VARIABLE_REASSIGNMENT,
 } NodeKind;
 
 // The "base" for an AST node.

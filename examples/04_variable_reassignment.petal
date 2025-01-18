@@ -1,0 +1,13 @@
+// A variable has an initial value, but it can also have a new value assigned to it, this is known as "variable
+// reassignment". 
+
+func main() -> i32 {
+    // my_value has an initial value of 10.
+    i32 my_value = 10;
+
+    // We can assign a new value to it using its identifier.
+    my_value = 5;
+
+    // my_value is now 5.
+    return my_value;
+}

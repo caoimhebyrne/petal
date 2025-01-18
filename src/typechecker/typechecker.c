@@ -7,6 +7,7 @@
 #include "ast/node/number_literal.h"
 #include "ast/node/return.h"
 #include "ast/node/variable_declaration.h"
+#include "ast/node/variable_reassignment.h"
 #include "core/diagnostic.h"
 #include "core/type/reference.h"
 #include "core/type/type.h"
@@ -27,6 +28,7 @@ bool typechecker_check_statement(Typechecker* typechecker, Node* node);
 bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDeclarationNode* node);
 bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDeclarationNode* node);
 bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node);
+bool typechecker_check_variable_reassignment(Typechecker* typechecker, VariableReassignmentNode* node);
 
 Type* typechecker_check_expression(Typechecker* typechecker, Node* node);
 Type* typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNode* node);
@@ -80,6 +82,9 @@ bool typechecker_check_statement(Typechecker* typechecker, Node* node) {
 
     case NODE_KIND_FUNCTION_CALL:
         return typechecker_check_function_call(typechecker, (FunctionCallNode*)node);
+
+    case NODE_KIND_VARIABLE_REASSIGNMENT:
+        return typechecker_check_variable_reassignment(typechecker, (VariableReassignmentNode*)node);
 
     default:
         auto node_string defer(free_str) = node_to_string(node);
@@ -236,6 +241,38 @@ bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node) {
                     value_type_string,
                     expected_return_type_string
                 )
+            )
+        );
+
+        return false;
+    }
+
+    return true;
+}
+
+bool typechecker_check_variable_reassignment(Typechecker* typechecker, VariableReassignmentNode* node) {
+    // The variable being re-assigned must exist.
+    auto variable = declared_variable_find_by_name(typechecker->context.declared_variables, node->name);
+    if (!variable) {
+        return false;
+    }
+
+    // The value's type must be resolvable.
+    auto value_type = typechecker_check_expression(typechecker, node->value);
+    if (!value_type) {
+        return false;
+    }
+
+    // The type of the variable must match the values type.
+    if (!type_equals(variable->type, value_type)) {
+        auto variable_type_string defer(free_str) = type_to_string((Type*)variable->type);
+        auto value_type_string defer(free_str) = type_to_string((Type*)value_type);
+
+        vector_append(
+            typechecker->diagnostics,
+            diagnostic_create(
+                value_type->position,
+                format_string("expected type '%s', but got '%s'", variable_type_string, value_type_string)
             )
         );
 

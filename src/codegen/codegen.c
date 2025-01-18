@@ -7,6 +7,7 @@
 #include "ast/node/number_literal.h"
 #include "ast/node/return.h"
 #include "ast/node/variable_declaration.h"
+#include "ast/node/variable_reassignment.h"
 #include "codegen/context.h"
 #include "codegen/result.h"
 #include "core/diagnostic.h"
@@ -30,6 +31,7 @@ LLVMValueRef codegen_generate_statement(Codegen* codegen, Node* node);
 LLVMValueRef codegen_generate_function_declaration(Codegen* codegen, FunctionDeclarationNode* node);
 LLVMValueRef codegen_generate_variable_declaration(Codegen* codegen, VariableDeclarationNode* node);
 LLVMValueRef codegen_generate_return(Codegen* codegen, ReturnNode* node);
+LLVMValueRef codegen_generate_variable_reassignment(Codegen* codegen, VariableReassignmentNode* node);
 
 LLVMValueRef codegen_generate_expression(Codegen* codegen, Node* node);
 LLVMValueRef codegen_generate_number_literal(Codegen* codegen, NumberLiteralNode* node);
@@ -110,6 +112,9 @@ LLVMValueRef codegen_generate_statement(Codegen* codegen, Node* node) {
 
     case NODE_KIND_FUNCTION_CALL:
         return codegen_generate_function_call(codegen, (FunctionCallNode*)node, true);
+
+    case NODE_KIND_VARIABLE_REASSIGNMENT:
+        return codegen_generate_variable_reassignment(codegen, (VariableReassignmentNode*)node);
 
     default:
         auto node_string defer(free_str) = node_to_string(node);
@@ -233,6 +238,28 @@ LLVMValueRef codegen_generate_return(Codegen* codegen, ReturnNode* node) {
     }
 
     return LLVMBuildRet(codegen->llvm_builder, value);
+}
+
+LLVMValueRef codegen_generate_variable_reassignment(Codegen* codegen, VariableReassignmentNode* node) {
+    auto value = codegen_generate_expression(codegen, node->value);
+    if (!value) {
+        return nullptr;
+    }
+
+    auto variable = variable_find_by_name(codegen->context.variables, node->name);
+    if (!variable) {
+        vector_append(
+            codegen->diagnostics,
+            diagnostic_create(
+                node->header.position,
+                format_string("possible typechecker bug: '%s' is not declared during re-assignment", node->name)
+            )
+        );
+
+        return nullptr;
+    }
+
+    return LLVMBuildStore(codegen->llvm_builder, value, variable->value);
 }
 
 LLVMValueRef codegen_generate_expression(Codegen* codegen, Node* node) {
