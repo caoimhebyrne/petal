@@ -7,6 +7,7 @@
 #include <string.h>
 
 bool enable_debug_logging = false;
+bool log_vector_resizing = false;
 
 int main(int argc, char** argv) {
     ProgramOptions options;

@@ -7,7 +7,7 @@
 #include <stdlib.h> // IWYU pragma: keep
 
 // Whether vector resizes should be logged.
-static bool log_vector_resizing = false;
+extern bool log_vector_resizing;
 
 // Defines a new vector which has elements of type T.
 #define Vector(T)                                                                                                      \
