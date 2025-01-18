@@ -115,6 +115,7 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
     for (size_t i = 0; i < node->parameters.length; i++) {
         auto parameter = vector_get_ref(&node->parameters, i);
         if (!typechecker_resolve_type(typechecker, &parameter->value_type)) {
+            typechecker_context_destroy(&typechecker->context);
             return false;
         }
 
