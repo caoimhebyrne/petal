@@ -591,6 +591,7 @@ Node* ast_parse_function_call(AST* ast) {
         // The current token must be a valid expression.
         auto value = ast_parse_expression(ast);
         if (!value) {
+            vector_destroy(arguments, node_destroy);
             return nullptr;
         }
 
@@ -604,6 +605,7 @@ Node* ast_parse_function_call(AST* ast) {
         // Otherwise, the next token must be a comma.
         auto comma = ast_consume_type(ast, TOKEN_TYPE_COMMA);
         if (comma.type == TOKEN_TYPE_INVALID) {
+            vector_destroy(arguments, node_destroy);
             return nullptr;
         }
     }
@@ -611,6 +613,7 @@ Node* ast_parse_function_call(AST* ast) {
     // All function calls must end in a closing parenthesis.
     auto close_parenthesis = ast_consume_type(ast, TOKEN_TYPE_CLOSE_PARENTHESIS);
     if (close_parenthesis.type == TOKEN_TYPE_INVALID) {
+        vector_destroy(arguments, node_destroy);
         return nullptr;
     }
 
