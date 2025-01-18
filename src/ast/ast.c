@@ -166,6 +166,9 @@ Node* ast_parse_statement(AST* ast) {
     else if (ast_next_is(ast, TOKEN_TYPE_IDENTIFIER) && ast_after_next_is(ast, TOKEN_TYPE_OPEN_PARENTHESIS))
         statement = ast_parse_function_call(ast);
 
+    else if (ast_next_is_string(ast, TOKEN_TYPE_KEYWORD, "extern"))
+        statement = ast_parse_function_declaration(ast);
+
     else if (ast_next_is_string(ast, TOKEN_TYPE_KEYWORD, "func"))
         statement = ast_parse_function_declaration(ast);
 
@@ -241,9 +244,26 @@ Node* ast_parse_variable_declaration(AST* ast) {
 }
 
 Node* ast_parse_function_declaration(AST* ast) {
+    auto modifiers = 0;
+
+    // The first token could be a modifier, the only supported modifier right now is "extern".
+    if (ast_next_is_string(ast, TOKEN_TYPE_KEYWORD, "extern")) {
+        ast_consume(ast);
+        modifiers |= FUNCTION_MODIFIER_EXTERN;
+    }
+
     // The first token is the "func" keyword.
     auto func_token = ast_consume_type(ast, TOKEN_TYPE_KEYWORD);
     if (func_token.type == TOKEN_TYPE_INVALID) {
+        return nullptr;
+    }
+
+    if (strcmp(func_token.string, "func") != 0) {
+        vector_append(
+            ast->diagnostics,
+            diagnostic_create(func_token.position, format_string("expected keyword 'func'"))
+        );
+
         return nullptr;
     }
 
@@ -338,6 +358,26 @@ Node* ast_parse_function_declaration(AST* ast) {
         return nullptr;
     }
 
+    // If this is an extern function, it must end with a semicolon here.
+    if (modifiers & FUNCTION_MODIFIER_EXTERN) {
+        auto semicolon = ast_consume_type(ast, TOKEN_TYPE_SEMICOLON);
+        if (semicolon.type == TOKEN_TYPE_INVALID) {
+            type_destroy(return_type);
+            vector_destroy(parameters, parameter_destroy);
+
+            return nullptr;
+        }
+
+        return (Node*)function_declaration_node_create(
+            func_token.position,
+            strdup(name_token.string),
+            return_type,
+            parameters,
+            (NodeVector){},
+            modifiers
+        );
+    }
+
     // A function's body must start with an opening brace.
     auto open_brace_token = ast_consume_type(ast, TOKEN_TYPE_OPEN_BRACE);
     if (open_brace_token.type == TOKEN_TYPE_INVALID) {
@@ -411,8 +451,14 @@ Node* ast_parse_function_declaration(AST* ast) {
         }
     }
 
-    return (Node*)
-        function_declaration_node_create(func_token.position, strdup(name_token.string), return_type, parameters, body);
+    return (Node*)function_declaration_node_create(
+        func_token.position,
+        strdup(name_token.string),
+        return_type,
+        parameters,
+        body,
+        modifiers
+    );
 }
 
 Node* ast_parse_return(AST* ast) {

@@ -4,6 +4,10 @@
 #include "core/parameter.h"
 #include "core/type/type.h"
 
+typedef enum {
+    FUNCTION_MODIFIER_EXTERN = (1u << 0),
+} FunctionModifier;
+
 typedef struct {
     union {
         Node header;
@@ -20,6 +24,8 @@ typedef struct {
 
     // The function's body.
     NodeVector body;
+
+    int32_t modifiers;
 } FunctionDeclarationNode;
 
 // Creates a new FunctionDeclarationNode.
@@ -35,7 +41,8 @@ FunctionDeclarationNode* function_declaration_node_create(
     char* name,
     Type* return_type,
     ParameterVector parameters,
-    NodeVector body
+    NodeVector body,
+    int32_t modifiers
 );
 
 // Returns a string representation of an FunctionDeclarationNode.

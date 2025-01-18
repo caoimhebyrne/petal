@@ -12,7 +12,8 @@ FunctionDeclarationNode* function_declaration_node_create(
     char* name,
     Type* return_type,
     ParameterVector parameters,
-    NodeVector body
+    NodeVector body,
+    int32_t modifiers
 ) {
     FunctionDeclarationNode* node = malloc(sizeof(FunctionDeclarationNode));
     if (!node) {
@@ -25,6 +26,7 @@ FunctionDeclarationNode* function_declaration_node_create(
     node->return_type = return_type;
     node->parameters = parameters;
     node->body = body;
+    node->modifiers = modifiers;
 
     return node;
 }

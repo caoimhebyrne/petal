@@ -16,6 +16,7 @@
 #include "typechecker/declared_variable.h"
 #include "util/defer.h"
 #include "util/format.h"
+#include "util/logger.h"
 #include "util/vector.h"
 #include <stdio.h>
 #include <string.h>
@@ -122,12 +123,14 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
         vector_append(&typechecker->context.declared_variables, variable);
     }
 
-    // If the return type is OK, we can type check the function's body.
-    for (size_t i = 0; i < node->body.length; i++) {
-        auto body_node = vector_get(&node->body, i);
-        if (!typechecker_check_statement(typechecker, body_node)) {
-            typechecker_context_destroy(&typechecker->context);
-            return false;
+    // If the return type is OK, and this is a non-extern function we can type check the function's body.
+    if (!(node->modifiers & FUNCTION_MODIFIER_EXTERN)) {
+        for (size_t i = 0; i < node->body.length; i++) {
+            auto body_node = vector_get(&node->body, i);
+            if (!typechecker_check_statement(typechecker, body_node)) {
+                typechecker_context_destroy(&typechecker->context);
+                return false;
+            }
         }
     }
 
@@ -343,6 +346,8 @@ Type* typechecker_check_function_call(Typechecker* typechecker, FunctionCallNode
 
         return nullptr;
     }
+
+    LOG_DEBUG("typechecker", "checking function call for '%s'", node->function_name);
 
     // The number of arguments must match the number of parameters expected by the function.
     if (node->arguments.length != function->parameters->length) {
