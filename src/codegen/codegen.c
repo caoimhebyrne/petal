@@ -1,6 +1,7 @@
 #include "codegen.h"
 #include "ast/node.h"
 #include "ast/node/binary_operation.h"
+#include "ast/node/function_call.h"
 #include "ast/node/function_declaration.h"
 #include "ast/node/identifier_reference.h"
 #include "ast/node/number_literal.h"
@@ -9,6 +10,7 @@
 #include "codegen/context.h"
 #include "codegen/result.h"
 #include "core/diagnostic.h"
+#include "core/position.h"
 #include "core/type/type.h"
 #include "core/type/value.h"
 #include "util/defer.h"
@@ -31,6 +33,7 @@ LLVMValueRef codegen_generate_expression(Codegen* codegen, Node* node);
 LLVMValueRef codegen_generate_number_literal(Codegen* codegen, NumberLiteralNode* node);
 LLVMValueRef codegen_generate_identifier_reference(Codegen* codegen, IdentifierReferenceNode* node);
 LLVMValueRef codegen_generate_binary_operation(Codegen* codegen, BinaryOperationNode* node);
+LLVMValueRef codegen_generate_function_call(Codegen* codegen, FunctionCallNode* node, bool statement);
 
 LLVMTypeRef codegen_type_to_llvm_type(Codegen* codegen, Type* type);
 
@@ -90,6 +93,9 @@ LLVMValueRef codegen_generate_statement(Codegen* codegen, Node* node) {
 
     case NODE_KIND_RETURN:
         return codegen_generate_return(codegen, (ReturnNode*)node);
+
+    case NODE_KIND_FUNCTION_CALL:
+        return codegen_generate_function_call(codegen, (FunctionCallNode*)node, true);
 
     default:
         auto node_string defer(free_str) = node_to_string(node);
@@ -223,6 +229,9 @@ LLVMValueRef codegen_generate_expression(Codegen* codegen, Node* node) {
     case NODE_KIND_BINARY_OPERATION:
         return codegen_generate_binary_operation(codegen, (BinaryOperationNode*)node);
 
+    case NODE_KIND_FUNCTION_CALL:
+        return codegen_generate_function_call(codegen, (FunctionCallNode*)node, false);
+
     default:
         auto node_string defer(free_str) = node_to_string(node);
         vector_append(
@@ -308,6 +317,45 @@ LLVMValueRef codegen_generate_binary_operation(Codegen* codegen, BinaryOperation
     case OPERATOR_DIVIDE:
         return LLVMBuildSDiv(codegen->llvm_builder, left_value, right_value, "divide");
     }
+}
+
+LLVMValueRef codegen_generate_function_call(Codegen* codegen, FunctionCallNode* node, bool statement) {
+    auto function = LLVMGetNamedFunction(codegen->llvm_module, node->function_name);
+    if (!function) {
+        vector_append(
+            codegen->diagnostics,
+            diagnostic_create(
+                node->header.position,
+                format_string(
+                    "undefined function: '%s', this should've been caught by the typechecker!",
+                    node->function_name
+                )
+            )
+        );
+
+        return nullptr;
+    }
+
+    auto function_type = LLVMGlobalGetValueType(function);
+
+    LLVMValueRef arguments[node->arguments.length] = {};
+    for (size_t i = 0; i < node->arguments.length; i++) {
+        auto value = codegen_generate_expression(codegen, vector_get(&node->arguments, i));
+        if (!value) {
+            return nullptr;
+        }
+
+        arguments[i] = value;
+    }
+
+    return LLVMBuildCall2(
+        codegen->llvm_builder,
+        function_type,
+        function,
+        arguments,
+        node->arguments.length,
+        statement ? "" : node->function_name
+    );
 }
 
 LLVMTypeRef codegen_type_to_llvm_type(Codegen* codegen, Type* type) {

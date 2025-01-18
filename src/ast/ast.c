@@ -1,6 +1,7 @@
 #include "ast/ast.h"
 #include "ast/node.h"
 #include "ast/node/binary_operation.h"
+#include "ast/node/function_call.h"
 #include "ast/node/function_declaration.h"
 #include "ast/node/identifier_reference.h"
 #include "ast/node/number_literal.h"
@@ -28,6 +29,7 @@ Node* ast_parse_addition_subtraction_expression(AST* ast);
 Node* ast_parse_multiplication_division_expression(AST* ast);
 
 Node* ast_parse_value(AST* ast);
+Node* ast_parse_function_call(AST* ast);
 Node* ast_parse_identifier_reference(AST* ast);
 Node* ast_parse_number_literal(AST* ast);
 
@@ -159,6 +161,9 @@ Node* ast_parse_statement(AST* ast) {
 
     if (ast_next_is(ast, TOKEN_TYPE_IDENTIFIER) && ast_after_next_is(ast, TOKEN_TYPE_IDENTIFIER))
         statement = ast_parse_variable_declaration(ast);
+
+    else if (ast_next_is(ast, TOKEN_TYPE_IDENTIFIER) && ast_after_next_is(ast, TOKEN_TYPE_OPEN_PARENTHESIS))
+        statement = ast_parse_function_call(ast);
 
     else if (ast_next_is_string(ast, TOKEN_TYPE_KEYWORD, "func"))
         statement = ast_parse_function_declaration(ast);
@@ -472,6 +477,9 @@ Node* ast_parse_value(AST* ast) {
         return node;
     }
 
+    if (ast_next_is(ast, TOKEN_TYPE_IDENTIFIER) && ast_after_next_is(ast, TOKEN_TYPE_OPEN_PARENTHESIS))
+        return ast_parse_function_call(ast);
+
     if (ast_next_is(ast, TOKEN_TYPE_IDENTIFIER))
         return ast_parse_identifier_reference(ast);
 
@@ -480,6 +488,56 @@ Node* ast_parse_value(AST* ast) {
 
     ast_diagnostic_expected_any_token(ast, "value");
     return nullptr;
+}
+
+Node* ast_parse_function_call(AST* ast) {
+    // The first token must be an identifier.
+    auto identifier_token = ast_consume_type(ast, TOKEN_TYPE_IDENTIFIER);
+    if (identifier_token.type == TOKEN_TYPE_INVALID) {
+        return nullptr;
+    }
+
+    // The next token must be an opening parenthesis.
+    auto open_parenthesis = ast_consume_type(ast, TOKEN_TYPE_OPEN_PARENTHESIS);
+    if (open_parenthesis.type == TOKEN_TYPE_INVALID) {
+        return nullptr;
+    }
+
+    // The next token(s) are the arguments to the function.
+    NodeVector arguments = vector_create();
+    if (!vector_initialize(arguments, 1)) {
+        ast_diagnostic_internal_error(ast, open_parenthesis.position);
+        return nullptr;
+    }
+
+    while (!ast_next_is(ast, TOKEN_TYPE_CLOSE_PARENTHESIS)) {
+        // The current token must be a valid expression.
+        auto value = ast_parse_expression(ast);
+        if (!value) {
+            return nullptr;
+        }
+
+        vector_append(&arguments, value);
+
+        // If the next token is a closing parenthesis, we can break out of the loop
+        if (ast_next_is(ast, TOKEN_TYPE_CLOSE_PARENTHESIS)) {
+            continue;
+        }
+
+        // Otherwise, the next token must be a comma.
+        auto comma = ast_consume_type(ast, TOKEN_TYPE_COMMA);
+        if (comma.type == TOKEN_TYPE_INVALID) {
+            return nullptr;
+        }
+    }
+
+    // All function calls must end in a closing parenthesis.
+    auto close_parenthesis = ast_consume_type(ast, TOKEN_TYPE_CLOSE_PARENTHESIS);
+    if (close_parenthesis.type == TOKEN_TYPE_INVALID) {
+        return nullptr;
+    }
+
+    return (Node*)function_call_node_create(identifier_token.position, strdup(identifier_token.string), arguments);
 }
 
 Node* ast_parse_identifier_reference(AST* ast) {

@@ -1,6 +1,7 @@
 #include "typechecker.h"
 #include "ast/node.h"
 #include "ast/node/binary_operation.h"
+#include "ast/node/function_call.h"
 #include "ast/node/function_declaration.h"
 #include "ast/node/identifier_reference.h"
 #include "ast/node/number_literal.h"
@@ -11,6 +12,7 @@
 #include "core/type/unresolved.h"
 #include "core/type/value.h"
 #include "typechecker/context.h"
+#include "typechecker/declared_function.h"
 #include "typechecker/declared_variable.h"
 #include "util/defer.h"
 #include "util/format.h"
@@ -28,6 +30,7 @@ Type* typechecker_check_expression(Typechecker* typechecker, Node* node);
 Type* typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNode* node);
 Type* typechecker_check_identifier_reference(Typechecker* typechecker, IdentifierReferenceNode* node);
 Type* typechecker_check_binary_operation(Typechecker* typechecker, BinaryOperationNode* node);
+Type* typechecker_check_function_call(Typechecker* typechecker, FunctionCallNode* node);
 
 // Resolves a type.
 // If the type could not be resolved, nullptr is returned.
@@ -38,10 +41,16 @@ Typechecker typechecker_create(NodeVector* nodes, DiagnosticVector* diagnostics)
         .nodes = nodes,
         .diagnostics = diagnostics,
         .context = (TypecheckerContext){},
+        .declared_functions = vector_create(),
     };
 }
 
 bool typechecker_check(Typechecker* typechecker) {
+    if (!vector_initialize(typechecker->declared_functions, 1)) {
+        diagnostic_create((Position){}, "failed to initialize typechecker");
+        return false;
+    }
+
     for (size_t i = 0; i < typechecker->nodes->length; i++) {
         auto node = vector_get(typechecker->nodes, i);
         if (!typechecker_check_statement(typechecker, node)) {
@@ -50,6 +59,10 @@ bool typechecker_check(Typechecker* typechecker) {
     }
 
     return true;
+}
+
+void typechecker_destroy(Typechecker* typechecker) {
+    free(typechecker->declared_functions.items);
 }
 
 bool typechecker_check_statement(Typechecker* typechecker, Node* node) {
@@ -62,6 +75,9 @@ bool typechecker_check_statement(Typechecker* typechecker, Node* node) {
 
     case NODE_KIND_RETURN:
         return typechecker_check_return(typechecker, (ReturnNode*)node);
+
+    case NODE_KIND_FUNCTION_CALL:
+        return typechecker_check_function_call(typechecker, (FunctionCallNode*)node);
 
     default:
         auto node_string defer(free_str) = node_to_string(node);
@@ -115,6 +131,14 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
         }
     }
 
+    // We can record this function as a declared function.
+    auto declared_function = (DeclaredFunction){
+        .name = node->name,
+        .return_type = node->return_type,
+        .parameters = &node->parameters,
+    };
+
+    vector_append(&typechecker->declared_functions, declared_function);
     typechecker_context_destroy(&typechecker->context);
     return true;
 }
@@ -227,6 +251,9 @@ Type* typechecker_check_expression(Typechecker* typechecker, Node* node) {
     case NODE_KIND_BINARY_OPERATION:
         return typechecker_check_binary_operation(typechecker, (BinaryOperationNode*)node);
 
+    case NODE_KIND_FUNCTION_CALL:
+        return typechecker_check_function_call(typechecker, (FunctionCallNode*)node);
+
     default:
         auto node_string defer(free_str) = node_to_string(node);
         vector_append(
@@ -304,6 +331,71 @@ Type* typechecker_check_binary_operation(Typechecker* typechecker, BinaryOperati
     }
 
     return left_type;
+}
+
+Type* typechecker_check_function_call(Typechecker* typechecker, FunctionCallNode* node) {
+    auto function = declared_function_find_by_name(typechecker->declared_functions, node->function_name);
+    if (!function) {
+        vector_append(
+            typechecker->diagnostics,
+            diagnostic_create(node->header.position, format_string("undeclared function: '%s'", node->function_name))
+        );
+
+        return nullptr;
+    }
+
+    // The number of arguments must match the number of parameters expected by the function.
+    if (node->arguments.length != function->parameters->length) {
+        vector_append(
+            typechecker->diagnostics,
+            diagnostic_create(
+                node->header.position,
+                format_string(
+                    "function '%s' has %zu parameter(s) but %zu argument(s) were passed",
+                    node->function_name,
+                    function->parameters->length,
+                    node->arguments.length
+                )
+            )
+        );
+
+        return nullptr;
+    }
+
+    // The types of the arguments must match the parameters.
+    for (size_t i = 0; i < node->arguments.length; i++) {
+        auto argument = vector_get(&node->arguments, i);
+        auto parameter = vector_get(function->parameters, i);
+
+        // The argument must have a resolvable type.
+        auto argument_type = typechecker_check_expression(typechecker, argument);
+        if (!argument_type) {
+            return nullptr;
+        }
+
+        // If the argument's type does not match the defined parameter, throw an error.s
+        if (!type_equals(argument_type, parameter.value_type)) {
+            auto argument_type_string defer(free_str) = type_to_string(argument_type);
+            auto parameter_type_string defer(free_str) = type_to_string(parameter.value_type);
+
+            vector_append(
+                typechecker->diagnostics,
+                diagnostic_create(
+                    argument->position,
+                    format_string(
+                        "unable to pass argument of type '%s' to function with parameter of type '%s'",
+                        argument_type_string,
+                        parameter_type_string
+                    )
+                )
+            );
+
+            return nullptr;
+        }
+    }
+
+    // The type of this function call is the function's return type.
+    return function->return_type;
 }
 
 Type* typechecker_resolve_type(Typechecker* typechecker, Type** type_reference) {

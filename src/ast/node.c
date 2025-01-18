@@ -1,5 +1,6 @@
 #include "ast/node.h"
 #include "ast/node/binary_operation.h"
+#include "ast/node/function_call.h"
 #include "ast/node/function_declaration.h"
 #include "ast/node/identifier_reference.h"
 #include "ast/node/number_literal.h"
@@ -25,6 +26,9 @@ char* node_to_string(Node* node) {
 
     case NODE_KIND_VARIABLE_DECLARATION:
         return variable_declaration_node_to_string((VariableDeclarationNode*)node);
+
+    case NODE_KIND_FUNCTION_CALL:
+        return function_call_node_to_string((FunctionCallNode*)node);
     }
 }
 
@@ -52,6 +56,10 @@ void node_destroy(Node* node) {
 
     case NODE_KIND_VARIABLE_DECLARATION:
         variable_declaration_node_destroy((VariableDeclarationNode*)node);
+        break;
+
+    case NODE_KIND_FUNCTION_CALL:
+        function_call_node_destroy((FunctionCallNode*)node);
         break;
     }
 

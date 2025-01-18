@@ -1,0 +1,24 @@
+// Having one function isn't much fun!
+//
+// In Petal, you can call a function by its name, followed by a pair of parenthesis surrounding the arguments
+// you would like to pass to the function.
+//
+// A function call can be used as a statement or as a value.
+
+func my_function() {
+    // This does nothing.
+    return;
+}
+
+func other_function() -> i32 {
+    // This is a super secret number, don't steal please.
+    return 44;
+}
+
+func main() -> i32 {
+    // You can call a function as a statement, this is usually the case for functions returning void.
+    my_function();
+
+    return other_function();
+    //     ^ `my_function` is called as a value. This function has no parameters, so no arguments are passed.
+}

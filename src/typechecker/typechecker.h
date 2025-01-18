@@ -3,6 +3,7 @@
 #include "ast/node.h"
 #include "core/diagnostic.h"
 #include "typechecker/context.h"
+#include "typechecker/declared_function.h"
 
 typedef struct {
     // A reference to the vector of nodes to type check.
@@ -13,6 +14,9 @@ typedef struct {
 
     // The current context of the typechecker.
     TypecheckerContext context;
+
+    // The functions declared during this typechecking session.
+    DeclaredFunctionVector declared_functions;
 } Typechecker;
 
 // Creates a new Typechecker.
@@ -26,3 +30,6 @@ Typechecker typechecker_create(NodeVector* nodes, DiagnosticVector* diagnostics)
 // - typechecker: The typechecker to use.
 // Returns whether the typechecking was successful.
 bool typechecker_check(Typechecker* typechecker);
+
+// Destroys a typechecker.
+void typechecker_destroy(Typechecker* typechecker);

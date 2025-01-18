@@ -72,11 +72,13 @@ bool module_compile(Module* module) {
     auto typechecker = typechecker_create(&nodes, &module->diagnostics);
     if (!typechecker_check(&typechecker)) {
         module_print_diagnostics(module);
+        typechecker_destroy(&typechecker);
 
         vector_destroy(nodes, node_destroy);
         return false;
     }
 
+    typechecker_destroy(&typechecker);
     LOG_DEBUG("module", "typechecking successful on '%s'", module->file_name);
 
     auto codegen = codegen_create(&nodes, &module->diagnostics);

@@ -22,6 +22,9 @@ typedef enum {
 
     // A variable declaration node, see VariableDeclarationNode.
     NODE_KIND_VARIABLE_DECLARATION,
+
+    // A function call node, see FunctionCallNode.
+    NODE_KIND_FUNCTION_CALL,
 } NodeKind;
 
 // The "base" for an AST node.
