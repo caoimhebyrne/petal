@@ -100,6 +100,10 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
         if (!typechecker_resolve_type(typechecker, &parameter->value_type)) {
             return false;
         }
+
+        // We can treat the function's parameters as declared variables within this context.
+        auto variable = (DeclaredVariable){.name = parameter->name, .type = parameter->value_type};
+        vector_append(&typechecker->context.declared_variables, variable);
     }
 
     // If the return type is OK, we can type check the function's body.

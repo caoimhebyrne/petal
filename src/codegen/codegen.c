@@ -108,7 +108,7 @@ LLVMValueRef codegen_generate_function_declaration(Codegen* codegen, FunctionDec
         return nullptr;
     }
 
-    LLVMTypeRef parameters[node->parameters.length] = {};
+    LLVMTypeRef parameter_types[node->parameters.length] = {};
     for (size_t i = 0; i < node->parameters.length; i++) {
         auto parameter = vector_get(&node->parameters, i);
         auto type = codegen_type_to_llvm_type(codegen, parameter.value_type);
@@ -116,10 +116,10 @@ LLVMValueRef codegen_generate_function_declaration(Codegen* codegen, FunctionDec
             return nullptr;
         }
 
-        parameters[i] = type;
+        parameter_types[i] = type;
     }
 
-    auto function_type = LLVMFunctionType(return_type, parameters, node->parameters.length, false);
+    auto function_type = LLVMFunctionType(return_type, parameter_types, node->parameters.length, false);
     auto function = LLVMAddFunction(codegen->llvm_module, node->name, function_type);
 
     // All functions must have an entry block.
@@ -140,8 +140,27 @@ LLVMValueRef codegen_generate_function_declaration(Codegen* codegen, FunctionDec
         return nullptr;
     }
 
-    // TODO: Generate `alloca` + `store` for function parameters.
-    //       Parameters should basically be treated as normal variables.
+    for (size_t i = 0; i < node->parameters.length; i++) {
+        auto parameter = vector_get(&node->parameters, i);
+        auto llvm_parameter = LLVMGetParam(function, i);
+
+        // The parameter's type must be resolvable.
+        auto parameter_type = codegen_type_to_llvm_type(codegen, parameter.value_type);
+        if (!parameter_type) {
+            return nullptr;
+        }
+
+        // Allocate a stack variable for this parameter.
+        auto declaration = LLVMBuildAlloca(codegen->llvm_builder, parameter_type, parameter.name);
+
+        // Store the parameter's value into this local variable.
+        LLVMBuildStore(codegen->llvm_builder, llvm_parameter, declaration);
+
+        // In order to make the rest of the codegen aware of this parameter, we must treat it as a stored variable
+        // in the function's context.
+        auto variable = (Variable){.name = parameter.name, .value = declaration};
+        vector_append(&codegen->context.variables, variable);
+    }
 
     for (size_t i = 0; i < node->body.length; i++) {
         if (!codegen_generate_statement(codegen, vector_get(&node->body, i))) {
