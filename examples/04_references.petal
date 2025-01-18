@@ -1,0 +1,25 @@
+// When passing a value to a function in Petal, it is typically passed by copying the value.
+// Sometimes, you might not want that, you may want to pass a reference so that it can be modified by the called function
+// and the changes be present in the callee's scope.
+// 
+// This program has `my_function` take a value as a reference, and then modifies it, `main` returns the value as the
+// program's status code.
+
+//                          ↓ Using an ampersand before the type indicates that we would like to take this by reference.
+func my_function(reference: &i32) {
+    // TODO: Variable re-assignment
+    // reference = 5;
+}
+
+func main() -> i32 {
+    i32 my_value = 10;
+
+    //          ↓ Using an ampersand on the variable name takes a reference to it.
+    my_function(&my_value);
+
+    // TODO: In the future, the fact that this function wants a reference may be inferred.
+    //       This means that the ampersand on a value may not be required.
+
+    // If everything is implemented in the compiler correctly, the exit code of this program should be 5.
+    return my_value;
+}

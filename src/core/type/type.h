@@ -9,6 +9,9 @@ typedef enum {
 
     // A value type.
     TYPE_KIND_VALUE,
+
+    // A reference type.
+    TYPE_KIND_REFERENCE,
 } TypeKind;
 
 // Represents a standard type.

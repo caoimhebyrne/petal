@@ -57,6 +57,9 @@ const char* token_type_to_string(TokenType token_type) {
 
     case TOKEN_TYPE_COMMA:
         return "comma";
+
+    case TOKEN_TYPE_AMPERSAND:
+        return "ampersand";
     }
 }
 

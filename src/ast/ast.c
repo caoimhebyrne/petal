@@ -10,6 +10,7 @@
 #include "core/diagnostic.h"
 #include "core/parameter.h"
 #include "core/position.h"
+#include "core/type/reference.h"
 #include "core/type/type.h"
 #include "core/type/unresolved.h"
 #include "core/type/value.h"
@@ -199,7 +200,19 @@ Node* ast_parse_statement(AST* ast) {
 }
 
 Type* ast_parse_type(AST* ast) {
-    // A type is just an identifier at the moment, in the future it may have modifiers.
+    // The first token may be an ampersand, this indicates that this type is a reference type.
+    if (ast_next_is(ast, TOKEN_TYPE_AMPERSAND)) {
+        ast_consume(ast);
+
+        // The ampersand must be followed by a valid type.
+        auto referenced_type = ast_parse_type(ast);
+        if (!referenced_type) {
+            return nullptr;
+        }
+
+        return (Type*)reference_type_create(referenced_type->position, referenced_type);
+    }
+
     auto type_token = ast_consume_type(ast, TOKEN_TYPE_IDENTIFIER);
     if (type_token.type == TOKEN_TYPE_INVALID) {
         return nullptr;
@@ -557,6 +570,9 @@ Node* ast_parse_value(AST* ast) {
     if (ast_next_is(ast, TOKEN_TYPE_IDENTIFIER) && ast_after_next_is(ast, TOKEN_TYPE_OPEN_PARENTHESIS))
         return ast_parse_function_call(ast);
 
+    if (ast_next_is(ast, TOKEN_TYPE_AMPERSAND) && ast_after_next_is(ast, TOKEN_TYPE_IDENTIFIER))
+        return ast_parse_identifier_reference(ast);
+
     if (ast_next_is(ast, TOKEN_TYPE_IDENTIFIER))
         return ast_parse_identifier_reference(ast);
 
@@ -621,13 +637,22 @@ Node* ast_parse_function_call(AST* ast) {
 }
 
 Node* ast_parse_identifier_reference(AST* ast) {
-    // The first token must be an identifier.
+    Type* value_type = nullptr;
+
+    // The first token may be an ampersand, meaning this should be treated as a reference.
+    if (ast_next_is(ast, TOKEN_TYPE_AMPERSAND)) {
+        auto token = ast_consume(ast);
+        value_type = (Type*)reference_type_create(token.position, nullptr);
+    }
+
+    // The next token must be an identifier.
     auto identifier_token = ast_consume_type(ast, TOKEN_TYPE_IDENTIFIER);
     if (identifier_token.type == TOKEN_TYPE_INVALID) {
         return nullptr;
     }
 
-    return (Node*)identifier_reference_node_create(identifier_token.position, strdup(identifier_token.string));
+    return (Node*)
+        identifier_reference_node_create(identifier_token.position, strdup(identifier_token.string), value_type);
 }
 
 Node* ast_parse_number_literal(AST* ast) {

@@ -8,6 +8,7 @@
 #include "ast/node/return.h"
 #include "ast/node/variable_declaration.h"
 #include "core/diagnostic.h"
+#include "core/type/reference.h"
 #include "core/type/type.h"
 #include "core/type/unresolved.h"
 #include "core/type/value.h"
@@ -296,8 +297,14 @@ Type* typechecker_check_identifier_reference(Typechecker* typechecker, Identifie
         return nullptr;
     }
 
-    // The type of the identifier is the type of the variable.
-    return variable->type;
+    // If this identifier is not being passed as a reference, there is nothing else to do.
+    if (!node->value_type || node->value_type->kind != TYPE_KIND_REFERENCE) {
+        return variable->type;
+    }
+
+    // The type is a reference to the variable's value type.
+    node->value_type = (Type*)reference_type_create(variable->type->position, variable->type);
+    return node->value_type;
 }
 
 Type* typechecker_check_binary_operation(Typechecker* typechecker, BinaryOperationNode* node) {
@@ -408,7 +415,18 @@ Type* typechecker_resolve_type(Typechecker* typechecker, Type** type_reference) 
     auto type = *type_reference;
 
     // If the type is already resolved, we don't need to do anything.
-    if (type->kind != TYPE_KIND_UNRESOLVED) {
+    if (type->kind == TYPE_KIND_VALUE) {
+        return type;
+    }
+
+    // If this is a reference type, we need to resolve the inner type.
+    if (type->kind == TYPE_KIND_REFERENCE) {
+        auto reference_type = (ReferenceType*)type;
+        auto resolved_type = typechecker_resolve_type(typechecker, &reference_type->referenced_type);
+        if (!resolved_type) {
+            return nullptr;
+        }
+
         return type;
     }
 

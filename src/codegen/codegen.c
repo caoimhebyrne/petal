@@ -11,6 +11,7 @@
 #include "codegen/result.h"
 #include "core/diagnostic.h"
 #include "core/position.h"
+#include "core/type/reference.h"
 #include "core/type/type.h"
 #include "core/type/value.h"
 #include "util/defer.h"
@@ -303,6 +304,10 @@ LLVMValueRef codegen_generate_identifier_reference(Codegen* codegen, IdentifierR
         return nullptr;
     }
 
+    if (node->value_type && node->value_type->kind == TYPE_KIND_REFERENCE) {
+        return variable->value;
+    }
+
     auto type = LLVMGetAllocatedType(variable->value);
     return LLVMBuildLoad2(codegen->llvm_builder, type, variable->value, node->identifier);
 }
@@ -375,6 +380,26 @@ LLVMValueRef codegen_generate_function_call(Codegen* codegen, FunctionCallNode* 
 }
 
 LLVMTypeRef codegen_type_to_llvm_type(Codegen* codegen, Type* type) {
+    if (type->kind == TYPE_KIND_REFERENCE) {
+        auto reference_type = (ReferenceType*)type;
+        if (!reference_type->referenced_type) {
+            vector_append(
+                codegen->diagnostics,
+                diagnostic_create(type->position, format_string("reference type had no referenced type?"))
+            );
+
+            return nullptr;
+        }
+
+        auto llvm_type = codegen_type_to_llvm_type(codegen, reference_type->referenced_type);
+        if (!llvm_type) {
+            return nullptr;
+        }
+
+        // Unsure what AddressSpace is, but zero seems to work, some docs reference it as the "default" anyway.
+        return LLVMPointerType(llvm_type, 0);
+    }
+
     if (type->kind != TYPE_KIND_VALUE) {
         auto type_string defer(free_str) = type_to_string(type);
         vector_append(
