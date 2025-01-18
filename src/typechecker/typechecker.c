@@ -265,6 +265,13 @@ bool typechecker_check_variable_reassignment(Typechecker* typechecker, VariableR
 
     // The type of the variable must match the values type.
     if (!type_equals(variable->type, value_type)) {
+        // If the left is a reference, see if this is a value being assigned to a reference.
+        if (variable->type->kind == TYPE_KIND_REFERENCE) {
+            if (type_equals(((ReferenceType*)variable->type)->referenced_type, value_type)) {
+                return true;
+            }
+        }
+
         auto variable_type_string defer(free_str) = type_to_string((Type*)variable->type);
         auto value_type_string defer(free_str) = type_to_string((Type*)value_type);
 
