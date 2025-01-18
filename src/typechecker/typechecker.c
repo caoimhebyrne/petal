@@ -272,7 +272,11 @@ bool typechecker_check_variable_reassignment(Typechecker* typechecker, VariableR
             typechecker->diagnostics,
             diagnostic_create(
                 value_type->position,
-                format_string("expected type '%s', but got '%s'", variable_type_string, value_type_string)
+                format_string(
+                    "unable to assign value of type '%s' to variable of type '%s'",
+                    value_type_string,
+                    variable_type_string
+                )
             )
         );
 
