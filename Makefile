@@ -8,6 +8,10 @@ CFLAGS = -std=c23 -I./src -Wall -Wextra -Werror -g $(shell llvm-config --cflags)
 # Link with libLLVM.
 LDFLAGS = $(shell llvm-config --libs --ldflags)
 
+# Compile all C files within the source directory.
+SOURCES = $(shell find ./src -iname "*.c")
+OBJECTS = $(SOURCES:./src/%.c=./build/%.o)
+
 .PHONY: clangd
 setup-clangd:
 	bear --output ./build/compile_commands.json -- make build
@@ -16,16 +20,17 @@ setup-clangd:
 prepare:
 	mkdir -p build
 
-# Compile all C files within the source directory.
-SOURCES = $(shell find ./src -iname "*.c")
-
 .PHONY: build
-build: prepare
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o ./build/petal
+build: prepare $(OBJECTS)
+	$(CC) $(LDFLAGS) $(OBJECTS) -o ./build/petal
+
+build/%.o: src/%.c
+	mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 INSTALL_DIR = $(HOME)/.local/bin
 
 .PHONY: install
 install: build
 	mkdir -p $(INSTALL_DIR)
-	install -Dm755 ./build/petal $(INSTALL_DIR)/petal 
+	install -Dm755 ./build/petal $(INSTALL_DIR)/petal
