@@ -184,10 +184,20 @@ LLVMValueRef codegen_generate_function_declaration(Codegen* codegen, FunctionDec
             // Store the parameter's value into this local variable.
             LLVMBuildStore(codegen->llvm_builder, llvm_parameter, declaration);
 
-            // In order to make the rest of the codegen aware of this parameter, we must treat it as a stored variable
-            // in the function's context.
-            auto variable = (Variable){.name = parameter.name, .value = declaration};
-            vector_append(&codegen->context.variables, variable);
+            if (parameter.value_type->kind == TYPE_KIND_REFERENCE) {
+                // The previous store was for the pointer __value__, now we are loading what that pointer points *to*.
+                auto load = LLVMBuildLoad2(codegen->llvm_builder, parameter_type, declaration, parameter.name);
+
+                // In order to make the rest of the codegen aware of this parameter, we must treat it as a stored
+                // variable in the function's context.
+                auto variable = (Variable){.name = parameter.name, .value = load};
+                vector_append(&codegen->context.variables, variable);
+            } else {
+                // In order to make the rest of the codegen aware of this parameter, we must treat it as a stored
+                // variable in the function's context.
+                auto variable = (Variable){.name = parameter.name, .value = declaration};
+                vector_append(&codegen->context.variables, variable);
+            }
         }
 
         for (size_t i = 0; i < node->body.length; i++) {

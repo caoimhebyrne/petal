@@ -7,8 +7,7 @@
 
 //                          ↓ Using an ampersand before the type indicates that we would like to take this by reference.
 func my_function(reference: &i32) {
-    // TODO: Variable re-assignment
-    // reference = 5;
+    reference = 5;
 }
 
 func main() -> i32 {
