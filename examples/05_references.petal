@@ -16,9 +16,6 @@ func main() -> i32 {
     //          ↓ Using an ampersand on the variable name takes a reference to it.
     my_function(&my_value);
 
-    // TODO: In the future, the fact that this function wants a reference may be inferred.
-    //       This means that the ampersand on a value may not be required.
-
     // If everything is implemented in the compiler correctly, the exit code of this program should be 5.
     return my_value;
 }
