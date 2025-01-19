@@ -6,6 +6,7 @@
 #include "ast/node/identifier_reference.h"
 #include "ast/node/number_literal.h"
 #include "ast/node/return.h"
+#include "ast/node/type_declaration.h"
 #include "ast/node/variable_declaration.h"
 #include "ast/node/variable_reassignment.h"
 #include "core/diagnostic.h"
@@ -15,12 +16,14 @@
 #include "core/type/value.h"
 #include "typechecker/context.h"
 #include "typechecker/declared_function.h"
+#include "typechecker/declared_type.h"
 #include "typechecker/declared_variable.h"
 #include "util/defer.h"
 #include "util/format.h"
 #include "util/logger.h"
 #include "util/vector.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 // Forward declarations:
@@ -29,6 +32,7 @@ bool typechecker_check_function_declaration(Typechecker* typechecker, FunctionDe
 bool typechecker_check_variable_declaration(Typechecker* typechecker, VariableDeclarationNode* node);
 bool typechecker_check_return(Typechecker* typechecker, ReturnNode* node);
 bool typechecker_check_variable_reassignment(Typechecker* typechecker, VariableReassignmentNode* node);
+bool typechecker_check_type_declaration(Typechecker* typechecker, TypeDeclarationNode* node);
 
 Type* typechecker_check_expression(Typechecker* typechecker, Node* node);
 Type* typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNode* node);
@@ -46,11 +50,12 @@ Typechecker typechecker_create(NodeVector* nodes, DiagnosticVector* diagnostics)
         .diagnostics = diagnostics,
         .context = (TypecheckerContext){},
         .declared_functions = vector_create(),
+        .declared_types = vector_create(),
     };
 }
 
 bool typechecker_check(Typechecker* typechecker) {
-    if (!vector_initialize(typechecker->declared_functions, 1)) {
+    if (!vector_initialize(typechecker->declared_functions, 1) || !vector_initialize(typechecker->declared_types, 1)) {
         diagnostic_create((Position){}, "failed to initialize typechecker");
         return false;
     }
@@ -67,6 +72,7 @@ bool typechecker_check(Typechecker* typechecker) {
 
 void typechecker_destroy(Typechecker* typechecker) {
     free(typechecker->declared_functions.items);
+    free(typechecker->declared_types.items);
 }
 
 bool typechecker_check_statement(Typechecker* typechecker, Node* node) {
@@ -85,6 +91,9 @@ bool typechecker_check_statement(Typechecker* typechecker, Node* node) {
 
     case NODE_KIND_VARIABLE_REASSIGNMENT:
         return typechecker_check_variable_reassignment(typechecker, (VariableReassignmentNode*)node);
+
+    case NODE_KIND_TYPE_DECLARATION:
+        return typechecker_check_type_declaration(typechecker, (TypeDeclarationNode*)node);
 
     default:
         auto node_string defer(free_str) = node_to_string(node);
@@ -293,6 +302,31 @@ bool typechecker_check_variable_reassignment(Typechecker* typechecker, VariableR
     return true;
 }
 
+bool typechecker_check_type_declaration(Typechecker* typechecker, TypeDeclarationNode* node) {
+    // The name must not be used already.
+    auto existing_type = declared_type_find_by_name(typechecker->declared_types, node->name);
+    if (existing_type) {
+        vector_append(
+            typechecker->diagnostics,
+            diagnostic_create(node->header.position, format_string("type '%s' is already declared", node->name))
+        );
+
+        return false;
+    }
+
+    // The type being declared must be resolvable.
+    auto resolved_type = typechecker_resolve_type(typechecker, &node->type);
+    if (!resolved_type) {
+        return false;
+    }
+
+    // We can record this as a declared type.
+    auto declared_type = declared_type_create(node->name, resolved_type);
+    vector_append(&typechecker->declared_types, declared_type);
+
+    return true;
+}
+
 Type* typechecker_check_expression(Typechecker* typechecker, Node* node) {
     switch (node->kind) {
     case NODE_KIND_NUMBER_LITERAL:
@@ -480,6 +514,22 @@ Type* typechecker_resolve_type(Typechecker* typechecker, Type** type_reference) 
 
     // This type is unresolved.
     auto unresolved_type = (UnresolvedType*)type;
+
+    // First, we can check if this is a type that has been declared by the user.
+    auto declared_type = declared_type_find_by_name(typechecker->declared_types, unresolved_type->name);
+    if (declared_type) {
+        // TODO: `type_clone`?
+        auto resolved_type = (ValueType*)declared_type->type;
+
+        Type* copy = malloc(sizeof(ValueType));
+        memcpy(copy, resolved_type, sizeof(ValueType));
+
+        // The original type is no longer needed.
+        *type_reference = copy;
+        type_destroy(type);
+
+        return copy;
+    }
 
     // In order to resolve it, we need to see if it is a valid "value" type.
     auto value_type_kind = value_type_kind_from_string(unresolved_type->name);

@@ -6,6 +6,6 @@
 type double = f64;
 
 func main() {
-    double my_value = 50;
+    double my_value = 50.0;
     // ^ converted to f64 during the type-check phase.
 }

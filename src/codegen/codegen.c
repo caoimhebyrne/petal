@@ -75,7 +75,12 @@ bool codegen_initialize(Codegen* codegen) {
 
 CodegenResult codegen_generate(Codegen* codegen) {
     for (size_t i = 0; i < codegen->nodes->length; i++) {
-        if (!codegen_generate_statement(codegen, vector_get(codegen->nodes, i))) {
+        auto node = vector_get(codegen->nodes, i);
+        if (node->kind == NODE_KIND_TYPE_DECLARATION) {
+            continue;
+        }
+
+        if (!codegen_generate_statement(codegen, node)) {
             return (CodegenResult){.status = CODEGEN_RESULT_FAILURE};
         }
     }
@@ -201,7 +206,12 @@ LLVMValueRef codegen_generate_function_declaration(Codegen* codegen, FunctionDec
         }
 
         for (size_t i = 0; i < node->body.length; i++) {
-            if (!codegen_generate_statement(codegen, vector_get(&node->body, i))) {
+            auto body_node = vector_get(&node->body, i);
+            if (body_node->kind == NODE_KIND_TYPE_DECLARATION) {
+                continue;
+            }
+
+            if (!codegen_generate_statement(codegen, body_node)) {
                 codegen_context_destroy(&codegen->context);
                 return nullptr;
             }

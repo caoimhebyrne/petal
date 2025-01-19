@@ -4,6 +4,7 @@
 #include "core/diagnostic.h"
 #include "typechecker/context.h"
 #include "typechecker/declared_function.h"
+#include "typechecker/declared_type.h"
 
 typedef struct {
     // A reference to the vector of nodes to type check.
@@ -17,6 +18,9 @@ typedef struct {
 
     // The functions declared during this typechecking session.
     DeclaredFunctionVector declared_functions;
+
+    // The types declared during this typechecking session.
+    DeclaredTypeVector declared_types;
 } Typechecker;
 
 // Creates a new Typechecker.
