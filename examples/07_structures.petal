@@ -17,6 +17,7 @@ func main() -> i32 {
     // Initializing a structure requires all members to be set.
     MyStructure structure = {
         integer = 44,
+        float = 123.456
     };
 
     // This structure can be passed to other functions as a value.
