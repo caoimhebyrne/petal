@@ -116,7 +116,9 @@ void type_destroy(Type* type) {
 
     case TYPE_KIND_REFERENCE:
         auto reference_type = (ReferenceType*)type;
-        type_destroy(reference_type->referenced_type);
+        if (reference_type->referenced_type) {
+            type_destroy(reference_type->referenced_type);
+        }
 
         break;
 

@@ -384,8 +384,11 @@ Type* typechecker_check_identifier_reference(Typechecker* typechecker, Identifie
         return variable->type;
     }
 
-    // The type is a reference to the variable's value type.
-    node->value_type = (Type*)reference_type_create(variable->type->position, variable->type);
+    // The type was just there to see that it was a reference, destroy it.
+    type_destroy(node->value_type);
+
+    // Assign a new type based on the variable's type.
+    node->value_type = (Type*)reference_type_create(variable->type->position, type_clone(variable->type));
     return node->value_type;
 }
 
