@@ -518,17 +518,18 @@ Type* typechecker_resolve_type(Typechecker* typechecker, Type** type_reference) 
     // First, we can check if this is a type that has been declared by the user.
     auto declared_type = declared_type_find_by_name(typechecker->declared_types, unresolved_type->name);
     if (declared_type) {
-        // TODO: `type_clone`?
-        auto resolved_type = (ValueType*)declared_type->type;
+        auto resolved_type = declared_type->type;
+        auto cloned_type = type_clone(resolved_type);
+        if (!cloned_type) {
+            return nullptr;
+        }
 
-        Type* copy = malloc(sizeof(ValueType));
-        memcpy(copy, resolved_type, sizeof(ValueType));
+        *type_reference = cloned_type;
 
         // The original type is no longer needed.
-        *type_reference = copy;
         type_destroy(type);
 
-        return copy;
+        return cloned_type;
     }
 
     // In order to resolve it, we need to see if it is a valid "value" type.

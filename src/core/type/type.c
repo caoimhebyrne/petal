@@ -45,6 +45,43 @@ char* type_to_string(Type* type) {
     }
 }
 
+Type* type_clone(Type* type) {
+    switch (type->kind) {
+    case TYPE_KIND_UNRESOLVED: {
+        UnresolvedType* unresolved_type = (UnresolvedType*)type;
+        UnresolvedType* cloned = malloc(sizeof(UnresolvedType));
+        if (!cloned) {
+            return nullptr;
+        }
+
+        memcpy(cloned, unresolved_type, sizeof(UnresolvedType));
+        return (Type*)cloned;
+    }
+
+    case TYPE_KIND_VALUE: {
+        ValueType* value_type = (ValueType*)type;
+        ValueType* cloned = malloc(sizeof(ValueType));
+        if (!cloned) {
+            return nullptr;
+        }
+
+        memcpy(cloned, value_type, sizeof(ValueType));
+        return (Type*)cloned;
+    }
+
+    case TYPE_KIND_REFERENCE: {
+        ReferenceType* reference_type = (ReferenceType*)type;
+        ReferenceType* cloned = malloc(sizeof(ReferenceType));
+        if (!cloned) {
+            return nullptr;
+        }
+
+        memcpy(cloned, reference_type, sizeof(ReferenceType));
+        return (Type*)cloned;
+    }
+    }
+}
+
 void type_destroy(Type* type) {
     switch (type->kind) {
     case TYPE_KIND_UNRESOLVED:

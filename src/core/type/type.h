@@ -29,6 +29,9 @@ bool type_equals(Type* left, Type* right);
 // Returns a heap-allocated string represenatation of a Type.
 char* type_to_string(Type* type);
 
+// Clones a Type.
+Type* type_clone(Type* type);
+
 // De-allocates a Type.
 // Parameters:
 // - type: The type to destroy.
