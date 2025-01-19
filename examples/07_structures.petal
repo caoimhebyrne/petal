@@ -1,0 +1,23 @@
+// A structure is a nice way to group related pieces of data together, these pieces of data are known as members, and
+// can be of any type that is available in the Petal language.
+
+// The same `type` keyword that is used for type aliasing can be used to define a structure type.
+type MyStructure = struct {
+    integer: i32;
+};
+
+// A structure can be used in the same way as any other type.
+func my_structure_get_integer(self: MyStructure) {
+    // You can access a structure's member using the `.` operator on it.
+    return self.integer;
+}
+
+func main() -> i32 {
+    // Initializing a structure requires all members to be set.
+    MyStructure structure = {
+        integer = 44,
+    };
+
+    // This structure can be passed to other functions as a value.
+    return my_structure_get_integer(structure);
+}
