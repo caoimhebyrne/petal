@@ -3,7 +3,7 @@ CC = clang
 
 # Enable all warnings and treat them as errors.
 # NOTE: To enable AddressSanitizer, add `-fsanitize=address` | `-fsanitize=undefined`.
-CFLAGS = -std=c23 -I./src -Wall -Wextra -Werror -g -fsanitize=address $(shell llvm-config --cflags)
+CFLAGS = -std=c23 -I./src -Wall -Wextra -Werror -g $(shell llvm-config --cflags)
 
 # Link with libLLVM.
 LDFLAGS = $(shell llvm-config --libs --ldflags)
@@ -22,7 +22,7 @@ prepare:
 
 .PHONY: build
 build: prepare $(OBJECTS)
-	$(CC) $(LDFLAGS) $(OBJECTS) -o ./build/petal
+	$(CC) $(LDFLAGS) $(OBJECTS) -fsanitize=address -o ./build/petal
 
 build/%.o: src/%.c
 	mkdir -p $(dir $@)
