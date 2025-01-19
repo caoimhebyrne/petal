@@ -3,7 +3,8 @@
 
 // The same `type` keyword that is used for type aliasing can be used to define a structure type.
 type MyStructure = struct {
-    integer: i32;
+    integer: i32,
+    float: f64
 };
 
 // A structure can be used in the same way as any other type.

@@ -13,6 +13,7 @@
 #include "core/parameter.h"
 #include "core/position.h"
 #include "core/type/reference.h"
+#include "core/type/structure.h"
 #include "core/type/type.h"
 #include "core/type/unresolved.h"
 #include "core/type/value.h"
@@ -209,6 +210,74 @@ Node* ast_parse_statement(AST* ast) {
     return statement;
 }
 
+Type* ast_parse_type(AST* ast);
+
+Type* ast_parse_structure_type(AST* ast) {
+    // The first token is the `struct` keyword.
+    auto keyword_token = ast_consume_type(ast, TOKEN_TYPE_KEYWORD);
+    if (keyword_token.type == TOKEN_TYPE_INVALID) {
+        return nullptr;
+    }
+
+    // The next token must be an opening brace.
+    auto open_brace = ast_consume_type(ast, TOKEN_TYPE_OPEN_BRACE);
+    if (open_brace.type == TOKEN_TYPE_INVALID) {
+        return nullptr;
+    }
+
+    auto structure_type = structure_type_create(keyword_token.position);
+    if (!structure_type) {
+        return nullptr;
+    }
+
+    while (!ast_next_is(ast, TOKEN_TYPE_CLOSE_BRACE)) {
+        // Each member must start with an identifier.
+        auto identifier_token = ast_consume_type(ast, TOKEN_TYPE_IDENTIFIER);
+        if (identifier_token.type == TOKEN_TYPE_INVALID) {
+            type_destroy((Type*)structure_type);
+            return nullptr;
+        }
+
+        // Then a colon.
+        auto colon_token = ast_consume_type(ast, TOKEN_TYPE_COLON);
+        if (colon_token.type == TOKEN_TYPE_INVALID) {
+            type_destroy((Type*)structure_type);
+            return nullptr;
+        }
+
+        // Followed by a type.
+        auto type = ast_parse_type(ast);
+        if (!type) {
+            type_destroy((Type*)structure_type);
+            return nullptr;
+        }
+
+        auto member = structure_member_create(strdup(identifier_token.string), type);
+        vector_append(&structure_type->members, member);
+
+        // If the next token is a closing brace, we have finished parsing.
+        if (ast_next_is(ast, TOKEN_TYPE_CLOSE_BRACE)) {
+            break;
+        }
+
+        // The next token must be a comma.
+        auto comma_token = ast_consume_type(ast, TOKEN_TYPE_COMMA);
+        if (comma_token.type == TOKEN_TYPE_INVALID) {
+            type_destroy((Type*)structure_type);
+            return nullptr;
+        }
+    }
+
+    // All structures must end with a closing brace.
+    auto close_brace_token = ast_consume_type(ast, TOKEN_TYPE_CLOSE_BRACE);
+    if (close_brace_token.type == TOKEN_TYPE_INVALID) {
+        type_destroy((Type*)structure_type);
+        return nullptr;
+    }
+
+    return (Type*)structure_type;
+}
+
 Type* ast_parse_type(AST* ast) {
     // The first token may be an ampersand, this indicates that this type is a reference type.
     if (ast_next_is(ast, TOKEN_TYPE_AMPERSAND)) {
@@ -221,6 +290,11 @@ Type* ast_parse_type(AST* ast) {
         }
 
         return (Type*)reference_type_create(referenced_type->position, referenced_type);
+    }
+
+    // This could be a structure declaration.
+    if (ast_next_is_string(ast, TOKEN_TYPE_KEYWORD, "struct")) {
+        return ast_parse_structure_type(ast);
     }
 
     auto type_token = ast_consume_type(ast, TOKEN_TYPE_IDENTIFIER);

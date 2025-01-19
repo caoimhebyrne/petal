@@ -12,6 +12,9 @@ typedef enum {
 
     // A reference type.
     TYPE_KIND_REFERENCE,
+
+    // A structure type.
+    TYPE_KIND_STRUCTURE,
 } TypeKind;
 
 // Represents a standard type.

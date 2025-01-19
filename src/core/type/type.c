@@ -1,9 +1,11 @@
 #include "type.h"
 #include "core/type/reference.h"
+#include "core/type/structure.h"
 #include "core/type/unresolved.h"
 #include "core/type/value.h"
 #include "util/defer.h"
 #include "util/format.h"
+#include "util/vector.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -26,6 +28,10 @@ bool type_equals(Type* left, Type* right) {
     case TYPE_KIND_REFERENCE:
         // For reference types, their referenced types must match.
         return type_equals(((ReferenceType*)left)->referenced_type, ((ReferenceType*)right)->referenced_type);
+
+    case TYPE_KIND_STRUCTURE:
+        // TODO: Check equality for structures.
+        return false;
     }
 }
 
@@ -37,11 +43,15 @@ char* type_to_string(Type* type) {
     case TYPE_KIND_VALUE:
         return format_string("%s", value_type_kind_to_string(((ValueType*)type)->value_kind));
 
-    case TYPE_KIND_REFERENCE:
+    case TYPE_KIND_REFERENCE: {
         auto reference_type = (ReferenceType*)type;
         auto type_string defer(free_str) = type_to_string(reference_type->referenced_type);
 
         return format_string("&%s", type_string);
+    }
+
+    case TYPE_KIND_STRUCTURE:
+        return format_string("struct");
     }
 }
 
@@ -79,6 +89,17 @@ Type* type_clone(Type* type) {
         memcpy(cloned, reference_type, sizeof(ReferenceType));
         return (Type*)cloned;
     }
+
+    case TYPE_KIND_STRUCTURE: {
+        StructureType* structure_type = (StructureType*)type;
+        StructureType* cloned = malloc(sizeof(StructureType));
+        if (!cloned) {
+            return nullptr;
+        }
+
+        memcpy(cloned, structure_type, sizeof(StructureType));
+        return (Type*)cloned;
+    }
     }
 }
 
@@ -96,6 +117,12 @@ void type_destroy(Type* type) {
     case TYPE_KIND_REFERENCE:
         auto reference_type = (ReferenceType*)type;
         type_destroy(reference_type->referenced_type);
+
+        break;
+
+    case TYPE_KIND_STRUCTURE:
+        auto structure_type = (StructureType*)type;
+        vector_destroy(structure_type->members, structure_member_destroy);
 
         break;
     }
