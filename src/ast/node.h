@@ -28,6 +28,9 @@ typedef enum {
 
     // A variable reassignment node, see VariableReassignmentNode.
     NODE_KIND_VARIABLE_REASSIGNMENT,
+
+    // A type declaration node, see TypeAliasDeclarationNode.
+    NODE_KIND_TYPE_DECLARATION,
 } NodeKind;
 
 // The "base" for an AST node.

@@ -15,7 +15,7 @@
 #include <string.h>
 
 // A list of identifiers that should be treated as keywords.
-char* keywords[] = {"func", "return", "extern"};
+char* keywords[] = {"func", "return", "extern", "type"};
 
 // Parsing functions:
 Token lexer_parse_identifier(Lexer* lexer);

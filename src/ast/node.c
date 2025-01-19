@@ -5,6 +5,7 @@
 #include "ast/node/identifier_reference.h"
 #include "ast/node/number_literal.h"
 #include "ast/node/return.h"
+#include "ast/node/type_declaration.h"
 #include "ast/node/variable_declaration.h"
 #include "ast/node/variable_reassignment.h"
 
@@ -33,6 +34,9 @@ char* node_to_string(Node* node) {
 
     case NODE_KIND_VARIABLE_REASSIGNMENT:
         return variable_reassignment_node_to_string((VariableReassignmentNode*)node);
+
+    case NODE_KIND_TYPE_DECLARATION:
+        return type_declaration_node_to_string((TypeDeclarationNode*)node);
     }
 }
 
@@ -68,6 +72,10 @@ void node_destroy(Node* node) {
 
     case NODE_KIND_VARIABLE_REASSIGNMENT:
         variable_reassignment_node_destroy((VariableReassignmentNode*)node);
+        break;
+
+    case NODE_KIND_TYPE_DECLARATION:
+        type_declaration_node_destroy((TypeDeclarationNode*)node);
         break;
     }
 

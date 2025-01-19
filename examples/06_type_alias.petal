@@ -1,0 +1,11 @@
+// Sometimes you might want to refer to a type as something else.
+// To do this, you can use the `type` keyword to declare a type alias.
+
+// This is an alias, `double`, for the type `f64`.
+// The original type can still be used, they exist in harmony.
+type double = f64;
+
+func main() {
+    double my_value = 50;
+    // ^ converted to f64 during the type-check phase.
+}

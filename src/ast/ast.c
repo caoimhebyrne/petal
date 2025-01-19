@@ -6,6 +6,7 @@
 #include "ast/node/identifier_reference.h"
 #include "ast/node/number_literal.h"
 #include "ast/node/return.h"
+#include "ast/node/type_declaration.h"
 #include "ast/node/variable_declaration.h"
 #include "ast/node/variable_reassignment.h"
 #include "core/diagnostic.h"
@@ -27,6 +28,7 @@ Node* ast_parse_variable_declaration(AST* ast);
 Node* ast_parse_function_declaration(AST* ast);
 Node* ast_parse_return(AST* ast);
 Node* ast_parse_variable_reassignment(AST* ast);
+Node* ast_parse_type_declaration(AST* ast);
 
 Node* ast_parse_expression(AST* ast);
 Node* ast_parse_addition_subtraction_expression(AST* ast);
@@ -171,6 +173,9 @@ Node* ast_parse_statement(AST* ast) {
 
     else if (ast_next_is(ast, TOKEN_TYPE_IDENTIFIER) && ast_after_next_is(ast, TOKEN_TYPE_EQUALS))
         statement = ast_parse_variable_reassignment(ast);
+
+    else if (ast_next_is_string(ast, TOKEN_TYPE_KEYWORD, "type"))
+        statement = ast_parse_type_declaration(ast);
 
     else if (ast_next_is_string(ast, TOKEN_TYPE_KEYWORD, "extern"))
         statement = ast_parse_function_declaration(ast);
@@ -520,6 +525,34 @@ Node* ast_parse_variable_reassignment(AST* ast) {
     }
 
     return (Node*)variable_reassignment_node_create(equals_token.position, strdup(identifier_token.string), value);
+}
+
+Node* ast_parse_type_declaration(AST* ast) {
+    // The first token must be the "type" keyword.
+    auto type_token = ast_consume_type(ast, TOKEN_TYPE_KEYWORD);
+    if (type_token.type == TOKEN_TYPE_INVALID) {
+        return nullptr;
+    }
+
+    // The next token is the name for this type.
+    auto identifier_token = ast_consume_type(ast, TOKEN_TYPE_IDENTIFIER);
+    if (identifier_token.type == TOKEN_TYPE_INVALID) {
+        return nullptr;
+    }
+
+    // The next token must be an equals.
+    auto equals_token = ast_consume_type(ast, TOKEN_TYPE_EQUALS);
+    if (equals_token.type == TOKEN_TYPE_INVALID) {
+        return nullptr;
+    }
+
+    // The last token(s) must be a valid type.
+    auto type = ast_parse_type(ast);
+    if (!type) {
+        return nullptr;
+    }
+
+    return (Node*)type_declaration_node_create(identifier_token.position, strdup(identifier_token.string), type);
 }
 
 Node* ast_parse_expression(AST* ast) {
