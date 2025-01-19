@@ -12,13 +12,13 @@ LDFLAGS = $(shell llvm-config --libs --ldflags)
 SOURCES = $(shell find ./src -iname "*.c")
 OBJECTS = $(SOURCES:./src/%.c=./build/%.o)
 
-.PHONY: clangd
-setup-clangd:
-	bear --output ./build/compile_commands.json -- make build
-
 .PHONY: prepare
 prepare:
 	mkdir -p build
+
+.PHONY: clangd
+setup-clangd: prepare
+	bear --output ./build/compile_commands.json -- make build
 
 .PHONY: build
 build: prepare $(OBJECTS)
