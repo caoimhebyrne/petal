@@ -60,6 +60,9 @@ const char* token_type_to_string(TokenType token_type) {
 
     case TOKEN_TYPE_AMPERSAND:
         return "ampersand";
+
+    case TOKEN_TYPE_PERIOD:
+        return "period";
     }
 }
 

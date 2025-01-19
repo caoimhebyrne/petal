@@ -15,7 +15,7 @@
 #include <string.h>
 
 // A list of identifiers that should be treated as keywords.
-char* keywords[] = {"func", "return", "extern", "type"};
+char* keywords[] = {"func", "return", "extern", "type", "struct"};
 
 // Parsing functions:
 Token lexer_parse_identifier(Lexer* lexer);
@@ -137,6 +137,10 @@ TokenVector lexer_parse(Lexer* lexer) {
 
         case '&':
             vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_AMPERSAND));
+            break;
+
+        case '.':
+            vector_append(&vector, lexer_create_token(lexer, TOKEN_TYPE_PERIOD));
             break;
 
         default:
