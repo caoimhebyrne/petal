@@ -13,6 +13,7 @@
 #include "core/diagnostic.h"
 #include "core/position.h"
 #include "core/type/reference.h"
+#include "core/type/structure.h"
 #include "core/type/type.h"
 #include "core/type/value.h"
 #include "util/defer.h"
@@ -445,6 +446,28 @@ LLVMTypeRef codegen_type_to_llvm_type(Codegen* codegen, Type* type) {
 
         // Unsure what AddressSpace is, but zero seems to work, some docs reference it as the "default" anyway.
         return LLVMPointerType(llvm_type, 0);
+    }
+
+    if (type->kind == TYPE_KIND_STRUCTURE) {
+        auto structure_type = (StructureType*)type;
+
+        LLVMTypeRef member_types[structure_type->members.length] = {};
+        for (size_t i = 0; i < structure_type->members.length; i++) {
+            auto member = vector_get_ref(&structure_type->members, i);
+            auto member_type = codegen_type_to_llvm_type(codegen, member->type);
+            if (!member_type) {
+                return nullptr;
+            }
+
+            member_types[i] = member_type;
+        }
+
+        return LLVMStructTypeInContext(
+            codegen->llvm_context,
+            member_types,
+            structure_type->members.length,
+            /* packed */ false
+        );
     }
 
     if (type->kind != TYPE_KIND_VALUE) {
