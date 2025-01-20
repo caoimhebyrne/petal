@@ -7,11 +7,6 @@ StructureMember structure_member_create(char* name, Type* type) {
     return (StructureMember){.name = name, .type = type};
 }
 
-void structure_member_destroy(StructureMember member) {
-    free(member.name);
-    type_destroy(member.type);
-}
-
 StructureType* structure_type_create(Position position) {
     StructureType* type = malloc(sizeof(StructureType));
     if (!type) {

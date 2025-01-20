@@ -5,7 +5,6 @@
 #include "core/type/value.h"
 #include "util/defer.h"
 #include "util/format.h"
-#include "util/vector.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -123,9 +122,6 @@ void type_destroy(Type* type) {
         break;
 
     case TYPE_KIND_STRUCTURE:
-        auto structure_type = (StructureType*)type;
-        vector_destroy(structure_type->members, structure_member_destroy);
-
         break;
     }
 
