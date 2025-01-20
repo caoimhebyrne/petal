@@ -3,6 +3,7 @@
 #include "ast/node/function_call.h"
 #include "ast/node/function_declaration.h"
 #include "ast/node/identifier_reference.h"
+#include "ast/node/member_access.h"
 #include "ast/node/number_literal.h"
 #include "ast/node/return.h"
 #include "ast/node/type_declaration.h"
@@ -37,6 +38,9 @@ char* node_to_string(Node* node) {
 
     case NODE_KIND_TYPE_DECLARATION:
         return type_declaration_node_to_string((TypeDeclarationNode*)node);
+
+    case NODE_KIND_MEMBER_ACCESS:
+        return member_access_node_to_string((MemberAccessNode*)node);
     }
 }
 
@@ -76,6 +80,10 @@ void node_destroy(Node* node) {
 
     case NODE_KIND_TYPE_DECLARATION:
         type_declaration_node_destroy((TypeDeclarationNode*)node);
+        break;
+
+    case NODE_KIND_MEMBER_ACCESS:
+        member_access_node_destroy((MemberAccessNode*)node);
         break;
     }
 

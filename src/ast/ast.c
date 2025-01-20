@@ -4,6 +4,7 @@
 #include "ast/node/function_call.h"
 #include "ast/node/function_declaration.h"
 #include "ast/node/identifier_reference.h"
+#include "ast/node/member_access.h"
 #include "ast/node/number_literal.h"
 #include "ast/node/return.h"
 #include "ast/node/type_declaration.h"
@@ -32,6 +33,8 @@ Node* ast_parse_variable_reassignment(AST* ast);
 Node* ast_parse_type_declaration(AST* ast);
 
 Node* ast_parse_expression(AST* ast);
+Node* ast_parse_member_access(AST* ast, Node* owner);
+
 Node* ast_parse_addition_subtraction_expression(AST* ast);
 Node* ast_parse_multiplication_division_expression(AST* ast);
 
@@ -630,7 +633,33 @@ Node* ast_parse_type_declaration(AST* ast) {
 }
 
 Node* ast_parse_expression(AST* ast) {
-    return ast_parse_addition_subtraction_expression(ast);
+    auto expression = ast_parse_addition_subtraction_expression(ast);
+    if (!expression) {
+        return nullptr;
+    }
+
+    // If the next token is a period, then this is a member access.
+    if (ast_next_is(ast, TOKEN_TYPE_PERIOD)) {
+        return ast_parse_member_access(ast, expression);
+    }
+
+    return expression;
+}
+
+Node* ast_parse_member_access(AST* ast, Node* owner) {
+    // The first token must be a period.
+    auto period_token = ast_consume_type(ast, TOKEN_TYPE_PERIOD);
+    if (period_token.type == TOKEN_TYPE_INVALID) {
+        return nullptr;
+    }
+
+    // The next token must be a valid identifier.
+    auto identifier_token = ast_consume_type(ast, TOKEN_TYPE_IDENTIFIER);
+    if (identifier_token.type == TOKEN_TYPE_INVALID) {
+        return nullptr;
+    }
+
+    return (Node*)member_access_node_create(identifier_token.position, owner, strdup(identifier_token.string));
 }
 
 // <left> <operator> <right>

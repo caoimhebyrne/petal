@@ -31,6 +31,9 @@ typedef enum {
 
     // A type declaration node, see TypeAliasDeclarationNode.
     NODE_KIND_TYPE_DECLARATION,
+
+    // A member access node, see MemberAccessNode.
+    NODE_KIND_MEMBER_ACCESS,
 } NodeKind;
 
 // The "base" for an AST node.
