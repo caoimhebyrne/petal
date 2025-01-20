@@ -526,6 +526,7 @@ Type* typechecker_check_member_access(Typechecker* typechecker, MemberAccessNode
         auto member = vector_get_ref(&structure_type->members, i);
         if (strcmp(member->name, node->member_name) == 0) {
             // The member name matches, its type should have been resolved already.
+            node->member_index = i;
             return member->type;
         }
     }

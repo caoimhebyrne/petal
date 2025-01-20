@@ -4,6 +4,7 @@
 #include "ast/node/function_call.h"
 #include "ast/node/function_declaration.h"
 #include "ast/node/identifier_reference.h"
+#include "ast/node/member_access.h"
 #include "ast/node/number_literal.h"
 #include "ast/node/return.h"
 #include "ast/node/variable_declaration.h"
@@ -39,6 +40,7 @@ LLVMValueRef codegen_generate_number_literal(Codegen* codegen, NumberLiteralNode
 LLVMValueRef codegen_generate_identifier_reference(Codegen* codegen, IdentifierReferenceNode* node);
 LLVMValueRef codegen_generate_binary_operation(Codegen* codegen, BinaryOperationNode* node);
 LLVMValueRef codegen_generate_function_call(Codegen* codegen, FunctionCallNode* node, bool statement);
+LLVMValueRef codegen_generate_member_access(Codegen* codegen, MemberAccessNode* node);
 
 LLVMTypeRef codegen_type_to_llvm_type(Codegen* codegen, Type* type);
 
@@ -297,6 +299,9 @@ LLVMValueRef codegen_generate_expression(Codegen* codegen, Node* node) {
     case NODE_KIND_FUNCTION_CALL:
         return codegen_generate_function_call(codegen, (FunctionCallNode*)node, false);
 
+    case NODE_KIND_MEMBER_ACCESS:
+        return codegen_generate_member_access(codegen, (MemberAccessNode*)node);
+
     default:
         auto node_string defer(free_str) = node_to_string(node);
         vector_append(
@@ -425,6 +430,79 @@ LLVMValueRef codegen_generate_function_call(Codegen* codegen, FunctionCallNode* 
         node->arguments.length,
         statement ? "" : node->function_name
     );
+}
+
+LLVMValueRef codegen_generate_member_access(Codegen* codegen, MemberAccessNode* node) {
+    if (node->member_index < 0) {
+        vector_append(
+            codegen->diagnostics,
+            diagnostic_create(
+                node->header.position,
+                format_string(
+                    "possible typechecking bug? %s is not a member of that struct (no index)",
+                    node->member_name
+                )
+            )
+        );
+        return nullptr;
+    }
+
+    // TODO: If this owner is an identifier reference, we could just look it up ourselves.
+    //       This would allow us to skip 3 instructions (load, alloca, store).
+    auto owner = codegen_generate_expression(codegen, node->owner);
+    if (!owner) {
+        return nullptr;
+    }
+
+    LOG_DEBUG(
+        "codegen",
+        "generating member access for '%s' on %s",
+        node->member_name,
+        LLVMPrintTypeToString(LLVMTypeOf(owner))
+    );
+
+    auto owner_type = LLVMTypeOf(owner);
+    if (LLVMGetTypeKind(owner_type) != LLVMStructTypeKind) {
+        auto owner_string = LLVMPrintValueToString(owner);
+        auto owner_type_string = LLVMPrintTypeToString(owner_type);
+
+        vector_append(
+            codegen->diagnostics,
+            diagnostic_create(
+                node->header.position,
+                format_string("codegen bug! owner is not a struct: %s (%s)", owner_string, owner_type_string)
+            )
+        );
+
+        LLVMDisposeMessage(owner_string);
+        LLVMDisposeMessage(owner_type_string);
+
+        return nullptr;
+    }
+
+    auto owner_pointer_type = LLVMPointerType(owner_type, 0);
+    auto owner_alloca = LLVMBuildAlloca(
+        codegen->llvm_builder,
+        owner_type,
+        format_string("%s-owner", node->member_name)
+    );
+
+    LLVMBuildStore(codegen->llvm_builder, owner, owner_alloca);
+
+    // This contains the index of the element that we want to access.
+    LLVMValueRef indices[1] = {LLVMConstInt(LLVMInt32TypeInContext(codegen->llvm_context), node->member_index, false)};
+    auto element_type = LLVMStructGetTypeAtIndex(owner_type, node->member_index);
+
+    auto element_pointer = LLVMBuildGEP2(
+        codegen->llvm_builder,
+        owner_pointer_type,
+        owner_alloca,
+        indices,
+        1,
+        format_string("%s-pointer", node->member_name)
+    );
+
+    return LLVMBuildLoad2(codegen->llvm_builder, element_type, element_pointer, node->member_name);
 }
 
 LLVMTypeRef codegen_type_to_llvm_type(Codegen* codegen, Type* type) {

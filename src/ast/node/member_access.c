@@ -10,10 +10,12 @@ MemberAccessNode* member_access_node_create(Position position, Node* owner, char
     if (!node) {
         return nullptr;
     }
+
     node->header.kind = NODE_KIND_MEMBER_ACCESS;
     node->header.position = position;
     node->owner = owner;
     node->member_name = member_name;
+    node->member_index = -1;
 
     return node;
 }

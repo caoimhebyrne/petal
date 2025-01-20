@@ -13,6 +13,9 @@ typedef struct {
 
     // The member being accessed.
     char* member_name;
+
+    // The index of the member being accessed, -1 if it is unknown.
+    int member_index;
 } MemberAccessNode;
 
 // Creates a new MemberAccessNode
