@@ -4,6 +4,7 @@
 #include "ast/node/function_call.h"
 #include "ast/node/function_declaration.h"
 #include "ast/node/identifier_reference.h"
+#include "ast/node/member_access.h"
 #include "ast/node/number_literal.h"
 #include "ast/node/return.h"
 #include "ast/node/type_declaration.h"
@@ -40,6 +41,7 @@ Type* typechecker_check_number_literal(Typechecker* typechecker, NumberLiteralNo
 Type* typechecker_check_identifier_reference(Typechecker* typechecker, IdentifierReferenceNode* node);
 Type* typechecker_check_binary_operation(Typechecker* typechecker, BinaryOperationNode* node);
 Type* typechecker_check_function_call(Typechecker* typechecker, FunctionCallNode* node);
+Type* typechecker_check_member_access(Typechecker* typechecker, MemberAccessNode* node);
 
 // Resolves a type.
 // If the type could not be resolved, nullptr is returned.
@@ -342,6 +344,9 @@ Type* typechecker_check_expression(Typechecker* typechecker, Node* node) {
     case NODE_KIND_FUNCTION_CALL:
         return typechecker_check_function_call(typechecker, (FunctionCallNode*)node);
 
+    case NODE_KIND_MEMBER_ACCESS:
+        return typechecker_check_member_access(typechecker, (MemberAccessNode*)node);
+
     default:
         auto node_string defer(free_str) = node_to_string(node);
         vector_append(
@@ -495,6 +500,42 @@ Type* typechecker_check_function_call(Typechecker* typechecker, FunctionCallNode
 
     // The type of this function call is the function's return type.
     return function->return_type;
+}
+
+Type* typechecker_check_member_access(Typechecker* typechecker, MemberAccessNode* node) {
+    // The owner of the member must have a resolvable type.
+    auto owner_type = typechecker_check_expression(typechecker, node->owner);
+    if (!owner_type) {
+        return nullptr;
+    }
+
+    // The owner type must be a structure.
+    if (owner_type->kind != TYPE_KIND_STRUCTURE) {
+        auto node_string defer(free_str) = node_to_string(node->owner);
+        vector_append(
+            typechecker->diagnostics,
+            diagnostic_create(node->header.position, format_string("%s does not support member accessing", node_string))
+        );
+
+        return nullptr;
+    }
+
+    // The member must exist on the structure.
+    auto structure_type = (StructureType*)owner_type;
+    for (size_t i = 0; i < structure_type->members.length; i++) {
+        auto member = vector_get_ref(&structure_type->members, i);
+        if (strcmp(member->name, node->member_name) == 0) {
+            // The member name matches, its type should have been resolved already.
+            return member->type;
+        }
+    }
+
+    vector_append(
+        typechecker->diagnostics,
+        diagnostic_create(node->header.position, format_string("undeclared member: '%s'", node->member_name))
+    );
+
+    return nullptr;
 }
 
 Type* typechecker_resolve_type(Typechecker* typechecker, Type** type_reference) {

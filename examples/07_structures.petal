@@ -8,7 +8,7 @@ type MyStructure = struct {
 };
 
 // A structure can be used in the same way as any other type.
-func my_structure_get_integer(self: MyStructure) {
+func my_structure_get_integer(self: MyStructure) -> i32 {
     // You can access a structure's member using the `.` operator on it.
     return self.integer;
 }
