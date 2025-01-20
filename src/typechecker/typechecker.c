@@ -11,6 +11,7 @@
 #include "ast/node/variable_reassignment.h"
 #include "core/diagnostic.h"
 #include "core/type/reference.h"
+#include "core/type/structure.h"
 #include "core/type/type.h"
 #include "core/type/unresolved.h"
 #include "core/type/value.h"
@@ -513,6 +514,21 @@ Type* typechecker_resolve_type(Typechecker* typechecker, Type** type_reference) 
         }
 
         return type;
+    }
+
+    if (type->kind == TYPE_KIND_STRUCTURE) {
+        // All member types must be resolvable.
+        auto structure_type = (StructureType*)type;
+
+        for (size_t i = 0; i < structure_type->members.length; i++) {
+            auto member = vector_get_ref(&structure_type->members, i);
+            auto member_type = typechecker_resolve_type(typechecker, &member->type);
+            if (!member_type) {
+                return nullptr;
+            }
+        }
+
+        return (Type*)structure_type;
     }
 
     // This type is unresolved.
