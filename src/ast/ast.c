@@ -7,6 +7,7 @@
 #include "ast/node/member_access.h"
 #include "ast/node/number_literal.h"
 #include "ast/node/return.h"
+#include "ast/node/structure_initialization.h"
 #include "ast/node/type_declaration.h"
 #include "ast/node/variable_declaration.h"
 #include "ast/node/variable_reassignment.h"
@@ -42,6 +43,7 @@ Node* ast_parse_value(AST* ast);
 Node* ast_parse_function_call(AST* ast);
 Node* ast_parse_identifier_reference(AST* ast);
 Node* ast_parse_number_literal(AST* ast);
+Node* ast_parse_structure_initialization(AST* ast);
 
 void ast_diagnostic_expected_any_token(AST* ast, const char* parsing_type);
 
@@ -742,6 +744,9 @@ Node* ast_parse_value(AST* ast) {
     if (ast_next_is(ast, TOKEN_TYPE_INTEGER_LITERAL) || ast_next_is(ast, TOKEN_TYPE_FLOAT_LITERAL))
         return ast_parse_number_literal(ast);
 
+    if (ast_next_is(ast, TOKEN_TYPE_OPEN_BRACE))
+        return ast_parse_structure_initialization(ast);
+
     ast_diagnostic_expected_any_token(ast, "value");
     return nullptr;
 }
@@ -837,6 +842,61 @@ Node* ast_parse_number_literal(AST* ast) {
 
         return 0;
     }
+}
+
+Node* ast_parse_structure_initialization(AST* ast) {
+    // The first token must be an opening brace.
+    auto open_brace = ast_consume_type(ast, TOKEN_TYPE_OPEN_BRACE);
+    if (open_brace.type == TOKEN_TYPE_INVALID) {
+        return nullptr;
+    }
+
+    auto structure_initialization = structure_initialization_node_create(open_brace.position);
+
+    while (!ast_next_is(ast, TOKEN_TYPE_CLOSE_BRACE)) {
+        auto member_identifier = ast_consume_type(ast, TOKEN_TYPE_IDENTIFIER);
+        if (member_identifier.type == TOKEN_TYPE_INVALID) {
+            node_destroy((Node*)structure_initialization);
+            return nullptr;
+        }
+
+        auto equals_token = ast_consume_type(ast, TOKEN_TYPE_EQUALS);
+        if (equals_token.type == TOKEN_TYPE_INVALID) {
+            node_destroy((Node*)structure_initialization);
+            return nullptr;
+        }
+
+        auto value = ast_parse_expression(ast);
+        if (!value) {
+            node_destroy((Node*)structure_initialization);
+            return nullptr;
+        }
+
+        vector_append(
+            &structure_initialization->members,
+            structure_member_initialization_create(strdup(member_identifier.string), value)
+        );
+
+        // A member must be followed by a comma or a close brace.
+        if (ast_next_is(ast, TOKEN_TYPE_CLOSE_BRACE)) {
+            break;
+        }
+
+        auto comma_token = ast_consume_type(ast, TOKEN_TYPE_COMMA);
+        if (comma_token.type == TOKEN_TYPE_INVALID) {
+            node_destroy((Node*)structure_initialization);
+            return nullptr;
+        }
+    }
+
+    // The last token must be an closing brace.
+    auto close_brace = ast_consume_type(ast, TOKEN_TYPE_CLOSE_BRACE);
+    if (close_brace.type == TOKEN_TYPE_INVALID) {
+        node_destroy((Node*)structure_initialization);
+        return nullptr;
+    }
+
+    return (Node*)structure_initialization;
 }
 
 void ast_diagnostic_expected_any_token(AST* ast, const char* parsing_type) {

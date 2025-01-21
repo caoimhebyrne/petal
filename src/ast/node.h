@@ -34,6 +34,9 @@ typedef enum {
 
     // A member access node, see MemberAccessNode.
     NODE_KIND_MEMBER_ACCESS,
+
+    // A structure initialization node, see StructureInitializationNode.
+    NODE_KIND_STRUCTURE_INITIALIZATION,
 } NodeKind;
 
 // The "base" for an AST node.

@@ -6,6 +6,7 @@
 #include "ast/node/member_access.h"
 #include "ast/node/number_literal.h"
 #include "ast/node/return.h"
+#include "ast/node/structure_initialization.h"
 #include "ast/node/type_declaration.h"
 #include "ast/node/variable_declaration.h"
 #include "ast/node/variable_reassignment.h"
@@ -41,6 +42,9 @@ char* node_to_string(Node* node) {
 
     case NODE_KIND_MEMBER_ACCESS:
         return member_access_node_to_string((MemberAccessNode*)node);
+
+    case NODE_KIND_STRUCTURE_INITIALIZATION:
+        return structure_initialization_node_to_string((StructureInitializationNode*)node);
     }
 }
 
@@ -84,6 +88,10 @@ void node_destroy(Node* node) {
 
     case NODE_KIND_MEMBER_ACCESS:
         member_access_node_destroy((MemberAccessNode*)node);
+        break;
+
+    case NODE_KIND_STRUCTURE_INITIALIZATION:
+        structure_initialization_node_destroy((StructureInitializationNode*)node);
         break;
     }
 
