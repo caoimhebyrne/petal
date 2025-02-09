@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
         }
     };
 
-    char* input_file;
+    char* input_file = 0;
     parse_arguments(argc, argv, arguments, sizeof(arguments) / sizeof(Argument), &input_file);
 
     if (options.display_help) {
