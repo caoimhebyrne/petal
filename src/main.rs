@@ -4,11 +4,13 @@ use ast::AST;
 use codegen::Codegen;
 use inkwell::context::Context;
 use lexer::Lexer;
+use typechecker::Typechecker;
 
 pub mod ast;
 pub mod codegen;
 pub mod core;
 pub mod lexer;
+pub mod typechecker;
 
 fn main() {
     let file_contents = fs::read_to_string("./examples/00_hello_world.petal").unwrap();
@@ -27,7 +29,7 @@ fn main() {
     };
 
     let mut ast = AST::new(&tokens);
-    let nodes = match ast.parse() {
+    let mut nodes = match ast.parse() {
         Ok(value) => value,
         Err(error) => {
             return match error.location {
@@ -42,6 +44,9 @@ fn main() {
             };
         }
     };
+
+    let mut typechecker = Typechecker::new(&mut nodes);
+    typechecker.check();
 
     let codegen_context = Context::create();
     let codegen = Codegen::new("00_hello_world", &codegen_context, &nodes);

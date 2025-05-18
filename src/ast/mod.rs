@@ -9,6 +9,7 @@ use node::{
 use crate::{
     core::location::Location,
     lexer::token::{Token, TokenKind},
+    typechecker::r#type::{Type, kind::TypeKind},
 };
 use std::{iter::Peekable, slice::Iter};
 
@@ -99,7 +100,9 @@ impl<'a> AST<'a> {
                 self.expect(TokenKind::GreaterThan)?;
 
                 // After ->, there must be an identifier for the return type.
-                return_type = self.expect_identifier().ok().map(|it| it.0.to_string())
+                return_type = self.expect_identifier().ok().map(|(name, location)| {
+                    Type::new(TypeKind::Unresolved(name.to_owned()), location)
+                })
             }
 
             _ => {}
@@ -132,7 +135,7 @@ impl<'a> AST<'a> {
 
     // Attempts to parse a variable declaration from the token stream.
     fn parse_variable_declaration(&mut self) -> Result<Node, ASTError> {
-        let (declared_type, _) = self.expect_identifier()?;
+        let (type_name, type_location) = self.expect_identifier()?;
         let (name, name_location) = self.expect_identifier()?;
 
         self.expect(TokenKind::Equals)?;
@@ -142,7 +145,10 @@ impl<'a> AST<'a> {
         Ok(Node::new(
             NodeKind::VariableDeclaration(VariableDeclarationNode {
                 name: name.to_string(),
-                declared_type: declared_type.to_string(),
+                declared_type: Type::new(
+                    TypeKind::Unresolved(type_name.to_string()),
+                    type_location,
+                ),
                 value: Box::new(value),
             }),
             name_location,

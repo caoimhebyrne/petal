@@ -1,6 +1,4 @@
-use inkwell::types::BasicType;
-
-use super::Codegen;
+use super::{Codegen, r#type::TypeCodegen};
 use crate::ast::node::kind::{FunctionDefinitionNode, ReturnNode, VariableDeclarationNode};
 
 pub trait StatementCodegen {
@@ -13,14 +11,8 @@ impl StatementCodegen for FunctionDefinitionNode {
         let param_types = vec![];
 
         // A function's type includes its return type, parameter types, and whether it is varadic.
-        // TODO: A more "generic" type system with `to_function_type`, etc.
         let function_type = match &self.return_type {
-            Some(value) => match value.as_str() {
-                "i32" => codegen.context.i32_type().fn_type(&param_types, false),
-
-                _ => panic!("Unable to use type '{}' as function return type!", value),
-            },
-
+            Some(return_type) => return_type.resolve_fn_type(codegen, &param_types, false),
             None => codegen.context.void_type().fn_type(&param_types, false),
         };
 
@@ -37,14 +29,7 @@ impl StatementCodegen for FunctionDefinitionNode {
 impl StatementCodegen for VariableDeclarationNode {
     fn codegen<'ctx>(&self, codegen: &Codegen<'ctx>) {
         // In order to declare a variable, we need to know its type.
-        let variable_type = match self.declared_type.as_str() {
-            "i32" => codegen.context.i32_type().as_basic_type_enum(),
-
-            _ => panic!(
-                "Unable to use type '{}' as variable type",
-                self.declared_type
-            ),
-        };
+        let variable_type = self.declared_type.resolve_value_type(codegen);
 
         // Now that we know the declared type, we can attempt to generate a value for
         // the variable's value expression.

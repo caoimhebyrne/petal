@@ -1,4 +1,5 @@
 use super::Node;
+use crate::typechecker::r#type::Type;
 
 #[derive(Debug, Clone)]
 pub enum NodeKind {
@@ -21,7 +22,7 @@ pub struct FunctionDefinitionNode {
     pub name: String,
 
     // The return type of the function.
-    pub return_type: Option<String>,
+    pub return_type: Option<Type>,
 
     // The body of the function.
     pub body: Vec<Node>,
@@ -34,7 +35,7 @@ pub struct VariableDeclarationNode {
     pub name: String,
 
     // The variable's declared type.
-    pub declared_type: String,
+    pub declared_type: Type,
 
     // The value assigned to the variable at declaration.
     pub value: Box<Node>,

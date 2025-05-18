@@ -14,6 +14,7 @@ use std::path::Path;
 
 pub mod expression;
 pub mod statement;
+pub mod r#type;
 
 pub struct Codegen<'a> {
     nodes: &'a Vec<Node>,
