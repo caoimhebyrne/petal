@@ -1,3 +1,4 @@
+use crate::core::location::Location;
 use std::fmt::Display;
 
 #[derive(Debug, Clone)]
@@ -9,19 +10,22 @@ pub enum LexerErrorKind {
 
 #[derive(Debug, Clone)]
 pub struct LexerError {
-    kind: LexerErrorKind,
+    pub kind: LexerErrorKind,
+    pub location: Location,
 }
 
 impl LexerError {
-    pub fn unexpected_character(character: char) -> LexerError {
+    pub fn unexpected_character(character: char, location: Location) -> LexerError {
         LexerError {
             kind: LexerErrorKind::UnexpectedCharacter(character),
+            location,
         }
     }
 
-    pub fn invalid_integer_literal(value: String) -> LexerError {
+    pub fn invalid_integer_literal(value: String, location: Location) -> LexerError {
         LexerError {
             kind: LexerErrorKind::InvalidIntegerLiteral(value),
+            location,
         }
     }
 }

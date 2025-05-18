@@ -1,3 +1,5 @@
+use crate::core::location::Location;
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TokenKind {
     IntegerLiteral(u64), // An integer literal token.
@@ -20,10 +22,11 @@ pub enum TokenKind {
 #[derive(Debug, Clone)]
 pub struct Token {
     pub kind: TokenKind,
+    pub location: Location,
 }
 
 impl Token {
-    pub fn new(kind: TokenKind) -> Token {
-        Token { kind }
+    pub fn new(kind: TokenKind, location: Location) -> Token {
+        Token { kind, location }
     }
 }

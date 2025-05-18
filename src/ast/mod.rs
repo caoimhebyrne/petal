@@ -1,7 +1,10 @@
 use error::ASTError;
 use node::Node;
 
-use crate::lexer::token::{Token, TokenKind};
+use crate::{
+    core::location::Location,
+    lexer::token::{Token, TokenKind},
+};
 use std::{iter::Peekable, slice::Iter};
 
 pub mod error;
@@ -49,7 +52,7 @@ impl<'a> AST<'a> {
         self.expect(TokenKind::Keyword("func".to_owned()))?;
 
         // The function name should come after the `func` keyword.
-        let function_name = self.expect_identifier()?;
+        let (function_name, function_name_location) = self.expect_identifier()?;
 
         // Then, the function's parameters surrounded by parenthesis.
         self.expect(TokenKind::OpenParenthesis)?;
@@ -65,7 +68,7 @@ impl<'a> AST<'a> {
                 self.expect(TokenKind::GreaterThan)?;
 
                 // After ->, there must be an identifier for the return type.
-                return_type = Some(self.expect_identifier()?);
+                return_type = self.expect_identifier().ok().map(|it| it.0)
             }
 
             _ => {}
@@ -81,6 +84,7 @@ impl<'a> AST<'a> {
         return Ok(Node::function_definition(
             function_name.to_owned(),
             return_type.map(|it| it.to_owned()),
+            function_name_location,
         ));
     }
 
@@ -102,14 +106,14 @@ impl<'a> AST<'a> {
     }
 
     // Expects an identifier to be at the position in the token stream.
-    fn expect_identifier(&mut self) -> Result<&'a str, ASTError> {
+    fn expect_identifier(&mut self) -> Result<(&'a str, Location), ASTError> {
         let token = match self.tokens.next() {
             Some(value) => value,
             None => return Err(ASTError::unexpected_end_of_file()),
         };
 
         match &token.kind {
-            TokenKind::Identifier(identifier) => return Ok(identifier),
+            TokenKind::Identifier(identifier) => return Ok((identifier, token.location)),
             _ => return Err(ASTError::unexpected_token(token.clone())),
         }
     }

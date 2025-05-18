@@ -1,8 +1,11 @@
+use crate::core::location::Location;
+
 #[derive(Debug, Clone)]
 pub enum NodeKind {
     FunctionDefinition {
         name: String,
         return_type: Option<String>,
+        location: Location,
     },
 }
 
@@ -12,9 +15,17 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn function_definition(name: String, return_type: Option<String>) -> Node {
+    pub fn function_definition(
+        name: String,
+        return_type: Option<String>,
+        location: Location,
+    ) -> Node {
         Node {
-            kind: NodeKind::FunctionDefinition { name, return_type },
+            kind: NodeKind::FunctionDefinition {
+                name,
+                return_type,
+                location,
+            },
         }
     }
 }
