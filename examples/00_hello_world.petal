@@ -1,2 +1,10 @@
-// This is an example of an expression in Petal.
-5 + 3
+// This is the main function.
+// This function expects an `i32` to be returned.
+func main() -> i32 {
+    // This is a variable declaration. Since this variable is defined in this function block,
+    // it can only be referenced from within it.
+    i32 my_variable = 100;
+
+    // Values can be returned through any expression, like so:
+    return my_variable + 5;
+}

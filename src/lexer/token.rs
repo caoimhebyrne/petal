@@ -1,14 +1,23 @@
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum TokenKind {
     IntegerLiteral(u64), // An integer literal token.
+    Identifier(String),  // An identifier.
+    Keyword(String),     // A keyword.
 
-    Plus,     // +
-    Minus,    // -
-    Asterisk, // *
-    Slash,    // /
+    Plus,             // +
+    Minus,            // -
+    Asterisk,         // *
+    Slash,            // /
+    Equals,           // =
+    Semicolon,        // ;
+    OpenParenthesis,  // (
+    CloseParenthesis, // )
+    OpenBrace,        // {
+    CloseBrace,       // }
+    GreaterThan,      // >
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct Token {
     pub kind: TokenKind,
 }

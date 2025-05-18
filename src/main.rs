@@ -13,5 +13,5 @@ fn main() {
         Err(error) => return println!("ERROR: {}", error),
     };
 
-    println!("Tokens: {:?}", tokens);
+    println!("Tokens: {:#?}", tokens);
 }

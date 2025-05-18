@@ -1,13 +1,11 @@
-use std::{
-    iter::{self, Peekable},
-    str::Chars,
-};
-
 use error::LexerError;
+use std::{iter::Peekable, str::Chars};
 use token::{Token, TokenKind};
 
 pub mod error;
 pub mod token;
+
+const KEYWORDS: [&str; 1] = ["func"];
 
 // The lexer for the Petal programming language.
 pub struct Lexer<'a> {
@@ -29,6 +27,13 @@ impl<'a> Lexer<'a> {
                 '+' => Token::new(TokenKind::Plus),
                 '-' => Token::new(TokenKind::Minus),
                 '*' => Token::new(TokenKind::Asterisk),
+                '=' => Token::new(TokenKind::Equals),
+                ';' => Token::new(TokenKind::Semicolon),
+                '(' => Token::new(TokenKind::OpenParenthesis),
+                ')' => Token::new(TokenKind::CloseParenthesis),
+                '{' => Token::new(TokenKind::OpenBrace),
+                '}' => Token::new(TokenKind::CloseBrace),
+                '>' => Token::new(TokenKind::GreaterThan),
 
                 '/' => {
                     // If the next token is also a `/`, we can assume that this is a comment.
@@ -46,7 +51,9 @@ impl<'a> Lexer<'a> {
                 '\n' | ' ' => continue,
 
                 _ => {
-                    if character.is_numeric() {
+                    if character.is_alphabetic() {
+                        self.parse_identifier(character)?
+                    } else if character.is_numeric() {
                         self.parse_integer_literal(character)?
                     } else {
                         return Err(LexerError::unexpected_character(character));
@@ -79,5 +86,26 @@ impl<'a> Lexer<'a> {
         u64::from_str_radix(&string_value, 10)
             .map_err(|_| LexerError::invalid_integer_literal(string_value))
             .map(|value| Token::new(TokenKind::IntegerLiteral(value)))
+    }
+
+    /// Attempts to parse an identifier from the character stream.
+    fn parse_identifier(&mut self, initial_character: char) -> Result<Token, LexerError> {
+        let mut chars = vec![initial_character];
+
+        while let Some(character) = self
+            .characters
+            .next_if(|it| it.is_alphanumeric() || *it == '_')
+        {
+            chars.push(character);
+        }
+
+        let identifier = chars.iter().collect::<String>();
+        let kind = if KEYWORDS.iter().any(|it| *it == identifier) {
+            TokenKind::Keyword(identifier)
+        } else {
+            TokenKind::Identifier(identifier)
+        };
+
+        Ok(Token::new(kind))
     }
 }
