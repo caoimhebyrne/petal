@@ -35,9 +35,12 @@ impl<'a> AST<'a> {
     fn parse_statement(&mut self) -> Result<Node, ASTError> {
         if let Some(token) = self.tokens.peek() {
             let node = match &token.kind {
-                TokenKind::Keyword(keyword) if keyword == "func" => {
-                    return self.parse_function_definition();
-                }
+                TokenKind::Keyword(keyword) => match keyword.as_str() {
+                    "func" => return self.parse_function_definition(),
+                    "return" => return self.parse_return_statement(),
+
+                    _ => return Err(ASTError::unexpected_token((*token).clone())),
+                },
 
                 TokenKind::Identifier(_) => self.parse_variable_declaration()?,
 
@@ -132,6 +135,20 @@ impl<'a> AST<'a> {
             Box::new(value),
             name_location,
         ))
+    }
+
+    // Attempts to parse a return statement from the token stream.
+    pub fn parse_return_statement(&mut self) -> Result<Node, ASTError> {
+        // All return statements must start with the `func` keyword.
+        let return_token = self.expect(TokenKind::Keyword("return".to_owned()))?;
+
+        // If the next token is not a semicolon, it has an associated value.
+        let mut value = None;
+        if let Err(_) = self.expect(TokenKind::Semicolon) {
+            value = Some(Box::new(self.parse_expression()?));
+        }
+
+        Ok(Node::return_statement(value, return_token.location))
     }
 
     // Expects a certain token kind to be at the position in the token stream.

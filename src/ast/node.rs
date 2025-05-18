@@ -15,6 +15,10 @@ pub enum NodeKind {
         r#type: String,
         value: Box<Node>,
     },
+
+    ReturnStatement {
+        value: Option<Box<Node>>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -59,6 +63,13 @@ impl Node {
                 r#type,
                 value,
             },
+            location,
+        }
+    }
+
+    pub fn return_statement(value: Option<Box<Node>>, location: Location) -> Node {
+        Node {
+            kind: NodeKind::ReturnStatement { value },
             location,
         }
     }

@@ -1,9 +1,12 @@
 use std::fs;
 
 use ast::AST;
+use codegen::Codegen;
+use inkwell::context::Context;
 use lexer::Lexer;
 
 pub mod ast;
+pub mod codegen;
 pub mod core;
 pub mod lexer;
 
@@ -40,5 +43,7 @@ fn main() {
         }
     };
 
-    println!("Nodes: {:#?}", nodes);
+    let codegen_context = Context::create();
+    let mut codegen = Codegen::new("00_hello_world", &codegen_context, &nodes);
+    codegen.compile();
 }

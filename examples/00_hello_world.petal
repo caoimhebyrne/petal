@@ -5,4 +5,8 @@
 // the `-> void` can be omitted if you wish.
 func main() -> void {
     i32 hello = 123;
+
+    // For `void` functions, the `return` statement will soon be optional at the
+    // end of them.
+    return;
 }

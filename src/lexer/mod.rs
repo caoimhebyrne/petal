@@ -6,7 +6,7 @@ use token::{Token, TokenKind};
 pub mod error;
 pub mod token;
 
-const KEYWORDS: [&str; 1] = ["func"];
+const KEYWORDS: [&str; 2] = ["func", "return"];
 
 // The lexer for the Petal programming language.
 pub struct Lexer<'a> {
