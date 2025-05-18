@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TokenKind {
     IntegerLiteral(u64), // An integer literal token.
     Identifier(String),  // An identifier.

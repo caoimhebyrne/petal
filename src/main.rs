@@ -1,7 +1,9 @@
 use std::fs;
 
+use ast::AST;
 use lexer::Lexer;
 
+pub mod ast;
 pub mod lexer;
 
 fn main() {
@@ -13,5 +15,11 @@ fn main() {
         Err(error) => return println!("ERROR: {}", error),
     };
 
-    println!("Tokens: {:#?}", tokens);
+    let mut ast = AST::new(&tokens);
+    let nodes = match ast.parse() {
+        Ok(value) => value,
+        Err(error) => return println!("ERROR: {}", error),
+    };
+
+    println!("Nodes: {:#?}", nodes);
 }

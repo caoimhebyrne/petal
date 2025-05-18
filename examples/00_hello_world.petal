@@ -1,10 +1,7 @@
-// This is the main function.
-// This function expects an `i32` to be returned.
-func main() -> i32 {
-    // This is a variable declaration. Since this variable is defined in this function block,
-    // it can only be referenced from within it.
-    i32 my_variable = 100;
-
-    // Values can be returned through any expression, like so:
-    return my_variable + 5;
+// This is a function declaration.
+// The function's name is `main`, and it has a return type of `void`.
+//
+// NOTE: Specifying the return type is not neccessary in the case of void, and 
+// the `-> void` can be omitted if you wish.
+func main() -> void {
 }
