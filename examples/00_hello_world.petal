@@ -1,12 +1,10 @@
 // This is a function declaration.
-// The function's name is `main`, and it has a return type of `void`.
+// The function's name is `main`, and it has a return type of `i32`.
 //
-// NOTE: Specifying the return type is not neccessary in the case of void, and 
-// the `-> void` can be omitted if you wish.
-func main() -> void {
+// NOTE: Specifying the return type is not neccessary in the case of `void`.
+func main() -> i32 {
     i32 hello = 123;
 
-    // For `void` functions, the `return` statement will soon be optional at the
-    // end of them.
-    return;
+    // Any expression can be returned from a function using the `return` keyword.
+    return 123;
 }

@@ -1,23 +1,26 @@
-use std::path::Path;
-
-use crate::{
-    ast::node::{Node, NodeKind},
-    core::location::Location,
-};
+use crate::ast::node::{Node, kind::NodeKind};
+use expression::ExpressionCodegen;
 use inkwell::{
     OptimizationLevel,
     builder::Builder,
     context::Context,
     module::Module,
     targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
+    types::BasicTypeEnum,
+    values::BasicValueEnum,
 };
+use statement::StatementCodegen;
+use std::path::Path;
+
+pub mod expression;
+pub mod statement;
 
 pub struct Codegen<'a> {
     nodes: &'a Vec<Node>,
 
-    context: &'a Context,
-    module: Module<'a>,
-    builder: Builder<'a>,
+    pub(crate) context: &'a Context,
+    pub(crate) module: Module<'a>,
+    pub(crate) builder: Builder<'a>,
 }
 
 impl<'a> Codegen<'a> {
@@ -30,11 +33,14 @@ impl<'a> Codegen<'a> {
         }
     }
 
-    pub fn compile(&mut self) {
-        self.visit_block(&self.nodes);
+    pub fn compile(&self) {
+        self.visit_block(self.nodes);
 
         match self.module.verify() {
-            Err(message) => println!("Failed to verify generated module: '{:}'", message),
+            Err(message) => println!(
+                "Failed to verify generated module:\n{:}",
+                message.to_str().unwrap()
+            ),
             _ => {}
         }
 
@@ -57,58 +63,43 @@ impl<'a> Codegen<'a> {
 
         match target_machine.write_to_file(
             &self.module,
-            FileType::Assembly,
-            Path::new("./build/00_hello_world"),
+            FileType::Object,
+            Path::new("./build/00_hello_world.o"),
         ) {
             Ok(_) => return,
-            Err(error) => println!("error: '{}'", error),
+            Err(error) => println!("Failed to generate object:\n{}", error.to_str().unwrap()),
         }
     }
-}
 
-impl<'a> Codegen<'a> {
-    pub fn visit_block(&mut self, block: &Vec<Node>) {
+    pub fn visit_block(&self, block: &Vec<Node>) {
         for node in block {
-            self.visit_statement(node.to_owned());
-        }
-    }
-
-    pub fn visit_statement(&mut self, node: Node) {
-        match node.kind {
-            NodeKind::FunctionDefinition {
-                name,
-                return_type,
-                body,
-            } => self.visit_function_declaration(name, return_type, body, node.location),
-
-            NodeKind::ReturnStatement { value } => self.visit_return_statement(value),
-
-            _ => {}
-        }
-    }
-
-    pub fn visit_function_declaration(
-        &mut self,
-        name: String,
-        _return_type: Option<String>,
-        body: Vec<Node>,
-        _location: Location,
-    ) {
-        // TODO: return_type
-
-        let function_type = self.context.void_type().fn_type(&[], false);
-        let function = self.module.add_function(&name, function_type, None);
-
-        let block = self.context.append_basic_block(function, "entry");
-        self.builder.position_at_end(block);
-
-        for node in body {
             self.visit_statement(node);
         }
     }
 
-    pub fn visit_return_statement(&mut self, _value: Option<Box<Node>>) {
-        // TODO: use _value
-        self.builder.build_return(None).unwrap();
+    pub fn visit_expression(
+        &self,
+        expression: &Node,
+        expected_type: Option<BasicTypeEnum<'a>>,
+    ) -> BasicValueEnum<'a> {
+        match &expression.kind {
+            NodeKind::IntegerLiteral(integer_literal) => {
+                integer_literal.codegen(self, expected_type)
+            }
+
+            _ => panic!("Unsupported expression node type: {:#?}", expression.kind),
+        }
+    }
+
+    pub fn visit_statement(&self, statement: &Node) {
+        match &statement.kind {
+            NodeKind::FunctionDefinition(function_definition) => function_definition.codegen(self),
+            NodeKind::VariableDeclaration(variable_declaration) => {
+                variable_declaration.codegen(self)
+            }
+            NodeKind::Return(r#return) => r#return.codegen(self),
+
+            _ => panic!("Unsupported statement node type: {:#?}", statement.kind),
+        }
     }
 }

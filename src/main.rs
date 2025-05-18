@@ -44,6 +44,6 @@ fn main() {
     };
 
     let codegen_context = Context::create();
-    let mut codegen = Codegen::new("00_hello_world", &codegen_context, &nodes);
+    let codegen = Codegen::new("00_hello_world", &codegen_context, &nodes);
     codegen.compile();
 }

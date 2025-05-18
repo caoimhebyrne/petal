@@ -1,5 +1,10 @@
 use error::ASTError;
-use node::Node;
+use node::{
+    Node,
+    kind::{
+        FunctionDefinitionNode, IntegerLiteralNode, NodeKind, ReturnNode, VariableDeclarationNode,
+    },
+};
 
 use crate::{
     core::location::Location,
@@ -37,7 +42,7 @@ impl<'a> AST<'a> {
             let node = match &token.kind {
                 TokenKind::Keyword(keyword) => match keyword.as_str() {
                     "func" => return self.parse_function_definition(),
-                    "return" => return self.parse_return_statement(),
+                    "return" => self.parse_return_statement()?,
 
                     _ => return Err(ASTError::unexpected_token((*token).clone())),
                 },
@@ -64,7 +69,10 @@ impl<'a> AST<'a> {
         };
 
         match token.kind {
-            TokenKind::IntegerLiteral(value) => Ok(Node::integer_literal(value, token.location)),
+            TokenKind::IntegerLiteral(value) => Ok(Node::new(
+                NodeKind::IntegerLiteral(IntegerLiteralNode { value }),
+                token.location,
+            )),
             _ => Err(ASTError::unexpected_token(token.clone())),
         }
     }
@@ -91,7 +99,7 @@ impl<'a> AST<'a> {
                 self.expect(TokenKind::GreaterThan)?;
 
                 // After ->, there must be an identifier for the return type.
-                return_type = self.expect_identifier().ok().map(|it| it.0)
+                return_type = self.expect_identifier().ok().map(|it| it.0.to_string())
             }
 
             _ => {}
@@ -112,27 +120,31 @@ impl<'a> AST<'a> {
 
         self.expect(TokenKind::CloseBrace)?;
 
-        return Ok(Node::function_definition(
-            function_name.to_owned(),
-            return_type.map(|it| it.to_owned()),
-            body,
+        Ok(Node::new(
+            NodeKind::FunctionDefinition(FunctionDefinitionNode {
+                name: function_name.to_string(),
+                return_type: return_type,
+                body,
+            }),
             function_name_location,
-        ));
+        ))
     }
 
     // Attempts to parse a variable declaration from the token stream.
     fn parse_variable_declaration(&mut self) -> Result<Node, ASTError> {
-        let (r#type, _) = self.expect_identifier()?;
+        let (declared_type, _) = self.expect_identifier()?;
         let (name, name_location) = self.expect_identifier()?;
 
         self.expect(TokenKind::Equals)?;
 
         let value = self.parse_expression()?;
 
-        Ok(Node::variable_declaration(
-            name.to_owned(),
-            r#type.to_owned(),
-            Box::new(value),
+        Ok(Node::new(
+            NodeKind::VariableDeclaration(VariableDeclarationNode {
+                name: name.to_string(),
+                declared_type: declared_type.to_string(),
+                value: Box::new(value),
+            }),
             name_location,
         ))
     }
@@ -148,7 +160,10 @@ impl<'a> AST<'a> {
             value = Some(Box::new(self.parse_expression()?));
         }
 
-        Ok(Node::return_statement(value, return_token.location))
+        Ok(Node::new(
+            NodeKind::Return(ReturnNode { value }),
+            return_token.location,
+        ))
     }
 
     // Expects a certain token kind to be at the position in the token stream.

@@ -1,0 +1,48 @@
+use super::Node;
+
+#[derive(Debug, Clone)]
+pub enum NodeKind {
+    IntegerLiteral(IntegerLiteralNode),
+    FunctionDefinition(FunctionDefinitionNode),
+    VariableDeclaration(VariableDeclarationNode),
+    Return(ReturnNode),
+}
+
+// An integer literal node.
+#[derive(Debug, Copy, Clone)]
+pub struct IntegerLiteralNode {
+    pub value: u64,
+}
+
+// A function definition node.
+#[derive(Debug, Clone)]
+pub struct FunctionDefinitionNode {
+    // The name of the function.
+    pub name: String,
+
+    // The return type of the function.
+    pub return_type: Option<String>,
+
+    // The body of the function.
+    pub body: Vec<Node>,
+}
+
+// A variable declaration node.
+#[derive(Debug, Clone)]
+pub struct VariableDeclarationNode {
+    // The name of the variable.
+    pub name: String,
+
+    // The variable's declared type.
+    pub declared_type: String,
+
+    // The value assigned to the variable at declaration.
+    pub value: Box<Node>,
+}
+
+// A return node.
+#[derive(Debug, Clone)]
+pub struct ReturnNode {
+    // The (optional) value being returned.
+    pub value: Option<Box<Node>>,
+}
