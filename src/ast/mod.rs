@@ -33,17 +33,37 @@ impl<'a> AST<'a> {
 
     // Attempts to parse a statement from the token stream.
     fn parse_statement(&mut self) -> Result<Node, ASTError> {
-        while let Some(token) = self.tokens.peek() {
-            match &token.kind {
+        if let Some(token) = self.tokens.peek() {
+            let node = match &token.kind {
                 TokenKind::Keyword(keyword) if keyword == "func" => {
                     return self.parse_function_definition();
                 }
 
-                _ => return Err(ASTError::unexpected_token((*token).clone())),
-            }
-        }
+                TokenKind::Identifier(_) => self.parse_variable_declaration()?,
 
-        Err(ASTError::unexpected_end_of_file())
+                _ => return Err(ASTError::unexpected_token((*token).clone())),
+            };
+
+            // If the code reaches here, it means that the statement should end in a semicolon.
+            self.expect(TokenKind::Semicolon)?;
+
+            return Ok(node);
+        } else {
+            return Err(ASTError::unexpected_end_of_file());
+        }
+    }
+
+    // Attempts to parse an expression from the token stream.
+    fn parse_expression(&mut self) -> Result<Node, ASTError> {
+        let token = match self.tokens.next() {
+            Some(value) => value,
+            None => return Err(ASTError::unexpected_end_of_file()),
+        };
+
+        match token.kind {
+            TokenKind::IntegerLiteral(value) => Ok(Node::integer_literal(value, token.location)),
+            _ => Err(ASTError::unexpected_token(token.clone())),
+        }
     }
 
     // Attempts to parse a function definition from the token stream.
@@ -77,15 +97,41 @@ impl<'a> AST<'a> {
         // Then, the function's body, surrounded by braces.
         self.expect(TokenKind::OpenBrace)?;
 
-        // TODO: Parse body.
+        let mut body = vec![];
+
+        while let Some(token) = self.tokens.peek() {
+            if token.kind == TokenKind::CloseBrace {
+                break;
+            }
+
+            body.push(self.parse_statement()?);
+        }
 
         self.expect(TokenKind::CloseBrace)?;
 
         return Ok(Node::function_definition(
             function_name.to_owned(),
             return_type.map(|it| it.to_owned()),
+            body,
             function_name_location,
         ));
+    }
+
+    // Attempts to parse a variable declaration from the token stream.
+    fn parse_variable_declaration(&mut self) -> Result<Node, ASTError> {
+        let (r#type, _) = self.expect_identifier()?;
+        let (name, name_location) = self.expect_identifier()?;
+
+        self.expect(TokenKind::Equals)?;
+
+        let value = self.parse_expression()?;
+
+        Ok(Node::variable_declaration(
+            name.to_owned(),
+            r#type.to_owned(),
+            Box::new(value),
+            name_location,
+        ))
     }
 
     // Expects a certain token kind to be at the position in the token stream.
