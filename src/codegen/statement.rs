@@ -33,7 +33,7 @@ impl StatementCodegen for VariableDeclarationNode {
 
         // Now that we know the declared type, we can attempt to generate a value for
         // the variable's value expression.
-        let value = codegen.visit_expression(&self.value, Some(variable_type));
+        let value = codegen.visit_expression(&self.value);
 
         // We have all the required information, we can allocate space for this variable on the stack,
         // and then store the value into it.
@@ -53,10 +53,7 @@ impl StatementCodegen for ReturnNode {
     fn codegen<'ctx>(&self, codegen: &Codegen<'ctx>) {
         // A return node can have an optional value associated with it.
         if let Some(value_node) = &self.value {
-            // TODO: To aid type inference, we should pass the function's return type.
-            //       Although, since this is just a workaround for the fact we don't have a typechecker/resolver,
-            //       it's not that important in the long run.
-            let value = codegen.visit_expression(&*value_node, None);
+            let value = codegen.visit_expression(&*value_node);
 
             codegen
                 .builder

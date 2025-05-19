@@ -6,7 +6,6 @@ use inkwell::{
     context::Context,
     module::Module,
     targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
-    types::BasicTypeEnum,
     values::BasicValueEnum,
 };
 use statement::StatementCodegen;
@@ -78,15 +77,9 @@ impl<'a> Codegen<'a> {
         }
     }
 
-    pub fn visit_expression(
-        &self,
-        expression: &Node,
-        expected_type: Option<BasicTypeEnum<'a>>,
-    ) -> BasicValueEnum<'a> {
+    pub fn visit_expression(&self, expression: &Node) -> BasicValueEnum<'a> {
         match &expression.kind {
-            NodeKind::IntegerLiteral(integer_literal) => {
-                integer_literal.codegen(self, expected_type)
-            }
+            NodeKind::IntegerLiteral(integer_literal) => integer_literal.codegen(self),
 
             _ => panic!("Unsupported expression node type: {:#?}", expression.kind),
         }
