@@ -71,7 +71,10 @@ impl<'a> AST<'a> {
 
         match token.kind {
             TokenKind::IntegerLiteral(value) => Ok(Node::new(
-                NodeKind::IntegerLiteral(IntegerLiteralNode { value }),
+                NodeKind::IntegerLiteral(IntegerLiteralNode {
+                    value,
+                    r#type: None,
+                }),
                 token.location,
             )),
             _ => Err(ASTError::unexpected_token(token.clone())),
@@ -101,7 +104,7 @@ impl<'a> AST<'a> {
 
                 // After ->, there must be an identifier for the return type.
                 return_type = self.expect_identifier().ok().map(|(name, location)| {
-                    Type::new(TypeKind::Unresolved(name.to_owned()), location)
+                    Type::new(TypeKind::Unresolved(name.to_owned()), Some(location))
                 })
             }
 
@@ -147,7 +150,7 @@ impl<'a> AST<'a> {
                 name: name.to_string(),
                 declared_type: Type::new(
                     TypeKind::Unresolved(type_name.to_string()),
-                    type_location,
+                    Some(type_location),
                 ),
                 value: Box::new(value),
             }),

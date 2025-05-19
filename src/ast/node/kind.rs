@@ -10,9 +10,10 @@ pub enum NodeKind {
 }
 
 // An integer literal node.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct IntegerLiteralNode {
     pub value: u64,
+    pub r#type: Option<Type>,
 }
 
 // A function definition node.

@@ -51,7 +51,7 @@ fn main() {
 
     let mut typechecker = Typechecker::new(&mut nodes);
     if let Err(error) = typechecker.check() {
-        report_error(&error, Some(error.location))
+        report_error(&error, error.location)
     };
 
     let codegen_context = Context::create();

@@ -1,21 +1,38 @@
 use crate::core::location::Location;
 use std::fmt::Display;
 
+use super::r#type::kind::TypeKind;
+
 #[derive(Debug, Clone)]
 pub enum TypecheckerErrorKind {
     UnableToResolveType(String),
+    MismatchedType {
+        expected: TypeKind,
+        received: TypeKind,
+    },
 }
 
 #[derive(Debug, Clone)]
 pub struct TypecheckerError {
     pub kind: TypecheckerErrorKind,
-    pub location: Location,
+    pub location: Option<Location>,
 }
 
 impl TypecheckerError {
-    pub fn unable_to_resolve_type(name: String, location: Location) -> TypecheckerError {
+    pub fn unable_to_resolve_type(name: String, location: Option<Location>) -> TypecheckerError {
         TypecheckerError {
             kind: TypecheckerErrorKind::UnableToResolveType(name),
+            location,
+        }
+    }
+
+    pub fn mismatched_type(
+        expected: TypeKind,
+        received: TypeKind,
+        location: Option<Location>,
+    ) -> TypecheckerError {
+        TypecheckerError {
+            kind: TypecheckerErrorKind::MismatchedType { expected, received },
             location,
         }
     }
@@ -26,6 +43,10 @@ impl Display for TypecheckerError {
         match &self.kind {
             TypecheckerErrorKind::UnableToResolveType(name) => {
                 write!(f, "Unable to resolve type: '{}'", name)
+            }
+
+            TypecheckerErrorKind::MismatchedType { expected, received } => {
+                write!(f, "Expected type '{}', but got '{}'", expected, received)
             }
         }
     }

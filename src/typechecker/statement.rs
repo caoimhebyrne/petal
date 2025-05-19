@@ -7,11 +7,19 @@ pub trait StatmentTypecheck {
 
 impl StatmentTypecheck for VariableDeclarationNode {
     fn resolve<'a>(&mut self) -> Result<(), TypecheckerError> {
-        // Before checking the value's type, we must first know what the declared type of the
-        // variable is.
+        // Before checking the value's type, we must first know what the declared type of the variable is.
         self.declared_type = Typechecker::resolve_type(self.declared_type.clone())?;
 
-        println!("todo: ensure type of expression matches variable type declaration");
+        // We can now get the value's type, and check if they are equal.
+        let value_type = Typechecker::check_expression(&mut self.value, Some(&self.declared_type))?;
+
+        if self.declared_type.kind != value_type.kind {
+            return Err(TypecheckerError::mismatched_type(
+                self.declared_type.kind.clone(),
+                value_type.kind,
+                value_type.location,
+            ));
+        }
 
         Ok(())
     }
