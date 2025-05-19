@@ -1,5 +1,5 @@
 use crate::{
-    core::location::Location,
+    core::{location::Location, stream::Stream},
     lexer::token::{Token, TokenKind},
     typechecker::r#type::{Type, kind::TypeKind},
 };
@@ -11,26 +11,25 @@ use node::{
         VariableDeclarationNode,
     },
 };
-use std::{iter::Peekable, vec::IntoIter};
 
 pub mod error;
 pub mod node;
 
 pub struct Ast {
-    tokens: Peekable<IntoIter<Token>>,
+    tokens: Stream<Token>,
 }
 
 impl Ast {
     pub fn new(tokens: Vec<Token>) -> Ast {
         Ast {
-            tokens: tokens.into_iter().peekable(),
+            tokens: Stream::new(tokens),
         }
     }
 
     pub fn parse(&mut self) -> Result<Vec<Node>, ASTError> {
         let mut nodes = vec![];
 
-        while let Some(_) = self.tokens.peek() {
+        while self.tokens.has_elements() {
             nodes.push(self.parse_statement()?);
         }
 
@@ -39,35 +38,36 @@ impl Ast {
 
     // Attempts to parse a statement from the token stream.
     fn parse_statement(&mut self) -> Result<Node, ASTError> {
-        if let Some(token) = self.tokens.peek() {
-            let node = match &token.kind {
-                TokenKind::Keyword(keyword) => match keyword.as_str() {
-                    "func" => return self.parse_function_definition(),
-                    "return" => self.parse_return_statement()?,
+        let token = self
+            .tokens
+            .peek()
+            .ok_or(ASTError::unexpected_end_of_file())?;
 
-                    _ => return Err(ASTError::unexpected_token((*token).clone())),
-                },
-
-                TokenKind::Identifier(_) => self.parse_variable_declaration()?,
+        let node = match &token.kind {
+            TokenKind::Keyword(keyword) => match keyword.as_str() {
+                "func" => return self.parse_function_definition(),
+                "return" => self.parse_return_statement()?,
 
                 _ => return Err(ASTError::unexpected_token((*token).clone())),
-            };
+            },
 
-            // If the code reaches here, it means that the statement should end in a semicolon.
-            self.expect(TokenKind::Semicolon)?;
+            TokenKind::Identifier(_) => self.parse_variable_declaration()?,
 
-            return Ok(node);
-        } else {
-            return Err(ASTError::unexpected_end_of_file());
-        }
+            _ => return Err(ASTError::unexpected_token((*token).clone())),
+        };
+
+        // If the code reaches here, it means that the statement should end in a semicolon.
+        self.expect(TokenKind::Semicolon)?;
+
+        Ok(node)
     }
 
     // Attempts to parse an expression from the token stream.
     fn parse_expression(&mut self) -> Result<Node, ASTError> {
-        let token = match self.tokens.next() {
-            Some(value) => value,
-            None => return Err(ASTError::unexpected_end_of_file()),
-        };
+        let token = self
+            .tokens
+            .next()
+            .ok_or(ASTError::unexpected_end_of_file())?;
 
         match &token.kind {
             TokenKind::IntegerLiteral(value) => Ok(Node::new(
@@ -200,26 +200,26 @@ impl Ast {
             None => return Err(ASTError::expected_token(kind, None)),
         };
 
-        if token.kind == kind {
-            // The token matches, we can advance the iterator.
-            self.tokens.next();
-
-            Ok(token)
-        } else {
-            Err(ASTError::expected_token(kind, Some(token.clone())))
+        if token.kind != kind {
+            return Err(ASTError::expected_token(kind, Some(token.clone())));
         }
+
+        // The token matches, we can advance the iterator.
+        self.tokens.advance_by(1);
+
+        Ok(token)
     }
 
     // Expects an identifier to be at the position in the token stream.
     fn expect_identifier(&mut self) -> Result<(String, Location), ASTError> {
-        let token = match self.tokens.next() {
-            Some(value) => value,
-            None => return Err(ASTError::unexpected_end_of_file()),
-        };
+        let token = self
+            .tokens
+            .next()
+            .ok_or(ASTError::unexpected_end_of_file())?;
 
-        match token.kind {
-            TokenKind::Identifier(identifier) => return Ok((identifier, token.location)),
-            _ => return Err(ASTError::unexpected_token(token.clone())),
+        match &token.kind {
+            TokenKind::Identifier(identifier) => Ok((identifier.clone(), token.location)),
+            _ => Err(ASTError::unexpected_token(token.clone())),
         }
     }
 }
