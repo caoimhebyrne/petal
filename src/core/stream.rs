@@ -31,6 +31,6 @@ impl<T> Stream<T> {
 
     /// Returns whether the stream has any elements remaining.
     pub fn has_elements(&self) -> bool {
-        self.index >= self.elements.len()
+        self.index < self.elements.len()
     }
 }
