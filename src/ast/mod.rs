@@ -175,7 +175,7 @@ impl<'a> AST<'a> {
 
         // If the next token is not a semicolon, it has an associated value.
         let mut value = None;
-        if let Err(_) = self.expect(TokenKind::Semicolon) {
+        if !self.next_is(TokenKind::Semicolon) {
             value = Some(Box::new(self.parse_expression()?));
         }
 
@@ -183,6 +183,15 @@ impl<'a> AST<'a> {
             NodeKind::Return(ReturnNode { value }),
             return_token.location,
         ))
+    }
+
+    fn next_is(&mut self, kind: TokenKind) -> bool {
+        let token = match self.tokens.peek() {
+            Some(value) => value,
+            None => return false,
+        };
+
+        return token.kind == kind;
     }
 
     // Expects a certain token kind to be at the position in the token stream.
