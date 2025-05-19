@@ -1,5 +1,6 @@
 use crate::ast::node::{Node, kind::NodeKind};
 use context::CodegenContext;
+use error::CodegenError;
 use expression::ExpressionCodegen;
 use inkwell::{
     OptimizationLevel,
@@ -13,6 +14,7 @@ use statement::StatementCodegen;
 use std::path::Path;
 
 pub mod context;
+pub mod error;
 pub mod expression;
 pub mod statement;
 pub mod r#type;
@@ -38,48 +40,55 @@ impl<'a> Codegen<'a> {
         }
     }
 
-    pub fn compile(&mut self) {
-        self.visit_block(self.nodes);
+    pub fn compile(&mut self) -> Result<(), CodegenError> {
+        self.visit_block(self.nodes)?;
 
-        match self.llvm_module.verify() {
-            Err(message) => println!("Failed to verify generated module:\n{:}", message.to_str().unwrap()),
-            _ => {}
-        }
+        self.llvm_module
+            .verify()
+            .map_err(|error| CodegenError::verification_error(error.to_string(), None))?;
 
         Target::initialize_all(&InitializationConfig::default());
 
         let target_triple = TargetMachine::get_default_triple();
+
         let cpu = TargetMachine::get_host_cpu_name();
-        let target = Target::from_triple(&target_triple).expect("Could not get target from triple");
+
+        let target = Target::from_triple(&target_triple)
+            .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
 
         let target_machine = target
             .create_target_machine(
                 &target_triple,
-                cpu.to_str().unwrap(),
+                cpu.to_str()
+                    .map_err(|error| CodegenError::internal_error(error.to_string(), None))?,
                 "",
                 OptimizationLevel::None,
                 RelocMode::PIC,
                 CodeModel::Default,
             )
-            .unwrap();
+            .ok_or(CodegenError::internal_error(
+                "Failed to create LLVM target machine".to_owned(),
+                None,
+            ))?;
 
-        match target_machine.write_to_file(
-            &self.llvm_module,
-            FileType::Object,
-            Path::new("./build/00_hello_world.o"),
-        ) {
-            Ok(_) => return,
-            Err(error) => println!("Failed to generate object:\n{}", error.to_str().unwrap()),
-        }
+        target_machine
+            .write_to_file(
+                &self.llvm_module,
+                FileType::Object,
+                Path::new("./build/00_hello_world.o"),
+            )
+            .map_err(|error| CodegenError::internal_error(error.to_string(), None))
     }
 
-    pub fn visit_block(&mut self, block: &Vec<Node>) {
+    pub fn visit_block(&mut self, block: &Vec<Node>) -> Result<(), CodegenError> {
         for node in block {
-            self.visit_statement(node);
+            self.visit_statement(node)?;
         }
+
+        Ok(())
     }
 
-    pub fn visit_expression(&mut self, expression: &Node) -> BasicValueEnum<'a> {
+    pub fn visit_expression(&mut self, expression: &Node) -> Result<BasicValueEnum<'a>, CodegenError> {
         match &expression.kind {
             NodeKind::IntegerLiteral(integer_literal) => integer_literal.codegen(self),
             NodeKind::IdentifierReference(identifier_reference) => identifier_reference.codegen(self),
@@ -88,7 +97,7 @@ impl<'a> Codegen<'a> {
         }
     }
 
-    pub fn visit_statement(&mut self, statement: &Node) {
+    pub fn visit_statement(&mut self, statement: &Node) -> Result<(), CodegenError> {
         match &statement.kind {
             NodeKind::FunctionDefinition(function_definition) => function_definition.codegen(self),
             NodeKind::VariableDeclaration(variable_declaration) => variable_declaration.codegen(self),

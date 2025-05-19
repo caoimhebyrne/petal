@@ -52,5 +52,7 @@ fn main() {
 
     let codegen_context = Context::create();
     let mut codegen = Codegen::new("00_hello_world", &codegen_context, &nodes);
-    codegen.compile();
+    if let Err(error) = codegen.compile() {
+        report_error(&error, error.location)
+    };
 }

@@ -1,12 +1,12 @@
-use super::{Codegen, r#type::TypeCodegen};
+use super::{Codegen, error::CodegenError, r#type::TypeCodegen};
 use crate::ast::node::kind::{FunctionDefinitionNode, ReturnNode, VariableDeclarationNode};
 
 pub trait StatementCodegen {
-    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>);
+    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<(), CodegenError>;
 }
 
 impl StatementCodegen for FunctionDefinitionNode {
-    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) {
+    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<(), CodegenError> {
         // TODO: Handle a function's parameters.
         let param_types = vec![];
 
@@ -24,56 +24,63 @@ impl StatementCodegen for FunctionDefinitionNode {
         codegen.llvm_builder.position_at_end(block);
 
         codegen.context.start_function_scope();
-        codegen.visit_block(&self.body);
+        codegen.visit_block(&self.body)?;
         codegen.context.end_function_scope();
+
+        Ok(())
     }
 }
 
 impl StatementCodegen for VariableDeclarationNode {
-    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) {
+    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<(), CodegenError> {
         // In order to declare a variable, we need to know its type.
         let variable_type = self.declared_type.resolve_value_type(codegen);
 
         // Now that we know the declared type, we can attempt to generate a value for
         // the variable's value expression.
-        let value = codegen.visit_expression(&self.value);
+        let value = codegen.visit_expression(&self.value)?;
 
         // We have all the required information, we can allocate space for this variable on the stack,
         // and then store the value into it.
         let pointer = codegen
             .llvm_builder
             .build_alloca(variable_type, &self.name)
-            .expect("Failed to build alloca");
+            .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
 
         codegen
             .llvm_builder
             .build_store(pointer, value)
-            .expect("Failed to build store");
+            .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
 
-        let function_scope = match codegen.context.function_scope.as_mut() {
-            Some(value) => value,
-            None => panic!("Identifier reference outside of function scope?"),
-        };
+        #[rustfmt::skip]
+        let function_scope = codegen.context.function_scope.as_mut()
+            .ok_or(CodegenError::internal_error(
+                "Unable to declare variable outside of a function block".to_owned(),
+                Some(self.value.location),
+            ))?;
 
         function_scope.variables.insert(self.name.clone(), pointer);
+        Ok(())
     }
 }
 
 impl StatementCodegen for ReturnNode {
-    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) {
+    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<(), CodegenError> {
         // A return node can have an optional value associated with it.
         if let Some(value_node) = &self.value {
-            let value = codegen.visit_expression(&*value_node);
+            let value = codegen.visit_expression(&*value_node)?;
 
             codegen
                 .llvm_builder
                 .build_return(Some(&value))
-                .expect("Failed to build return statement with value");
+                .map(|_| ())
+                .map_err(|error| CodegenError::internal_error(error.to_string(), None))
         } else {
             codegen
                 .llvm_builder
                 .build_return(None)
-                .expect("Failed to build return statement without value");
+                .map(|_| ())
+                .map_err(|error| CodegenError::internal_error(error.to_string(), None))
         }
     }
 }
