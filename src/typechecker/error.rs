@@ -5,7 +5,10 @@ use super::r#type::kind::TypeKind;
 
 #[derive(Debug, Clone)]
 pub enum TypecheckerErrorKind {
+    UndefinedVariable(String),
+
     UnableToResolveType(String),
+
     MismatchedType {
         expected: TypeKind,
         received: TypeKind,
@@ -19,6 +22,13 @@ pub struct TypecheckerError {
 }
 
 impl TypecheckerError {
+    pub fn undefined_variable(name: String, location: Option<Location>) -> TypecheckerError {
+        TypecheckerError {
+            kind: TypecheckerErrorKind::UndefinedVariable(name),
+            location,
+        }
+    }
+
     pub fn unable_to_resolve_type(name: String, location: Option<Location>) -> TypecheckerError {
         TypecheckerError {
             kind: TypecheckerErrorKind::UnableToResolveType(name),
@@ -41,6 +51,10 @@ impl TypecheckerError {
 impl Display for TypecheckerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.kind {
+            TypecheckerErrorKind::UndefinedVariable(name) => {
+                write!(f, "Undefined variable: '{}'", name)
+            }
+
             TypecheckerErrorKind::UnableToResolveType(name) => {
                 write!(f, "Unable to resolve type: '{}'", name)
             }
