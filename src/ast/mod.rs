@@ -17,13 +17,13 @@ use std::{iter::Peekable, slice::Iter};
 pub mod error;
 pub mod node;
 
-pub struct AST<'a> {
+pub struct Ast<'a> {
     tokens: Peekable<Iter<'a, Token>>,
 }
 
-impl<'a> AST<'a> {
-    pub fn new(tokens: &'a Vec<Token>) -> AST<'a> {
-        AST {
+impl<'a> Ast<'a> {
+    pub fn new(tokens: &'a Vec<Token>) -> Ast<'a> {
+        Ast {
             tokens: tokens.iter().peekable(),
         }
     }

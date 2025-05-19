@@ -1,7 +1,7 @@
 use core::location::Location;
 use std::{fmt::Display, fs, process::exit};
 
-use ast::AST;
+use ast::Ast;
 use codegen::Codegen;
 use colored::Colorize;
 use inkwell::context::Context;
@@ -43,7 +43,7 @@ fn main() {
         Err(error) => report_error(&error, Some(error.location)),
     };
 
-    let mut ast = AST::new(&tokens);
+    let mut ast = Ast::new(&tokens);
     let mut nodes = match ast.parse() {
         Ok(value) => value,
         Err(error) => report_error(&error, error.location),
