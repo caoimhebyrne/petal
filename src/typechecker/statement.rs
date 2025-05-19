@@ -1,33 +1,41 @@
-use super::Typechecker;
+use super::{Typechecker, error::TypecheckerError};
 use crate::ast::node::kind::{FunctionDefinitionNode, ReturnNode, VariableDeclarationNode};
 
 pub trait StatmentTypecheck {
-    fn resolve<'a>(&mut self);
+    fn resolve<'a>(&mut self) -> Result<(), TypecheckerError>;
 }
 
 impl StatmentTypecheck for VariableDeclarationNode {
-    fn resolve<'a>(&mut self) {
+    fn resolve<'a>(&mut self) -> Result<(), TypecheckerError> {
         // Before checking the value's type, we must first know what the declared type of the
         // variable is.
-        self.declared_type = Typechecker::resolve_type(self.declared_type.clone());
+        self.declared_type = Typechecker::resolve_type(self.declared_type.clone())?;
 
         println!("todo: ensure type of expression matches variable type declaration");
+
+        Ok(())
     }
 }
 
 impl StatmentTypecheck for FunctionDefinitionNode {
-    fn resolve<'a>(&mut self) {
+    fn resolve<'a>(&mut self) -> Result<(), TypecheckerError> {
         // We must resolve the return type of the function first.
-        self.return_type = self.return_type.clone().map(Typechecker::resolve_type);
+        if let Some(return_type) = &self.return_type {
+            self.return_type = Some(Typechecker::resolve_type(return_type.clone())?);
+        }
 
         // Then, we can check the types within the body.
-        Typechecker::check_block(&mut self.body);
+        Typechecker::check_block(&mut self.body)?;
+
+        Ok(())
     }
 }
 
 impl StatmentTypecheck for ReturnNode {
-    fn resolve<'a>(&mut self) {
+    fn resolve<'a>(&mut self) -> Result<(), TypecheckerError> {
         println!("todo: type-check return node expression");
         println!("todo: ensure return expression matches expected block return type");
+
+        Ok(())
     }
 }

@@ -1,8 +1,10 @@
+use error::TypecheckerError;
 use statement::StatmentTypecheck;
 use r#type::{Type, kind::TypeKind};
 
 use crate::ast::node::{Node, kind::NodeKind};
 
+pub mod error;
 pub mod statement;
 pub mod r#type;
 
@@ -15,41 +17,48 @@ impl<'a> Typechecker<'a> {
         return Typechecker { nodes };
     }
 
-    pub fn check(&mut self) {
-        Typechecker::check_block(&mut self.nodes);
+    pub fn check(&mut self) -> Result<(), TypecheckerError> {
+        Typechecker::check_block(&mut self.nodes)
     }
 
-    pub fn check_block(block: &mut Vec<Node>) {
+    pub fn check_block(block: &mut Vec<Node>) -> Result<(), TypecheckerError> {
         for node in block {
             match &mut node.kind {
                 NodeKind::VariableDeclaration(variable_declaration) => {
-                    variable_declaration.resolve();
+                    variable_declaration.resolve()?;
                 }
 
                 NodeKind::FunctionDefinition(function_definition) => {
-                    function_definition.resolve();
+                    function_definition.resolve()?;
                 }
 
                 NodeKind::Return(r#return) => {
-                    r#return.resolve();
+                    r#return.resolve()?;
                 }
 
                 _ => todo!(),
             }
         }
+
+        Ok(())
     }
 
-    pub fn resolve_type(r#type: Type) -> Type {
+    pub fn resolve_type(r#type: Type) -> Result<Type, TypecheckerError> {
         let name = match r#type.kind {
             TypeKind::Unresolved(name) => name,
-            _ => return r#type,
+            _ => return Ok(r#type),
         };
 
         let resolved_kind = match name.as_str() {
             "i32" => TypeKind::Integer(32),
-            _ => panic!("Unable to resolve type: '{}'", name),
+            _ => {
+                return Err(TypecheckerError::unable_to_resolve_type(
+                    name,
+                    r#type.location,
+                ));
+            }
         };
 
-        Type::new(resolved_kind, r#type.location)
+        Ok(Type::new(resolved_kind, r#type.location))
     }
 }
