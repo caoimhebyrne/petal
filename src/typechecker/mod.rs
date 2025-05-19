@@ -46,14 +46,14 @@ impl<'a> Typechecker<'a> {
     ) -> Result<(), TypecheckerError> {
         match &mut statement.kind {
             NodeKind::VariableDeclaration(variable_declaration) => {
-                variable_declaration.resolve(context)
+                variable_declaration.resolve(context, statement.location)
             }
 
             NodeKind::FunctionDefinition(function_definition) => {
-                function_definition.resolve(context)
+                function_definition.resolve(context, statement.location)
             }
 
-            NodeKind::Return(r#return) => r#return.resolve(context),
+            NodeKind::Return(r#return) => r#return.resolve(context, statement.location),
 
             _ => todo!(),
         }
@@ -66,11 +66,11 @@ impl<'a> Typechecker<'a> {
     ) -> Result<Type, TypecheckerError> {
         match &mut expression.kind {
             NodeKind::IntegerLiteral(integer_literal) => {
-                integer_literal.resolve(context, expected_type)
+                integer_literal.resolve(context, expected_type, expression.location)
             }
 
             NodeKind::IdentifierReference(identifier_reference) => {
-                identifier_reference.resolve(context, expected_type)
+                identifier_reference.resolve(context, expected_type, expression.location)
             }
 
             _ => todo!(),

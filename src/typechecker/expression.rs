@@ -1,4 +1,7 @@
-use crate::ast::node::kind::{IdentifierReferenceNode, IntegerLiteralNode};
+use crate::{
+    ast::node::kind::{IdentifierReferenceNode, IntegerLiteralNode},
+    core::location::Location,
+};
 
 use super::{
     context::TypecheckerContext,
@@ -11,6 +14,7 @@ pub trait ExpressionTypecheck {
         &mut self,
         context: &mut TypecheckerContext,
         expected_type: Option<&Type>,
+        location: Location,
     ) -> Result<Type, TypecheckerError>;
 }
 
@@ -19,10 +23,11 @@ impl ExpressionTypecheck for IntegerLiteralNode {
         &mut self,
         _context: &mut TypecheckerContext,
         expected_type: Option<&Type>,
+        location: Location,
     ) -> Result<Type, TypecheckerError> {
         let integer_type = match expected_type {
             Some(r#type) if matches!(r#type.kind, TypeKind::Integer(_)) => r#type.clone(),
-            _ => Type::new(TypeKind::Integer(32), None),
+            _ => Type::new(TypeKind::Integer(32), Some(location)),
         };
 
         self.r#type = Some(integer_type.clone());
@@ -36,6 +41,7 @@ impl ExpressionTypecheck for IdentifierReferenceNode {
         &mut self,
         context: &mut TypecheckerContext,
         _expected_type: Option<&Type>,
+        location: Location,
     ) -> Result<Type, TypecheckerError> {
         let function_scope = match &context.function_scope {
             Some(value) => value,
@@ -47,7 +53,7 @@ impl ExpressionTypecheck for IdentifierReferenceNode {
             .get(&self.name)
             .ok_or(TypecheckerError::undefined_variable(
                 self.name.clone(),
-                None,
+                Some(location),
             ))
             .cloned()?;
 
