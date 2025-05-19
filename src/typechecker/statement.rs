@@ -1,4 +1,9 @@
-use super::{Typechecker, context::TypecheckerContext, error::TypecheckerError};
+use super::{
+    Typechecker,
+    context::TypecheckerContext,
+    error::TypecheckerError,
+    r#type::{Type, kind::TypeKind},
+};
 use crate::ast::node::kind::{FunctionDefinitionNode, ReturnNode, VariableDeclarationNode};
 
 pub trait StatmentTypecheck {
@@ -39,12 +44,16 @@ impl StatmentTypecheck for VariableDeclarationNode {
 impl StatmentTypecheck for FunctionDefinitionNode {
     fn resolve<'a>(&mut self, context: &mut TypecheckerContext) -> Result<(), TypecheckerError> {
         // We must resolve the return type of the function first.
-        if let Some(return_type) = &self.return_type {
-            self.return_type = Some(Typechecker::resolve_type(return_type.clone())?);
-        }
+        let return_type = match &self.return_type {
+            Some(r#type) => Typechecker::resolve_type(r#type.clone())?,
+            None => Type::new(TypeKind::Void, None),
+        };
+
+        // This may be used by the code generator.
+        self.return_type = Some(return_type.clone());
 
         // Then, we can check the types within the body.
-        context.start_function_scope();
+        context.start_function_scope(return_type);
 
         Typechecker::check_block(&mut self.body, context)?;
 
@@ -56,13 +65,26 @@ impl StatmentTypecheck for FunctionDefinitionNode {
 
 impl StatmentTypecheck for ReturnNode {
     fn resolve<'a>(&mut self, context: &mut TypecheckerContext) -> Result<(), TypecheckerError> {
-        let _value_type = self
-            .value
-            .as_mut()
-            .map(|it| Typechecker::check_expression(it, context, None))
-            .transpose()?;
+        let function_scope = match context.function_scope.clone() {
+            Some(value) => value,
+            None => panic!("Return statement outside of function scope?"),
+        };
 
-        println!("todo: ensure return expression matches expected block return type");
+        let value_type = match self.value.as_mut() {
+            Some(value) => {
+                Typechecker::check_expression(value, context, Some(&function_scope.return_type))?
+            }
+
+            None => Type::new(TypeKind::Void, None),
+        };
+
+        if value_type.kind != function_scope.return_type.kind {
+            return Err(TypecheckerError::mismatched_type(
+                function_scope.return_type.kind,
+                value_type.kind,
+                value_type.location,
+            ));
+        }
 
         Ok(())
     }
