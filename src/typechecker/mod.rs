@@ -1,10 +1,10 @@
 use context::TypecheckerContext;
 use error::TypecheckerError;
 use expression::ExpressionTypecheck;
+use r#type::{kind::TypeKind, Type};
 use statement::StatmentTypecheck;
-use r#type::{Type, kind::TypeKind};
 
-use crate::ast::node::{Node, kind::NodeKind};
+use crate::ast::node::{kind::NodeKind, Node};
 
 pub mod context;
 pub mod error;
@@ -29,10 +29,7 @@ impl<'a> Typechecker<'a> {
         Typechecker::check_block(&mut self.nodes, &mut self.context)
     }
 
-    pub fn check_block(
-        block: &mut Vec<Node>,
-        context: &mut TypecheckerContext,
-    ) -> Result<(), TypecheckerError> {
+    pub fn check_block(block: &mut Vec<Node>, context: &mut TypecheckerContext) -> Result<(), TypecheckerError> {
         for node in block {
             Typechecker::check_statement(node, context)?;
         }
@@ -40,10 +37,7 @@ impl<'a> Typechecker<'a> {
         Ok(())
     }
 
-    pub fn check_statement(
-        statement: &mut Node,
-        context: &mut TypecheckerContext,
-    ) -> Result<(), TypecheckerError> {
+    pub fn check_statement(statement: &mut Node, context: &mut TypecheckerContext) -> Result<(), TypecheckerError> {
         match &mut statement.kind {
             NodeKind::VariableDeclaration(variable_declaration) => {
                 variable_declaration.resolve(context, statement.location)
@@ -87,10 +81,7 @@ impl<'a> Typechecker<'a> {
             "i32" => TypeKind::Integer(32),
 
             _ => {
-                return Err(TypecheckerError::unable_to_resolve_type(
-                    name,
-                    r#type.location,
-                ));
+                return Err(TypecheckerError::unable_to_resolve_type(name, r#type.location));
             }
         };
 

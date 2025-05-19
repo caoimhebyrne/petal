@@ -1,4 +1,4 @@
-use super::{Codegen, r#type::TypeCodegen};
+use super::{r#type::TypeCodegen, Codegen};
 use crate::ast::node::kind::{FunctionDefinitionNode, ReturnNode, VariableDeclarationNode};
 
 pub trait StatementCodegen {
@@ -13,16 +13,11 @@ impl StatementCodegen for FunctionDefinitionNode {
         // A function's type includes its return type, parameter types, and whether it is varadic.
         let function_type = match &self.return_type {
             Some(return_type) => return_type.resolve_fn_type(codegen, &param_types, false),
-            None => codegen
-                .llvm_context
-                .void_type()
-                .fn_type(&param_types, false),
+            None => codegen.llvm_context.void_type().fn_type(&param_types, false),
         };
 
         // We now know the type of the function, we can add it to the module.
-        let function = codegen
-            .llvm_module
-            .add_function(&self.name, function_type, None);
+        let function = codegen.llvm_module.add_function(&self.name, function_type, None);
 
         // With the function created, we can create the entry block and start adding statements from its body.
         let block = codegen.llvm_context.append_basic_block(function, "entry");

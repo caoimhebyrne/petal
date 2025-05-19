@@ -1,5 +1,5 @@
 use super::Codegen;
-use crate::typechecker::r#type::{Type, kind::TypeKind};
+use crate::typechecker::r#type::{kind::TypeKind, Type};
 use core::panic;
 use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType};
 
@@ -27,15 +27,9 @@ impl TypeCodegen for Type {
                 .custom_width_int_type((*width).into())
                 .fn_type(param_types, is_var_args),
 
-            TypeKind::Void => codegen
-                .llvm_context
-                .void_type()
-                .fn_type(param_types, is_var_args),
+            TypeKind::Void => codegen.llvm_context.void_type().fn_type(param_types, is_var_args),
 
-            TypeKind::Unresolved(name) => panic!(
-                "Unable to resolve codegen type for unresolved type: '{}'",
-                name
-            ),
+            TypeKind::Unresolved(name) => panic!("Unable to resolve codegen type for unresolved type: '{}'", name),
         }
     }
 
@@ -48,10 +42,7 @@ impl TypeCodegen for Type {
 
             TypeKind::Void => panic!("Unable to use `void` as a value type"),
 
-            TypeKind::Unresolved(name) => panic!(
-                "Unable to resolve codegen type for unresolved type: '{}'",
-                name
-            ),
+            TypeKind::Unresolved(name) => panic!("Unable to resolve codegen type for unresolved type: '{}'", name),
         }
     }
 }

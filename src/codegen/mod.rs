@@ -1,13 +1,13 @@
-use crate::ast::node::{Node, kind::NodeKind};
+use crate::ast::node::{kind::NodeKind, Node};
 use context::CodegenContext;
 use expression::ExpressionCodegen;
 use inkwell::{
-    OptimizationLevel,
     builder::Builder,
     context::Context,
     module::Module,
     targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
     values::BasicValueEnum,
+    OptimizationLevel,
 };
 use statement::StatementCodegen;
 use std::path::Path;
@@ -42,10 +42,7 @@ impl<'a> Codegen<'a> {
         self.visit_block(self.nodes);
 
         match self.llvm_module.verify() {
-            Err(message) => println!(
-                "Failed to verify generated module:\n{:}",
-                message.to_str().unwrap()
-            ),
+            Err(message) => println!("Failed to verify generated module:\n{:}", message.to_str().unwrap()),
             _ => {}
         }
 
@@ -85,9 +82,7 @@ impl<'a> Codegen<'a> {
     pub fn visit_expression(&mut self, expression: &Node) -> BasicValueEnum<'a> {
         match &expression.kind {
             NodeKind::IntegerLiteral(integer_literal) => integer_literal.codegen(self),
-            NodeKind::IdentifierReference(identifier_reference) => {
-                identifier_reference.codegen(self)
-            }
+            NodeKind::IdentifierReference(identifier_reference) => identifier_reference.codegen(self),
 
             _ => panic!("Unsupported expression node type: {:#?}", expression.kind),
         }
@@ -96,9 +91,7 @@ impl<'a> Codegen<'a> {
     pub fn visit_statement(&mut self, statement: &Node) {
         match &statement.kind {
             NodeKind::FunctionDefinition(function_definition) => function_definition.codegen(self),
-            NodeKind::VariableDeclaration(variable_declaration) => {
-                variable_declaration.codegen(self)
-            }
+            NodeKind::VariableDeclaration(variable_declaration) => variable_declaration.codegen(self),
             NodeKind::Return(r#return) => r#return.codegen(self),
 
             _ => panic!("Unsupported statement node type: {:#?}", statement.kind),

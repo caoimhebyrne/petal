@@ -9,10 +9,7 @@ pub enum TypecheckerErrorKind {
 
     UnableToResolveType(String),
 
-    MismatchedType {
-        expected: TypeKind,
-        received: TypeKind,
-    },
+    MismatchedType { expected: TypeKind, received: TypeKind },
 }
 
 #[derive(Debug, Clone)]
@@ -36,11 +33,7 @@ impl TypecheckerError {
         }
     }
 
-    pub fn mismatched_type(
-        expected: TypeKind,
-        received: TypeKind,
-        location: Option<Location>,
-    ) -> TypecheckerError {
+    pub fn mismatched_type(expected: TypeKind, received: TypeKind, location: Option<Location>) -> TypecheckerError {
         TypecheckerError {
             kind: TypecheckerErrorKind::MismatchedType { expected, received },
             location,

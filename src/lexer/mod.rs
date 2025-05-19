@@ -120,10 +120,7 @@ impl<'a> Lexer<'a> {
         let starting_position = self.position;
         let mut chars = vec![];
 
-        while let Some(character) = self
-            .characters
-            .next_if(|it| it.is_alphanumeric() || *it == '_')
-        {
+        while let Some(character) = self.characters.next_if(|it| it.is_alphanumeric() || *it == '_') {
             self.position.column += 1;
             chars.push(character);
         }
@@ -135,9 +132,6 @@ impl<'a> Lexer<'a> {
             TokenKind::Identifier(identifier)
         };
 
-        Ok(Token::new(
-            kind,
-            Location::new(starting_position, chars.len()),
-        ))
+        Ok(Token::new(kind, Location::new(starting_position, chars.len())))
     }
 }

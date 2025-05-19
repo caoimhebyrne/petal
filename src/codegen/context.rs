@@ -9,9 +9,7 @@ pub struct CodegenContext<'ctx> {
 
 impl<'ctx> CodegenContext<'ctx> {
     pub fn new() -> CodegenContext<'ctx> {
-        CodegenContext {
-            function_scope: None,
-        }
+        CodegenContext { function_scope: None }
     }
 
     pub fn start_function_scope(&mut self) {

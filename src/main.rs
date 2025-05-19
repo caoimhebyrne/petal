@@ -23,11 +23,7 @@ fn report_error(error: impl Display, location: Option<Location>) -> ! {
     println!(
         "{}{} {}",
         "error".red(),
-        format!(
-            "({}:{}):",
-            "./examples/00_hello_world.petal", location_string
-        )
-        .white(),
+        format!("({}:{}):", "./examples/00_hello_world.petal", location_string).white(),
         error
     );
 

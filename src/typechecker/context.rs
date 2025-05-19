@@ -8,9 +8,7 @@ pub struct TypecheckerContext {
 
 impl TypecheckerContext {
     pub fn new() -> TypecheckerContext {
-        TypecheckerContext {
-            function_scope: None,
-        }
+        TypecheckerContext { function_scope: None }
     }
 
     pub fn start_function_scope(&mut self, return_type: Type) {

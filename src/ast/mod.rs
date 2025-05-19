@@ -1,15 +1,15 @@
 use crate::{
     core::{location::Location, stream::Stream},
     lexer::token::{Token, TokenKind},
-    typechecker::r#type::{Type, kind::TypeKind},
+    typechecker::r#type::{kind::TypeKind, Type},
 };
 use error::ASTError;
 use node::{
-    Node,
     kind::{
         FunctionDefinitionNode, IdentifierReferenceNode, IntegerLiteralNode, NodeKind, ReturnNode,
         VariableDeclarationNode,
     },
+    Node,
 };
 
 pub mod error;
@@ -38,10 +38,7 @@ impl Ast {
 
     // Attempts to parse a statement from the token stream.
     fn parse_statement(&mut self) -> Result<Node, ASTError> {
-        let token = self
-            .tokens
-            .peek()
-            .ok_or(ASTError::unexpected_end_of_file())?;
+        let token = self.tokens.peek().ok_or(ASTError::unexpected_end_of_file())?;
 
         let node = match &token.kind {
             TokenKind::Keyword(keyword) => match keyword.as_str() {
@@ -64,10 +61,7 @@ impl Ast {
 
     // Attempts to parse an expression from the token stream.
     fn parse_expression(&mut self) -> Result<Node, ASTError> {
-        let token = self
-            .tokens
-            .next()
-            .ok_or(ASTError::unexpected_end_of_file())?;
+        let token = self.tokens.next().ok_or(ASTError::unexpected_end_of_file())?;
 
         match &token.kind {
             TokenKind::IntegerLiteral(value) => Ok(Node::new(
@@ -112,9 +106,10 @@ impl Ast {
                 self.expect(TokenKind::GreaterThan)?;
 
                 // After ->, there must be an identifier for the return type.
-                return_type = self.expect_identifier().ok().map(|(name, location)| {
-                    Type::new(TypeKind::Unresolved(name.to_owned()), Some(location))
-                })
+                return_type = self
+                    .expect_identifier()
+                    .ok()
+                    .map(|(name, location)| Type::new(TypeKind::Unresolved(name.to_owned()), Some(location)))
             }
 
             _ => {}
@@ -157,10 +152,7 @@ impl Ast {
         Ok(Node::new(
             NodeKind::VariableDeclaration(VariableDeclarationNode {
                 name: name.to_string(),
-                declared_type: Type::new(
-                    TypeKind::Unresolved(type_name.to_string()),
-                    Some(type_location),
-                ),
+                declared_type: Type::new(TypeKind::Unresolved(type_name.to_string()), Some(type_location)),
                 value: Box::new(value),
             }),
             name_location,
@@ -178,10 +170,7 @@ impl Ast {
             value = Some(Box::new(self.parse_expression()?));
         }
 
-        Ok(Node::new(
-            NodeKind::Return(ReturnNode { value }),
-            return_token.location,
-        ))
+        Ok(Node::new(NodeKind::Return(ReturnNode { value }), return_token.location))
     }
 
     fn next_is(&mut self, kind: TokenKind) -> bool {
@@ -212,10 +201,7 @@ impl Ast {
 
     // Expects an identifier to be at the position in the token stream.
     fn expect_identifier(&mut self) -> Result<(String, Location), ASTError> {
-        let token = self
-            .tokens
-            .next()
-            .ok_or(ASTError::unexpected_end_of_file())?;
+        let token = self.tokens.next().ok_or(ASTError::unexpected_end_of_file())?;
 
         match &token.kind {
             TokenKind::Identifier(identifier) => Ok((identifier.clone(), token.location)),

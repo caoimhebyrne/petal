@@ -1,4 +1,4 @@
-use super::{Codegen, r#type::TypeCodegen};
+use super::{r#type::TypeCodegen, Codegen};
 use crate::ast::node::kind::{IdentifierReferenceNode, IntegerLiteralNode};
 use inkwell::values::{BasicValue, BasicValueEnum};
 
@@ -17,10 +17,7 @@ impl ExpressionCodegen for IntegerLiteralNode {
             .expect("Unsupported value type for integer literal");
 
         if !value_type.is_int_type() {
-            panic!(
-                "Unsupported value type '{:?}' in integer literal",
-                value_type
-            )
+            panic!("Unsupported value type '{:?}' in integer literal", value_type)
         }
 
         value_type

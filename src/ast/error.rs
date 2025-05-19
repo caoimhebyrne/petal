@@ -58,11 +58,7 @@ impl Display for ASTError {
                         expected, received_token.kind
                     )
                 } else {
-                    write!(
-                        f,
-                        "Expected token '{:?}', but received end-of-file",
-                        expected
-                    )
+                    write!(f, "Expected token '{:?}', but received end-of-file", expected)
                 }
             }
 

@@ -6,7 +6,7 @@ use crate::{
 use super::{
     context::TypecheckerContext,
     error::TypecheckerError,
-    r#type::{Type, kind::TypeKind},
+    r#type::{kind::TypeKind, Type},
 };
 
 pub trait ExpressionTypecheck {
@@ -51,10 +51,7 @@ impl ExpressionTypecheck for IdentifierReferenceNode {
         let variable_type = function_scope
             .variables
             .get(&self.name)
-            .ok_or(TypecheckerError::undefined_variable(
-                self.name.clone(),
-                Some(location),
-            ))
+            .ok_or(TypecheckerError::undefined_variable(self.name.clone(), Some(location)))
             .cloned()?;
 
         self.r#type = Some(variable_type.clone());
