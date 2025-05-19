@@ -1,4 +1,4 @@
-use super::{r#type::TypeCodegen, Codegen};
+use super::{Codegen, r#type::TypeCodegen};
 use crate::ast::node::kind::{FunctionDefinitionNode, ReturnNode, VariableDeclarationNode};
 
 pub trait StatementCodegen {

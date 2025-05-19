@@ -1,8 +1,8 @@
 use super::{
+    Typechecker,
     context::TypecheckerContext,
     error::TypecheckerError,
-    r#type::{kind::TypeKind, Type},
-    Typechecker,
+    r#type::{Type, kind::TypeKind},
 };
 use crate::{
     ast::node::kind::{FunctionDefinitionNode, ReturnNode, VariableDeclarationNode},

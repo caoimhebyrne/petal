@@ -1,5 +1,5 @@
 use super::Codegen;
-use crate::typechecker::r#type::{kind::TypeKind, Type};
+use crate::typechecker::r#type::{Type, kind::TypeKind};
 use core::panic;
 use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType};
 

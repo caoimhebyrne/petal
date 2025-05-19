@@ -1,15 +1,15 @@
 use crate::{
     core::{location::Location, stream::Stream},
     lexer::token::{Token, TokenKind},
-    typechecker::r#type::{kind::TypeKind, Type},
+    typechecker::r#type::{Type, kind::TypeKind},
 };
 use error::ASTError;
 use node::{
+    Node,
     kind::{
         FunctionDefinitionNode, IdentifierReferenceNode, IntegerLiteralNode, NodeKind, ReturnNode,
         VariableDeclarationNode,
     },
-    Node,
 };
 
 pub mod error;

@@ -1,10 +1,10 @@
 use context::TypecheckerContext;
 use error::TypecheckerError;
 use expression::ExpressionTypecheck;
-use r#type::{kind::TypeKind, Type};
 use statement::StatmentTypecheck;
+use r#type::{Type, kind::TypeKind};
 
-use crate::ast::node::{kind::NodeKind, Node};
+use crate::ast::node::{Node, kind::NodeKind};
 
 pub mod context;
 pub mod error;

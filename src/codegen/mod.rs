@@ -1,13 +1,13 @@
-use crate::ast::node::{kind::NodeKind, Node};
+use crate::ast::node::{Node, kind::NodeKind};
 use context::CodegenContext;
 use expression::ExpressionCodegen;
 use inkwell::{
+    OptimizationLevel,
     builder::Builder,
     context::Context,
     module::Module,
     targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
     values::BasicValueEnum,
-    OptimizationLevel,
 };
 use statement::StatementCodegen;
 use std::path::Path;

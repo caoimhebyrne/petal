@@ -6,7 +6,7 @@ use crate::{
 use super::{
     context::TypecheckerContext,
     error::TypecheckerError,
-    r#type::{kind::TypeKind, Type},
+    r#type::{Type, kind::TypeKind},
 };
 
 pub trait ExpressionTypecheck {
