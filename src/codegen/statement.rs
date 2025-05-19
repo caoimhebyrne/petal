@@ -13,15 +13,20 @@ impl StatementCodegen for FunctionDefinitionNode {
         // A function's type includes its return type, parameter types, and whether it is varadic.
         let function_type = match &self.return_type {
             Some(return_type) => return_type.resolve_fn_type(codegen, &param_types, false),
-            None => codegen.context.void_type().fn_type(&param_types, false),
+            None => codegen
+                .llvm_context
+                .void_type()
+                .fn_type(&param_types, false),
         };
 
         // We now know the type of the function, we can add it to the module.
-        let function = codegen.module.add_function(&self.name, function_type, None);
+        let function = codegen
+            .llvm_module
+            .add_function(&self.name, function_type, None);
 
         // With the function created, we can create the entry block and start adding statements from its body.
-        let block = codegen.context.append_basic_block(function, "entry");
-        codegen.builder.position_at_end(block);
+        let block = codegen.llvm_context.append_basic_block(function, "entry");
+        codegen.llvm_builder.position_at_end(block);
         codegen.visit_block(&self.body);
     }
 }
@@ -38,12 +43,12 @@ impl StatementCodegen for VariableDeclarationNode {
         // We have all the required information, we can allocate space for this variable on the stack,
         // and then store the value into it.
         let pointer = codegen
-            .builder
+            .llvm_builder
             .build_alloca(variable_type, &self.name)
             .expect("Failed to build alloca");
 
         codegen
-            .builder
+            .llvm_builder
             .build_store(pointer, value)
             .expect("Failed to build store");
     }
@@ -56,12 +61,12 @@ impl StatementCodegen for ReturnNode {
             let value = codegen.visit_expression(&*value_node);
 
             codegen
-                .builder
+                .llvm_builder
                 .build_return(Some(&value))
                 .expect("Failed to build return statement with value");
         } else {
             codegen
-                .builder
+                .llvm_builder
                 .build_return(None)
                 .expect("Failed to build return statement without value");
         }

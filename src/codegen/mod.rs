@@ -18,25 +18,25 @@ pub mod r#type;
 pub struct Codegen<'a> {
     nodes: &'a Vec<Node>,
 
-    pub(crate) context: &'a Context,
-    pub(crate) module: Module<'a>,
-    pub(crate) builder: Builder<'a>,
+    pub(crate) llvm_context: &'a Context,
+    pub(crate) llvm_module: Module<'a>,
+    pub(crate) llvm_builder: Builder<'a>,
 }
 
 impl<'a> Codegen<'a> {
     pub fn new(name: &'a str, context: &'a Context, nodes: &'a Vec<Node>) -> Codegen<'a> {
         Codegen {
             nodes: nodes,
-            context: context,
-            module: context.create_module(name),
-            builder: context.create_builder(),
+            llvm_context: context,
+            llvm_module: context.create_module(name),
+            llvm_builder: context.create_builder(),
         }
     }
 
     pub fn compile(&self) {
         self.visit_block(self.nodes);
 
-        match self.module.verify() {
+        match self.llvm_module.verify() {
             Err(message) => println!(
                 "Failed to verify generated module:\n{:}",
                 message.to_str().unwrap()
@@ -62,7 +62,7 @@ impl<'a> Codegen<'a> {
             .unwrap();
 
         match target_machine.write_to_file(
-            &self.module,
+            &self.llvm_module,
             FileType::Object,
             Path::new("./build/00_hello_world.o"),
         ) {

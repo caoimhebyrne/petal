@@ -23,12 +23,12 @@ impl TypeCodegen for Type {
     ) -> FunctionType<'ctx> {
         match &self.kind {
             TypeKind::Integer(width) => codegen
-                .context
+                .llvm_context
                 .custom_width_int_type((*width).into())
                 .fn_type(param_types, is_var_args),
 
             TypeKind::Void => codegen
-                .context
+                .llvm_context
                 .void_type()
                 .fn_type(param_types, is_var_args),
 
@@ -42,7 +42,7 @@ impl TypeCodegen for Type {
     fn resolve_value_type<'ctx>(&self, codegen: &Codegen<'ctx>) -> BasicTypeEnum<'ctx> {
         match &self.kind {
             TypeKind::Integer(width) => codegen
-                .context
+                .llvm_context
                 .custom_width_int_type((*width).into())
                 .as_basic_type_enum(),
 
