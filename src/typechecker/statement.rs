@@ -41,7 +41,12 @@ impl StatmentTypecheck for FunctionDefinitionNode {
 
 impl StatmentTypecheck for ReturnNode {
     fn resolve<'a>(&mut self) -> Result<(), TypecheckerError> {
-        println!("todo: type-check return node expression");
+        let _value_type = self
+            .value
+            .as_mut()
+            .map(|it| Typechecker::check_expression(it, None))
+            .transpose()?;
+
         println!("todo: ensure return expression matches expected block return type");
 
         Ok(())
