@@ -1,3 +1,8 @@
+use crate::{
+    core::location::Location,
+    lexer::token::{Token, TokenKind},
+    typechecker::r#type::{Type, kind::TypeKind},
+};
 use error::ASTError;
 use node::{
     Node,
@@ -6,25 +11,19 @@ use node::{
         VariableDeclarationNode,
     },
 };
-
-use crate::{
-    core::location::Location,
-    lexer::token::{Token, TokenKind},
-    typechecker::r#type::{Type, kind::TypeKind},
-};
-use std::{iter::Peekable, slice::Iter};
+use std::{iter::Peekable, vec::IntoIter};
 
 pub mod error;
 pub mod node;
 
-pub struct Ast<'a> {
-    tokens: Peekable<Iter<'a, Token>>,
+pub struct Ast {
+    tokens: Peekable<IntoIter<Token>>,
 }
 
-impl<'a> Ast<'a> {
-    pub fn new(tokens: &'a Vec<Token>) -> Ast<'a> {
+impl Ast {
+    pub fn new(tokens: Vec<Token>) -> Ast {
         Ast {
-            tokens: tokens.iter().peekable(),
+            tokens: tokens.into_iter().peekable(),
         }
     }
 
@@ -195,7 +194,7 @@ impl<'a> Ast<'a> {
     }
 
     // Expects a certain token kind to be at the position in the token stream.
-    fn expect(&mut self, kind: TokenKind) -> Result<&'a Token, ASTError> {
+    fn expect(&mut self, kind: TokenKind) -> Result<Token, ASTError> {
         let token = match self.tokens.peek().cloned() {
             Some(value) => value,
             None => return Err(ASTError::expected_token(kind, None)),
@@ -207,18 +206,18 @@ impl<'a> Ast<'a> {
 
             Ok(token)
         } else {
-            Err(ASTError::expected_token(kind, Some((*token).clone())))
+            Err(ASTError::expected_token(kind, Some(token.clone())))
         }
     }
 
     // Expects an identifier to be at the position in the token stream.
-    fn expect_identifier(&mut self) -> Result<(&'a str, Location), ASTError> {
+    fn expect_identifier(&mut self) -> Result<(String, Location), ASTError> {
         let token = match self.tokens.next() {
             Some(value) => value,
             None => return Err(ASTError::unexpected_end_of_file()),
         };
 
-        match &token.kind {
+        match token.kind {
             TokenKind::Identifier(identifier) => return Ok((identifier, token.location)),
             _ => return Err(ASTError::unexpected_token(token.clone())),
         }

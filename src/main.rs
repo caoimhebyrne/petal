@@ -43,7 +43,7 @@ fn main() {
         Err(error) => report_error(&error, Some(error.location)),
     };
 
-    let mut ast = Ast::new(&tokens);
+    let mut ast = Ast::new(tokens);
     let mut nodes = match ast.parse() {
         Ok(value) => value,
         Err(error) => report_error(&error, error.location),
