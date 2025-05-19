@@ -1,4 +1,4 @@
-use crate::ast::node::kind::IntegerLiteralNode;
+use crate::ast::node::kind::{IdentifierReferenceNode, IntegerLiteralNode};
 
 use super::{
     error::TypecheckerError,
@@ -19,5 +19,11 @@ impl ExpressionTypecheck for IntegerLiteralNode {
         self.r#type = Some(integer_type.clone());
 
         Ok(integer_type)
+    }
+}
+
+impl ExpressionTypecheck for IdentifierReferenceNode {
+    fn resolve<'a>(&mut self, _expected_type: Option<&Type>) -> Result<Type, TypecheckerError> {
+        todo!("Unable to typecheck IdentifierReferenceNode")
     }
 }

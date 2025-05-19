@@ -4,6 +4,7 @@ use crate::typechecker::r#type::Type;
 #[derive(Debug, Clone)]
 pub enum NodeKind {
     IntegerLiteral(IntegerLiteralNode),
+    IdentifierReference(IdentifierReferenceNode),
     FunctionDefinition(FunctionDefinitionNode),
     VariableDeclaration(VariableDeclarationNode),
     Return(ReturnNode),
@@ -14,6 +15,12 @@ pub enum NodeKind {
 pub struct IntegerLiteralNode {
     pub value: u64,
     pub r#type: Option<Type>,
+}
+
+// An identifier reference node.
+#[derive(Debug, Clone)]
+pub struct IdentifierReferenceNode {
+    pub name: String,
 }
 
 // A function definition node.

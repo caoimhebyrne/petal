@@ -47,6 +47,10 @@ impl<'a> Typechecker<'a> {
     ) -> Result<Type, TypecheckerError> {
         match &mut expression.kind {
             NodeKind::IntegerLiteral(integer_literal) => integer_literal.resolve(expected_type),
+            NodeKind::IdentifierReference(identifier_reference) => {
+                identifier_reference.resolve(expected_type)
+            }
+
             _ => todo!(),
         }
     }

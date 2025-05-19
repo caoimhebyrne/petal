@@ -6,5 +6,5 @@ func main() -> i32 {
     i32 hello = 123;
 
     // Any expression can be returned from a function using the `return` keyword.
-    return 123;
+    return hello;
 }

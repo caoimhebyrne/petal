@@ -2,7 +2,8 @@ use error::ASTError;
 use node::{
     Node,
     kind::{
-        FunctionDefinitionNode, IntegerLiteralNode, NodeKind, ReturnNode, VariableDeclarationNode,
+        FunctionDefinitionNode, IdentifierReferenceNode, IntegerLiteralNode, NodeKind, ReturnNode,
+        VariableDeclarationNode,
     },
 };
 
@@ -69,14 +70,22 @@ impl<'a> AST<'a> {
             None => return Err(ASTError::unexpected_end_of_file()),
         };
 
-        match token.kind {
+        match &token.kind {
             TokenKind::IntegerLiteral(value) => Ok(Node::new(
                 NodeKind::IntegerLiteral(IntegerLiteralNode {
-                    value,
+                    value: *value,
                     r#type: None,
                 }),
                 token.location,
             )),
+
+            TokenKind::Identifier(name) => Ok(Node::new(
+                NodeKind::IdentifierReference(IdentifierReferenceNode {
+                    name: name.to_string(),
+                }),
+                token.location,
+            )),
+
             _ => Err(ASTError::unexpected_token(token.clone())),
         }
     }
