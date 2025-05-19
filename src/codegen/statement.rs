@@ -2,11 +2,11 @@ use super::{Codegen, r#type::TypeCodegen};
 use crate::ast::node::kind::{FunctionDefinitionNode, ReturnNode, VariableDeclarationNode};
 
 pub trait StatementCodegen {
-    fn codegen<'ctx>(&self, codegen: &Codegen<'ctx>);
+    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>);
 }
 
 impl StatementCodegen for FunctionDefinitionNode {
-    fn codegen<'ctx>(&self, codegen: &Codegen<'ctx>) {
+    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) {
         // TODO: Handle a function's parameters.
         let param_types = vec![];
 
@@ -27,12 +27,15 @@ impl StatementCodegen for FunctionDefinitionNode {
         // With the function created, we can create the entry block and start adding statements from its body.
         let block = codegen.llvm_context.append_basic_block(function, "entry");
         codegen.llvm_builder.position_at_end(block);
+
+        codegen.context.start_function_scope();
         codegen.visit_block(&self.body);
+        codegen.context.end_function_scope();
     }
 }
 
 impl StatementCodegen for VariableDeclarationNode {
-    fn codegen<'ctx>(&self, codegen: &Codegen<'ctx>) {
+    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) {
         // In order to declare a variable, we need to know its type.
         let variable_type = self.declared_type.resolve_value_type(codegen);
 
@@ -51,11 +54,18 @@ impl StatementCodegen for VariableDeclarationNode {
             .llvm_builder
             .build_store(pointer, value)
             .expect("Failed to build store");
+
+        let function_scope = match codegen.context.function_scope.as_mut() {
+            Some(value) => value,
+            None => panic!("Identifier reference outside of function scope?"),
+        };
+
+        function_scope.variables.insert(self.name.clone(), pointer);
     }
 }
 
 impl StatementCodegen for ReturnNode {
-    fn codegen<'ctx>(&self, codegen: &Codegen<'ctx>) {
+    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) {
         // A return node can have an optional value associated with it.
         if let Some(value_node) = &self.value {
             let value = codegen.visit_expression(&*value_node);

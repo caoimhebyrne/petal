@@ -21,6 +21,7 @@ pub struct IntegerLiteralNode {
 #[derive(Debug, Clone)]
 pub struct IdentifierReferenceNode {
     pub name: String,
+    pub r#type: Option<Type>,
 }
 
 // A function definition node.

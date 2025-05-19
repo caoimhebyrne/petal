@@ -42,13 +42,16 @@ impl ExpressionTypecheck for IdentifierReferenceNode {
             None => panic!("Identifier reference outside of function scope?"),
         };
 
-        function_scope
+        let variable_type = function_scope
             .variables
             .get(&self.name)
             .ok_or(TypecheckerError::undefined_variable(
                 self.name.clone(),
                 None,
             ))
-            .cloned()
+            .cloned()?;
+
+        self.r#type = Some(variable_type.clone());
+        Ok(variable_type)
     }
 }

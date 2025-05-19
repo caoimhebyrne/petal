@@ -1,4 +1,5 @@
 use crate::ast::node::{Node, kind::NodeKind};
+use context::CodegenContext;
 use expression::ExpressionCodegen;
 use inkwell::{
     OptimizationLevel,
@@ -11,12 +12,15 @@ use inkwell::{
 use statement::StatementCodegen;
 use std::path::Path;
 
+pub mod context;
 pub mod expression;
 pub mod statement;
 pub mod r#type;
 
 pub struct Codegen<'a> {
     nodes: &'a Vec<Node>,
+
+    pub context: CodegenContext<'a>,
 
     pub(crate) llvm_context: &'a Context,
     pub(crate) llvm_module: Module<'a>,
@@ -27,13 +31,14 @@ impl<'a> Codegen<'a> {
     pub fn new(name: &'a str, context: &'a Context, nodes: &'a Vec<Node>) -> Codegen<'a> {
         Codegen {
             nodes: nodes,
+            context: CodegenContext::new(),
             llvm_context: context,
             llvm_module: context.create_module(name),
             llvm_builder: context.create_builder(),
         }
     }
 
-    pub fn compile(&self) {
+    pub fn compile(&mut self) {
         self.visit_block(self.nodes);
 
         match self.llvm_module.verify() {
@@ -71,21 +76,24 @@ impl<'a> Codegen<'a> {
         }
     }
 
-    pub fn visit_block(&self, block: &Vec<Node>) {
+    pub fn visit_block(&mut self, block: &Vec<Node>) {
         for node in block {
             self.visit_statement(node);
         }
     }
 
-    pub fn visit_expression(&self, expression: &Node) -> BasicValueEnum<'a> {
+    pub fn visit_expression(&mut self, expression: &Node) -> BasicValueEnum<'a> {
         match &expression.kind {
             NodeKind::IntegerLiteral(integer_literal) => integer_literal.codegen(self),
+            NodeKind::IdentifierReference(identifier_reference) => {
+                identifier_reference.codegen(self)
+            }
 
             _ => panic!("Unsupported expression node type: {:#?}", expression.kind),
         }
     }
 
-    pub fn visit_statement(&self, statement: &Node) {
+    pub fn visit_statement(&mut self, statement: &Node) {
         match &statement.kind {
             NodeKind::FunctionDefinition(function_definition) => function_definition.codegen(self),
             NodeKind::VariableDeclaration(variable_declaration) => {

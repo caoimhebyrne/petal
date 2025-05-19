@@ -3,7 +3,7 @@
 //
 // NOTE: Specifying the return type is not neccessary in the case of `void`.
 func main() -> i32 {
-    i32 hello = 123;
+    i32 hello = 200;
 
     // Any expression can be returned from a function using the `return` keyword.
     return hello;

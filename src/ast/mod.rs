@@ -82,6 +82,7 @@ impl<'a> AST<'a> {
             TokenKind::Identifier(name) => Ok(Node::new(
                 NodeKind::IdentifierReference(IdentifierReferenceNode {
                     name: name.to_string(),
+                    r#type: None,
                 }),
                 token.location,
             )),
