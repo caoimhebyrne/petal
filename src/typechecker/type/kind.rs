@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeKind {
-    I32,
+    Integer(u8),
     Void,
 
     Unresolved(String),
@@ -11,7 +11,7 @@ pub enum TypeKind {
 impl Display for TypeKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TypeKind::I32 => write!(f, "i32"),
+            TypeKind::Integer(size) => write!(f, "i{}", size),
             TypeKind::Void => write!(f, "void"),
             TypeKind::Unresolved(name) => write!(f, "{} (unresolved)", name),
         }

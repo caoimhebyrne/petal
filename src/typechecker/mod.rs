@@ -46,7 +46,7 @@ impl<'a> Typechecker<'a> {
         };
 
         let resolved_kind = match name.as_str() {
-            "i32" => TypeKind::I32,
+            "i32" => TypeKind::Integer(32),
             _ => panic!("Unable to resolve type: '{}'", name),
         };
 

@@ -22,7 +22,10 @@ impl TypeCodegen for Type {
         is_var_args: bool,
     ) -> FunctionType<'ctx> {
         match &self.kind {
-            TypeKind::I32 => codegen.context.i32_type().fn_type(param_types, is_var_args),
+            TypeKind::Integer(width) => codegen
+                .context
+                .custom_width_int_type((*width).into())
+                .fn_type(param_types, is_var_args),
 
             TypeKind::Void => codegen
                 .context
@@ -38,7 +41,10 @@ impl TypeCodegen for Type {
 
     fn resolve_value_type<'ctx>(&self, codegen: &Codegen<'ctx>) -> BasicTypeEnum<'ctx> {
         match &self.kind {
-            TypeKind::I32 => codegen.context.i32_type().as_basic_type_enum(),
+            TypeKind::Integer(width) => codegen
+                .context
+                .custom_width_int_type((*width).into())
+                .as_basic_type_enum(),
 
             TypeKind::Void => panic!("Unable to use `void` as a value type"),
 
