@@ -1,7 +1,10 @@
+#![feature(path_file_prefix)]
+
 use core::location::Location;
-use std::{fmt::Display, fs, process::exit};
+use std::{fmt::Display, fs, path::PathBuf, process::exit};
 
 use ast::Ast;
+use clap::Parser;
 use codegen::Codegen;
 use colored::Colorize;
 use inkwell::context::Context;
@@ -14,7 +17,15 @@ pub mod core;
 pub mod lexer;
 pub mod typechecker;
 
-fn report_error(error: impl Display, location: Option<Location>) -> ! {
+#[derive(Parser)]
+struct Args {
+    #[arg(short, long("output"))]
+    output_path: PathBuf,
+
+    path: PathBuf,
+}
+
+fn report_error(path: &PathBuf, error: impl Display, location: Option<Location>) -> ! {
     let location_string = match location {
         Some(location) => format!("{}:{}", location.line + 1, location.column + 1),
         None => "unknown".to_owned(),
@@ -23,7 +34,7 @@ fn report_error(error: impl Display, location: Option<Location>) -> ! {
     println!(
         "{}{} {}",
         "error".red(),
-        format!("({}:{}):", "./examples/00_hello_world.petal", location_string).white(),
+        format!("({}:{}):", path.to_string_lossy(), location_string).white(),
         error
     );
 
@@ -31,28 +42,32 @@ fn report_error(error: impl Display, location: Option<Location>) -> ! {
 }
 
 fn main() {
-    let file_contents = fs::read_to_string("./examples/00_hello_world.petal").unwrap();
+    let args = Args::parse();
+    let file_contents = match fs::read_to_string(args.path.clone()) {
+        Ok(value) => value,
+        Err(error) => return eprintln!("ERROR: {}", error),
+    };
 
     let mut lexer = Lexer::from(&file_contents);
     let tokens = match lexer.parse() {
         Ok(value) => value,
-        Err(error) => report_error(&error, Some(error.location)),
+        Err(error) => report_error(&args.path, &error, Some(error.location)),
     };
 
     let mut ast = Ast::new(tokens);
     let mut nodes = match ast.parse() {
         Ok(value) => value,
-        Err(error) => report_error(&error, error.location),
+        Err(error) => report_error(&args.path, &error, error.location),
     };
 
     let mut typechecker = Typechecker::new(&mut nodes);
     if let Err(error) = typechecker.check() {
-        report_error(&error, error.location)
+        report_error(&args.path, &error, error.location)
     };
 
     let codegen_context = Context::create();
-    let mut codegen = Codegen::new("00_hello_world", &codegen_context, &nodes);
+    let mut codegen = Codegen::new(&args.output_path, &codegen_context, &nodes);
     if let Err(error) = codegen.compile() {
-        report_error(&error, error.location)
+        report_error(&args.path, &error, error.location)
     };
 }

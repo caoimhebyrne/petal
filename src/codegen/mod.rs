@@ -11,7 +11,7 @@ use inkwell::{
     values::BasicValueEnum,
 };
 use statement::StatementCodegen;
-use std::path::Path;
+use std::path::PathBuf;
 
 pub mod context;
 pub mod error;
@@ -21,6 +21,7 @@ pub mod r#type;
 
 pub struct Codegen<'a> {
     nodes: &'a Vec<Node>,
+    output_path: &'a PathBuf,
 
     pub context: CodegenContext<'a>,
 
@@ -30,12 +31,18 @@ pub struct Codegen<'a> {
 }
 
 impl<'a> Codegen<'a> {
-    pub fn new(name: &'a str, context: &'a Context, nodes: &'a Vec<Node>) -> Codegen<'a> {
+    pub fn new(output_path: &'a PathBuf, context: &'a Context, nodes: &'a Vec<Node>) -> Codegen<'a> {
         Codegen {
-            nodes: nodes,
+            nodes,
+            output_path,
             context: CodegenContext::new(),
             llvm_context: context,
-            llvm_module: context.create_module(name),
+            llvm_module: context.create_module(
+                &output_path
+                    .file_prefix()
+                    .expect("Failed to get filename from output path")
+                    .to_string_lossy(),
+            ),
             llvm_builder: context.create_builder(),
         }
     }
@@ -72,11 +79,7 @@ impl<'a> Codegen<'a> {
             ))?;
 
         target_machine
-            .write_to_file(
-                &self.llvm_module,
-                FileType::Object,
-                Path::new("./build/00_hello_world.o"),
-            )
+            .write_to_file(&self.llvm_module, FileType::Object, &self.output_path)
             .map_err(|error| CodegenError::internal_error(error.to_string(), None))
     }
 
