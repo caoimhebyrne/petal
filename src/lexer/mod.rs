@@ -39,6 +39,8 @@ impl<'a> Lexer<'a> {
                 '>' => self.token(TokenKind::GreaterThan),
 
                 '/' => {
+                    let token = self.token(TokenKind::Slash);
+
                     // If the next token is also a `/`, we can assume that this is a comment.
                     if let Some('/') = self.characters.peek() {
                         // I'd like to use `take_while`, but it just behaves too weirdly.
@@ -47,7 +49,7 @@ impl<'a> Lexer<'a> {
                         continue;
                     }
 
-                    self.token(TokenKind::Slash)
+                    token
                 }
 
                 '\n' => {
