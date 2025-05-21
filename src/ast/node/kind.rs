@@ -1,10 +1,11 @@
-use super::Node;
+use super::{Node, operator::BinaryOperation};
 use crate::typechecker::r#type::Type;
 
 #[derive(Debug, Clone)]
 pub enum NodeKind {
     IntegerLiteral(IntegerLiteralNode),
     IdentifierReference(IdentifierReferenceNode),
+    BinaryOperation(BinaryOperationNode),
     FunctionDefinition(FunctionDefinitionNode),
     VariableDeclaration(VariableDeclarationNode),
     Return(ReturnNode),
@@ -22,6 +23,19 @@ pub struct IntegerLiteralNode {
 pub struct IdentifierReferenceNode {
     pub name: String,
     pub r#type: Option<Type>,
+}
+
+// A binary operation between two nodes.
+#[derive(Debug, Clone)]
+pub struct BinaryOperationNode {
+    // The operation to perform between the two values.
+    pub operation: BinaryOperation,
+
+    // The left-hand side of the expression.
+    pub left: Box<Node>,
+
+    // The right-hand side of the expression.
+    pub right: Box<Node>,
 }
 
 // A function definition node.

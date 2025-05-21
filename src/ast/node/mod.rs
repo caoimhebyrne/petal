@@ -2,6 +2,7 @@ use crate::core::location::Location;
 use kind::NodeKind;
 
 pub mod kind;
+pub mod operator;
 
 #[derive(Debug, Clone)]
 pub struct Node {
