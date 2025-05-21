@@ -67,6 +67,10 @@ impl<'a> Typechecker<'a> {
                 identifier_reference.resolve(context, expected_type, expression.location)
             }
 
+            NodeKind::BinaryOperation(binary_operation) => {
+                binary_operation.resolve(context, expected_type, expression.location)
+            }
+
             _ => todo!(),
         }
     }

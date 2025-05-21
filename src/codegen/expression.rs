@@ -1,6 +1,9 @@
 use super::{Codegen, error::CodegenError, r#type::TypeCodegen};
-use crate::ast::node::kind::{IdentifierReferenceNode, IntegerLiteralNode};
-use inkwell::values::{BasicValue, BasicValueEnum};
+use crate::ast::node::{
+    kind::{BinaryOperationNode, IdentifierReferenceNode, IntegerLiteralNode},
+    operator::BinaryOperation,
+};
+use inkwell::values::{BasicValue, BasicValueEnum, InstructionOpcode};
 
 pub trait ExpressionCodegen {
     fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<BasicValueEnum<'ctx>, CodegenError>;
@@ -52,6 +55,25 @@ impl ExpressionCodegen for IdentifierReferenceNode {
         codegen
             .llvm_builder
             .build_load(value_type.resolve_value_type(codegen), *pointer, &self.name)
+            .map_err(|error| CodegenError::internal_error(error.to_string(), None))
+    }
+}
+
+impl ExpressionCodegen for BinaryOperationNode {
+    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<BasicValueEnum<'ctx>, CodegenError> {
+        let left = Codegen::visit_expression(codegen, &self.left)?;
+        let right = Codegen::visit_expression(codegen, &self.right)?;
+
+        let operation = match self.operation {
+            BinaryOperation::Add => InstructionOpcode::Add,
+            BinaryOperation::Subtract => InstructionOpcode::Sub,
+            BinaryOperation::Multiply => InstructionOpcode::Mul,
+            BinaryOperation::Divide => InstructionOpcode::SDiv,
+        };
+
+        codegen
+            .llvm_builder
+            .build_binop(operation, left, right, "binop")
             .map_err(|error| CodegenError::internal_error(error.to_string(), None))
     }
 }

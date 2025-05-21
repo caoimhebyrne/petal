@@ -1,5 +1,5 @@
 // This is the same main function definition as the previous example.
 func main() -> i32 {
     // Operators like `+`, `-`, `/`, and `*` can be used to perform operations between two values.
-    return 4 + 5;
+    return 4 * 5;
 }

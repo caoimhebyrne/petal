@@ -36,6 +36,9 @@ pub struct BinaryOperationNode {
 
     // The right-hand side of the expression.
     pub right: Box<Node>,
+
+    // The expected type to be produced by this binary operation.
+    pub value_type: Option<Type>,
 }
 
 // A function definition node.

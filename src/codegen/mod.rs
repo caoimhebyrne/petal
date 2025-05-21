@@ -95,6 +95,7 @@ impl<'a> Codegen<'a> {
         match &expression.kind {
             NodeKind::IntegerLiteral(integer_literal) => integer_literal.codegen(self),
             NodeKind::IdentifierReference(identifier_reference) => identifier_reference.codegen(self),
+            NodeKind::BinaryOperation(binary_operation) => binary_operation.codegen(self),
 
             _ => panic!("Unsupported expression node type: {:#?}", expression.kind),
         }

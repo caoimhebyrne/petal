@@ -1,9 +1,10 @@
 use crate::{
-    ast::node::kind::{IdentifierReferenceNode, IntegerLiteralNode},
+    ast::node::kind::{BinaryOperationNode, IdentifierReferenceNode, IntegerLiteralNode},
     core::location::Location,
 };
 
 use super::{
+    Typechecker,
     context::TypecheckerContext,
     error::TypecheckerError,
     r#type::{Type, kind::TypeKind},
@@ -56,5 +57,31 @@ impl ExpressionTypecheck for IdentifierReferenceNode {
 
         self.r#type = Some(variable_type.clone());
         Ok(variable_type)
+    }
+}
+
+impl ExpressionTypecheck for BinaryOperationNode {
+    fn resolve<'a>(
+        &mut self,
+        context: &mut TypecheckerContext,
+        expected_type: Option<&Type>,
+        _location: Location,
+    ) -> Result<Type, TypecheckerError> {
+        // The types of both the left and right-hand sides of the expressions must be resolvable.
+        let left_type = Typechecker::check_expression(&mut self.left, context, expected_type)?;
+        let right_type = Typechecker::check_expression(&mut self.right, context, expected_type)?;
+
+        // The left and right sides of the expression must be of the same type.
+        // TODO: Add the ability to declare types as compatible with each-other for operations.
+        if left_type.kind != right_type.kind {
+            return Err(TypecheckerError::mismatched_type(
+                left_type.kind,
+                right_type.kind,
+                Some(self.right.location),
+            ));
+        }
+
+        self.value_type = Some(left_type.clone());
+        Ok(left_type)
     }
 }

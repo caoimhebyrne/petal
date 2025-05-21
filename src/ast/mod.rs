@@ -7,9 +7,10 @@ use error::ASTError;
 use node::{
     Node,
     kind::{
-        FunctionDefinitionNode, IdentifierReferenceNode, IntegerLiteralNode, NodeKind, ReturnNode,
+        BinaryOperationNode, FunctionDefinitionNode, IdentifierReferenceNode, IntegerLiteralNode, NodeKind, ReturnNode,
         VariableDeclarationNode,
     },
+    operator::BinaryOperation,
 };
 
 pub mod error;
@@ -61,6 +62,68 @@ impl Ast {
 
     // Attempts to parse an expression from the token stream.
     fn parse_expression(&mut self) -> Result<Node, ASTError> {
+        self.parse_addition_subtraction_expression()
+    }
+
+    fn parse_addition_subtraction_expression(&mut self) -> Result<Node, ASTError> {
+        let left = self.parse_multiplication_division_expression()?;
+
+        if self.next_is(TokenKind::Plus) || self.next_is(TokenKind::Minus) {
+            // It's safe to unwrap here, `next_is` would return `false` if there was no token at the next position.
+            let operator_token = self.tokens.next().unwrap().clone();
+
+            // We're only dealing with addition and subtraction in this branch.
+            let operation = match operator_token.kind {
+                TokenKind::Plus => BinaryOperation::Add,
+                _ => BinaryOperation::Subtract,
+            };
+
+            let right = self.parse_expression()?;
+
+            return Ok(Node::new(
+                NodeKind::BinaryOperation(BinaryOperationNode {
+                    operation,
+                    left: Box::new(left),
+                    right: Box::new(right),
+                    value_type: None,
+                }),
+                operator_token.location,
+            ));
+        }
+
+        Ok(left)
+    }
+
+    fn parse_multiplication_division_expression(&mut self) -> Result<Node, ASTError> {
+        let left = self.parse_value()?;
+
+        if self.next_is(TokenKind::Asterisk) || self.next_is(TokenKind::Slash) {
+            // It's safe to unwrap here, `next_is` would return `false` if there was no token at the next position.
+            let operator_token = self.tokens.next().unwrap().clone();
+
+            // We're only dealing with multiplication and division in this branch.
+            let operation = match operator_token.kind {
+                TokenKind::Asterisk => BinaryOperation::Multiply,
+                _ => BinaryOperation::Divide,
+            };
+
+            let right = self.parse_expression()?;
+
+            return Ok(Node::new(
+                NodeKind::BinaryOperation(BinaryOperationNode {
+                    operation,
+                    left: Box::new(left),
+                    right: Box::new(right),
+                    value_type: None,
+                }),
+                operator_token.location,
+            ));
+        }
+
+        Ok(left)
+    }
+
+    fn parse_value(&mut self) -> Result<Node, ASTError> {
         let token = self.tokens.next().ok_or(ASTError::unexpected_end_of_file())?;
 
         match &token.kind {
