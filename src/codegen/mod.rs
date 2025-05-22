@@ -11,7 +11,7 @@ use inkwell::{
     values::BasicValueEnum,
 };
 use statement::StatementCodegen;
-use std::path::PathBuf;
+use std::{path::PathBuf, process::Command};
 
 pub mod context;
 pub mod error;
@@ -78,8 +78,21 @@ impl<'a> Codegen<'a> {
                 None,
             ))?;
 
+        let object_file = self.output_path.with_added_extension("o");
+
         target_machine
-            .write_to_file(&self.llvm_module, FileType::Object, &self.output_path)
+            .write_to_file(&self.llvm_module, FileType::Object, &object_file)
+            .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
+
+        Command::new("clang")
+            .args([
+                "-fuse-ld=lld",
+                "-o",
+                &self.output_path.to_string_lossy(),
+                &object_file.to_string_lossy(),
+            ])
+            .spawn()
+            .map(|_| {})
             .map_err(|error| CodegenError::internal_error(error.to_string(), None))
     }
 

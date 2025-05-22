@@ -1,4 +1,4 @@
-#![feature(path_file_prefix)]
+#![feature(path_file_prefix, path_add_extension)]
 
 use core::location::Location;
 use std::{fmt::Display, fs, path::PathBuf, process::exit};
