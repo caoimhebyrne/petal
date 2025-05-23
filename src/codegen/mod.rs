@@ -109,6 +109,7 @@ impl<'a> Codegen<'a> {
             NodeKind::IntegerLiteral(integer_literal) => integer_literal.codegen(self),
             NodeKind::IdentifierReference(identifier_reference) => identifier_reference.codegen(self),
             NodeKind::BinaryOperation(binary_operation) => binary_operation.codegen(self),
+            NodeKind::FunctionCall(function_call) => function_call.codegen(self),
 
             _ => panic!("Unsupported expression node type: {:#?}", expression.kind),
         }

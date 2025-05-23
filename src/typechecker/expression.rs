@@ -1,5 +1,5 @@
 use crate::{
-    ast::node::kind::{BinaryOperationNode, IdentifierReferenceNode, IntegerLiteralNode},
+    ast::node::kind::{BinaryOperationNode, FunctionCallNode, IdentifierReferenceNode, IntegerLiteralNode},
     core::location::Location,
 };
 
@@ -83,5 +83,23 @@ impl ExpressionTypecheck for BinaryOperationNode {
 
         self.value_type = Some(left_type.clone());
         Ok(left_type)
+    }
+}
+
+impl ExpressionTypecheck for FunctionCallNode {
+    fn resolve<'a>(
+        &mut self,
+        context: &mut TypecheckerContext,
+        _expected_type: Option<&Type>,
+        location: Location,
+    ) -> Result<Type, TypecheckerError> {
+        // To call a function, we need to know its return type.
+        let return_type = context
+            .functions
+            .get(&self.name)
+            .ok_or(TypecheckerError::undefined_function(self.name.clone(), Some(location)))?;
+
+        self.return_type = Some(return_type.clone());
+        Ok(return_type.clone())
     }
 }

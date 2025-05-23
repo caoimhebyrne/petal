@@ -6,6 +6,7 @@ use super::r#type::kind::TypeKind;
 #[derive(Debug, Clone)]
 pub enum TypecheckerErrorKind {
     UndefinedVariable(String),
+    UndefinedFunction(String),
 
     UnableToResolveType(String),
 
@@ -22,6 +23,13 @@ impl TypecheckerError {
     pub fn undefined_variable(name: String, location: Option<Location>) -> TypecheckerError {
         TypecheckerError {
             kind: TypecheckerErrorKind::UndefinedVariable(name),
+            location,
+        }
+    }
+
+    pub fn undefined_function(name: String, location: Option<Location>) -> TypecheckerError {
+        TypecheckerError {
+            kind: TypecheckerErrorKind::UndefinedFunction(name),
             location,
         }
     }
@@ -46,6 +54,10 @@ impl Display for TypecheckerError {
         match &self.kind {
             TypecheckerErrorKind::UndefinedVariable(name) => {
                 write!(f, "Undefined variable: '{}'", name)
+            }
+
+            TypecheckerErrorKind::UndefinedFunction(name) => {
+                write!(f, "Undefined function: '{}'", name)
             }
 
             TypecheckerErrorKind::UnableToResolveType(name) => {

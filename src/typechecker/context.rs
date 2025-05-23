@@ -4,14 +4,19 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 pub struct TypecheckerContext {
     pub function_scope: Option<FunctionScope>,
+    pub functions: HashMap<String, Type>,
 }
 
 impl TypecheckerContext {
     pub fn new() -> TypecheckerContext {
-        TypecheckerContext { function_scope: None }
+        TypecheckerContext {
+            function_scope: None,
+            functions: HashMap::new(),
+        }
     }
 
-    pub fn start_function_scope(&mut self, return_type: Type) {
+    pub fn start_function_scope(&mut self, name: &str, return_type: Type) {
+        self.functions.insert(name.to_owned(), return_type.clone());
         self.function_scope = Some(FunctionScope::new(return_type));
     }
 

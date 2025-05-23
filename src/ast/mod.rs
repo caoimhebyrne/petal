@@ -7,8 +7,8 @@ use error::ASTError;
 use node::{
     Node,
     kind::{
-        BinaryOperationNode, FunctionDefinitionNode, IdentifierReferenceNode, IntegerLiteralNode, NodeKind, ReturnNode,
-        VariableDeclarationNode,
+        BinaryOperationNode, FunctionCallNode, FunctionDefinitionNode, IdentifierReferenceNode, IntegerLiteralNode,
+        NodeKind, ReturnNode, VariableDeclarationNode,
     },
     operator::BinaryOperation,
 };
@@ -124,7 +124,7 @@ impl Ast {
     }
 
     fn parse_value(&mut self) -> Result<Node, ASTError> {
-        let token = self.tokens.next().ok_or(ASTError::unexpected_end_of_file())?;
+        let token = self.tokens.next().ok_or(ASTError::unexpected_end_of_file()).cloned()?;
 
         match &token.kind {
             TokenKind::IntegerLiteral(value) => Ok(Node::new(
@@ -135,16 +135,40 @@ impl Ast {
                 token.location,
             )),
 
-            TokenKind::Identifier(name) => Ok(Node::new(
-                NodeKind::IdentifierReference(IdentifierReferenceNode {
-                    name: name.to_string(),
-                    r#type: None,
-                }),
-                token.location,
-            )),
+            TokenKind::Identifier(name) => {
+                // If the next token is an opening parenthesis, this is most likely a function call.
+                if self.next_is(TokenKind::OpenParenthesis) {
+                    self.parse_function_call(name, token.location)
+                } else {
+                    Ok(Node::new(
+                        NodeKind::IdentifierReference(IdentifierReferenceNode {
+                            name: name.to_string(),
+                            r#type: None,
+                        }),
+                        token.location,
+                    ))
+                }
+            }
 
-            _ => Err(ASTError::unexpected_token(token.clone())),
+            _ => Err(ASTError::unexpected_token(token)),
         }
+    }
+
+    // Attempts to parse a function call from the token stream.
+    fn parse_function_call(&mut self, name: &str, location: Location) -> Result<Node, ASTError> {
+        self.expect(TokenKind::OpenParenthesis)?;
+
+        // TODO: Parse a function call's arguments.
+
+        self.expect(TokenKind::CloseParenthesis)?;
+
+        Ok(Node::new(
+            NodeKind::FunctionCall(FunctionCallNode {
+                name: name.to_string(),
+                return_type: None,
+            }),
+            location,
+        ))
     }
 
     // Attempts to parse a function definition from the token stream.
@@ -236,7 +260,7 @@ impl Ast {
         Ok(Node::new(NodeKind::Return(ReturnNode { value }), return_token.location))
     }
 
-    fn next_is(&mut self, kind: TokenKind) -> bool {
+    fn next_is(&self, kind: TokenKind) -> bool {
         let token = match self.tokens.peek() {
             Some(value) => value,
             None => return false,

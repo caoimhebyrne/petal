@@ -1,6 +1,6 @@
 use super::{Codegen, error::CodegenError, r#type::TypeCodegen};
 use crate::ast::node::{
-    kind::{BinaryOperationNode, IdentifierReferenceNode, IntegerLiteralNode},
+    kind::{BinaryOperationNode, FunctionCallNode, IdentifierReferenceNode, IntegerLiteralNode},
     operator::BinaryOperation,
 };
 use inkwell::values::{BasicValue, BasicValueEnum, InstructionOpcode};
@@ -74,6 +74,24 @@ impl ExpressionCodegen for BinaryOperationNode {
         codegen
             .llvm_builder
             .build_binop(operation, left, right, "binop")
+            .map_err(|error| CodegenError::internal_error(error.to_string(), None))
+    }
+}
+
+impl ExpressionCodegen for FunctionCallNode {
+    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<BasicValueEnum<'ctx>, CodegenError> {
+        let function = codegen
+            .llvm_module
+            .get_function(&self.name)
+            .ok_or(CodegenError::internal_error(
+                format!("Failed to find a function with the name '{}'", self.name),
+                None,
+            ))?;
+
+        codegen
+            .llvm_builder
+            .build_call(function, &[], &self.name)
+            .map(|it| it.try_as_basic_value().expect_left("value was right"))
             .map_err(|error| CodegenError::internal_error(error.to_string(), None))
     }
 }

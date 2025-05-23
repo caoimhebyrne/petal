@@ -5,6 +5,7 @@ use crate::typechecker::r#type::Type;
 pub enum NodeKind {
     IntegerLiteral(IntegerLiteralNode),
     IdentifierReference(IdentifierReferenceNode),
+    FunctionCall(FunctionCallNode),
     BinaryOperation(BinaryOperationNode),
     FunctionDefinition(FunctionDefinitionNode),
     VariableDeclaration(VariableDeclarationNode),
@@ -23,6 +24,16 @@ pub struct IntegerLiteralNode {
 pub struct IdentifierReferenceNode {
     pub name: String,
     pub r#type: Option<Type>,
+}
+
+// A function call node.
+#[derive(Debug, Clone)]
+pub struct FunctionCallNode {
+    // The name of the function being called.
+    pub name: String,
+
+    // The expected return type of the function.
+    pub return_type: Option<Type>,
 }
 
 // A binary operation between two nodes.

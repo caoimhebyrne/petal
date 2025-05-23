@@ -1,0 +1,7 @@
+func adder() -> i32 {
+    return 4 + 5;
+}
+
+func main() -> i32 {
+    return adder();
+}

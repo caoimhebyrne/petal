@@ -55,7 +55,7 @@ impl StatmentTypecheck for FunctionDefinitionNode {
         self.return_type = Some(return_type.clone());
 
         // Then, we can check the types within the body.
-        context.start_function_scope(return_type);
+        context.start_function_scope(&self.name, return_type);
 
         Typechecker::check_block(&mut self.body, context)?;
 
