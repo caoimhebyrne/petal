@@ -53,6 +53,8 @@ impl<'a> Lexer<'a> {
                 ',' => Token::new(TokenKind::Comma, position.into()),
                 '&' => Token::new(TokenKind::Ampersand, position.into()),
 
+                '"' => self.parse_string_literal(position)?,
+
                 '/' => {
                     if let Some('/') = self.peek() {
                         // This is a comment, we should consume all characters until a new-line is reached.
@@ -111,7 +113,7 @@ impl<'a> Lexer<'a> {
 
     // Attempts to parse an identifier at the lexer's current position.
     fn parse_identifier_token(&mut self, start_character: char, start_position: Position) -> LexerResult<Token> {
-        let identifier = self.read_string(start_character, |it| it.is_alphanumeric() || it == '_');
+        let identifier = self.read_string(Some(start_character), |it| it.is_alphanumeric() || it == '_');
 
         // If this is a reserved identifier, we must emit it as a keyword.
         let kind = match self.keywords.get(&identifier) {
@@ -124,7 +126,7 @@ impl<'a> Lexer<'a> {
 
     // Attempts to parse an integer literal at the lexer's current position.
     fn parse_integer_literal_token(&mut self, start_character: char, start_position: Position) -> LexerResult<Token> {
-        let literal = self.read_string(start_character, |it| it.is_numeric());
+        let literal = self.read_string(Some(start_character), |it| it.is_numeric());
 
         let location = Location::between(start_position, self.position);
         let integer = literal
@@ -134,13 +136,34 @@ impl<'a> Lexer<'a> {
         Ok(Token::new(TokenKind::IntegerLiteral(integer), location))
     }
 
+    // Attempts to parse a string literal at the lexer's current position.
+    fn parse_string_literal(&mut self, start_position: Position) -> LexerResult<Token> {
+        let value = self.read_string(None, |it| it != '"');
+
+        if let Some((character, end_position)) = self.next() {
+            if character != '"' {
+                return Err(LexerError::unexpected_character(character, end_position.into()));
+            }
+
+            return Ok(Token::new(
+                TokenKind::StringLiteral(value),
+                Location::between(start_position, end_position),
+            ));
+        }
+
+        Err(LexerError::unexpected_end_of_file(self.position.into()))
+    }
+
     // Produces a string by reading characters from the token stream while the provided predicate is true,
     // or the lexer runs out of characters.
-    fn read_string<F>(&mut self, start_character: char, predicate: F) -> String
+    fn read_string<F>(&mut self, start_character: Option<char>, predicate: F) -> String
     where
         F: Fn(char) -> bool,
     {
-        let mut characters = vec![start_character];
+        let mut characters = vec![];
+        if let Some(char) = start_character {
+            characters.push(char);
+        }
 
         while let Some(character) = self.peek() {
             if !predicate(character) {
@@ -148,6 +171,16 @@ impl<'a> Lexer<'a> {
             }
 
             self.next();
+
+            if character == '\\' {
+                if let Some('n') = self.peek() {
+                    self.next();
+                    characters.push('\n');
+
+                    continue;
+                }
+            }
+
             characters.push(character);
         }
 

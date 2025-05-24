@@ -4,7 +4,7 @@ use super::{
     error::TypecheckerError,
     r#type::{Type, kind::TypeKind},
 };
-use crate::ast::node::expression::{BinaryOperation, FunctionCall, IdentifierReference, IntegerLiteral};
+use crate::ast::node::expression::{BinaryOperation, FunctionCall, IdentifierReference, IntegerLiteral, StringLiteral};
 
 pub trait ExpressionTypecheck {
     fn resolve(
@@ -28,6 +28,18 @@ impl ExpressionTypecheck for IntegerLiteral {
         self.expected_type = Some(integer_type.clone());
 
         Ok(integer_type)
+    }
+}
+
+impl ExpressionTypecheck for StringLiteral {
+    fn resolve(
+        &mut self,
+        _context: &mut TypecheckerContext,
+        _expected_type: Option<&Type>,
+    ) -> Result<Type, TypecheckerError> {
+        // All string literals are currently references to `i8`.
+        let string_type = Type::new(TypeKind::Reference(Box::new(TypeKind::Integer(8))), self.node.location);
+        Ok(string_type)
     }
 }
 

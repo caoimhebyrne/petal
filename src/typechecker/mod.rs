@@ -56,6 +56,7 @@ impl<'a> Typechecker<'a> {
     ) -> Result<Type, TypecheckerError> {
         match expression {
             Expression::IntegerLiteral(integer_literal) => integer_literal.resolve(context, expected_type),
+            Expression::StringLiteral(string_literal) => string_literal.resolve(context, expected_type),
             Expression::BinaryOperation(binary_operation) => binary_operation.resolve(context, expected_type),
             Expression::FunctionCall(function_call) => function_call.resolve(context, expected_type),
             Expression::IdentifierReference(identifier_reference) => {

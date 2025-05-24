@@ -1,0 +1,10 @@
+// A string is a sequence of characters. Their type is a reference to a character (which is currently an i8).
+extern func printf(format: &i8);
+
+func main() {
+    // Any characters within double-quotes will be included in the string literal.
+    printf("Hello, World!\n");
+
+    // TODO: If a block does not end in a `return` instruction, it needs to be inserted.
+    return;
+}

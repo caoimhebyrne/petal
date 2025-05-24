@@ -107,6 +107,7 @@ impl<'a> Codegen<'a> {
     pub fn visit_expression(&mut self, expression: &Expression) -> Result<BasicValueEnum<'a>, CodegenError> {
         match expression {
             Expression::IntegerLiteral(integer_literal) => integer_literal.codegen(self),
+            Expression::StringLiteral(string_literal) => string_literal.codegen(self),
             Expression::IdentifierReference(identifier_reference) => identifier_reference.codegen(self),
             Expression::BinaryOperation(binary_operation) => binary_operation.codegen(self),
             Expression::FunctionCall(function_call) => ExpressionCodegen::codegen(function_call, self),

@@ -9,9 +9,10 @@ pub enum Keyword {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TokenKind {
-    IntegerLiteral(u64), // An integer literal token.
-    Identifier(String),  // An identifier.
-    Keyword(Keyword),    // A keyword.
+    IntegerLiteral(u64),   // An integer literal token.
+    StringLiteral(String), // A string literal.
+    Identifier(String),    // An identifier.
+    Keyword(Keyword),      // A keyword.
 
     Plus,             // +
     Minus,            // -

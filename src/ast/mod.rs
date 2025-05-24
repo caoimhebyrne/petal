@@ -6,7 +6,7 @@ use crate::{
 use error::ASTError;
 use node::{
     Node,
-    expression::{BinaryOperation, Expression, FunctionCall, IdentifierReference, IntegerLiteral},
+    expression::{BinaryOperation, Expression, FunctionCall, IdentifierReference, IntegerLiteral, StringLiteral},
     extra::FunctionParameter,
     operator::Operation,
     statement::{FunctionDefinition, Return, Statement, VariableDeclaration, VariableReassignment},
@@ -60,6 +60,8 @@ impl Ast {
                     self.parse_variable_declaration()?
                 }
             }
+
+            TokenKind::Ampersand => self.parse_variable_declaration()?,
 
             _ => return Err(ASTError::unexpected_token(token)),
         };
@@ -138,6 +140,11 @@ impl Ast {
                 node,
                 value: *value,
                 expected_type: None,
+            })),
+
+            TokenKind::StringLiteral(value) => Ok(Expression::StringLiteral(StringLiteral {
+                node,
+                value: value.to_string(),
             })),
 
             TokenKind::Identifier(name) => {

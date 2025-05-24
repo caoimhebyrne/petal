@@ -1,6 +1,6 @@
 use super::{Codegen, error::CodegenError, r#type::TypeCodegen};
 use crate::ast::node::{
-    expression::{BinaryOperation, FunctionCall, IdentifierReference, IntegerLiteral},
+    expression::{BinaryOperation, FunctionCall, IdentifierReference, IntegerLiteral, StringLiteral},
     operator::Operation,
 };
 use inkwell::values::{BasicValue, BasicValueEnum, InstructionOpcode};
@@ -30,6 +30,16 @@ impl ExpressionCodegen for IntegerLiteral {
             .into_int_type()
             .const_int(self.value, false)
             .as_basic_value_enum())
+    }
+}
+
+impl ExpressionCodegen for StringLiteral {
+    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<BasicValueEnum<'ctx>, CodegenError> {
+        codegen
+            .llvm_builder
+            .build_global_string_ptr(&self.value, "string_literal")
+            .map(|it| it.as_basic_value_enum())
+            .map_err(|error| CodegenError::internal_error(error.to_string(), None))
     }
 }
 

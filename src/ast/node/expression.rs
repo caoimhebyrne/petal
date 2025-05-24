@@ -4,6 +4,7 @@ use crate::typechecker::r#type::Type;
 #[derive(Debug, Clone)]
 pub enum Expression {
     IntegerLiteral(IntegerLiteral),
+    StringLiteral(StringLiteral),
     IdentifierReference(IdentifierReference),
     FunctionCall(FunctionCall),
     BinaryOperation(BinaryOperation),
@@ -20,6 +21,16 @@ pub struct IntegerLiteral {
 
     // The expected type of the integer.
     pub expected_type: Option<Type>,
+}
+
+// A literal string in the source.
+#[derive(Debug, Clone)]
+pub struct StringLiteral {
+    // The node associated with this expression.
+    pub node: Node,
+
+    // The literal value of the string.
+    pub value: String,
 }
 
 // An identifier reference.

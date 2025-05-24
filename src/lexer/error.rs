@@ -4,7 +4,7 @@ use std::fmt::Display;
 #[derive(Debug, Clone)]
 pub enum LexerErrorKind {
     UnexpectedCharacter(char),
-
+    UnexpectedEndOfFile,
     InvalidIntegerLiteral(String),
 }
 
@@ -18,6 +18,13 @@ impl LexerError {
     pub fn unexpected_character(character: char, location: Location) -> LexerError {
         LexerError {
             kind: LexerErrorKind::UnexpectedCharacter(character),
+            location,
+        }
+    }
+
+    pub fn unexpected_end_of_file(location: Location) -> LexerError {
+        LexerError {
+            kind: LexerErrorKind::UnexpectedEndOfFile,
             location,
         }
     }
@@ -36,6 +43,8 @@ impl Display for LexerError {
             LexerErrorKind::UnexpectedCharacter(character) => {
                 write!(f, "Unexpected character: '{}'", character)
             }
+
+            LexerErrorKind::UnexpectedEndOfFile => write!(f, "Unexpected end-of-file"),
 
             LexerErrorKind::InvalidIntegerLiteral(value) => {
                 write!(f, "Invalid integer literal: '{}'", value)
