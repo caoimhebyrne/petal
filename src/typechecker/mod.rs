@@ -71,6 +71,7 @@ impl<'a> Typechecker<'a> {
         };
 
         let resolved_kind = match name.as_str() {
+            "i8" => TypeKind::Integer(8),
             "i32" => TypeKind::Integer(32),
 
             _ => {
