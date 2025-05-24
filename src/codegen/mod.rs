@@ -31,8 +31,8 @@ pub struct Codegen<'a> {
 }
 
 impl<'a> Codegen<'a> {
-    pub fn new(output_path: &'a PathBuf, context: &'a Context, nodes: &'a Vec<Node>) -> Codegen<'a> {
-        Codegen {
+    pub fn new(output_path: &'a PathBuf, context: &'a Context, nodes: &'a Vec<Node>) -> Self {
+        Self {
             nodes,
             output_path,
             context: CodegenContext::new(),

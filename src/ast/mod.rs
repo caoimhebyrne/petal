@@ -21,8 +21,8 @@ pub struct Ast {
 }
 
 impl Ast {
-    pub fn new(tokens: Vec<Token>) -> Ast {
-        Ast {
+    pub fn new(tokens: Vec<Token>) -> Self {
+        Self {
             tokens: Stream::new(tokens),
         }
     }
@@ -187,18 +187,15 @@ impl Ast {
 
         // Then, optionally the function's return type.
         let mut return_type = Option::None;
-        match self.expect(TokenKind::Minus) {
-            Ok(_) => {
-                self.expect(TokenKind::GreaterThan)?;
 
-                // After ->, there must be an identifier for the return type.
-                return_type = self
-                    .expect_identifier()
-                    .ok()
-                    .map(|(name, location)| Type::new(TypeKind::Unresolved(name.to_owned()), Some(location)))
-            }
+        if self.expect(TokenKind::Minus).is_ok() {
+            self.expect(TokenKind::GreaterThan)?;
 
-            _ => {}
+            // After ->, there must be an identifier for the return type.
+            return_type = self
+                .expect_identifier()
+                .ok()
+                .map(|(name, location)| Type::new(TypeKind::Unresolved(name.to_owned()), Some(location)))
         }
 
         // Then, the function's body, surrounded by braces.
@@ -219,7 +216,7 @@ impl Ast {
         Ok(Node::new(
             NodeKind::FunctionDefinition(FunctionDefinitionNode {
                 name: function_name.to_string(),
-                return_type: return_type,
+                return_type,
                 body,
             }),
             function_name_location,
@@ -265,7 +262,7 @@ impl Ast {
             None => return false,
         };
 
-        return token.kind == kind;
+        token.kind == kind
     }
 
     // Expects a certain token kind to be at the position in the token stream.

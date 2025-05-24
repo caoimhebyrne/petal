@@ -8,8 +8,8 @@ pub struct CodegenContext<'ctx> {
 }
 
 impl<'ctx> CodegenContext<'ctx> {
-    pub fn new() -> CodegenContext<'ctx> {
-        CodegenContext { function_scope: None }
+    pub fn new() -> Self {
+        Self { function_scope: None }
     }
 
     pub fn start_function_scope(&mut self) {
@@ -27,8 +27,8 @@ pub struct FunctionScope<'ctx> {
 }
 
 impl<'ctx> FunctionScope<'ctx> {
-    pub fn new() -> FunctionScope<'ctx> {
-        FunctionScope {
+    pub fn new() -> Self {
+        Self {
             variables: HashMap::new(),
         }
     }

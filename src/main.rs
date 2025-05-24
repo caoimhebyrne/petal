@@ -1,7 +1,13 @@
 #![feature(path_file_prefix, path_add_extension)]
+#![allow(clippy::new_without_default)]
 
 use core::location::Location;
-use std::{fmt::Display, fs, path::PathBuf, process::exit};
+use std::{
+    fmt::Display,
+    fs,
+    path::{Path, PathBuf},
+    process::exit,
+};
 
 use ast::Ast;
 use clap::Parser;
@@ -25,7 +31,7 @@ struct Args {
     path: PathBuf,
 }
 
-fn report_error(path: &PathBuf, error: impl Display, location: Option<Location>) -> ! {
+fn report_error(path: &Path, error: impl Display, location: Option<Location>) -> ! {
     let location_string = match location {
         Some(location) => format!("{}:{}", location.line + 1, location.column + 1),
         None => "unknown".to_owned(),

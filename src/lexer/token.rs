@@ -32,7 +32,7 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn new(kind: TokenKind, location: Location) -> Token {
-        Token { kind, location }
+    pub fn new(kind: TokenKind, location: Location) -> Self {
+        Self { kind, location }
     }
 }

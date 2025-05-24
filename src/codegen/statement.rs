@@ -68,7 +68,7 @@ impl StatementCodegen for ReturnNode {
     fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<(), CodegenError> {
         // A return node can have an optional value associated with it.
         if let Some(value_node) = &self.value {
-            let value = codegen.visit_expression(&*value_node)?;
+            let value = codegen.visit_expression(value_node)?;
 
             codegen
                 .llvm_builder

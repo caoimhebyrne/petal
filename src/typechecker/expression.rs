@@ -11,7 +11,7 @@ use super::{
 };
 
 pub trait ExpressionTypecheck {
-    fn resolve<'a>(
+    fn resolve(
         &mut self,
         context: &mut TypecheckerContext,
         expected_type: Option<&Type>,
@@ -20,7 +20,7 @@ pub trait ExpressionTypecheck {
 }
 
 impl ExpressionTypecheck for IntegerLiteralNode {
-    fn resolve<'a>(
+    fn resolve(
         &mut self,
         _context: &mut TypecheckerContext,
         expected_type: Option<&Type>,
@@ -38,7 +38,7 @@ impl ExpressionTypecheck for IntegerLiteralNode {
 }
 
 impl ExpressionTypecheck for IdentifierReferenceNode {
-    fn resolve<'a>(
+    fn resolve(
         &mut self,
         context: &mut TypecheckerContext,
         _expected_type: Option<&Type>,
@@ -61,7 +61,7 @@ impl ExpressionTypecheck for IdentifierReferenceNode {
 }
 
 impl ExpressionTypecheck for BinaryOperationNode {
-    fn resolve<'a>(
+    fn resolve(
         &mut self,
         context: &mut TypecheckerContext,
         expected_type: Option<&Type>,
@@ -87,7 +87,7 @@ impl ExpressionTypecheck for BinaryOperationNode {
 }
 
 impl ExpressionTypecheck for FunctionCallNode {
-    fn resolve<'a>(
+    fn resolve(
         &mut self,
         context: &mut TypecheckerContext,
         _expected_type: Option<&Type>,

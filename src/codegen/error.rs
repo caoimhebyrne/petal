@@ -13,7 +13,7 @@ pub struct CodegenError {
     pub location: Option<Location>,
 }
 
-impl<'a> CodegenError {
+impl CodegenError {
     pub fn internal_error(message: String, location: Option<Location>) -> CodegenError {
         CodegenError {
             kind: CodegenErrorKind::InternalError(message),

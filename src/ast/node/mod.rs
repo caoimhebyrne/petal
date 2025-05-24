@@ -11,7 +11,7 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn new(kind: NodeKind, location: Location) -> Node {
-        Node { kind, location }
+    pub fn new(kind: NodeKind, location: Location) -> Self {
+        Self { kind, location }
     }
 }

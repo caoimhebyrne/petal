@@ -1,3 +1,5 @@
+#![allow(clippy::should_implement_trait)]
+
 pub struct Stream<T> {
     elements: Vec<T>,
     index: usize,
@@ -5,8 +7,8 @@ pub struct Stream<T> {
 
 impl<T> Stream<T> {
     /// Creates a new [Stream] with elements from a [Vec].
-    pub fn new(elements: Vec<T>) -> Stream<T> {
-        Stream { elements, index: 0 }
+    pub fn new(elements: Vec<T>) -> Self {
+        Self { elements, index: 0 }
     }
 
     // Advances the stream by a certain [size].

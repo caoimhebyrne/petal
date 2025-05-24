@@ -8,8 +8,8 @@ pub struct TypecheckerContext {
 }
 
 impl TypecheckerContext {
-    pub fn new() -> TypecheckerContext {
-        TypecheckerContext {
+    pub fn new() -> Self {
+        Self {
             function_scope: None,
             functions: HashMap::new(),
         }
@@ -32,8 +32,8 @@ pub struct FunctionScope {
 }
 
 impl FunctionScope {
-    pub fn new(return_type: Type) -> FunctionScope {
-        FunctionScope {
+    pub fn new(return_type: Type) -> Self {
+        Self {
             variables: HashMap::new(),
             return_type,
         }

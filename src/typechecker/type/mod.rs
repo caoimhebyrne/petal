@@ -11,8 +11,8 @@ pub struct Type {
 }
 
 impl Type {
-    pub fn new(kind: TypeKind, location: Option<Location>) -> Type {
-        Type { kind, location }
+    pub fn new(kind: TypeKind, location: Option<Location>) -> Self {
+        Self { kind, location }
     }
 }
 

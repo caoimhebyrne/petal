@@ -18,15 +18,15 @@ pub struct Typechecker<'a> {
 }
 
 impl<'a> Typechecker<'a> {
-    pub fn new(nodes: &'a mut Vec<Node>) -> Typechecker<'a> {
-        return Typechecker {
+    pub fn new(nodes: &'a mut Vec<Node>) -> Self {
+        Self {
             context: TypecheckerContext::new(),
             nodes,
-        };
+        }
     }
 
     pub fn check(&mut self) -> Result<(), TypecheckerError> {
-        Typechecker::check_block(&mut self.nodes, &mut self.context)
+        Typechecker::check_block(self.nodes, &mut self.context)
     }
 
     pub fn check_block(block: &mut Vec<Node>, context: &mut TypecheckerContext) -> Result<(), TypecheckerError> {
