@@ -1,3 +1,9 @@
+## `petal` 🌸
+
+This is the compiler for my language, Petal. The plan for this compiler is for it to provide enough features to build
+a self-hosted compiler. LLVM is used for code-generation.
+
+```go
 // This is the main function, it is called similar to how it would be called in C.
 // Petal programs are linked with libc, meaning `main` is called from the `__start` 
 // symbol.
@@ -11,3 +17,12 @@ func main() -> i32 {
     // Values can be returned either by referencing a variable name, or writing the value inline.
     return my_variable;
 }
+```
+
+### Building
+1. Clone this git repository.
+2. Build the compiler using `cargo build`
+
+### License
+
+This project is licensed under the MIT license. See the [LICENSE](./LICENSE) file for more information.
