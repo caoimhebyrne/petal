@@ -85,7 +85,7 @@ impl StatmentTypecheck for Return {
             return Err(TypecheckerError::mismatched_type(
                 function_scope.return_type.kind,
                 value_type.kind,
-                value_type.location,
+                self.node.location,
             ));
         }
 
