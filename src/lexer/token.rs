@@ -26,6 +26,7 @@ pub enum TokenKind {
     CloseBrace,       // }
     GreaterThan,      // >
     Comma,            // ,
+    Ampersand,        // &
 }
 
 #[derive(Debug, Clone)]

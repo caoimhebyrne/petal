@@ -1,0 +1,22 @@
+// When passing arguments in a function call, the values are copied.
+// Sometimes, you might want to take a reference to the value instead, so that your function can
+// modify it.
+//
+// When defining a function's parameters, the type can be prefixed with `&` to indicate that a
+// reference is desired.
+func modifier(value: &i32) {
+    value = 10;
+    
+    // TODO: If a block does not end in a `return` instruction, it needs to be inserted.
+    return;
+}
+
+func main() -> i32 {
+    i32 my_value = 5;
+
+    // When passing a value by reference to a function, the ampersand can be used again.
+    modifier(&my_value);
+
+    // `my_value` will then hold the new value.
+    return my_value;
+}

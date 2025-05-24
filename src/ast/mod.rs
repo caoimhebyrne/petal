@@ -151,8 +151,21 @@ impl Ast {
                         node,
                         name: name.clone(),
                         expected_type: None,
+                        is_reference: false,
                     }))
                 }
+            }
+
+            TokenKind::Ampersand => {
+                // The next token shoiuld be an identifier.
+                let (name, name_location) = self.expect_identifier()?;
+
+                Ok(Expression::IdentifierReference(IdentifierReference {
+                    node: Node::new(name_location),
+                    name,
+                    expected_type: None,
+                    is_reference: true,
+                }))
             }
 
             _ => Err(ASTError::unexpected_token(token)),
@@ -218,11 +231,11 @@ impl Ast {
                 self.expect(TokenKind::Colon)?;
 
                 // Then, the type of the parameter.
-                let (parameter_type, parameter_type_location) = self.expect_identifier()?;
+                let parameter_type = self.expect_type()?;
 
                 parameters.push(FunctionParameter::new(
                     parameter_name,
-                    Type::new(TypeKind::Unresolved(parameter_type), parameter_type_location),
+                    parameter_type,
                     parameter_location,
                 ));
 
@@ -243,10 +256,7 @@ impl Ast {
             self.expect(TokenKind::GreaterThan)?;
 
             // After ->, there must be an identifier for the return type.
-            return_type = self
-                .expect_identifier()
-                .ok()
-                .map(|(name, location)| Type::new(TypeKind::Unresolved(name.to_owned()), location))
+            return_type = Some(self.expect_type()?);
         }
 
         let mut body = vec![];
@@ -281,7 +291,7 @@ impl Ast {
 
     // Attempts to parse a variable declaration from the token stream.
     fn parse_variable_declaration(&mut self) -> AstResult<Statement> {
-        let (type_name, type_location) = self.expect_identifier()?;
+        let variable_type = self.expect_type()?;
         let (name, name_location) = self.expect_identifier()?;
 
         self.expect(TokenKind::Equals)?;
@@ -290,7 +300,7 @@ impl Ast {
 
         Ok(Statement::VariableDeclaration(VariableDeclaration {
             node: Node::new(name_location),
-            declared_type: Type::new(TypeKind::Unresolved(type_name), type_location),
+            declared_type: variable_type,
             name,
             value,
         }))
@@ -370,5 +380,19 @@ impl Ast {
             TokenKind::Identifier(identifier) => Ok((identifier.clone(), token.location)),
             _ => Err(ASTError::unexpected_token(token.clone())),
         }
+    }
+
+    // Expects a valid type to be at the next position in the token stream.
+    fn expect_type(&mut self) -> AstResult<Type> {
+        // If the type starts with an ampersand, it's a reference.
+        let is_reference = self.expect(TokenKind::Ampersand).is_ok();
+        let (type_name, type_location) = self.expect_identifier()?;
+
+        let mut kind = TypeKind::Unresolved(type_name);
+        if is_reference {
+            kind = TypeKind::Reference(Box::new(kind));
+        }
+
+        Ok(Type::new(kind, type_location))
     }
 }

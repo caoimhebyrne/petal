@@ -40,21 +40,29 @@ impl StatementCodegen for FunctionDefinition {
                 parameter.set_name(&function_parameter.name);
 
                 let parameter_type = function_parameter.expected_type.resolve_value_type(codegen);
+                if parameter_type.is_pointer_type() {
+                    // If this is a pointer, we can just store that.
+                    let scope = codegen.context.function_scope.as_mut().unwrap();
 
-                // We can then allocate some space for it, and store the parameter into that space.
-                let pointer = codegen
-                    .llvm_builder
-                    .build_alloca(parameter_type, &self.name)
-                    .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
+                    scope
+                        .variables
+                        .insert(function_parameter.name.clone(), parameter.into_pointer_value());
+                } else {
+                    // We can then allocate some space for it, and store the parameter into that space.
+                    let pointer = codegen
+                        .llvm_builder
+                        .build_alloca(parameter_type, &self.name)
+                        .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
 
-                codegen
-                    .llvm_builder
-                    .build_store(pointer, parameter)
-                    .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
+                    codegen
+                        .llvm_builder
+                        .build_store(pointer, parameter)
+                        .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
 
-                // We can then declare the parameter as a variable.
-                let scope = codegen.context.function_scope.as_mut().unwrap();
-                scope.variables.insert(function_parameter.name.clone(), pointer);
+                    // We can then declare the parameter as a variable.
+                    let scope = codegen.context.function_scope.as_mut().unwrap();
+                    scope.variables.insert(function_parameter.name.clone(), pointer);
+                }
             }
 
             codegen.visit_block(&self.body)?;

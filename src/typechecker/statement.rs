@@ -111,6 +111,15 @@ impl StatmentTypecheck for VariableReassignment {
 
         // The type of the variable must match the type of the value.
         let value_type = Typechecker::check_expression(&mut self.value, context, Some(&variable_type))?;
+
+        // If the variable is a reference, and the right-hand side is not a reference, but they are both
+        // the same type-kind, it can be allowed.
+        if let TypeKind::Reference(referenced) = &variable_type.kind {
+            if **referenced == value_type.kind {
+                return Ok(());
+            }
+        }
+
         if value_type.kind != variable_type.kind {
             return Err(TypecheckerError::mismatched_type(
                 variable_type.kind,

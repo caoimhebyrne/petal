@@ -51,6 +51,7 @@ impl<'a> Lexer<'a> {
                 '}' => Token::new(TokenKind::CloseBrace, position.into()),
                 '>' => Token::new(TokenKind::GreaterThan, position.into()),
                 ',' => Token::new(TokenKind::Comma, position.into()),
+                '&' => Token::new(TokenKind::Ampersand, position.into()),
 
                 '/' => {
                     if let Some('/') = self.peek() {

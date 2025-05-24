@@ -65,6 +65,11 @@ impl<'a> Typechecker<'a> {
     }
 
     pub fn resolve_type(r#type: Type) -> Result<Type, TypecheckerError> {
+        if let TypeKind::Reference(referenced) = r#type.kind {
+            let resolved = Typechecker::resolve_type(Type::new(*referenced, r#type.location))?;
+            return Ok(Type::new(TypeKind::Reference(Box::new(resolved.kind)), r#type.location));
+        }
+
         let name = match r#type.kind {
             TypeKind::Unresolved(name) => name,
             _ => return Ok(r#type),

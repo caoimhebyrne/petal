@@ -33,6 +33,9 @@ pub struct IdentifierReference {
 
     // The expected type of the variable.
     pub expected_type: Option<Type>,
+
+    // Whether the identifier is being passed by reference.
+    pub is_reference: bool,
 }
 
 // A function call.

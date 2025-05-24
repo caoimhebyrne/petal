@@ -52,6 +52,10 @@ impl ExpressionCodegen for IdentifierReference {
             None,
         ))?;
 
+        if self.is_reference {
+            return Ok(pointer.as_basic_value_enum());
+        }
+
         codegen
             .llvm_builder
             .build_load(value_type.resolve_value_type(codegen), *pointer, &self.name)
