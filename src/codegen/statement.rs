@@ -1,5 +1,10 @@
+use inkwell::module::Linkage;
+
 use super::{Codegen, error::CodegenError, r#type::TypeCodegen};
-use crate::ast::node::statement::{FunctionDefinition, Return, VariableDeclaration, VariableReassignment};
+use crate::ast::node::{
+    expression::FunctionCall,
+    statement::{FunctionDefinition, Return, VariableDeclaration, VariableReassignment},
+};
 
 pub trait StatementCodegen {
     fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<(), CodegenError>;
@@ -19,39 +24,42 @@ impl StatementCodegen for FunctionDefinition {
         };
 
         // We now know the type of the function, we can add it to the module.
-        let function = codegen.llvm_module.add_function(&self.name, function_type, None);
+        let linkage = if self.is_extern { Some(Linkage::External) } else { None };
+        let function = codegen.llvm_module.add_function(&self.name, function_type, linkage);
 
-        // With the function created, we can create the entry block and start adding statements from its body.
-        let block = codegen.llvm_context.append_basic_block(function, "entry");
-        codegen.llvm_builder.position_at_end(block);
+        if !self.is_extern {
+            // With the function created, we can create the entry block and start adding statements from its body.
+            let block = codegen.llvm_context.append_basic_block(function, "entry");
+            codegen.llvm_builder.position_at_end(block);
 
-        codegen.context.start_function_scope();
+            codegen.context.start_function_scope();
 
-        for (index, parameter) in function.get_param_iter().enumerate() {
-            // We must first set the name of the function parameter.
-            let function_parameter = self.parameters.get(index).unwrap();
-            parameter.set_name(&function_parameter.name);
+            for (index, parameter) in function.get_param_iter().enumerate() {
+                // We must first set the name of the function parameter.
+                let function_parameter = self.parameters.get(index).unwrap();
+                parameter.set_name(&function_parameter.name);
 
-            let parameter_type = function_parameter.expected_type.resolve_value_type(codegen);
+                let parameter_type = function_parameter.expected_type.resolve_value_type(codegen);
 
-            // We can then allocate some space for it, and store the parameter into that space.
-            let pointer = codegen
-                .llvm_builder
-                .build_alloca(parameter_type, &self.name)
-                .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
+                // We can then allocate some space for it, and store the parameter into that space.
+                let pointer = codegen
+                    .llvm_builder
+                    .build_alloca(parameter_type, &self.name)
+                    .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
 
-            codegen
-                .llvm_builder
-                .build_store(pointer, parameter)
-                .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
+                codegen
+                    .llvm_builder
+                    .build_store(pointer, parameter)
+                    .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
 
-            // We can then declare the parameter as a variable.
-            let scope = codegen.context.function_scope.as_mut().unwrap();
-            scope.variables.insert(function_parameter.name.clone(), pointer);
+                // We can then declare the parameter as a variable.
+                let scope = codegen.context.function_scope.as_mut().unwrap();
+                scope.variables.insert(function_parameter.name.clone(), pointer);
+            }
+
+            codegen.visit_block(&self.body)?;
+            codegen.context.end_function_scope();
         }
-
-        codegen.visit_block(&self.body)?;
-        codegen.context.end_function_scope();
 
         Ok(())
     }
@@ -138,6 +146,32 @@ impl StatementCodegen for VariableReassignment {
         codegen
             .llvm_builder
             .build_store(pointer, value)
+            .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
+
+        Ok(())
+    }
+}
+
+// TODO: This is really bad. Statements and expressions behave differently in terms of function calls,
+//       but they are also really similar. I need to figure out a better way to do this.
+impl StatementCodegen for FunctionCall {
+    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<(), CodegenError> {
+        let function = codegen
+            .llvm_module
+            .get_function(&self.name)
+            .ok_or(CodegenError::internal_error(
+                format!("Failed to find a function with the name '{}'", self.name),
+                None,
+            ))?;
+
+        let mut arguments = vec![];
+        for argument in &self.arguments {
+            arguments.push(Codegen::visit_expression(codegen, argument)?.into());
+        }
+
+        codegen
+            .llvm_builder
+            .build_call(function, &arguments, &self.name)
             .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
 
         Ok(())

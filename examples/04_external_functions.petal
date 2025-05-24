@@ -1,0 +1,19 @@
+// Functions that are not declared within a Petal file can be marked as "extern", this tells the compiler 
+// that the function should be provided by a library that is being linked with the program.
+//
+// Petal programs are linked with libc during compilation, so any function in the C standard library should
+// be available.
+//
+// This program uses `putchar` (https://linux.die.net/man/3/putchar) to print characters to stdout, resulting in "Hello".
+extern func putchar(c: i32);
+
+func main() {
+    putchar(72);  // H
+    putchar(101); // e
+    putchar(108); // l
+    putchar(108); // l
+    putchar(111); // o
+    putchar(10);  // \n
+
+    return;
+}

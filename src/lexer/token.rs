@@ -4,6 +4,7 @@ use crate::core::location::Location;
 pub enum Keyword {
     Func,
     Return,
+    Extern,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

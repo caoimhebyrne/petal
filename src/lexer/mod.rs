@@ -28,6 +28,7 @@ impl<'a> Lexer<'a> {
             keywords: HashMap::from([
                 ("func".to_owned(), Keyword::Func),
                 ("return".to_owned(), Keyword::Return),
+                ("extern".to_owned(), Keyword::Extern),
             ]),
         }
     }

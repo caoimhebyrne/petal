@@ -40,24 +40,28 @@ impl Ast {
 
     // Attempts to parse a statement from the token stream.
     fn parse_statement(&mut self) -> AstResult<Statement> {
-        let token = self.tokens.peek().ok_or(ASTError::unexpected_end_of_file())?;
+        let token = self.tokens.peek().cloned().ok_or(ASTError::unexpected_end_of_file())?;
 
         let node = match &token.kind {
             TokenKind::Keyword(keyword) => match keyword {
                 // A function definition should not end in a semicolon, hence the reason for `return` here.
-                Keyword::Func => return self.parse_function_definition(),
+                Keyword::Func | Keyword::Extern => return self.parse_function_definition(),
                 Keyword::Return => self.parse_return_statement()?,
             },
 
-            TokenKind::Identifier(_) => {
+            TokenKind::Identifier(name) => {
                 if self.after_next_is(TokenKind::Equals) {
                     self.parse_variable_reassignment()?
+                } else if self.after_next_is(TokenKind::OpenParenthesis) {
+                    self.tokens.next();
+
+                    Statement::FunctionCall(self.parse_function_call(name, token.location)?)
                 } else {
                     self.parse_variable_declaration()?
                 }
             }
 
-            _ => return Err(ASTError::unexpected_token((*token).clone())),
+            _ => return Err(ASTError::unexpected_token(token)),
         };
 
         // If the code reaches here, it means that the statement should end in a semicolon.
@@ -139,7 +143,9 @@ impl Ast {
             TokenKind::Identifier(name) => {
                 // If the next token is an opening parenthesis, this is most likely a function call.
                 if self.next_is(TokenKind::OpenParenthesis) {
-                    self.parse_function_call(name, token.location)
+                    Ok(Expression::FunctionCall(
+                        self.parse_function_call(name, token.location)?,
+                    ))
                 } else {
                     Ok(Expression::IdentifierReference(IdentifierReference {
                         node,
@@ -154,7 +160,7 @@ impl Ast {
     }
 
     // Attempts to parse a function call from the token stream.
-    fn parse_function_call(&mut self, name: &str, location: Location) -> AstResult<Expression> {
+    fn parse_function_call(&mut self, name: &str, location: Location) -> AstResult<FunctionCall> {
         self.expect(TokenKind::OpenParenthesis)?;
 
         let mut arguments = Vec::new();
@@ -174,16 +180,23 @@ impl Ast {
             }
         }
 
-        Ok(Expression::FunctionCall(FunctionCall {
+        Ok(FunctionCall {
             node: Node::new(location),
             name: name.to_owned(),
             arguments,
             expected_type: None,
-        }))
+        })
     }
 
     // Attempts to parse a function definition from the token stream.
     fn parse_function_definition(&mut self) -> AstResult<Statement> {
+        // If the function starts with the `extern` keyword, the function should have no body.
+        let mut is_extern = false;
+        if self.next_is(TokenKind::Keyword(Keyword::Extern)) {
+            self.expect(TokenKind::Keyword(Keyword::Extern))?;
+            is_extern = true;
+        }
+
         // All functions must start with the `func` keyword.
         self.expect(TokenKind::Keyword(Keyword::Func))?;
 
@@ -236,24 +249,30 @@ impl Ast {
                 .map(|(name, location)| Type::new(TypeKind::Unresolved(name.to_owned()), location))
         }
 
-        // Then, the function's body, surrounded by braces.
-        self.expect(TokenKind::OpenBrace)?;
-
         let mut body = vec![];
 
-        while let Some(token) = self.tokens.peek() {
-            if token.kind == TokenKind::CloseBrace {
-                break;
+        if is_extern {
+            // An external function must not have a body.
+            self.expect(TokenKind::Semicolon)?;
+        } else {
+            // Then, the function's body, surrounded by braces.
+            self.expect(TokenKind::OpenBrace)?;
+
+            while let Some(token) = self.tokens.peek() {
+                if token.kind == TokenKind::CloseBrace {
+                    break;
+                }
+
+                body.push(self.parse_statement()?);
             }
 
-            body.push(self.parse_statement()?);
+            self.expect(TokenKind::CloseBrace)?;
         }
-
-        self.expect(TokenKind::CloseBrace)?;
 
         Ok(Statement::FunctionDefinition(FunctionDefinition {
             node: Node::new(function_name_location),
             name: function_name,
+            is_extern,
             parameters,
             return_type,
             body,

@@ -45,6 +45,7 @@ impl<'a> Typechecker<'a> {
             Statement::FunctionDefinition(function_definition) => function_definition.resolve(context),
             Statement::Return(r#return) => r#return.resolve(context),
             Statement::VariableReassignment(variable_reassignment) => variable_reassignment.resolve(context),
+            Statement::FunctionCall(function_call) => function_call.resolve(context, None).map(|_| {}),
         }
     }
 

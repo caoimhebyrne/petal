@@ -1,4 +1,8 @@
-use super::{Node, expression::Expression, extra::FunctionParameter};
+use super::{
+    Node,
+    expression::{Expression, FunctionCall},
+    extra::FunctionParameter,
+};
 use crate::typechecker::r#type::Type;
 
 #[derive(Debug, Clone)]
@@ -7,6 +11,7 @@ pub enum Statement {
     VariableDeclaration(VariableDeclaration),
     Return(Return),
     VariableReassignment(VariableReassignment),
+    FunctionCall(FunctionCall),
 }
 
 // A function definition node.
@@ -17,6 +22,9 @@ pub struct FunctionDefinition {
 
     // The name of the function.
     pub name: String,
+
+    // Whether the function is an external function or not.
+    pub is_extern: bool,
 
     // The parameters of the function.
     pub parameters: Vec<FunctionParameter>,
