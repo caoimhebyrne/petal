@@ -1,7 +1,7 @@
 use super::{Codegen, error::CodegenError, r#type::TypeCodegen};
 use crate::ast::node::{
-    kind::{BinaryOperationNode, FunctionCallNode, IdentifierReferenceNode, IntegerLiteralNode},
-    operator::BinaryOperation,
+    expression::{BinaryOperation, FunctionCall, IdentifierReference, IntegerLiteral},
+    operator::Operation,
 };
 use inkwell::values::{BasicValue, BasicValueEnum, InstructionOpcode};
 
@@ -9,11 +9,11 @@ pub trait ExpressionCodegen {
     fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<BasicValueEnum<'ctx>, CodegenError>;
 }
 
-impl ExpressionCodegen for IntegerLiteralNode {
+impl ExpressionCodegen for IntegerLiteral {
     fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<BasicValueEnum<'ctx>, CodegenError> {
         // Expressions typically have a type expected for them, typically inferred from something like a
         // variable declaration.
-        let value_type = self.r#type.as_ref().ok_or(CodegenError::internal_error(
+        let value_type = self.expected_type.as_ref().ok_or(CodegenError::internal_error(
             "Integer literal was missing a type. Possible typechecker bug?".to_owned(),
             None,
         ))?;
@@ -22,7 +22,7 @@ impl ExpressionCodegen for IntegerLiteralNode {
         if !llvm_type.is_int_type() {
             return Err(CodegenError::internal_error(
                 format!("Unsupported value type in integer literal: {:?}", value_type.kind),
-                value_type.location,
+                Some(value_type.location),
             ));
         }
 
@@ -33,7 +33,7 @@ impl ExpressionCodegen for IntegerLiteralNode {
     }
 }
 
-impl ExpressionCodegen for IdentifierReferenceNode {
+impl ExpressionCodegen for IdentifierReference {
     fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<BasicValueEnum<'ctx>, CodegenError> {
         #[rustfmt::skip]
         let function_scope = codegen.context.function_scope.as_ref()
@@ -47,7 +47,7 @@ impl ExpressionCodegen for IdentifierReferenceNode {
             None => panic!("Undeclared variable? {}", self.name),
         };
 
-        let value_type = self.r#type.as_ref().ok_or(CodegenError::internal_error(
+        let value_type = self.expected_type.as_ref().ok_or(CodegenError::internal_error(
             "Identifier reference was missing a type. Possible typechecker bug?".to_owned(),
             None,
         ))?;
@@ -59,16 +59,16 @@ impl ExpressionCodegen for IdentifierReferenceNode {
     }
 }
 
-impl ExpressionCodegen for BinaryOperationNode {
+impl ExpressionCodegen for BinaryOperation {
     fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<BasicValueEnum<'ctx>, CodegenError> {
         let left = Codegen::visit_expression(codegen, &self.left)?;
         let right = Codegen::visit_expression(codegen, &self.right)?;
 
         let operation = match self.operation {
-            BinaryOperation::Add => InstructionOpcode::Add,
-            BinaryOperation::Subtract => InstructionOpcode::Sub,
-            BinaryOperation::Multiply => InstructionOpcode::Mul,
-            BinaryOperation::Divide => InstructionOpcode::SDiv,
+            Operation::Add => InstructionOpcode::Add,
+            Operation::Subtract => InstructionOpcode::Sub,
+            Operation::Multiply => InstructionOpcode::Mul,
+            Operation::Divide => InstructionOpcode::SDiv,
         };
 
         codegen
@@ -78,7 +78,7 @@ impl ExpressionCodegen for BinaryOperationNode {
     }
 }
 
-impl ExpressionCodegen for FunctionCallNode {
+impl ExpressionCodegen for FunctionCall {
     fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<BasicValueEnum<'ctx>, CodegenError> {
         let function = codegen
             .llvm_module

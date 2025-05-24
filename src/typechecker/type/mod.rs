@@ -7,11 +7,11 @@ pub mod kind;
 #[derive(Debug, Clone)]
 pub struct Type {
     pub kind: TypeKind,
-    pub location: Option<Location>,
+    pub location: Location,
 }
 
 impl Type {
-    pub fn new(kind: TypeKind, location: Option<Location>) -> Self {
+    pub fn new(kind: TypeKind, location: Location) -> Self {
         Self { kind, location }
     }
 }

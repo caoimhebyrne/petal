@@ -4,17 +4,14 @@ use super::{
     error::TypecheckerError,
     r#type::{Type, kind::TypeKind},
 };
-use crate::{
-    ast::node::kind::{FunctionDefinitionNode, ReturnNode, VariableDeclarationNode},
-    core::location::Location,
-};
+use crate::ast::node::statement::{FunctionDefinition, Return, VariableDeclaration};
 
 pub trait StatmentTypecheck {
-    fn resolve(&mut self, context: &mut TypecheckerContext, location: Location) -> Result<(), TypecheckerError>;
+    fn resolve(&mut self, context: &mut TypecheckerContext) -> Result<(), TypecheckerError>;
 }
 
-impl StatmentTypecheck for VariableDeclarationNode {
-    fn resolve(&mut self, context: &mut TypecheckerContext, _location: Location) -> Result<(), TypecheckerError> {
+impl StatmentTypecheck for VariableDeclaration {
+    fn resolve(&mut self, context: &mut TypecheckerContext) -> Result<(), TypecheckerError> {
         // Before checking the value's type, we must first know what the declared type of the variable is.
         self.declared_type = Typechecker::resolve_type(self.declared_type.clone())?;
 
@@ -25,7 +22,7 @@ impl StatmentTypecheck for VariableDeclarationNode {
             return Err(TypecheckerError::mismatched_type(
                 self.declared_type.kind.clone(),
                 value_type.kind,
-                Some(self.value.location),
+                value_type.location,
             ));
         }
 
@@ -43,12 +40,12 @@ impl StatmentTypecheck for VariableDeclarationNode {
     }
 }
 
-impl StatmentTypecheck for FunctionDefinitionNode {
-    fn resolve(&mut self, context: &mut TypecheckerContext, location: Location) -> Result<(), TypecheckerError> {
+impl StatmentTypecheck for FunctionDefinition {
+    fn resolve(&mut self, context: &mut TypecheckerContext) -> Result<(), TypecheckerError> {
         // We must resolve the return type of the function first.
         let return_type = match &self.return_type {
             Some(r#type) => Typechecker::resolve_type(r#type.clone())?,
-            None => Type::new(TypeKind::Void, Some(location)),
+            None => Type::new(TypeKind::Void, self.node.location),
         };
 
         // This may be used by the code generator.
@@ -65,27 +62,23 @@ impl StatmentTypecheck for FunctionDefinitionNode {
     }
 }
 
-impl StatmentTypecheck for ReturnNode {
-    fn resolve(&mut self, context: &mut TypecheckerContext, location: Location) -> Result<(), TypecheckerError> {
+impl StatmentTypecheck for Return {
+    fn resolve(&mut self, context: &mut TypecheckerContext) -> Result<(), TypecheckerError> {
         let function_scope = match context.function_scope.clone() {
             Some(value) => value,
             None => panic!("Return statement outside of function scope?"),
         };
 
-        let (value_type, value_location) = match self.value.as_mut() {
-            Some(value) => (
-                Typechecker::check_expression(value, context, Some(&function_scope.return_type))?,
-                value.location,
-            ),
-
-            None => (Type::new(TypeKind::Void, Some(location)), location),
+        let value_type = match self.value.as_mut() {
+            Some(value) => Typechecker::check_expression(value, context, Some(&function_scope.return_type))?,
+            None => Type::new(TypeKind::Void, self.node.location),
         };
 
         if value_type.kind != function_scope.return_type.kind {
             return Err(TypecheckerError::mismatched_type(
                 function_scope.return_type.kind,
                 value_type.kind,
-                Some(value_location),
+                value_type.location,
             ));
         }
 

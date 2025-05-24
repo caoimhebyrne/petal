@@ -1,10 +1,9 @@
+use crate::ast::node::{expression::Expression, statement::Statement};
 use context::TypecheckerContext;
 use error::TypecheckerError;
 use expression::ExpressionTypecheck;
 use statement::StatmentTypecheck;
 use r#type::{Type, kind::TypeKind};
-
-use crate::ast::node::{Node, kind::NodeKind};
 
 pub mod context;
 pub mod error;
@@ -14,11 +13,11 @@ pub mod r#type;
 
 pub struct Typechecker<'a> {
     context: TypecheckerContext,
-    nodes: &'a mut Vec<Node>,
+    nodes: &'a mut Vec<Statement>,
 }
 
 impl<'a> Typechecker<'a> {
-    pub fn new(nodes: &'a mut Vec<Node>) -> Self {
+    pub fn new(nodes: &'a mut Vec<Statement>) -> Self {
         Self {
             context: TypecheckerContext::new(),
             nodes,
@@ -29,7 +28,7 @@ impl<'a> Typechecker<'a> {
         Typechecker::check_block(self.nodes, &mut self.context)
     }
 
-    pub fn check_block(block: &mut Vec<Node>, context: &mut TypecheckerContext) -> Result<(), TypecheckerError> {
+    pub fn check_block(block: &mut Vec<Statement>, context: &mut TypecheckerContext) -> Result<(), TypecheckerError> {
         for node in block {
             Typechecker::check_statement(node, context)?;
         }
@@ -37,43 +36,29 @@ impl<'a> Typechecker<'a> {
         Ok(())
     }
 
-    pub fn check_statement(statement: &mut Node, context: &mut TypecheckerContext) -> Result<(), TypecheckerError> {
-        match &mut statement.kind {
-            NodeKind::VariableDeclaration(variable_declaration) => {
-                variable_declaration.resolve(context, statement.location)
-            }
-
-            NodeKind::FunctionDefinition(function_definition) => {
-                function_definition.resolve(context, statement.location)
-            }
-
-            NodeKind::Return(r#return) => r#return.resolve(context, statement.location),
-
-            _ => todo!(),
+    pub fn check_statement(
+        statement: &mut Statement,
+        context: &mut TypecheckerContext,
+    ) -> Result<(), TypecheckerError> {
+        match statement {
+            Statement::VariableDeclaration(variable_declaration) => variable_declaration.resolve(context),
+            Statement::FunctionDefinition(function_definition) => function_definition.resolve(context),
+            Statement::Return(r#return) => r#return.resolve(context),
         }
     }
 
     pub fn check_expression(
-        expression: &mut Node,
+        expression: &mut Expression,
         context: &mut TypecheckerContext,
         expected_type: Option<&Type>,
     ) -> Result<Type, TypecheckerError> {
-        match &mut expression.kind {
-            NodeKind::IntegerLiteral(integer_literal) => {
-                integer_literal.resolve(context, expected_type, expression.location)
+        match expression {
+            Expression::IntegerLiteral(integer_literal) => integer_literal.resolve(context, expected_type),
+            Expression::BinaryOperation(binary_operation) => binary_operation.resolve(context, expected_type),
+            Expression::FunctionCall(function_call) => function_call.resolve(context, expected_type),
+            Expression::IdentifierReference(identifier_reference) => {
+                identifier_reference.resolve(context, expected_type)
             }
-
-            NodeKind::IdentifierReference(identifier_reference) => {
-                identifier_reference.resolve(context, expected_type, expression.location)
-            }
-
-            NodeKind::BinaryOperation(binary_operation) => {
-                binary_operation.resolve(context, expected_type, expression.location)
-            }
-
-            NodeKind::FunctionCall(function_call) => function_call.resolve(context, expected_type, expression.location),
-
-            _ => todo!(),
         }
     }
 

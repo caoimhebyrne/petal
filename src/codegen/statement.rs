@@ -1,11 +1,11 @@
 use super::{Codegen, error::CodegenError, r#type::TypeCodegen};
-use crate::ast::node::kind::{FunctionDefinitionNode, ReturnNode, VariableDeclarationNode};
+use crate::ast::node::statement::{FunctionDefinition, Return, VariableDeclaration};
 
 pub trait StatementCodegen {
     fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<(), CodegenError>;
 }
 
-impl StatementCodegen for FunctionDefinitionNode {
+impl StatementCodegen for FunctionDefinition {
     fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<(), CodegenError> {
         // TODO: Handle a function's parameters.
         let param_types = vec![];
@@ -31,7 +31,7 @@ impl StatementCodegen for FunctionDefinitionNode {
     }
 }
 
-impl StatementCodegen for VariableDeclarationNode {
+impl StatementCodegen for VariableDeclaration {
     fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<(), CodegenError> {
         // In order to declare a variable, we need to know its type.
         let variable_type = self.declared_type.resolve_value_type(codegen);
@@ -56,7 +56,7 @@ impl StatementCodegen for VariableDeclarationNode {
         let function_scope = codegen.context.function_scope.as_mut()
             .ok_or(CodegenError::internal_error(
                 "Unable to declare variable outside of a function block".to_owned(),
-                Some(self.value.location),
+                Some(self.node.location),
             ))?;
 
         function_scope.variables.insert(self.name.clone(), pointer);
@@ -64,7 +64,7 @@ impl StatementCodegen for VariableDeclarationNode {
     }
 }
 
-impl StatementCodegen for ReturnNode {
+impl StatementCodegen for Return {
     fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<(), CodegenError> {
         // A return node can have an optional value associated with it.
         if let Some(value_node) = &self.value {

@@ -6,15 +6,15 @@ use crate::{
 use error::ASTError;
 use node::{
     Node,
-    kind::{
-        BinaryOperationNode, FunctionCallNode, FunctionDefinitionNode, IdentifierReferenceNode, IntegerLiteralNode,
-        NodeKind, ReturnNode, VariableDeclarationNode,
-    },
-    operator::BinaryOperation,
+    expression::{BinaryOperation, Expression, FunctionCall, IdentifierReference, IntegerLiteral},
+    operator::Operation,
+    statement::{FunctionDefinition, Return, Statement, VariableDeclaration},
 };
 
 pub mod error;
 pub mod node;
+
+type AstResult<T> = Result<T, ASTError>;
 
 pub struct Ast {
     tokens: Stream<Token>,
@@ -27,7 +27,7 @@ impl Ast {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Node>, ASTError> {
+    pub fn parse(&mut self) -> AstResult<Vec<Statement>> {
         let mut nodes = vec![];
 
         while self.tokens.has_elements() {
@@ -38,7 +38,7 @@ impl Ast {
     }
 
     // Attempts to parse a statement from the token stream.
-    fn parse_statement(&mut self) -> Result<Node, ASTError> {
+    fn parse_statement(&mut self) -> AstResult<Statement> {
         let token = self.tokens.peek().ok_or(ASTError::unexpected_end_of_file())?;
 
         let node = match &token.kind {
@@ -60,11 +60,11 @@ impl Ast {
     }
 
     // Attempts to parse an expression from the token stream.
-    fn parse_expression(&mut self) -> Result<Node, ASTError> {
+    fn parse_expression(&mut self) -> AstResult<Expression> {
         self.parse_addition_subtraction_expression()
     }
 
-    fn parse_addition_subtraction_expression(&mut self) -> Result<Node, ASTError> {
+    fn parse_addition_subtraction_expression(&mut self) -> AstResult<Expression> {
         let left = self.parse_multiplication_division_expression()?;
 
         if self.next_is(TokenKind::Plus) || self.next_is(TokenKind::Minus) {
@@ -73,27 +73,25 @@ impl Ast {
 
             // We're only dealing with addition and subtraction in this branch.
             let operation = match operator_token.kind {
-                TokenKind::Plus => BinaryOperation::Add,
-                _ => BinaryOperation::Subtract,
+                TokenKind::Plus => Operation::Add,
+                _ => Operation::Subtract,
             };
 
             let right = self.parse_expression()?;
 
-            return Ok(Node::new(
-                NodeKind::BinaryOperation(BinaryOperationNode {
-                    operation,
-                    left: Box::new(left),
-                    right: Box::new(right),
-                    value_type: None,
-                }),
-                operator_token.location,
-            ));
+            return Ok(Expression::BinaryOperation(BinaryOperation {
+                node: Node::new(operator_token.location),
+                operation,
+                left: Box::new(left),
+                right: Box::new(right),
+                expected_type: None,
+            }));
         }
 
         Ok(left)
     }
 
-    fn parse_multiplication_division_expression(&mut self) -> Result<Node, ASTError> {
+    fn parse_multiplication_division_expression(&mut self) -> AstResult<Expression> {
         let left = self.parse_value()?;
 
         if self.next_is(TokenKind::Asterisk) || self.next_is(TokenKind::Slash) {
@@ -102,50 +100,45 @@ impl Ast {
 
             // We're only dealing with multiplication and division in this branch.
             let operation = match operator_token.kind {
-                TokenKind::Asterisk => BinaryOperation::Multiply,
-                _ => BinaryOperation::Divide,
+                TokenKind::Asterisk => Operation::Multiply,
+                _ => Operation::Divide,
             };
 
             let right = self.parse_expression()?;
 
-            return Ok(Node::new(
-                NodeKind::BinaryOperation(BinaryOperationNode {
-                    operation,
-                    left: Box::new(left),
-                    right: Box::new(right),
-                    value_type: None,
-                }),
-                operator_token.location,
-            ));
+            return Ok(Expression::BinaryOperation(BinaryOperation {
+                node: Node::new(operator_token.location),
+                operation,
+                left: Box::new(left),
+                right: Box::new(right),
+                expected_type: None,
+            }));
         }
 
         Ok(left)
     }
 
-    fn parse_value(&mut self) -> Result<Node, ASTError> {
+    fn parse_value(&mut self) -> AstResult<Expression> {
         let token = self.tokens.next().ok_or(ASTError::unexpected_end_of_file()).cloned()?;
+        let node = Node::new(token.location);
 
         match &token.kind {
-            TokenKind::IntegerLiteral(value) => Ok(Node::new(
-                NodeKind::IntegerLiteral(IntegerLiteralNode {
-                    value: *value,
-                    r#type: None,
-                }),
-                token.location,
-            )),
+            TokenKind::IntegerLiteral(value) => Ok(Expression::IntegerLiteral(IntegerLiteral {
+                node,
+                value: *value,
+                expected_type: None,
+            })),
 
             TokenKind::Identifier(name) => {
                 // If the next token is an opening parenthesis, this is most likely a function call.
                 if self.next_is(TokenKind::OpenParenthesis) {
                     self.parse_function_call(name, token.location)
                 } else {
-                    Ok(Node::new(
-                        NodeKind::IdentifierReference(IdentifierReferenceNode {
-                            name: name.to_string(),
-                            r#type: None,
-                        }),
-                        token.location,
-                    ))
+                    Ok(Expression::IdentifierReference(IdentifierReference {
+                        node,
+                        name: name.clone(),
+                        expected_type: None,
+                    }))
                 }
             }
 
@@ -154,24 +147,22 @@ impl Ast {
     }
 
     // Attempts to parse a function call from the token stream.
-    fn parse_function_call(&mut self, name: &str, location: Location) -> Result<Node, ASTError> {
+    fn parse_function_call(&mut self, name: &str, location: Location) -> AstResult<Expression> {
         self.expect(TokenKind::OpenParenthesis)?;
 
         // TODO: Parse a function call's arguments.
 
         self.expect(TokenKind::CloseParenthesis)?;
 
-        Ok(Node::new(
-            NodeKind::FunctionCall(FunctionCallNode {
-                name: name.to_string(),
-                return_type: None,
-            }),
-            location,
-        ))
+        Ok(Expression::FunctionCall(FunctionCall {
+            node: Node::new(location),
+            name: name.to_owned(),
+            expected_type: None,
+        }))
     }
 
     // Attempts to parse a function definition from the token stream.
-    fn parse_function_definition(&mut self) -> Result<Node, ASTError> {
+    fn parse_function_definition(&mut self) -> AstResult<Statement> {
         // All functions must start with the `func` keyword.
         self.expect(TokenKind::Keyword(Keyword::Func))?;
 
@@ -195,7 +186,7 @@ impl Ast {
             return_type = self
                 .expect_identifier()
                 .ok()
-                .map(|(name, location)| Type::new(TypeKind::Unresolved(name.to_owned()), Some(location)))
+                .map(|(name, location)| Type::new(TypeKind::Unresolved(name.to_owned()), location))
         }
 
         // Then, the function's body, surrounded by braces.
@@ -213,18 +204,16 @@ impl Ast {
 
         self.expect(TokenKind::CloseBrace)?;
 
-        Ok(Node::new(
-            NodeKind::FunctionDefinition(FunctionDefinitionNode {
-                name: function_name.to_string(),
-                return_type,
-                body,
-            }),
-            function_name_location,
-        ))
+        Ok(Statement::FunctionDefinition(FunctionDefinition {
+            node: Node::new(function_name_location),
+            name: function_name,
+            return_type,
+            body,
+        }))
     }
 
     // Attempts to parse a variable declaration from the token stream.
-    fn parse_variable_declaration(&mut self) -> Result<Node, ASTError> {
+    fn parse_variable_declaration(&mut self) -> AstResult<Statement> {
         let (type_name, type_location) = self.expect_identifier()?;
         let (name, name_location) = self.expect_identifier()?;
 
@@ -232,28 +221,29 @@ impl Ast {
 
         let value = self.parse_expression()?;
 
-        Ok(Node::new(
-            NodeKind::VariableDeclaration(VariableDeclarationNode {
-                name: name.to_string(),
-                declared_type: Type::new(TypeKind::Unresolved(type_name.to_string()), Some(type_location)),
-                value: Box::new(value),
-            }),
-            name_location,
-        ))
+        Ok(Statement::VariableDeclaration(VariableDeclaration {
+            node: Node::new(name_location),
+            declared_type: Type::new(TypeKind::Unresolved(type_name), type_location),
+            name,
+            value,
+        }))
     }
 
     // Attempts to parse a return statement from the token stream.
-    pub fn parse_return_statement(&mut self) -> Result<Node, ASTError> {
+    pub fn parse_return_statement(&mut self) -> AstResult<Statement> {
         // All return statements must start with the `func` keyword.
         let return_token = self.expect(TokenKind::Keyword(Keyword::Return))?;
 
         // If the next token is not a semicolon, it has an associated value.
         let mut value = None;
         if !self.next_is(TokenKind::Semicolon) {
-            value = Some(Box::new(self.parse_expression()?));
+            value = Some(self.parse_expression()?);
         }
 
-        Ok(Node::new(NodeKind::Return(ReturnNode { value }), return_token.location))
+        Ok(Statement::Return(Return {
+            node: Node::new(return_token.location),
+            value,
+        }))
     }
 
     fn next_is(&self, kind: TokenKind) -> bool {
@@ -266,7 +256,7 @@ impl Ast {
     }
 
     // Expects a certain token kind to be at the position in the token stream.
-    fn expect(&mut self, kind: TokenKind) -> Result<Token, ASTError> {
+    fn expect(&mut self, kind: TokenKind) -> AstResult<Token> {
         let token = match self.tokens.peek().cloned() {
             Some(value) => value,
             None => return Err(ASTError::expected_token(kind, None)),
@@ -283,7 +273,7 @@ impl Ast {
     }
 
     // Expects an identifier to be at the position in the token stream.
-    fn expect_identifier(&mut self) -> Result<(String, Location), ASTError> {
+    fn expect_identifier(&mut self) -> AstResult<(String, Location)> {
         let token = self.tokens.next().ok_or(ASTError::unexpected_end_of_file())?;
 
         match &token.kind {

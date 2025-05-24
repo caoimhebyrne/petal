@@ -7,7 +7,6 @@ use super::r#type::kind::TypeKind;
 pub enum TypecheckerErrorKind {
     UndefinedVariable(String),
     UndefinedFunction(String),
-
     UnableToResolveType(String),
 
     MismatchedType { expected: TypeKind, received: TypeKind },
@@ -16,32 +15,32 @@ pub enum TypecheckerErrorKind {
 #[derive(Debug, Clone)]
 pub struct TypecheckerError {
     pub kind: TypecheckerErrorKind,
-    pub location: Option<Location>,
+    pub location: Location,
 }
 
 impl TypecheckerError {
-    pub fn undefined_variable(name: String, location: Option<Location>) -> TypecheckerError {
+    pub fn undefined_variable(name: String, location: Location) -> TypecheckerError {
         TypecheckerError {
             kind: TypecheckerErrorKind::UndefinedVariable(name),
             location,
         }
     }
 
-    pub fn undefined_function(name: String, location: Option<Location>) -> TypecheckerError {
+    pub fn undefined_function(name: String, location: Location) -> TypecheckerError {
         TypecheckerError {
             kind: TypecheckerErrorKind::UndefinedFunction(name),
             location,
         }
     }
 
-    pub fn unable_to_resolve_type(name: String, location: Option<Location>) -> TypecheckerError {
+    pub fn unable_to_resolve_type(name: String, location: Location) -> TypecheckerError {
         TypecheckerError {
             kind: TypecheckerErrorKind::UnableToResolveType(name),
             location,
         }
     }
 
-    pub fn mismatched_type(expected: TypeKind, received: TypeKind, location: Option<Location>) -> TypecheckerError {
+    pub fn mismatched_type(expected: TypeKind, received: TypeKind, location: Location) -> TypecheckerError {
         TypecheckerError {
             kind: TypecheckerErrorKind::MismatchedType { expected, received },
             location,

@@ -1,17 +1,16 @@
 use crate::core::location::Location;
-use kind::NodeKind;
 
-pub mod kind;
+pub mod expression;
 pub mod operator;
+pub mod statement;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Node {
-    pub kind: NodeKind,
     pub location: Location,
 }
 
 impl Node {
-    pub fn new(kind: NodeKind, location: Location) -> Self {
-        Self { kind, location }
+    pub fn new(location: Location) -> Self {
+        Self { location }
     }
 }

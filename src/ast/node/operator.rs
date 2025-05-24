@@ -1,5 +1,5 @@
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum BinaryOperation {
+pub enum Operation {
     Add,
     Subtract,
     Divide,

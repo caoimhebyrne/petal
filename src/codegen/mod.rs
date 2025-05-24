@@ -1,4 +1,4 @@
-use crate::ast::node::{Node, kind::NodeKind};
+use crate::ast::node::{expression::Expression, statement::Statement};
 use context::CodegenContext;
 use error::CodegenError;
 use expression::ExpressionCodegen;
@@ -20,7 +20,7 @@ pub mod statement;
 pub mod r#type;
 
 pub struct Codegen<'a> {
-    nodes: &'a Vec<Node>,
+    nodes: &'a Vec<Statement>,
     output_path: &'a PathBuf,
 
     pub context: CodegenContext<'a>,
@@ -31,7 +31,7 @@ pub struct Codegen<'a> {
 }
 
 impl<'a> Codegen<'a> {
-    pub fn new(output_path: &'a PathBuf, context: &'a Context, nodes: &'a Vec<Node>) -> Self {
+    pub fn new(output_path: &'a PathBuf, context: &'a Context, nodes: &'a Vec<Statement>) -> Self {
         Self {
             nodes,
             output_path,
@@ -96,7 +96,7 @@ impl<'a> Codegen<'a> {
             .map_err(|error| CodegenError::internal_error(error.to_string(), None))
     }
 
-    pub fn visit_block(&mut self, block: &Vec<Node>) -> Result<(), CodegenError> {
+    pub fn visit_block(&mut self, block: &Vec<Statement>) -> Result<(), CodegenError> {
         for node in block {
             self.visit_statement(node)?;
         }
@@ -104,24 +104,20 @@ impl<'a> Codegen<'a> {
         Ok(())
     }
 
-    pub fn visit_expression(&mut self, expression: &Node) -> Result<BasicValueEnum<'a>, CodegenError> {
-        match &expression.kind {
-            NodeKind::IntegerLiteral(integer_literal) => integer_literal.codegen(self),
-            NodeKind::IdentifierReference(identifier_reference) => identifier_reference.codegen(self),
-            NodeKind::BinaryOperation(binary_operation) => binary_operation.codegen(self),
-            NodeKind::FunctionCall(function_call) => function_call.codegen(self),
-
-            _ => panic!("Unsupported expression node type: {:#?}", expression.kind),
+    pub fn visit_expression(&mut self, expression: &Expression) -> Result<BasicValueEnum<'a>, CodegenError> {
+        match expression {
+            Expression::IntegerLiteral(integer_literal) => integer_literal.codegen(self),
+            Expression::IdentifierReference(identifier_reference) => identifier_reference.codegen(self),
+            Expression::BinaryOperation(binary_operation) => binary_operation.codegen(self),
+            Expression::FunctionCall(function_call) => function_call.codegen(self),
         }
     }
 
-    pub fn visit_statement(&mut self, statement: &Node) -> Result<(), CodegenError> {
-        match &statement.kind {
-            NodeKind::FunctionDefinition(function_definition) => function_definition.codegen(self),
-            NodeKind::VariableDeclaration(variable_declaration) => variable_declaration.codegen(self),
-            NodeKind::Return(r#return) => r#return.codegen(self),
-
-            _ => panic!("Unsupported statement node type: {:#?}", statement.kind),
+    pub fn visit_statement(&mut self, statement: &Statement) -> Result<(), CodegenError> {
+        match statement {
+            Statement::FunctionDefinition(function_definition) => function_definition.codegen(self),
+            Statement::VariableDeclaration(variable_declaration) => variable_declaration.codegen(self),
+            Statement::Return(r#return) => r#return.codegen(self),
         }
     }
 }
