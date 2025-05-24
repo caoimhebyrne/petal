@@ -44,6 +44,9 @@ pub struct FunctionCall {
     // The name of the function being called.
     pub name: String,
 
+    // The arguments being passed to the function.
+    pub arguments: Vec<Expression>,
+
     // The expected return type of the function.
     pub expected_type: Option<Type>,
 }

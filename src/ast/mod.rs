@@ -151,13 +151,27 @@ impl Ast {
     fn parse_function_call(&mut self, name: &str, location: Location) -> AstResult<Expression> {
         self.expect(TokenKind::OpenParenthesis)?;
 
-        // TODO: Parse a function call's arguments.
+        let mut arguments = Vec::new();
 
-        self.expect(TokenKind::CloseParenthesis)?;
+        if self.expect(TokenKind::CloseParenthesis).is_err() {
+            // If the next token is not a closing parenthesis, we must parse the function call's arguments.
+            loop {
+                arguments.push(self.parse_expression()?);
+
+                // If we reach a closing parenthesis, we have finished parsing the arguments.
+                if self.expect(TokenKind::CloseParenthesis).is_ok() {
+                    break;
+                } else {
+                    // Otherwise, we must expect a comma.
+                    self.expect(TokenKind::Comma)?;
+                }
+            }
+        }
 
         Ok(Expression::FunctionCall(FunctionCall {
             node: Node::new(location),
             name: name.to_owned(),
+            arguments,
             expected_type: None,
         }))
     }
@@ -197,7 +211,7 @@ impl Ast {
                 if self.expect(TokenKind::CloseParenthesis).is_ok() {
                     break;
                 } else {
-                    // Otherwise, we can consume the comma.
+                    // Otherwise, we must expect a comma.
                     self.expect(TokenKind::Comma)?;
                 }
             }
