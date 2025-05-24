@@ -1,0 +1,10 @@
+func main() -> i32 {
+    // All variables are mutable by default.
+    i32 value = 5;
+
+    // A new value can be assigned to a variable as long as the value
+    // is of the correct type.
+    value = 10;
+
+    return value;
+}

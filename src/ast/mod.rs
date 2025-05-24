@@ -9,7 +9,7 @@ use node::{
     expression::{BinaryOperation, Expression, FunctionCall, IdentifierReference, IntegerLiteral},
     extra::FunctionParameter,
     operator::Operation,
-    statement::{FunctionDefinition, Return, Statement, VariableDeclaration},
+    statement::{FunctionDefinition, Return, Statement, VariableDeclaration, VariableReassignment},
 };
 
 pub mod error;
@@ -49,7 +49,13 @@ impl Ast {
                 Keyword::Return => self.parse_return_statement()?,
             },
 
-            TokenKind::Identifier(_) => self.parse_variable_declaration()?,
+            TokenKind::Identifier(_) => {
+                if self.after_next_is(TokenKind::Equals) {
+                    self.parse_variable_reassignment()?
+                } else {
+                    self.parse_variable_declaration()?
+                }
+            }
 
             _ => return Err(ASTError::unexpected_token((*token).clone())),
         };
@@ -271,6 +277,20 @@ impl Ast {
         }))
     }
 
+    // Attempts to parse a variable re-assignment from the token stream.
+    fn parse_variable_reassignment(&mut self) -> AstResult<Statement> {
+        let (name, name_location) = self.expect_identifier()?;
+        self.expect(TokenKind::Equals)?;
+
+        let value = self.parse_expression()?;
+
+        Ok(Statement::VariableReassignment(VariableReassignment {
+            node: Node::new(name_location),
+            name,
+            value,
+        }))
+    }
+
     // Attempts to parse a return statement from the token stream.
     pub fn parse_return_statement(&mut self) -> AstResult<Statement> {
         // All return statements must start with the `func` keyword.
@@ -290,6 +310,15 @@ impl Ast {
 
     fn next_is(&self, kind: TokenKind) -> bool {
         let token = match self.tokens.peek() {
+            Some(value) => value,
+            None => return false,
+        };
+
+        token.kind == kind
+    }
+
+    fn after_next_is(&self, kind: TokenKind) -> bool {
+        let token = match self.tokens.peek_at(1) {
             Some(value) => value,
             None => return false,
         };

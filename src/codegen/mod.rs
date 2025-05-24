@@ -118,6 +118,7 @@ impl<'a> Codegen<'a> {
             Statement::FunctionDefinition(function_definition) => function_definition.codegen(self),
             Statement::VariableDeclaration(variable_declaration) => variable_declaration.codegen(self),
             Statement::Return(r#return) => r#return.codegen(self),
+            Statement::VariableReassignment(variable_reassignment) => variable_reassignment.codegen(self),
         }
     }
 }

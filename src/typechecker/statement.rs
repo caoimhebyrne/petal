@@ -4,7 +4,7 @@ use super::{
     error::TypecheckerError,
     r#type::{Type, kind::TypeKind},
 };
-use crate::ast::node::statement::{FunctionDefinition, Return, VariableDeclaration};
+use crate::ast::node::statement::{FunctionDefinition, Return, VariableDeclaration, VariableReassignment};
 
 pub trait StatmentTypecheck {
     fn resolve(&mut self, context: &mut TypecheckerContext) -> Result<(), TypecheckerError>;
@@ -84,6 +84,36 @@ impl StatmentTypecheck for Return {
         if value_type.kind != function_scope.return_type.kind {
             return Err(TypecheckerError::mismatched_type(
                 function_scope.return_type.kind,
+                value_type.kind,
+                value_type.location,
+            ));
+        }
+
+        Ok(())
+    }
+}
+
+impl StatmentTypecheck for VariableReassignment {
+    fn resolve(&mut self, context: &mut TypecheckerContext) -> Result<(), TypecheckerError> {
+        let function_scope = match &context.function_scope {
+            Some(value) => value,
+            None => panic!("Identifier reference outside of function scope?"),
+        };
+
+        let variable_type = function_scope
+            .variables
+            .get(&self.name)
+            .ok_or(TypecheckerError::undefined_variable(
+                self.name.clone(),
+                self.node.location,
+            ))
+            .cloned()?;
+
+        // The type of the variable must match the type of the value.
+        let value_type = Typechecker::check_expression(&mut self.value, context, Some(&variable_type))?;
+        if value_type.kind != variable_type.kind {
+            return Err(TypecheckerError::mismatched_type(
+                variable_type.kind,
                 value_type.kind,
                 value_type.location,
             ));

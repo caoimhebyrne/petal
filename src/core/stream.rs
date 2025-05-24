@@ -31,6 +31,11 @@ impl<T> Stream<T> {
         self.elements.get(self.index)
     }
 
+    // Attempts to read the element at a certain offset from the current position.
+    pub fn peek_at(&self, index: usize) -> Option<&T> {
+        self.elements.get(self.index + index)
+    }
+
     /// Returns whether the stream has any elements remaining.
     pub fn has_elements(&self) -> bool {
         self.index < self.elements.len()

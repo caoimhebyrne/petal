@@ -1,5 +1,5 @@
 use super::{Codegen, error::CodegenError, r#type::TypeCodegen};
-use crate::ast::node::statement::{FunctionDefinition, Return, VariableDeclaration};
+use crate::ast::node::statement::{FunctionDefinition, Return, VariableDeclaration, VariableReassignment};
 
 pub trait StatementCodegen {
     fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<(), CodegenError>;
@@ -108,5 +108,38 @@ impl StatementCodegen for Return {
                 .map(|_| ())
                 .map_err(|error| CodegenError::internal_error(error.to_string(), None))
         }
+    }
+}
+
+impl StatementCodegen for VariableReassignment {
+    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<(), CodegenError> {
+        // We must be within a function's scope.
+        let function_scope = codegen
+            .context
+            .function_scope
+            .as_mut()
+            .ok_or(CodegenError::internal_error(
+                "Attempted to re-assign a variable outside of a function's scope!".to_owned(),
+                Some(self.node.location),
+            ))?;
+
+        // The variable must be defined already.
+        let pointer = *function_scope
+            .variables
+            .get(&self.name)
+            .ok_or(CodegenError::internal_error(
+                format!("Undefined variable: '{}', possible typechecker bug?", self.name),
+                Some(self.node.location),
+            ))?;
+
+        // Now that we know where to store the value, we need to generate the value.
+        let value = Codegen::visit_expression(codegen, &self.value)?;
+
+        codegen
+            .llvm_builder
+            .build_store(pointer, value)
+            .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
+
+        Ok(())
     }
 }

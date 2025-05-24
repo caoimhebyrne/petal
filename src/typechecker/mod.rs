@@ -44,6 +44,7 @@ impl<'a> Typechecker<'a> {
             Statement::VariableDeclaration(variable_declaration) => variable_declaration.resolve(context),
             Statement::FunctionDefinition(function_definition) => function_definition.resolve(context),
             Statement::Return(r#return) => r#return.resolve(context),
+            Statement::VariableReassignment(variable_reassignment) => variable_reassignment.resolve(context),
         }
     }
 

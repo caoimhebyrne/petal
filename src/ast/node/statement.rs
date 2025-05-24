@@ -6,6 +6,7 @@ pub enum Statement {
     FunctionDefinition(FunctionDefinition),
     VariableDeclaration(VariableDeclaration),
     Return(Return),
+    VariableReassignment(VariableReassignment),
 }
 
 // A function definition node.
@@ -51,4 +52,17 @@ pub struct Return {
 
     // The (optional) value being returned.
     pub value: Option<Expression>,
+}
+
+// A variable re-assignment statement.
+#[derive(Debug, Clone)]
+pub struct VariableReassignment {
+    // The node associated with this statement.
+    pub node: Node,
+
+    // The name of the variable being assigned to.
+    pub name: String,
+
+    // The value being assigned to the variable.
+    pub value: Expression,
 }
