@@ -1,6 +1,6 @@
 use super::position::Position;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Location {
     pub line: usize,
     pub column: usize,
@@ -8,11 +8,21 @@ pub struct Location {
 }
 
 impl Location {
-    pub fn new(position: Position, length: usize) -> Location {
-        Location {
-            line: position.line,
-            column: position.column,
-            length,
+    pub fn between(start: Position, end: Position) -> Self {
+        Self {
+            line: start.line,
+            column: start.column,
+            length: end.column - start.column,
+        }
+    }
+}
+
+impl From<Position> for Location {
+    fn from(value: Position) -> Self {
+        Self {
+            line: value.line,
+            column: value.column,
+            length: 1,
         }
     }
 }

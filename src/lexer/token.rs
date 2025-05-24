@@ -1,10 +1,16 @@
 use crate::core::location::Location;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Keyword {
+    Func,
+    Return,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TokenKind {
     IntegerLiteral(u64), // An integer literal token.
     Identifier(String),  // An identifier.
-    Keyword(String),     // A keyword.
+    Keyword(Keyword),    // A keyword.
 
     Plus,             // +
     Minus,            // -

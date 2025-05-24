@@ -48,7 +48,7 @@ fn main() {
         Err(error) => return eprintln!("ERROR: {}", error),
     };
 
-    let mut lexer = Lexer::from(&file_contents);
+    let mut lexer = Lexer::new(&file_contents);
     let tokens = match lexer.parse() {
         Ok(value) => value,
         Err(error) => report_error(&args.path, &error, Some(error.location)),

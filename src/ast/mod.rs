@@ -1,6 +1,6 @@
 use crate::{
     core::{location::Location, stream::Stream},
-    lexer::token::{Token, TokenKind},
+    lexer::token::{Keyword, Token, TokenKind},
     typechecker::r#type::{Type, kind::TypeKind},
 };
 use error::ASTError;
@@ -42,11 +42,10 @@ impl Ast {
         let token = self.tokens.peek().ok_or(ASTError::unexpected_end_of_file())?;
 
         let node = match &token.kind {
-            TokenKind::Keyword(keyword) => match keyword.as_str() {
-                "func" => return self.parse_function_definition(),
-                "return" => self.parse_return_statement()?,
-
-                _ => return Err(ASTError::unexpected_token((*token).clone())),
+            TokenKind::Keyword(keyword) => match keyword {
+                // A function definition should not end in a semicolon, hence the reason for `return` here.
+                Keyword::Func => return self.parse_function_definition(),
+                Keyword::Return => self.parse_return_statement()?,
             },
 
             TokenKind::Identifier(_) => self.parse_variable_declaration()?,
@@ -174,7 +173,7 @@ impl Ast {
     // Attempts to parse a function definition from the token stream.
     fn parse_function_definition(&mut self) -> Result<Node, ASTError> {
         // All functions must start with the `func` keyword.
-        self.expect(TokenKind::Keyword("func".to_owned()))?;
+        self.expect(TokenKind::Keyword(Keyword::Func))?;
 
         // The function name should come after the `func` keyword.
         let (function_name, function_name_location) = self.expect_identifier()?;
@@ -249,7 +248,7 @@ impl Ast {
     // Attempts to parse a return statement from the token stream.
     pub fn parse_return_statement(&mut self) -> Result<Node, ASTError> {
         // All return statements must start with the `func` keyword.
-        let return_token = self.expect(TokenKind::Keyword("return".to_owned()))?;
+        let return_token = self.expect(TokenKind::Keyword(Keyword::Return))?;
 
         // If the next token is not a semicolon, it has an associated value.
         let mut value = None;
