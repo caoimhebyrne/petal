@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use inkwell::values::PointerValue;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct CodegenContext<'ctx> {

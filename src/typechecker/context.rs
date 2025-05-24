@@ -15,9 +15,10 @@ impl TypecheckerContext {
         }
     }
 
-    pub fn start_function_scope(&mut self, name: &str, return_type: Type) {
+    pub fn start_function_scope(&mut self, name: &str, return_type: Type) -> &mut FunctionScope {
         self.functions.insert(name.to_owned(), return_type.clone());
         self.function_scope = Some(FunctionScope::new(return_type));
+        self.function_scope.as_mut().unwrap()
     }
 
     pub fn end_function_scope(&mut self) {

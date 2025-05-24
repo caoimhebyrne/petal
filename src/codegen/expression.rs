@@ -88,9 +88,14 @@ impl ExpressionCodegen for FunctionCall {
                 None,
             ))?;
 
+        let mut arguments = vec![];
+        for argument in &self.arguments {
+            arguments.push(Codegen::visit_expression(codegen, argument)?.into());
+        }
+
         codegen
             .llvm_builder
-            .build_call(function, &[], &self.name)
+            .build_call(function, &arguments, &self.name)
             .map(|it| it.try_as_basic_value().expect_left("value was right"))
             .map_err(|error| CodegenError::internal_error(error.to_string(), None))
     }

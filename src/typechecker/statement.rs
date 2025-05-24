@@ -52,7 +52,14 @@ impl StatmentTypecheck for FunctionDefinition {
         self.return_type = Some(return_type.clone());
 
         // Then, we can check the types within the body.
-        context.start_function_scope(&self.name, return_type);
+        let scope = context.start_function_scope(&self.name, return_type);
+        for parameter in &mut self.parameters {
+            parameter.expected_type = Typechecker::resolve_type(parameter.expected_type.clone())?;
+
+            scope
+                .variables
+                .insert(parameter.name.clone(), parameter.expected_type.clone());
+        }
 
         Typechecker::check_block(&mut self.body, context)?;
 

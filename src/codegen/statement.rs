@@ -7,8 +7,10 @@ pub trait StatementCodegen {
 
 impl StatementCodegen for FunctionDefinition {
     fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<(), CodegenError> {
-        // TODO: Handle a function's parameters.
-        let param_types = vec![];
+        let mut param_types = vec![];
+        for parameter in &self.parameters {
+            param_types.push(parameter.expected_type.resolve_value_type(codegen).into());
+        }
 
         // A function's type includes its return type, parameter types, and whether it is varadic.
         let function_type = match &self.return_type {
@@ -24,6 +26,30 @@ impl StatementCodegen for FunctionDefinition {
         codegen.llvm_builder.position_at_end(block);
 
         codegen.context.start_function_scope();
+
+        for (index, parameter) in function.get_param_iter().enumerate() {
+            // We must first set the name of the function parameter.
+            let function_parameter = self.parameters.get(index).unwrap();
+            parameter.set_name(&function_parameter.name);
+
+            let parameter_type = function_parameter.expected_type.resolve_value_type(codegen);
+
+            // We can then allocate some space for it, and store the parameter into that space.
+            let pointer = codegen
+                .llvm_builder
+                .build_alloca(parameter_type, &self.name)
+                .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
+
+            codegen
+                .llvm_builder
+                .build_store(pointer, parameter)
+                .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
+
+            // We can then declare the parameter as a variable.
+            let scope = codegen.context.function_scope.as_mut().unwrap();
+            scope.variables.insert(function_parameter.name.clone(), pointer);
+        }
+
         codegen.visit_block(&self.body)?;
         codegen.context.end_function_scope();
 

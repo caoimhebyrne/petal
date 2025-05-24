@@ -94,7 +94,14 @@ impl ExpressionTypecheck for FunctionCall {
             .ok_or(TypecheckerError::undefined_function(
                 self.name.clone(),
                 self.node.location,
-            ))?;
+            ))?
+            .clone();
+
+        // We also must typecheck the function call's arguments.
+        for argument in &mut self.arguments {
+            // TODO: Pass a function parameter's expected type.
+            Typechecker::check_expression(argument, context, None)?;
+        }
 
         self.expected_type = Some(return_type.clone());
         Ok(return_type.clone())
