@@ -4,7 +4,7 @@ use std::fmt::Display;
 
 pub mod kind;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Type {
     pub kind: TypeKind,
     pub location: Location,

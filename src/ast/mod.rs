@@ -7,6 +7,7 @@ use error::ASTError;
 use node::{
     Node,
     expression::{BinaryOperation, Expression, FunctionCall, IdentifierReference, IntegerLiteral},
+    extra::FunctionParameter,
     operator::Operation,
     statement::{FunctionDefinition, Return, Statement, VariableDeclaration},
 };
@@ -172,9 +173,35 @@ impl Ast {
         // Then, the function's parameters surrounded by parenthesis.
         self.expect(TokenKind::OpenParenthesis)?;
 
-        // TODO: Parse parameters.
+        let mut parameters = Vec::new();
 
-        self.expect(TokenKind::CloseParenthesis)?;
+        if self.expect(TokenKind::CloseParenthesis).is_err() {
+            // If the next token is not a closing parenthesis, we must parse the function's parameters.
+            loop {
+                // The first part of the parameter is the identifier.
+                let (parameter_name, parameter_location) = self.expect_identifier()?;
+
+                // The next part must be a colon.
+                self.expect(TokenKind::Colon)?;
+
+                // Then, the type of the parameter.
+                let (parameter_type, parameter_type_location) = self.expect_identifier()?;
+
+                parameters.push(FunctionParameter::new(
+                    parameter_name,
+                    Type::new(TypeKind::Unresolved(parameter_type), parameter_type_location),
+                    parameter_location,
+                ));
+
+                // If we reach a closing parenthesis, we have finished parsing the parameters.
+                if self.expect(TokenKind::CloseParenthesis).is_ok() {
+                    break;
+                } else {
+                    // Otherwise, we can consume the comma.
+                    self.expect(TokenKind::Comma)?;
+                }
+            }
+        }
 
         // Then, optionally the function's return type.
         let mut return_type = Option::None;
@@ -207,6 +234,7 @@ impl Ast {
         Ok(Statement::FunctionDefinition(FunctionDefinition {
             node: Node::new(function_name_location),
             name: function_name,
+            parameters,
             return_type,
             body,
         }))

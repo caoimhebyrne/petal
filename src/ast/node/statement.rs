@@ -1,6 +1,5 @@
+use super::{Node, expression::Expression, extra::FunctionParameter};
 use crate::typechecker::r#type::Type;
-
-use super::{Node, expression::Expression};
 
 #[derive(Debug, Clone)]
 pub enum Statement {
@@ -17,6 +16,9 @@ pub struct FunctionDefinition {
 
     // The name of the function.
     pub name: String,
+
+    // The parameters of the function.
+    pub parameters: Vec<FunctionParameter>,
 
     // The return type of the function.
     pub return_type: Option<Type>,

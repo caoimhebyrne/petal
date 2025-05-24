@@ -17,12 +17,14 @@ pub enum TokenKind {
     Asterisk,         // *
     Slash,            // /
     Equals,           // =
+    Colon,            // :
     Semicolon,        // ;
     OpenParenthesis,  // (
     CloseParenthesis, // )
     OpenBrace,        // {
     CloseBrace,       // }
     GreaterThan,      // >
+    Comma,            // ,
 }
 
 #[derive(Debug, Clone)]

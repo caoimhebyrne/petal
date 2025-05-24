@@ -1,7 +1,9 @@
-func adder() -> i32 {
-    return 4 + 5;
+// A function can take inputs in the form of parameters.
+func adder(a: i32, b: i32) -> i32 {
+    return a + b;
 }
 
 func main() -> i32 {
-    return adder();
+    // Values can be passed to a function in the form of arguments.
+    return adder(4, 5);
 }

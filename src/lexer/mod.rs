@@ -42,12 +42,14 @@ impl<'a> Lexer<'a> {
                 '-' => Token::new(TokenKind::Minus, position.into()),
                 '*' => Token::new(TokenKind::Asterisk, position.into()),
                 '=' => Token::new(TokenKind::Equals, position.into()),
+                ':' => Token::new(TokenKind::Colon, position.into()),
                 ';' => Token::new(TokenKind::Semicolon, position.into()),
                 '(' => Token::new(TokenKind::OpenParenthesis, position.into()),
                 ')' => Token::new(TokenKind::CloseParenthesis, position.into()),
                 '{' => Token::new(TokenKind::OpenBrace, position.into()),
                 '}' => Token::new(TokenKind::CloseBrace, position.into()),
                 '>' => Token::new(TokenKind::GreaterThan, position.into()),
+                ',' => Token::new(TokenKind::Comma, position.into()),
 
                 '/' => {
                     if let Some('/') = self.peek() {
