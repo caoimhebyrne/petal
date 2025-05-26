@@ -29,6 +29,10 @@ impl<'a> Lexer<'a> {
                 ("func".to_owned(), Keyword::Func),
                 ("return".to_owned(), Keyword::Return),
                 ("extern".to_owned(), Keyword::Extern),
+                ("if".to_owned(), Keyword::If),
+                ("else".to_owned(), Keyword::Else),
+                ("true".to_owned(), Keyword::True),
+                ("false".to_owned(), Keyword::False),
             ]),
         }
     }
@@ -49,6 +53,7 @@ impl<'a> Lexer<'a> {
                 ')' => Token::new(TokenKind::CloseParenthesis, position.into()),
                 '{' => Token::new(TokenKind::OpenBrace, position.into()),
                 '}' => Token::new(TokenKind::CloseBrace, position.into()),
+                '<' => Token::new(TokenKind::LessThan, position.into()),
                 '>' => Token::new(TokenKind::GreaterThan, position.into()),
                 ',' => Token::new(TokenKind::Comma, position.into()),
                 '&' => Token::new(TokenKind::Ampersand, position.into()),

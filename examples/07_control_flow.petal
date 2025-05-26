@@ -1,0 +1,15 @@
+// NOTE: The external function is not important for this example.
+extern func printf(format: &i8);
+
+func main() {
+    i32 my_value = 6;
+
+    // The code within the block provided will only be executed if the condition in the `if` is true.
+    if my_value < 6 {
+        printf("`my_value` was less than 6!\n");
+        return;
+    }
+    
+    printf("`my_value` was greater than or equal to 6!\n");
+    return;
+}

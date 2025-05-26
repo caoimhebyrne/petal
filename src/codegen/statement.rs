@@ -3,7 +3,7 @@ use inkwell::module::Linkage;
 use super::{Codegen, error::CodegenError, r#type::TypeCodegen};
 use crate::ast::node::{
     expression::FunctionCall,
-    statement::{FunctionDefinition, Return, VariableDeclaration, VariableReassignment},
+    statement::{FunctionDefinition, If, Return, VariableDeclaration, VariableReassignment},
 };
 
 pub trait StatementCodegen {
@@ -32,7 +32,7 @@ impl StatementCodegen for FunctionDefinition {
             let block = codegen.llvm_context.append_basic_block(function, "entry");
             codegen.llvm_builder.position_at_end(block);
 
-            codegen.context.start_function_scope();
+            codegen.context.start_function_scope(function);
 
             for (index, parameter) in function.get_param_iter().enumerate() {
                 // We must first set the name of the function parameter.
@@ -181,6 +181,43 @@ impl StatementCodegen for FunctionCall {
             .llvm_builder
             .build_call(function, &arguments, &self.name)
             .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
+
+        Ok(())
+    }
+}
+
+impl StatementCodegen for If {
+    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<(), CodegenError> {
+        let condition = Codegen::visit_expression(codegen, &self.condition)?;
+
+        // We must be within a function's scope.
+        let function_scope = codegen
+            .context
+            .function_scope
+            .as_ref()
+            .ok_or(CodegenError::internal_error(
+                "Attempted to build an if-statement outside of a function scope".to_owned(),
+                Some(self.node.location),
+            ))?;
+
+        let then_block = codegen
+            .llvm_context
+            .append_basic_block(function_scope.function, "then_block");
+
+        let else_block = codegen
+            .llvm_context
+            .append_basic_block(function_scope.function, "else_block");
+
+        codegen
+            .llvm_builder
+            .build_conditional_branch(condition.into_int_value(), then_block, else_block)
+            .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
+
+        codegen.llvm_builder.position_at_end(then_block);
+
+        Codegen::visit_block(codegen, &self.block)?;
+
+        codegen.llvm_builder.position_at_end(else_block);
 
         Ok(())
     }

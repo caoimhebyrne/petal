@@ -11,6 +11,8 @@ pub enum ASTErrorKind {
         received: Option<Token>,
     },
 
+    DanglingElse,
+
     UnexpectedToken(Token),
     UnexpectedEndOfFile,
 }
@@ -29,6 +31,13 @@ impl ASTError {
                 received: received.clone(),
             },
             location: received.map(|it| it.location),
+        }
+    }
+
+    pub fn dangling_else(location: Location) -> ASTError {
+        ASTError {
+            kind: ASTErrorKind::DanglingElse,
+            location: Some(location),
         }
     }
 
@@ -61,6 +70,8 @@ impl Display for ASTError {
                     write!(f, "Expected token '{:?}', but received end-of-file", expected)
                 }
             }
+
+            ASTErrorKind::DanglingElse => write!(f, "`else` must have a preceeding if"),
 
             ASTErrorKind::UnexpectedToken(token) => {
                 write!(f, "Unexpected token: '{:?}'", token.kind)

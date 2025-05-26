@@ -110,7 +110,9 @@ impl<'a> Codegen<'a> {
             Expression::StringLiteral(string_literal) => string_literal.codegen(self),
             Expression::IdentifierReference(identifier_reference) => identifier_reference.codegen(self),
             Expression::BinaryOperation(binary_operation) => binary_operation.codegen(self),
+            Expression::BinaryComparison(binary_comparison) => binary_comparison.codegen(self),
             Expression::FunctionCall(function_call) => ExpressionCodegen::codegen(function_call, self),
+            Expression::BooleanLiteral(boolean_literal) => boolean_literal.codegen(self),
         }
     }
 
@@ -121,6 +123,7 @@ impl<'a> Codegen<'a> {
             Statement::Return(r#return) => r#return.codegen(self),
             Statement::VariableReassignment(variable_reassignment) => variable_reassignment.codegen(self),
             Statement::FunctionCall(function_call) => StatementCodegen::codegen(function_call, self),
+            Statement::If(r#if) => r#if.codegen(self),
         }
     }
 }

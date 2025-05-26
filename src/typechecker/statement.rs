@@ -4,13 +4,13 @@ use super::{
     error::TypecheckerError,
     r#type::{Type, kind::TypeKind},
 };
-use crate::ast::node::statement::{FunctionDefinition, Return, VariableDeclaration, VariableReassignment};
+use crate::ast::node::statement::{FunctionDefinition, If, Return, VariableDeclaration, VariableReassignment};
 
-pub trait StatmentTypecheck {
+pub trait StatementTypecheck {
     fn resolve(&mut self, context: &mut TypecheckerContext) -> Result<(), TypecheckerError>;
 }
 
-impl StatmentTypecheck for VariableDeclaration {
+impl StatementTypecheck for VariableDeclaration {
     fn resolve(&mut self, context: &mut TypecheckerContext) -> Result<(), TypecheckerError> {
         // Before checking the value's type, we must first know what the declared type of the variable is.
         self.declared_type = Typechecker::resolve_type(self.declared_type.clone())?;
@@ -40,7 +40,7 @@ impl StatmentTypecheck for VariableDeclaration {
     }
 }
 
-impl StatmentTypecheck for FunctionDefinition {
+impl StatementTypecheck for FunctionDefinition {
     fn resolve(&mut self, context: &mut TypecheckerContext) -> Result<(), TypecheckerError> {
         // We must resolve the return type of the function first.
         let return_type = match &self.return_type {
@@ -69,7 +69,7 @@ impl StatmentTypecheck for FunctionDefinition {
     }
 }
 
-impl StatmentTypecheck for Return {
+impl StatementTypecheck for Return {
     fn resolve(&mut self, context: &mut TypecheckerContext) -> Result<(), TypecheckerError> {
         let function_scope = match context.function_scope.clone() {
             Some(value) => value,
@@ -93,7 +93,7 @@ impl StatmentTypecheck for Return {
     }
 }
 
-impl StatmentTypecheck for VariableReassignment {
+impl StatementTypecheck for VariableReassignment {
     fn resolve(&mut self, context: &mut TypecheckerContext) -> Result<(), TypecheckerError> {
         let function_scope = match &context.function_scope {
             Some(value) => value,
@@ -127,6 +127,23 @@ impl StatmentTypecheck for VariableReassignment {
                 value_type.location,
             ));
         }
+
+        Ok(())
+    }
+}
+
+impl StatementTypecheck for If {
+    fn resolve(&mut self, context: &mut TypecheckerContext) -> Result<(), TypecheckerError> {
+        let expression_type = Typechecker::check_expression(&mut self.condition, context, None)?;
+        if expression_type.kind != TypeKind::Boolean {
+            return Err(TypecheckerError::mismatched_type(
+                TypeKind::Boolean,
+                expression_type.kind,
+                self.node.location,
+            ));
+        }
+
+        Typechecker::check_block(&mut self.block, context)?;
 
         Ok(())
     }

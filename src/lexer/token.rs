@@ -5,6 +5,10 @@ pub enum Keyword {
     Func,
     Return,
     Extern,
+    If,
+    Else,
+    True,
+    False,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -25,6 +29,7 @@ pub enum TokenKind {
     CloseParenthesis, // )
     OpenBrace,        // {
     CloseBrace,       // }
+    LessThan,         // <
     GreaterThan,      // >
     Comma,            // ,
     Ampersand,        // &

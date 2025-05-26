@@ -2,7 +2,7 @@ use crate::ast::node::{expression::Expression, statement::Statement};
 use context::TypecheckerContext;
 use error::TypecheckerError;
 use expression::ExpressionTypecheck;
-use statement::StatmentTypecheck;
+use statement::StatementTypecheck;
 use r#type::{Type, kind::TypeKind};
 
 pub mod context;
@@ -46,6 +46,7 @@ impl<'a> Typechecker<'a> {
             Statement::Return(r#return) => r#return.resolve(context),
             Statement::VariableReassignment(variable_reassignment) => variable_reassignment.resolve(context),
             Statement::FunctionCall(function_call) => function_call.resolve(context, None).map(|_| {}),
+            Statement::If(r#if) => r#if.resolve(context),
         }
     }
 
@@ -59,9 +60,11 @@ impl<'a> Typechecker<'a> {
             Expression::StringLiteral(string_literal) => string_literal.resolve(context, expected_type),
             Expression::BinaryOperation(binary_operation) => binary_operation.resolve(context, expected_type),
             Expression::FunctionCall(function_call) => function_call.resolve(context, expected_type),
+            Expression::BinaryComparison(binary_comparison) => binary_comparison.resolve(context, expected_type),
             Expression::IdentifierReference(identifier_reference) => {
                 identifier_reference.resolve(context, expected_type)
             }
+            Expression::BooleanLiteral(boolean_literal) => boolean_literal.resolve(context, expected_type),
         }
     }
 
@@ -79,6 +82,7 @@ impl<'a> Typechecker<'a> {
         let resolved_kind = match name.as_str() {
             "i8" => TypeKind::Integer(8),
             "i32" => TypeKind::Integer(32),
+            "bool" => TypeKind::Boolean,
 
             _ => {
                 return Err(TypecheckerError::unable_to_resolve_type(name, r#type.location));

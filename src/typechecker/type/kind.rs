@@ -4,6 +4,7 @@ use std::fmt::Display;
 pub enum TypeKind {
     Integer(u8),
     Void,
+    Boolean,
 
     Reference(Box<TypeKind>),
     Unresolved(String),
@@ -14,6 +15,7 @@ impl Display for TypeKind {
         match self {
             TypeKind::Reference(r#type) => write!(f, "&{}", r#type),
             TypeKind::Integer(size) => write!(f, "i{}", size),
+            TypeKind::Boolean => write!(f, "bool"),
             TypeKind::Void => write!(f, "void"),
             TypeKind::Unresolved(name) => write!(f, "{} (unresolved)", name),
         }

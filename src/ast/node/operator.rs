@@ -5,3 +5,9 @@ pub enum Operation {
     Divide,
     Multiply,
 }
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum Comparison {
+    LessThan,
+    GreaterThan,
+}

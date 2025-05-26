@@ -12,6 +12,7 @@ pub enum Statement {
     Return(Return),
     VariableReassignment(VariableReassignment),
     FunctionCall(FunctionCall),
+    If(If),
 }
 
 // A function definition node.
@@ -73,4 +74,16 @@ pub struct VariableReassignment {
 
     // The value being assigned to the variable.
     pub value: Expression,
+}
+
+#[derive(Debug, Clone)]
+pub struct If {
+    // The node associated with this statement.
+    pub node: Node,
+
+    // The condition that must be true for the code within the block to be executed.
+    pub condition: Expression,
+
+    // The block to run if the condition is true.
+    pub block: Vec<Statement>,
 }

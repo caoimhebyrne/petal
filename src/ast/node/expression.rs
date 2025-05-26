@@ -1,13 +1,18 @@
-use super::{Node, operator::Operation};
+use super::{
+    Node,
+    operator::{Comparison, Operation},
+};
 use crate::typechecker::r#type::Type;
 
 #[derive(Debug, Clone)]
 pub enum Expression {
     IntegerLiteral(IntegerLiteral),
     StringLiteral(StringLiteral),
+    BooleanLiteral(BooleanLiteral),
     IdentifierReference(IdentifierReference),
     FunctionCall(FunctionCall),
     BinaryOperation(BinaryOperation),
+    BinaryComparison(BinaryComparison),
 }
 
 // A literal integer in the source.
@@ -31,6 +36,16 @@ pub struct StringLiteral {
 
     // The literal value of the string.
     pub value: String,
+}
+
+// A boolean literal in the source.
+#[derive(Debug, Clone)]
+pub struct BooleanLiteral {
+    // The node associated with this expression.
+    pub node: Node,
+
+    // The literal value of the string.
+    pub value: bool,
 }
 
 // An identifier reference.
@@ -82,4 +97,20 @@ pub struct BinaryOperation {
 
     // The expected type to be produced by this binary operation.
     pub expected_type: Option<Type>,
+}
+
+// A binary comparison between two nodes.
+#[derive(Debug, Clone)]
+pub struct BinaryComparison {
+    // The node associated with this expression.
+    pub node: Node,
+
+    // The comparison to perform between the two values.
+    pub comparison: Comparison,
+
+    // The left-hand side of the expression.
+    pub left: Box<Expression>,
+
+    // The right-hand side of the expression.
+    pub right: Box<Expression>,
 }

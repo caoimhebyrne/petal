@@ -1,9 +1,15 @@
 use super::{Codegen, error::CodegenError, r#type::TypeCodegen};
 use crate::ast::node::{
-    expression::{BinaryOperation, FunctionCall, IdentifierReference, IntegerLiteral, StringLiteral},
-    operator::Operation,
+    expression::{
+        BinaryComparison, BinaryOperation, BooleanLiteral, FunctionCall, IdentifierReference, IntegerLiteral,
+        StringLiteral,
+    },
+    operator::{Comparison, Operation},
 };
-use inkwell::values::{BasicValue, BasicValueEnum, InstructionOpcode};
+use inkwell::{
+    IntPredicate,
+    values::{BasicValue, BasicValueEnum, InstructionOpcode},
+};
 
 pub trait ExpressionCodegen {
     fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<BasicValueEnum<'ctx>, CodegenError>;
@@ -92,6 +98,24 @@ impl ExpressionCodegen for BinaryOperation {
     }
 }
 
+impl ExpressionCodegen for BinaryComparison {
+    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<BasicValueEnum<'ctx>, CodegenError> {
+        let left = Codegen::visit_expression(codegen, &self.left)?;
+        let right = Codegen::visit_expression(codegen, &self.right)?;
+
+        let operation = match self.comparison {
+            Comparison::GreaterThan => IntPredicate::SGT,
+            Comparison::LessThan => IntPredicate::SLT,
+        };
+
+        codegen
+            .llvm_builder
+            .build_int_compare(operation, left.into_int_value(), right.into_int_value(), "compare")
+            .map(|it| it.as_basic_value_enum())
+            .map_err(|error| CodegenError::internal_error(error.to_string(), None))
+    }
+}
+
 impl ExpressionCodegen for FunctionCall {
     fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<BasicValueEnum<'ctx>, CodegenError> {
         let function = codegen
@@ -112,5 +136,17 @@ impl ExpressionCodegen for FunctionCall {
             .build_call(function, &arguments, &self.name)
             .map(|it| it.try_as_basic_value().expect_left("value was right"))
             .map_err(|error| CodegenError::internal_error(error.to_string(), None))
+    }
+}
+
+impl ExpressionCodegen for BooleanLiteral {
+    fn codegen<'ctx>(&self, codegen: &mut Codegen<'ctx>) -> Result<BasicValueEnum<'ctx>, CodegenError> {
+        let llvm_type = codegen.llvm_context.bool_type();
+
+        println!("{:?}", self.value);
+
+        Ok(llvm_type
+            .const_int(if self.value { 1 } else { 0 }, false)
+            .as_basic_value_enum())
     }
 }

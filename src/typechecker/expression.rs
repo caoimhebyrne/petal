@@ -4,7 +4,9 @@ use super::{
     error::TypecheckerError,
     r#type::{Type, kind::TypeKind},
 };
-use crate::ast::node::expression::{BinaryOperation, FunctionCall, IdentifierReference, IntegerLiteral, StringLiteral};
+use crate::ast::node::expression::{
+    BinaryComparison, BinaryOperation, BooleanLiteral, FunctionCall, IdentifierReference, IntegerLiteral, StringLiteral,
+};
 
 pub trait ExpressionTypecheck {
     fn resolve(
@@ -117,5 +119,48 @@ impl ExpressionTypecheck for FunctionCall {
 
         self.expected_type = Some(return_type.clone());
         Ok(return_type.clone())
+    }
+}
+
+impl ExpressionTypecheck for BinaryComparison {
+    fn resolve(
+        &mut self,
+        context: &mut TypecheckerContext,
+        expected_type: Option<&Type>,
+    ) -> Result<Type, TypecheckerError> {
+        // The types of both the left and right-hand sides of the expressions must be resolvable.
+        let left_type = Typechecker::check_expression(&mut self.left, context, expected_type)?;
+        let right_type = Typechecker::check_expression(&mut self.right, context, expected_type)?;
+
+        // The left and right sides of the expression must be of the same type.
+        // TODO: Add the ability to declare types as compatible with each-other for operations.
+        if left_type.kind != right_type.kind {
+            return Err(TypecheckerError::mismatched_type(
+                left_type.kind,
+                right_type.kind,
+                right_type.location,
+            ));
+        }
+
+        // Both of the types must be an integer.
+        if let TypeKind::Integer(_) = left_type.kind {
+            Ok(Type::new(TypeKind::Boolean, self.node.location))
+        } else {
+            Err(TypecheckerError::mismatched_type(
+                TypeKind::Integer(32),
+                left_type.kind,
+                left_type.location,
+            ))
+        }
+    }
+}
+
+impl ExpressionTypecheck for BooleanLiteral {
+    fn resolve(
+        &mut self,
+        _context: &mut TypecheckerContext,
+        _expected_type: Option<&Type>,
+    ) -> Result<Type, TypecheckerError> {
+        Ok(Type::new(TypeKind::Boolean, self.node.location))
     }
 }

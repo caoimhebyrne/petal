@@ -1,4 +1,4 @@
-use inkwell::values::PointerValue;
+use inkwell::values::{FunctionValue, PointerValue};
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -11,8 +11,8 @@ impl<'ctx> CodegenContext<'ctx> {
         Self { function_scope: None }
     }
 
-    pub fn start_function_scope(&mut self) {
-        self.function_scope = Some(FunctionScope::new());
+    pub fn start_function_scope(&mut self, function: FunctionValue<'ctx>) {
+        self.function_scope = Some(FunctionScope::new(function));
     }
 
     pub fn end_function_scope(&mut self) {
@@ -22,12 +22,14 @@ impl<'ctx> CodegenContext<'ctx> {
 
 #[derive(Debug)]
 pub struct FunctionScope<'ctx> {
+    pub function: FunctionValue<'ctx>,
     pub variables: HashMap<String, PointerValue<'ctx>>,
 }
 
 impl<'ctx> FunctionScope<'ctx> {
-    pub fn new() -> Self {
+    pub fn new(function: FunctionValue<'ctx>) -> Self {
         Self {
+            function,
             variables: HashMap::new(),
         }
     }

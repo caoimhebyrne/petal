@@ -35,6 +35,8 @@ impl TypeCodegen for Type {
                 .ptr_type(AddressSpace::default())
                 .fn_type(param_types, is_var_args),
 
+            TypeKind::Boolean => codegen.llvm_context.bool_type().fn_type(param_types, is_var_args),
+
             TypeKind::Void => codegen.llvm_context.void_type().fn_type(param_types, is_var_args),
 
             TypeKind::Unresolved(name) => panic!("Unable to resolve codegen type for unresolved type: '{}'", name),
@@ -52,6 +54,8 @@ impl TypeCodegen for Type {
                 .llvm_context
                 .ptr_type(AddressSpace::default())
                 .as_basic_type_enum(),
+
+            TypeKind::Boolean => codegen.llvm_context.bool_type().as_basic_type_enum(),
 
             TypeKind::Void => panic!("Unable to use `void` as a value type"),
 

@@ -6,10 +6,13 @@ use crate::{
 use error::ASTError;
 use node::{
     Node,
-    expression::{BinaryOperation, Expression, FunctionCall, IdentifierReference, IntegerLiteral, StringLiteral},
+    expression::{
+        BinaryComparison, BinaryOperation, BooleanLiteral, Expression, FunctionCall, IdentifierReference,
+        IntegerLiteral, StringLiteral,
+    },
     extra::FunctionParameter,
-    operator::Operation,
-    statement::{FunctionDefinition, Return, Statement, VariableDeclaration, VariableReassignment},
+    operator::{Comparison, Operation},
+    statement::{FunctionDefinition, If, Return, Statement, VariableDeclaration, VariableReassignment},
 };
 
 pub mod error;
@@ -47,6 +50,10 @@ impl Ast {
                 // A function definition should not end in a semicolon, hence the reason for `return` here.
                 Keyword::Func | Keyword::Extern => return self.parse_function_definition(),
                 Keyword::Return => self.parse_return_statement()?,
+                Keyword::If => return self.parse_if_statement(),
+
+                Keyword::Else => return Err(ASTError::dangling_else(token.location)),
+                Keyword::True | Keyword::False => return Err(ASTError::unexpected_token(token)),
             },
 
             TokenKind::Identifier(name) => {
@@ -105,7 +112,7 @@ impl Ast {
     }
 
     fn parse_multiplication_division_expression(&mut self) -> AstResult<Expression> {
-        let left = self.parse_value()?;
+        let left = self.parse_less_than_greater_than()?;
 
         if self.next_is(TokenKind::Asterisk) || self.next_is(TokenKind::Slash) {
             // It's safe to unwrap here, `next_is` would return `false` if there was no token at the next position.
@@ -131,6 +138,32 @@ impl Ast {
         Ok(left)
     }
 
+    fn parse_less_than_greater_than(&mut self) -> AstResult<Expression> {
+        let left = self.parse_value()?;
+
+        if self.next_is(TokenKind::LessThan) || self.next_is(TokenKind::GreaterThan) {
+            // It's safe to unwrap here, `next_is` would return `false` if there was no token at the next position.
+            let operator_token = self.tokens.next().unwrap().clone();
+
+            // We're only dealing with multiplication and division in this branch.
+            let comparison = match operator_token.kind {
+                TokenKind::LessThan => Comparison::LessThan,
+                _ => Comparison::GreaterThan,
+            };
+
+            let right = self.parse_expression()?;
+
+            return Ok(Expression::BinaryComparison(BinaryComparison {
+                node: Node::new(operator_token.location),
+                comparison,
+                left: Box::new(left),
+                right: Box::new(right),
+            }));
+        }
+
+        Ok(left)
+    }
+
     fn parse_value(&mut self) -> AstResult<Expression> {
         let token = self.tokens.next().ok_or(ASTError::unexpected_end_of_file()).cloned()?;
         let node = Node::new(token.location);
@@ -146,6 +179,13 @@ impl Ast {
                 node,
                 value: value.to_string(),
             })),
+
+            TokenKind::Keyword(keyword) => match keyword {
+                Keyword::True => Ok(Expression::BooleanLiteral(BooleanLiteral { node, value: true })),
+                Keyword::False => Ok(Expression::BooleanLiteral(BooleanLiteral { node, value: false })),
+
+                _ => Err(ASTError::unexpected_token(token)),
+            },
 
             TokenKind::Identifier(name) => {
                 // If the next token is an opening parenthesis, this is most likely a function call.
@@ -341,6 +381,36 @@ impl Ast {
         Ok(Statement::Return(Return {
             node: Node::new(return_token.location),
             value,
+        }))
+    }
+
+    // Attempts to parse an if statement from the token stream.
+    fn parse_if_statement(&mut self) -> AstResult<Statement> {
+        // All if statements must start with the `if` keyword.
+        let if_token = self.expect(TokenKind::Keyword(Keyword::If))?;
+
+        // The next token(s) must be a valid expression.
+        let condition = self.parse_expression()?;
+
+        // Then, a block of code to execute if the condition was true.
+        let mut body = vec![];
+
+        self.expect(TokenKind::OpenBrace)?;
+
+        while let Some(token) = self.tokens.peek() {
+            if token.kind == TokenKind::CloseBrace {
+                break;
+            }
+
+            body.push(self.parse_statement()?);
+        }
+
+        self.expect(TokenKind::CloseBrace)?;
+
+        Ok(Statement::If(If {
+            node: Node::new(if_token.location),
+            condition,
+            block: body,
         }))
     }
 
