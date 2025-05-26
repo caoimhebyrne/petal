@@ -134,7 +134,12 @@ impl StatementTypecheck for VariableReassignment {
 
 impl StatementTypecheck for If {
     fn resolve(&mut self, context: &mut TypecheckerContext) -> Result<(), TypecheckerError> {
-        let expression_type = Typechecker::check_expression(&mut self.condition, context, None)?;
+        let expression_type = Typechecker::check_expression(
+            &mut self.condition,
+            context,
+            Some(&Type::new(TypeKind::Boolean, self.node.location)),
+        )?;
+
         if expression_type.kind != TypeKind::Boolean {
             return Err(TypecheckerError::mismatched_type(
                 TypeKind::Boolean,
