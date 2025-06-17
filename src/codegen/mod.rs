@@ -50,6 +50,8 @@ impl<'a> Codegen<'a> {
     pub fn compile(&mut self) -> Result<(), CodegenError> {
         self.visit_block(self.nodes)?;
 
+        self.llvm_module.print_to_stderr();
+
         self.llvm_module
             .verify()
             .map_err(|error| CodegenError::verification_error(error.to_string(), None))?;

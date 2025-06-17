@@ -61,7 +61,10 @@ impl StatementTypecheck for FunctionDefinition {
                 .insert(parameter.name.clone(), parameter.expected_type.clone());
         }
 
-        Typechecker::check_block(&mut self.body, context)?;
+        if !self.is_extern {
+            Typechecker::check_block(&mut self.body, context)?;
+            Typechecker::insert_return_if_needed(&mut self.body, context, self.node.location)?;
+        }
 
         context.end_function_scope();
 

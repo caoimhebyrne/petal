@@ -6,9 +6,6 @@
 // reference is desired.
 func modifier(value: &i32) {
     value = 10;
-    
-    // TODO: If a block does not end in a `return` instruction, it needs to be inserted.
-    return;
 }
 
 func main() -> i32 {

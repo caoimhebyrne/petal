@@ -217,6 +217,14 @@ impl StatementCodegen for If {
 
         Codegen::visit_block(codegen, &self.block)?;
 
+        if let None = then_block.get_terminator() {
+            // After generating code for the if-block, we can then tell it to jump to the else_block.
+            codegen
+                .llvm_builder
+                .build_unconditional_branch(else_block)
+                .map_err(|error| CodegenError::internal_error(error.to_string(), None))?;
+        }
+
         codegen.llvm_builder.position_at_end(else_block);
 
         Ok(())

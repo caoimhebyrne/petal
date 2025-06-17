@@ -14,6 +14,4 @@ func main() {
     putchar(108); // l
     putchar(111); // o
     putchar(10);  // \n
-
-    return;
 }

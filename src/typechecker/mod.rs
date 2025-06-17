@@ -1,4 +1,11 @@
-use crate::ast::node::{expression::Expression, statement::Statement};
+use crate::{
+    ast::node::{
+        Node,
+        expression::Expression,
+        statement::{Return, Statement},
+    },
+    core::location::Location,
+};
 use context::TypecheckerContext;
 use error::TypecheckerError;
 use expression::ExpressionTypecheck;
@@ -32,6 +39,40 @@ impl<'a> Typechecker<'a> {
         for node in block {
             Typechecker::check_statement(node, context)?;
         }
+
+        Ok(())
+    }
+
+    pub fn insert_return_if_needed(
+        block: &mut Vec<Statement>,
+        context: &TypecheckerContext,
+        location: Location,
+    ) -> Result<(), TypecheckerError> {
+        let last_statement = match block.last() {
+            Some(value) => value,
+            None => return Err(TypecheckerError::expected_return(location)),
+        };
+
+        // If the last statement is a return, we don't need to do anything.
+        if let Statement::Return(_) = last_statement {
+            return Ok(());
+        }
+
+        // We can attempt to fill a return statement if the return type of the current function
+        // is `void`.
+        let function_scope = match &context.function_scope {
+            Some(scope) => scope,
+            None => panic!("Unable to fill return statement in for a block outside of a function scope!"),
+        };
+
+        if function_scope.return_type.kind != TypeKind::Void {
+            return Err(TypecheckerError::expected_return(location));
+        }
+
+        block.push(Statement::Return(Return {
+            node: Node::new(location),
+            value: None,
+        }));
 
         Ok(())
     }

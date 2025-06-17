@@ -11,5 +11,4 @@ func main() {
     }
     
     printf("`my_value` was greater than or equal to 6!\n");
-    return;
 }

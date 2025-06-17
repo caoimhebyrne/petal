@@ -8,7 +8,7 @@ pub enum TypecheckerErrorKind {
     UndefinedVariable(String),
     UndefinedFunction(String),
     UnableToResolveType(String),
-
+    ExpectedReturn,
     MismatchedType { expected: TypeKind, received: TypeKind },
 }
 
@@ -46,6 +46,13 @@ impl TypecheckerError {
             location,
         }
     }
+
+    pub fn expected_return(location: Location) -> TypecheckerError {
+        TypecheckerError {
+            kind: TypecheckerErrorKind::ExpectedReturn,
+            location,
+        }
+    }
 }
 
 impl Display for TypecheckerError {
@@ -65,6 +72,10 @@ impl Display for TypecheckerError {
 
             TypecheckerErrorKind::MismatchedType { expected, received } => {
                 write!(f, "Expected type '{}', but got '{}'", expected, received)
+            }
+
+            TypecheckerErrorKind::ExpectedReturn => {
+                write!(f, "Expected `return`")
             }
         }
     }
