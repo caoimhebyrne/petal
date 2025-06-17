@@ -1,12 +1,18 @@
-use crate::ast::node::{
-    expression::{Expression, IntegerLiteral},
-    statement::{FunctionDefinition, Statement, VariableDeclaration},
-};
+use std::fmt::Display;
+
+pub mod generator;
+
+mod context;
+mod expression;
+mod statement;
 
 /// A value which can be an argument of an [Operation] in the IR.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Value {
     IntegerLiteral(u64),
+
+    /// A reference to a variable in the current scope, the associated value being the variable's index.
+    VariableReference(usize),
 }
 
 /// An operation in the IR.
@@ -17,6 +23,9 @@ pub enum Operation {
 
     /// Allocates a variable on the stack.
     Allocate { variable_index: usize },
+
+    /// Returns a variable from the current function.
+    Return { value: Option<Value> },
 }
 
 /// A function defined in the IR.
@@ -29,108 +38,41 @@ pub struct Function {
     pub name: String,
 }
 
-/// Responsible for converting a tree of AST nodes into an IR.
-pub struct IntermediateRepresentation {
-    pub context: IRContext,
-}
-
-/// The context of the intermediate representation generator.
-pub struct IRContext {
-    pub variables: Vec<String>,
-}
-
-impl IRContext {
-    pub fn new() -> Self {
-        Self { variables: Vec::new() }
-    }
-
-    pub fn declare_variable<'a>(&mut self, name: &'a str) -> usize {
-        self.variables.push(name.to_string());
-        return self.variables.len() - 1;
-    }
-}
-
-impl IntermediateRepresentation {
-    pub fn new() -> Self {
-        Self {
-            context: IRContext::new(),
+impl Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::IntegerLiteral(value) => write!(f, "{}", value),
+            Value::VariableReference(variable_index) => write!(f, "#{}", variable_index),
         }
     }
+}
 
-    pub fn parse(&mut self, ast: &Vec<Statement>) -> Vec<Function> {
-        let mut functions = vec![];
+impl Display for Operation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Operation::Store { variable_index, value } => write!(f, "store {}, #{}", value, variable_index),
 
-        // The intermediate representation can only compile function blocks at the top level.
-        for node in ast {
-            if let Statement::FunctionDefinition(definition) = &node {
-                functions.push(self.parse_function_definition(definition));
-            } else {
-                panic!(
-                    "Intermediate Representation cannot handle top-level statements that are not function definitions!"
-                )
+            Operation::Allocate { variable_index } => write!(f, "allocate {}", variable_index),
+
+            Operation::Return { value } => {
+                if let Some(return_value) = value {
+                    write!(f, "return {}", return_value)
+                } else {
+                    write!(f, "return")
+                }
             }
         }
-
-        functions
-    }
-
-    fn parse_function_definition(&mut self, definition: &FunctionDefinition) -> Function {
-        let mut body = vec![];
-
-        for statement in &definition.body {
-            IntermediateRepresentation::visit_statement(&mut self.context, statement, &mut body);
-        }
-
-        Function {
-            body,
-            name: definition.name.clone(),
-        }
-    }
-
-    fn visit_statement(context: &mut IRContext, statement: &Statement, operations: &mut Vec<Operation>) {
-        match statement {
-            Statement::VariableDeclaration(declaration) => declaration.visit_statement(context, operations),
-            _ => panic!("Unable to visit statement: {:?}", statement),
-        }
-    }
-
-    fn visit_expression(context: &mut IRContext, expression: &Expression) -> Value {
-        match expression {
-            Expression::IntegerLiteral(literal) => literal.visit(context),
-            _ => panic!("Unable to visit expression: {:?}", expression),
-        }
     }
 }
 
-/// Visits a statement in the AST, converting it to one or more IR operations.
-trait StatementVisitor {
-    fn visit_statement(&self, context: &mut IRContext, operations: &mut Vec<Operation>);
-}
+impl Display for Function {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "function {}:\n", self.name)?;
 
-impl StatementVisitor for VariableDeclaration {
-    fn visit_statement(&self, context: &mut IRContext, operations: &mut Vec<Operation>) {
-        // A variable declaration just needs us to allocate a space on the stack.
-        let index = context.declare_variable(&self.name);
-        operations.push(Operation::Allocate { variable_index: index });
+        for operation in &self.body {
+            write!(f, "  {}\n", operation)?;
+        }
 
-        // If the variable is being initialized with a value, we need to store that value
-        // into the space on the stack.
-        let value = IntermediateRepresentation::visit_expression(context, &self.value);
-
-        operations.push(Operation::Store {
-            variable_index: index,
-            value,
-        });
-    }
-}
-
-/// Visits an expression inthe AST, converting it to a [Value].
-trait ExpressionVisitor {
-    fn visit(&self, context: &mut IRContext) -> Value;
-}
-
-impl ExpressionVisitor for IntegerLiteral {
-    fn visit(&self, _context: &mut IRContext) -> Value {
-        Value::IntegerLiteral(self.value)
+        Ok(())
     }
 }

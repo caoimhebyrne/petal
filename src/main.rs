@@ -11,11 +11,11 @@ use std::{
 
 use ast::Ast;
 use clap::Parser;
-use codegen::Codegen;
 use colored::Colorize;
-use inkwell::context::Context;
 use lexer::Lexer;
 use typechecker::Typechecker;
+
+use crate::ir::generator::IntermediateRepresentation;
 
 pub mod ast;
 pub mod codegen;
@@ -72,9 +72,9 @@ fn main() {
         report_error(&args.path, &error, Some(error.location))
     };
 
-    let codegen_context = Context::create();
-    let mut codegen = Codegen::new(&args.output_path, &codegen_context, &nodes);
-    if let Err(error) = codegen.compile() {
-        report_error(&args.path, &error, error.location)
-    };
+    let mut intermediate_representation = IntermediateRepresentation::new();
+    let functions = intermediate_representation.parse(&nodes);
+    for function in functions {
+        println!("{}", function);
+    }
 }
