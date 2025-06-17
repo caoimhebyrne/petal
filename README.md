@@ -23,6 +23,16 @@ func main() -> i32 {
 1. Clone this git repository.
 2. Build the compiler using `cargo build`
 
+## TODO
+- [ ] Type aliases (`type <name> = <definition>`, e.g: `type string = &i8`)
+- [ ] Ditch LLVM and make my own IR?
+- [ ] Improve control flow
+  - [ ] Add `else` blocks
+  - [ ] While loops
+- [ ] Importing other modules
+- [ ] Structures
+- [ ] Standard library
+
 ### License
 
 This project is licensed under the MIT license. See the [LICENSE](./LICENSE) file for more information.
