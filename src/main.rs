@@ -20,6 +20,7 @@ use typechecker::Typechecker;
 pub mod ast;
 pub mod codegen;
 pub mod core;
+pub mod ir;
 pub mod lexer;
 pub mod typechecker;
 
