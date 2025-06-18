@@ -59,6 +59,7 @@ impl IntermediateRepresentation {
     pub(crate) fn visit_statement(context: &mut Context, statement: &Statement, operations: &mut Vec<Operation>) {
         match statement {
             Statement::VariableDeclaration(declaration) => declaration.visit(context, operations),
+            Statement::VariableReassignment(reassignment) => reassignment.visit(context, operations),
             Statement::Return(r#return) => r#return.visit(context, operations),
 
             _ => println!("Unable to visit statement: {:?}", statement),

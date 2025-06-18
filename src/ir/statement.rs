@@ -1,5 +1,5 @@
 use crate::{
-    ast::node::statement::{Return, VariableDeclaration},
+    ast::node::statement::{Return, VariableDeclaration, VariableReassignment},
     ir::{Operation, context::Context, generator::IntermediateRepresentation},
 };
 
@@ -16,6 +16,18 @@ impl StatementVisitor for VariableDeclaration {
 
         // A variable declaration just needs us to allocate a space on the stack.
         let index = context.function_scope().declare_variable(&self.name, value.size());
+
+        operations.push(Operation::Store {
+            variable_index: index,
+            value,
+        });
+    }
+}
+
+impl StatementVisitor for VariableReassignment {
+    fn visit(&self, context: &mut Context, operations: &mut Vec<Operation>) {
+        let value = IntermediateRepresentation::visit_expression(context, &self.value);
+        let index = context.function_scope().find_variable_index(&self.name);
 
         operations.push(Operation::Store {
             variable_index: index,
