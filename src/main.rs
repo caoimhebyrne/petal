@@ -2,6 +2,7 @@
 #![allow(clippy::new_without_default)]
 
 use core::location::Location;
+use driver::Driver;
 use std::{
     fmt::Display,
     fs,
@@ -15,11 +16,12 @@ use colored::Colorize;
 use lexer::Lexer;
 use typechecker::Typechecker;
 
-use crate::ir::generator::IntermediateRepresentation;
+use crate::{driver::X86_64Driver, ir::generator::IntermediateRepresentation};
 
 pub mod ast;
 pub mod codegen;
 pub mod core;
+pub mod driver;
 pub mod ir;
 pub mod lexer;
 pub mod typechecker;
@@ -74,7 +76,6 @@ fn main() {
 
     let mut intermediate_representation = IntermediateRepresentation::new();
     let functions = intermediate_representation.parse(&nodes);
-    for function in functions {
-        println!("{}", function);
-    }
+    let driver = X86_64Driver {};
+    println!("{}", driver.compile(functions));
 }
