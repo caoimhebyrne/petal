@@ -7,7 +7,7 @@ mod expression;
 mod statement;
 
 /// A value which can be an argument of an [Operation] in the IR.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
     IntegerLiteral(u32),
 
@@ -25,7 +25,7 @@ impl Value {
 }
 
 /// An operation in the IR.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Operation {
     /// Stores a value into a variable allocated on the stack.
     Store { variable_index: usize, value: Value },
@@ -43,8 +43,21 @@ pub struct Function {
     /// The name of the function
     pub name: String,
 
-    // The size of the stack in bytes.
-    pub stack_size: usize,
+    /// The variables declared in this function.
+    pub variables: Vec<Variable>,
+}
+
+/// Represents a variable defined within a function scope.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Variable {
+    /// The name of the variable.
+    pub name: String,
+
+    /// The size of this variable's value.
+    pub expected_value_size: usize,
+
+    /// The offset of this variable on the stack.
+    pub stack_index: usize,
 }
 
 impl Display for Value {
@@ -59,7 +72,7 @@ impl Display for Value {
 impl Display for Operation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Operation::Store { variable_index, value } => write!(f, "store @{}, {}", variable_index, value),
+            Operation::Store { variable_index, value } => write!(f, "@{} = {}", variable_index, value),
 
             Operation::Return { value } => {
                 if let Some(return_value) = value {
@@ -74,7 +87,7 @@ impl Display for Operation {
 
 impl Display for Function {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "function {} (stack size = {} bytes):\n", self.name, self.stack_size)?;
+        write!(f, "function {}:\n", self.name)?;
 
         for operation in &self.body {
             write!(f, "  {}\n", operation)?;

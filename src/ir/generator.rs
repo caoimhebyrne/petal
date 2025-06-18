@@ -45,14 +45,14 @@ impl IntermediateRepresentation {
         }
 
         // We need to know how much space to allocate on the stack.
-        let stack_size = self.context.function_scope().variables.values().sum();
+        let variables = self.context.function_scope().variables.clone();
 
         self.context.end_function_scope();
 
         Function {
             body,
             name: definition.name.clone(),
-            stack_size,
+            variables,
         }
     }
 

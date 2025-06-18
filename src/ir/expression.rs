@@ -16,7 +16,7 @@ impl ExpressionVisitor for IntegerLiteral {
 
 impl ExpressionVisitor for IdentifierReference {
     fn visit(&self, context: &mut Context) -> Value {
-        let variable_index = context.function_scope().find_variable_index(&self.name);
-        Value::VariableReference(variable_index)
+        let variable = context.function_scope().find_variable_index(&self.name);
+        Value::VariableReference(variable)
     }
 }
