@@ -16,7 +16,7 @@ use colored::Colorize;
 use lexer::Lexer;
 use typechecker::Typechecker;
 
-use crate::{driver::X86_64Driver, ir::generator::IntermediateRepresentation};
+use crate::{driver::aarch64::Aarch64Driver, ir::generator::IntermediateRepresentation};
 
 pub mod ast;
 pub mod codegen;
@@ -76,6 +76,6 @@ fn main() {
 
     let mut intermediate_representation = IntermediateRepresentation::new();
     let functions = intermediate_representation.parse(&nodes);
-    let driver = X86_64Driver {};
+    let driver = Aarch64Driver {};
     println!("{}", driver.compile(functions));
 }
