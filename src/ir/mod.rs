@@ -9,10 +9,19 @@ mod statement;
 /// A value which can be an argument of an [Operation] in the IR.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Value {
-    IntegerLiteral(u64),
+    IntegerLiteral(u32),
 
     /// A reference to a variable in the current scope, the associated value being the variable's index.
     VariableReference(usize),
+}
+
+impl Value {
+    pub fn size(&self) -> usize {
+        match self {
+            Value::IntegerLiteral(_) => 4,
+            Value::VariableReference(_) => 4,
+        }
+    }
 }
 
 /// An operation in the IR.
@@ -20,9 +29,6 @@ pub enum Value {
 pub enum Operation {
     /// Stores a value into a variable allocated on the stack.
     Store { variable_index: usize, value: Value },
-
-    /// Allocates a variable on the stack.
-    Allocate { variable_index: usize },
 
     /// Returns a variable from the current function.
     Return { value: Option<Value> },
@@ -36,13 +42,16 @@ pub struct Function {
 
     /// The name of the function
     pub name: String,
+
+    // The size of the stack in bytes.
+    pub stack_size: usize,
 }
 
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Value::IntegerLiteral(value) => write!(f, "{}", value),
-            Value::VariableReference(variable_index) => write!(f, "#{}", variable_index),
+            Value::VariableReference(variable_index) => write!(f, "@{}", variable_index),
         }
     }
 }
@@ -50,9 +59,7 @@ impl Display for Value {
 impl Display for Operation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Operation::Store { variable_index, value } => write!(f, "store {}, #{}", value, variable_index),
-
-            Operation::Allocate { variable_index } => write!(f, "allocate {}", variable_index),
+            Operation::Store { variable_index, value } => write!(f, "store @{}, {}", variable_index, value),
 
             Operation::Return { value } => {
                 if let Some(return_value) = value {
@@ -67,7 +74,7 @@ impl Display for Operation {
 
 impl Display for Function {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "function {}:\n", self.name)?;
+        write!(f, "function {} (stack size = {} bytes):\n", self.name, self.stack_size)?;
 
         for operation in &self.body {
             write!(f, "  {}\n", operation)?;

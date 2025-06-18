@@ -44,11 +44,15 @@ impl IntermediateRepresentation {
             IntermediateRepresentation::visit_statement(&mut self.context, statement, &mut body);
         }
 
+        // We need to know how much space to allocate on the stack.
+        let stack_size = self.context.function_scope().variables.values().sum();
+
         self.context.end_function_scope();
 
         Function {
             body,
             name: definition.name.clone(),
+            stack_size,
         }
     }
 

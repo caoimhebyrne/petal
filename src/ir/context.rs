@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 /// The context of the intermediate representation generator.
 pub struct Context {
     /// The current function's context.
@@ -7,7 +9,7 @@ pub struct Context {
 /// Information used during the compilation of a single function.
 pub struct FunctionScope {
     /// The variables defined within the current function's context.
-    pub variables: Vec<String>,
+    pub variables: HashMap<String, usize>,
 }
 
 impl Context {
@@ -42,22 +44,24 @@ impl Context {
 
 impl FunctionScope {
     pub fn new() -> Self {
-        Self { variables: vec![] }
+        Self {
+            variables: HashMap::new(),
+        }
     }
 
     /// Declares a variable in this function's context, panicing if a variable was already defined
     /// with the provided name.
     ///
     /// Returns the index of the declared variable.
-    pub fn declare_variable<'a>(&mut self, name: &'a str) -> usize {
-        if let Some(_) = self.variables.iter().find(|it| *it == name) {
+    pub fn declare_variable<'a>(&mut self, name: &'a str, size: usize) -> usize {
+        if let Some(_) = self.variables.iter().find(|it| it.0 == name) {
             panic!(
                 "A variable was already declared in the current function scope with the name '{}'",
                 name
             );
         }
 
-        self.variables.push(name.to_string());
+        self.variables.insert(name.to_string(), size);
         self.variables.len() - 1
     }
 
@@ -65,7 +69,7 @@ impl FunctionScope {
     pub fn find_variable_index<'a>(&mut self, name: &'a str) -> usize {
         self.variables
             .iter()
-            .position(|it| it == name)
+            .position(|it| it.0 == name)
             .expect(&format!("{} was not declared", name))
     }
 }

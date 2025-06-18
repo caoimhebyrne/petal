@@ -10,13 +10,12 @@ pub(crate) trait StatementVisitor {
 
 impl StatementVisitor for VariableDeclaration {
     fn visit(&self, context: &mut Context, operations: &mut Vec<Operation>) {
-        // A variable declaration just needs us to allocate a space on the stack.
-        let index = context.function_scope().declare_variable(&self.name);
-        operations.push(Operation::Allocate { variable_index: index });
-
         // If the variable is being initialized with a value, we need to store that value
         // into the space on the stack.
         let value = IntermediateRepresentation::visit_expression(context, &self.value);
+
+        // A variable declaration just needs us to allocate a space on the stack.
+        let index = context.function_scope().declare_variable(&self.name, value.size());
 
         operations.push(Operation::Store {
             variable_index: index,

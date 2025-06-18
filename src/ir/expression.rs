@@ -10,7 +10,7 @@ pub(crate) trait ExpressionVisitor {
 
 impl ExpressionVisitor for IntegerLiteral {
     fn visit(&self, _context: &mut Context) -> Value {
-        Value::IntegerLiteral(self.value)
+        Value::IntegerLiteral(self.value.try_into().unwrap())
     }
 }
 
