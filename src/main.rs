@@ -1,4 +1,4 @@
-#![feature(path_file_prefix, path_add_extension)]
+#![feature(impl_trait_in_bindings, path_file_prefix, path_add_extension)]
 #![allow(clippy::new_without_default)]
 
 use core::location::Location;
@@ -16,7 +16,10 @@ use colored::Colorize;
 use lexer::Lexer;
 use typechecker::Typechecker;
 
-use crate::{driver::aarch64::Aarch64Driver, ir::generator::IntermediateRepresentation};
+use crate::{
+    driver::{aarch64::Aarch64Driver, x86_64::X86_64Driver},
+    ir::generator::IntermediateRepresentation,
+};
 
 pub mod ast;
 pub mod core;
@@ -25,12 +28,22 @@ pub mod ir;
 pub mod lexer;
 pub mod typechecker;
 
+#[derive(clap::ValueEnum, Clone, Default, Debug)]
+enum Target {
+    Aarch64,
+    #[default]
+    X86_64,
+}
+
 #[derive(Parser)]
 struct Args {
     #[arg(short, long("output"))]
     output_path: PathBuf,
 
-    path: PathBuf,
+    #[arg(short, long("target"), default_value("x86-64"))]
+    target: Target,
+
+    input_path: PathBuf,
 }
 
 fn report_error(path: &Path, error: impl Display, location: Option<Location>) -> ! {
@@ -51,7 +64,7 @@ fn report_error(path: &Path, error: impl Display, location: Option<Location>) ->
 
 fn main() {
     let args = Args::parse();
-    let file_contents = match fs::read_to_string(args.path.clone()) {
+    let file_contents = match fs::read_to_string(args.input_path.clone()) {
         Ok(value) => value,
         Err(error) => return eprintln!("ERROR: {}", error),
     };
@@ -59,22 +72,27 @@ fn main() {
     let mut lexer = Lexer::new(&file_contents);
     let tokens = match lexer.parse() {
         Ok(value) => value,
-        Err(error) => report_error(&args.path, &error, Some(error.location)),
+        Err(error) => report_error(&args.input_path, &error, Some(error.location)),
     };
 
     let mut ast = Ast::new(tokens);
     let mut nodes = match ast.parse() {
         Ok(value) => value,
-        Err(error) => report_error(&args.path, &error, error.location),
+        Err(error) => report_error(&args.input_path, &error, error.location),
     };
 
     let mut typechecker = Typechecker::new(&mut nodes);
     if let Err(error) = typechecker.check() {
-        report_error(&args.path, &error, Some(error.location))
+        report_error(&args.input_path, &error, Some(error.location))
     };
 
     let mut intermediate_representation = IntermediateRepresentation::new();
     let functions = intermediate_representation.parse(&nodes);
-    let driver = Aarch64Driver {};
-    println!("{}", driver.compile(functions));
+
+    let driver: Box<dyn Driver> = match args.target {
+        Target::Aarch64 => Box::new(Aarch64Driver::new(args.output_path)),
+        Target::X86_64 => Box::new(X86_64Driver::new(args.output_path)),
+    };
+
+    driver.compile(functions);
 }

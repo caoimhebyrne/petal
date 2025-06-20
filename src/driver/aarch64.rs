@@ -1,19 +1,50 @@
+use std::{
+    fs,
+    io::{Write, stderr, stdout},
+    path::PathBuf,
+    process::Command,
+};
+
 use crate::{
     driver::Driver,
     ir::{Function, Operation, Value},
 };
 
-pub struct Aarch64Driver {}
+pub struct Aarch64Driver {
+    output_path: PathBuf,
+}
 
 impl Driver for Aarch64Driver {
-    fn compile(&self, ir: Vec<Function>) -> String {
+    fn new(output_path: PathBuf) -> Self {
+        Self { output_path }
+    }
+
+    fn compile(&self, ir: Vec<Function>) {
         let mut code = String::new();
 
         for function in ir {
             self.compile_function(&function, &mut code);
         }
 
-        code
+        let assembly_file = self.output_path.with_extension("s");
+        let output_path = self.output_path.with_extension("o");
+        fs::write(&assembly_file, code).unwrap();
+
+        let compile_output = Command::new("as")
+            .args([assembly_file.to_str().unwrap(), "-o", output_path.to_str().unwrap()])
+            .output()
+            .expect("Failed to compile for output path");
+
+        stdout().write_all(&compile_output.stdout).unwrap();
+        stderr().write_all(&compile_output.stderr).unwrap();
+
+        let link_output = Command::new("ld")
+            .args(["-o", self.output_path.to_str().unwrap(), output_path.to_str().unwrap()])
+            .output()
+            .expect("Failed to compile for output path");
+
+        stdout().write_all(&link_output.stdout).unwrap();
+        stderr().write_all(&link_output.stderr).unwrap();
     }
 }
 

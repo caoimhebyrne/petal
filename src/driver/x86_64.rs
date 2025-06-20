@@ -1,12 +1,25 @@
+use std::{
+    fs,
+    io::{Write, stderr, stdout},
+    path::PathBuf,
+    process::Command,
+};
+
 use crate::{
     driver::Driver,
     ir::{Function, Operation, Value},
 };
 
-pub struct X86_64Driver {}
+pub struct X86_64Driver {
+    output_path: PathBuf,
+}
 
 impl Driver for X86_64Driver {
-    fn compile(&self, ir: Vec<Function>) -> String {
+    fn new(output_path: PathBuf) -> Self {
+        Self { output_path }
+    }
+
+    fn compile(&self, ir: Vec<Function>) {
         let mut code = String::new();
         code.push_str(".intel_syntax noprefix\n");
         code.push_str(".section .text\n");
@@ -22,7 +35,31 @@ impl Driver for X86_64Driver {
         code.push_str("    mov rax, 60\n");
         code.push_str("    syscall\n");
 
-        code
+        let assembly_file = self.output_path.with_extension("s");
+        let output_path = self.output_path.with_extension("o");
+        fs::write(&assembly_file, code).unwrap();
+
+        let compile_output = Command::new("as")
+            .args([
+                "-g",
+                "-mintel64",
+                assembly_file.to_str().unwrap(),
+                "-o",
+                output_path.to_str().unwrap(),
+            ])
+            .output()
+            .expect("Failed to compile for output path");
+
+        stdout().write_all(&compile_output.stdout).unwrap();
+        stderr().write_all(&compile_output.stderr).unwrap();
+
+        let link_output = Command::new("ld")
+            .args(["-o", self.output_path.to_str().unwrap(), output_path.to_str().unwrap()])
+            .output()
+            .expect("Failed to compile for output path");
+
+        stdout().write_all(&link_output.stdout).unwrap();
+        stderr().write_all(&link_output.stderr).unwrap();
     }
 }
 
