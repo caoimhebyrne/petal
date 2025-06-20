@@ -19,7 +19,6 @@ use typechecker::Typechecker;
 use crate::{driver::aarch64::Aarch64Driver, ir::generator::IntermediateRepresentation};
 
 pub mod ast;
-pub mod codegen;
 pub mod core;
 pub mod driver;
 pub mod ir;
