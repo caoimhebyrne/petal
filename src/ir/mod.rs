@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+pub mod error;
 pub mod generator;
 
 mod context;

@@ -46,6 +46,15 @@ struct Args {
     input_path: PathBuf,
 }
 
+impl Display for Target {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Target::Aarch64 => write!(f, "aarch64"),
+            Target::X86_64 => write!(f, "x86_64"),
+        }
+    }
+}
+
 fn report_error(path: &Path, error: impl Display, location: Option<Location>) -> ! {
     let location_string = match location {
         Some(location) => format!("{}:{}", location.line + 1, location.column + 1),
@@ -69,11 +78,15 @@ fn main() {
         Err(error) => return eprintln!("ERROR: {}", error),
     };
 
+    println!("[1/5] Lexer");
+
     let mut lexer = Lexer::new(&file_contents);
     let tokens = match lexer.parse() {
         Ok(value) => value,
         Err(error) => report_error(&args.input_path, &error, Some(error.location)),
     };
+
+    println!("[2/5] AST");
 
     let mut ast = Ast::new(tokens);
     let mut nodes = match ast.parse() {
@@ -81,18 +94,29 @@ fn main() {
         Err(error) => report_error(&args.input_path, &error, error.location),
     };
 
+    println!("[3/5] Typechecker");
+
     let mut typechecker = Typechecker::new(&mut nodes);
     if let Err(error) = typechecker.check() {
         report_error(&args.input_path, &error, Some(error.location))
     };
 
+    println!("[4/5] IR Generator");
+
     let mut intermediate_representation = IntermediateRepresentation::new();
-    let functions = intermediate_representation.parse(&nodes);
+    let functions = match intermediate_representation.parse(&nodes) {
+        Ok(value) => value,
+        Err(error) => report_error(&args.input_path, &error, error.location),
+    };
+
+    println!("[5/5] Codegen for {}", args.target);
 
     let driver: Box<dyn Driver> = match args.target {
-        Target::Aarch64 => Box::new(Aarch64Driver::new(args.output_path)),
-        Target::X86_64 => Box::new(X86_64Driver::new(args.output_path)),
+        Target::Aarch64 => Box::new(Aarch64Driver::new(args.output_path.clone())),
+        Target::X86_64 => Box::new(X86_64Driver::new(args.output_path.clone())),
     };
 
     driver.compile(functions);
+
+    println!("Compilation successful: {}", args.output_path.to_string_lossy());
 }

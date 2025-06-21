@@ -1,4 +1,9 @@
-use crate::ir::Variable;
+use crate::{
+    core::location::Location,
+    ir::{Variable, error::IRError, generator::IRResult},
+};
+
+use super::error::IRErrorKind;
 
 /// The context of the intermediate representation generator.
 pub struct Context {
@@ -19,14 +24,13 @@ impl Context {
 
     /// Starts a function scope.
     /// If the previous function scope was not ended, this function will panic.
-    pub fn start_function_scope(&mut self) {
+    pub fn start_function_scope(&mut self) -> IRResult<()> {
         if let Some(_) = self.function_scope {
-            panic!(
-                "Attempt was made to start a function scope, but the previous context was not ended? (make sure you call end_function_scope)"
-            )
+            return Err(IRError::new(IRErrorKind::UnterminatedFunctionScope, None));
         }
 
-        self.function_scope = Some(FunctionScope::new())
+        self.function_scope = Some(FunctionScope::new());
+        Ok(())
     }
 
     /// Ends the current function's context.
@@ -35,10 +39,10 @@ impl Context {
     }
 
     /// Returns the current function scope, panicing if one is not active.
-    pub fn function_scope(&mut self) -> &mut FunctionScope {
+    pub fn function_scope(&mut self, location: Option<Location>) -> IRResult<&mut FunctionScope> {
         self.function_scope
             .as_mut()
-            .expect("Expected a function scope, but none was present...")
+            .ok_or(IRError::new(IRErrorKind::ExpectedFunctionScope, location))
     }
 }
 
