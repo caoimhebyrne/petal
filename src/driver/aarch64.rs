@@ -35,16 +35,24 @@ impl Driver for Aarch64Driver {
             .output()
             .expect("Failed to compile for output path");
 
-        stdout().write_all(&compile_output.stdout).unwrap();
-        stderr().write_all(&compile_output.stderr).unwrap();
+        if !compile_output.status.success() {
+            stdout().write_all(&compile_output.stdout).unwrap();
+            stderr().write_all(&compile_output.stderr).unwrap();
+
+            panic!("Failed to assemble, see the logs above for more information.");
+        }
 
         let link_output = Command::new("ld")
             .args(["-o", self.output_path.to_str().unwrap(), output_path.to_str().unwrap()])
             .output()
             .expect("Failed to compile for output path");
 
-        stdout().write_all(&link_output.stdout).unwrap();
-        stderr().write_all(&link_output.stderr).unwrap();
+        if !link_output.status.success() {
+            stdout().write_all(&link_output.stdout).unwrap();
+            stderr().write_all(&link_output.stderr).unwrap();
+
+            panic!("Failed to link, see the logs above for more information.");
+        }
     }
 }
 
