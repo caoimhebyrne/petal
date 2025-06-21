@@ -1,3 +1,10 @@
+use crate::{
+    driver::{
+        Driver,
+        x86_64::{operation::OperationVisitor, value::ValueVisitor},
+    },
+    ir::{Function, Operation, Value},
+};
 use std::{
     fs,
     io::{Write, stderr, stdout},
@@ -5,33 +12,45 @@ use std::{
     process::Command,
 };
 
-use crate::{
-    driver::Driver,
-    ir::{Function, IntegerLiteral, Operation, Return, Store, Value, VariableReference},
-};
+mod operation;
+mod value;
 
-pub struct Aarch64Driver {
+pub struct X86_64Driver {
     output_path: PathBuf,
 }
 
-impl Driver for Aarch64Driver {
+impl Driver for X86_64Driver {
     fn new(output_path: PathBuf) -> Self {
         Self { output_path }
     }
 
     fn compile(&self, ir: Vec<Function>) {
         let mut code = String::new();
+        code.push_str(".intel_syntax noprefix\n");
+        code.push_str(".section .text\n");
 
         for function in ir {
-            self.compile_function(&function, &mut code);
+            self.compile_function(function, &mut code);
         }
+
+        code.push_str("\n.global _start\n");
+        code.push_str("_start:\n");
+        code.push_str("    call main\n");
+        code.push_str("    mov edi, eax\n");
+        code.push_str("    mov rax, 60\n");
+        code.push_str("    syscall\n");
 
         let assembly_file = self.output_path.with_extension("s");
         let output_path = self.output_path.with_extension("o");
         fs::write(&assembly_file, code).unwrap();
 
         let compile_output = Command::new("as")
-            .args([assembly_file.to_str().unwrap(), "-o", output_path.to_str().unwrap()])
+            .args([
+                "-mintel64",
+                assembly_file.to_str().unwrap(),
+                "-o",
+                output_path.to_str().unwrap(),
+            ])
             .output()
             .expect("Failed to compile for output path");
 
@@ -56,20 +75,25 @@ impl Driver for Aarch64Driver {
     }
 }
 
-impl Aarch64Driver {
-    fn compile_function(&self, function: &Function, code: &mut String) {
-        code.push_str(&format!(".global {}\n{}:\n", function.name, function.name));
-
+impl X86_64Driver {
+    fn compile_function(&self, function: Function, code: &mut String) {
         let stack_size: usize = function.variables.iter().map(|it| it.expected_value_size).sum();
         let stack_size_aligned = (stack_size + 15) & !15;
 
-        code.push_str(&format!("    sub sp, sp, {}\n", stack_size_aligned));
+        // This is the start of every function.
+        code.push_str(&format!("{}:\n", function.name));
 
+        code.push_str("    push rbp\n");
+        code.push_str("    mov rbp, rsp\n");
+        code.push_str(&format!("    sub rsp, {}\n", stack_size_aligned));
+
+        // Each function is just a list of operations.
         for operation in &function.body {
-            self.compile_operation(&operation, &function, code);
+            self.compile_operation(operation, &function, code);
         }
 
-        code.push_str(&format!("    add sp, sp, {}\n", stack_size_aligned));
+        code.push_str(&format!("    add rsp, {}\n", stack_size_aligned));
+        code.push_str("    pop rbp\n");
         code.push_str("    ret\n");
     }
 
@@ -85,45 +109,5 @@ impl Aarch64Driver {
             Value::IntegerLiteral(literal) => literal.visit(self, function, code),
             Value::VariableReference(reference) => reference.visit(self, function, code),
         }
-    }
-}
-
-trait OperationVisitor {
-    fn visit(&self, driver: &Aarch64Driver, function: &Function, code: &mut String);
-}
-
-impl OperationVisitor for Store {
-    fn visit(&self, driver: &Aarch64Driver, function: &Function, code: &mut String) {
-        let variable = function.variables.get(self.variable_index).unwrap();
-        let value = driver.compile_value(&self.value, function, code);
-
-        code.push_str(&format!("    mov w8, {}\n", value));
-        code.push_str(&format!("    str w8, [sp, {}]\n", variable.stack_index));
-    }
-}
-
-impl OperationVisitor for Return {
-    fn visit(&self, driver: &Aarch64Driver, function: &Function, code: &mut String) {
-        if let Some(value) = &self.value {
-            let value = driver.compile_value(value, function, code);
-            code.push_str(&format!("    ldr w0, {}\n", value));
-        }
-    }
-}
-
-trait ValueVisitor {
-    fn visit(&self, driver: &Aarch64Driver, function: &Function, code: &mut String) -> String;
-}
-
-impl ValueVisitor for IntegerLiteral {
-    fn visit(&self, _driver: &Aarch64Driver, _function: &Function, _code: &mut String) -> String {
-        return self.value.to_string();
-    }
-}
-
-impl ValueVisitor for VariableReference {
-    fn visit(&self, _driver: &Aarch64Driver, function: &Function, _code: &mut String) -> String {
-        let variable = function.variables.get(self.variable_index).unwrap();
-        return format!("[sp, {}]", variable.stack_index);
     }
 }
