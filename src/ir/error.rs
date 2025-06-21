@@ -1,9 +1,8 @@
-use std::fmt::Display;
-
 use crate::{
     ast::node::{expression::Expression, statement::Statement},
     core::location::Location,
 };
+use std::fmt::Display;
 
 #[derive(Debug, Clone)]
 pub enum IRErrorKind {
@@ -22,6 +21,9 @@ pub enum IRErrorKind {
 
     // The provided expression is unsupported.
     UnsupportedExpression(Expression),
+
+    // A variable declaration occurred twice.
+    VariableAlreadyDeclared(String),
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +54,9 @@ impl Display for IRError {
 
             IRErrorKind::UnsupportedStatement(statement) => write!(f, "Unsupported statement: {:?}", statement),
             IRErrorKind::UnsupportedExpression(expression) => write!(f, "Unsupported expression: {:?}", expression),
+            IRErrorKind::VariableAlreadyDeclared(variable_name) => {
+                write!(f, "Variable already exists with the name '{}'", variable_name)
+            }
         }
     }
 }

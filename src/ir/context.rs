@@ -1,9 +1,8 @@
+use super::error::IRErrorKind;
 use crate::{
-    core::location::Location,
+    ast::node::Node,
     ir::{Variable, error::IRError, generator::IRResult},
 };
-
-use super::error::IRErrorKind;
 
 /// The context of the intermediate representation generator.
 pub struct Context {
@@ -39,10 +38,10 @@ impl Context {
     }
 
     /// Returns the current function scope, panicing if one is not active.
-    pub fn function_scope(&mut self, location: Option<Location>) -> IRResult<&mut FunctionScope> {
+    pub fn function_scope(&mut self, node: Node) -> IRResult<&mut FunctionScope> {
         self.function_scope
             .as_mut()
-            .ok_or(IRError::new(IRErrorKind::ExpectedFunctionScope, location))
+            .ok_or(IRError::new(IRErrorKind::ExpectedFunctionScope, Some(node.location)))
     }
 }
 
@@ -51,16 +50,14 @@ impl FunctionScope {
         Self { variables: Vec::new() }
     }
 
-    /// Declares a variable in this function's context, panicing if a variable was already defined
-    /// with the provided name.
-    ///
-    /// Returns the index of the declared variable.
-    pub fn declare_variable<'a>(&mut self, name: &'a str, size: usize) -> usize {
+    /// Declares a variable in this function's context.
+    /// Returns the index of the declared variable if it exists, otherwise [Option::None].
+    pub fn declare_variable<'a>(&mut self, name: &'a str, size: usize, node: Node) -> IRResult<usize> {
         if let Some(_) = self.variables.iter().find(|it| it.name == name) {
-            panic!(
-                "A variable was already declared in the current function scope with the name '{}'",
-                name
-            );
+            return Err(IRError {
+                kind: IRErrorKind::VariableAlreadyDeclared(name.to_string()),
+                location: Some(node.location),
+            });
         }
 
         let stack_size = self.variables.iter().map(|it| it.expected_value_size).sum::<usize>() + size;
@@ -71,7 +68,7 @@ impl FunctionScope {
             stack_index: stack_size,
         });
 
-        self.variables.len() - 1
+        Ok(self.variables.len() - 1)
     }
 
     /// Returns the index for a variable by its name, panicking if it does not exist.

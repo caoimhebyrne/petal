@@ -18,10 +18,7 @@ impl ExpressionVisitor for ast::node::expression::IntegerLiteral {
 
 impl ExpressionVisitor for IdentifierReference {
     fn visit(&self, context: &mut Context) -> IRResult<Value> {
-        let variable_index = context
-            .function_scope(Some(self.node.location))?
-            .find_variable_index(&self.name);
-
+        let variable_index = context.function_scope(self.node)?.find_variable_index(&self.name);
         Ok(Value::VariableReference(VariableReference { variable_index }))
     }
 }

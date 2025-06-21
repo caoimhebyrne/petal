@@ -31,13 +31,13 @@ impl IntermediateRepresentation {
         let mut functions = vec![];
 
         // The intermediate representation can only compile function blocks at the top level.
-        for node in ast {
-            if let Statement::FunctionDefinition(definition) = &node {
+        for statement in ast {
+            if let Statement::FunctionDefinition(definition) = &statement {
                 functions.push(self.parse_function_definition(definition)?);
             } else {
                 return Err(IRError::new(
-                    IRErrorKind::UnsupportedTopLevelStatement(node.clone()),
-                    None,
+                    IRErrorKind::UnsupportedTopLevelStatement(statement.clone()),
+                    Some(statement.node().location),
                 ));
             }
         }
@@ -51,15 +51,14 @@ impl IntermediateRepresentation {
         self.context.start_function_scope()?;
 
         for statement in &definition.body {
-            IntermediateRepresentation::visit_statement(&mut self.context, statement, &mut body)?;
+            body.push(IntermediateRepresentation::visit_statement(
+                &mut self.context,
+                statement,
+            )?);
         }
 
         // We need to know how much space to allocate on the stack.
-        let variables = self
-            .context
-            .function_scope(Some(definition.node.location))?
-            .variables
-            .clone();
+        let variables = self.context.function_scope(definition.node)?.variables.clone();
 
         self.context.end_function_scope();
 
@@ -70,17 +69,16 @@ impl IntermediateRepresentation {
         })
     }
 
-    pub(crate) fn visit_statement(
-        context: &mut Context,
-        statement: &Statement,
-        operations: &mut Vec<Operation>,
-    ) -> IRResult<()> {
+    pub(crate) fn visit_statement(context: &mut Context, statement: &Statement) -> IRResult<Operation> {
         match statement {
-            Statement::VariableDeclaration(declaration) => declaration.visit(context, operations),
-            Statement::VariableReassignment(reassignment) => reassignment.visit(context, operations),
-            Statement::Return(r#return) => r#return.visit(context, operations),
+            Statement::VariableDeclaration(declaration) => declaration.visit(context),
+            Statement::VariableReassignment(reassignment) => reassignment.visit(context),
+            Statement::Return(r#return) => r#return.visit(context),
 
-            _ => Err(IRError::new(IRErrorKind::UnsupportedStatement(statement.clone()), None)),
+            _ => Err(IRError::new(
+                IRErrorKind::UnsupportedStatement(statement.clone()),
+                Some(statement.node().location),
+            )),
         }
     }
 
@@ -91,7 +89,7 @@ impl IntermediateRepresentation {
 
             _ => Err(IRError::new(
                 IRErrorKind::UnsupportedExpression(expression.clone()),
-                None,
+                Some(expression.node().location),
             )),
         }
     }

@@ -114,3 +114,17 @@ pub struct BinaryComparison {
     // The right-hand side of the expression.
     pub right: Box<Expression>,
 }
+
+impl Expression {
+    pub fn node(&self) -> Node {
+        match self {
+            Expression::BinaryComparison(binary_comparison) => binary_comparison.node,
+            Expression::BinaryOperation(binary_operation) => binary_operation.node,
+            Expression::BooleanLiteral(boolean_literal) => boolean_literal.node,
+            Expression::FunctionCall(function_call) => function_call.node,
+            Expression::IdentifierReference(identifier_reference) => identifier_reference.node,
+            Expression::IntegerLiteral(integer_literal) => integer_literal.node,
+            Expression::StringLiteral(string_literal) => string_literal.node,
+        }
+    }
+}

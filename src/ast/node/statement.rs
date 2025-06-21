@@ -87,3 +87,16 @@ pub struct If {
     // The block to run if the condition is true.
     pub block: Vec<Statement>,
 }
+
+impl Statement {
+    pub fn node(&self) -> Node {
+        match self {
+            Statement::FunctionCall(function_call) => function_call.node,
+            Statement::FunctionDefinition(function_definition) => function_definition.node,
+            Statement::If(r#if) => r#if.node,
+            Statement::Return(r#return) => r#return.node,
+            Statement::VariableDeclaration(variable_declaration) => variable_declaration.node,
+            Statement::VariableReassignment(variable_reassignment) => variable_reassignment.node,
+        }
+    }
+}
