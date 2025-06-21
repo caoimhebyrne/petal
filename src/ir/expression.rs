@@ -1,6 +1,6 @@
 use crate::{
-    ast::node::expression::{IdentifierReference, IntegerLiteral},
-    ir::{Value, context::Context, generator::IRResult},
+    ast::{self, node::expression::IdentifierReference},
+    ir::{IntegerLiteral, Value, VariableReference, context::Context, generator::IRResult},
 };
 
 /// Visits an expression inthe AST, converting it to a [Value].
@@ -8,18 +8,20 @@ pub(crate) trait ExpressionVisitor {
     fn visit(&self, context: &mut Context) -> IRResult<Value>;
 }
 
-impl ExpressionVisitor for IntegerLiteral {
+impl ExpressionVisitor for ast::node::expression::IntegerLiteral {
     fn visit(&self, _context: &mut Context) -> IRResult<Value> {
-        Ok(Value::IntegerLiteral(self.value.try_into().unwrap()))
+        Ok(Value::IntegerLiteral(IntegerLiteral {
+            value: self.value.try_into().unwrap(),
+        }))
     }
 }
 
 impl ExpressionVisitor for IdentifierReference {
     fn visit(&self, context: &mut Context) -> IRResult<Value> {
-        let variable = context
+        let variable_index = context
             .function_scope(Some(self.node.location))?
             .find_variable_index(&self.name);
 
-        Ok(Value::VariableReference(variable))
+        Ok(Value::VariableReference(VariableReference { variable_index }))
     }
 }

@@ -1,7 +1,10 @@
 use crate::{
-    ast::node::statement::{Return, VariableDeclaration, VariableReassignment},
+    ast::{
+        self,
+        node::statement::{VariableDeclaration, VariableReassignment},
+    },
     ir::{
-        Operation,
+        Operation, Return, Store,
         context::Context,
         generator::{IRResult, IntermediateRepresentation},
     },
@@ -23,10 +26,10 @@ impl StatementVisitor for VariableDeclaration {
             .function_scope(Some(self.node.location))?
             .declare_variable(&self.name, value.size());
 
-        operations.push(Operation::Store {
+        operations.push(Operation::Store(Store {
             variable_index: index,
             value,
-        });
+        }));
 
         Ok(())
     }
@@ -39,16 +42,16 @@ impl StatementVisitor for VariableReassignment {
             .function_scope(Some(self.node.location))?
             .find_variable_index(&self.name);
 
-        operations.push(Operation::Store {
+        operations.push(Operation::Store(Store {
             variable_index: index,
             value,
-        });
+        }));
 
         Ok(())
     }
 }
 
-impl StatementVisitor for Return {
+impl StatementVisitor for ast::node::statement::Return {
     fn visit(&self, context: &mut Context, operations: &mut Vec<Operation>) -> IRResult<()> {
         // If the return statement has a value, we can generate an IR value for it.
         let value = if let Some(value) = &self.value {
@@ -57,7 +60,7 @@ impl StatementVisitor for Return {
             None
         };
 
-        operations.push(Operation::Return { value });
+        operations.push(Operation::Return(Return { value }));
         Ok(())
     }
 }

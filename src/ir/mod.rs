@@ -10,10 +10,20 @@ mod statement;
 /// A value which can be an argument of an [Operation] in the IR.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
-    IntegerLiteral(u32),
+    IntegerLiteral(IntegerLiteral),
 
     /// A reference to a variable in the current scope, the associated value being the variable's index.
-    VariableReference(usize),
+    VariableReference(VariableReference),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IntegerLiteral {
+    pub value: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VariableReference {
+    pub variable_index: usize,
 }
 
 impl Value {
@@ -29,10 +39,21 @@ impl Value {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Operation {
     /// Stores a value into a variable allocated on the stack.
-    Store { variable_index: usize, value: Value },
+    Store(Store),
 
     /// Returns a variable from the current function.
-    Return { value: Option<Value> },
+    Return(Return),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Store {
+    pub variable_index: usize,
+    pub value: Value,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Return {
+    pub value: Option<Value>,
 }
 
 /// A function defined in the IR.
@@ -64,8 +85,8 @@ pub struct Variable {
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Value::IntegerLiteral(value) => write!(f, "{}", value),
-            Value::VariableReference(variable_index) => write!(f, "@{}", variable_index),
+            Value::IntegerLiteral(literal) => write!(f, "{}", literal.value),
+            Value::VariableReference(reference) => write!(f, "@{}", reference.variable_index),
         }
     }
 }
@@ -73,11 +94,11 @@ impl Display for Value {
 impl Display for Operation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Operation::Store { variable_index, value } => write!(f, "@{} = {}", variable_index, value),
+            Operation::Store(store) => write!(f, "@{} = {}", store.variable_index, store.value),
 
-            Operation::Return { value } => {
-                if let Some(return_value) = value {
-                    write!(f, "return {}", return_value)
+            Operation::Return(r#return) => {
+                if let Some(value) = &r#return.value {
+                    write!(f, "return {}", value)
                 } else {
                     write!(f, "return")
                 }

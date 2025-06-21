@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
     driver::Driver,
-    ir::{Function, Operation, Value},
+    ir::{Function, IntegerLiteral, Operation, Return, Store, Value, VariableReference},
 };
 
 pub struct Aarch64Driver {
@@ -75,27 +75,55 @@ impl Aarch64Driver {
 
     fn compile_operation(&self, operation: &Operation, function: &Function, code: &mut String) {
         match operation {
-            Operation::Store { variable_index, value } => {
-                let variable = function.variables.get(*variable_index).unwrap();
-                code.push_str(&format!("    mov w8, {}\n", self.compile_value(value, function)));
-                code.push_str(&format!("    str w8, [sp, {}]\n", variable.stack_index));
-            }
-
-            Operation::Return { value } => {
-                if let Some(the_value) = value {
-                    code.push_str(&format!("    ldr w0, {}\n", self.compile_value(the_value, function)))
-                }
-            }
+            Operation::Store(store) => store.visit(self, function, code),
+            Operation::Return(r#return) => r#return.visit(self, function, code),
         }
     }
 
-    fn compile_value(&self, value: &Value, function: &Function) -> String {
+    fn compile_value(&self, value: &Value, function: &Function, code: &mut String) -> String {
         match value {
-            Value::IntegerLiteral(literal) => literal.to_string(),
-            Value::VariableReference(variable_index) => {
-                let variable = function.variables.get(*variable_index).unwrap();
-                format!("[sp, {}]", variable.stack_index)
-            }
+            Value::IntegerLiteral(literal) => literal.visit(self, function, code),
+            Value::VariableReference(reference) => reference.visit(self, function, code),
         }
+    }
+}
+
+trait OperationVisitor {
+    fn visit(&self, driver: &Aarch64Driver, function: &Function, code: &mut String);
+}
+
+impl OperationVisitor for Store {
+    fn visit(&self, driver: &Aarch64Driver, function: &Function, code: &mut String) {
+        let variable = function.variables.get(self.variable_index).unwrap();
+        let value = driver.compile_value(&self.value, function, code);
+
+        code.push_str(&format!("    mov w8, {}\n", value));
+        code.push_str(&format!("    str w8, [sp, {}]\n", variable.stack_index));
+    }
+}
+
+impl OperationVisitor for Return {
+    fn visit(&self, driver: &Aarch64Driver, function: &Function, code: &mut String) {
+        if let Some(value) = &self.value {
+            let value = driver.compile_value(value, function, code);
+            code.push_str(&format!("    ldr w0, {}\n", value));
+        }
+    }
+}
+
+trait ValueVisitor {
+    fn visit(&self, driver: &Aarch64Driver, function: &Function, code: &mut String) -> String;
+}
+
+impl ValueVisitor for IntegerLiteral {
+    fn visit(&self, _driver: &Aarch64Driver, _function: &Function, _code: &mut String) -> String {
+        return self.value.to_string();
+    }
+}
+
+impl ValueVisitor for VariableReference {
+    fn visit(&self, _driver: &Aarch64Driver, function: &Function, _code: &mut String) -> String {
+        let variable = function.variables.get(self.variable_index).unwrap();
+        return format!("[sp, {}]", variable.stack_index);
     }
 }
