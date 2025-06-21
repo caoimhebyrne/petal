@@ -1,6 +1,7 @@
 use crate::{
     driver::{
-        Driver,
+        Driver, DriverResult,
+        error::DriverError,
         x86_64::{operation::OperationVisitor, value::ValueVisitor},
     },
     ir::{Function, Operation, Value},
@@ -24,7 +25,7 @@ impl Driver for X86_64Driver {
         Self { output_path }
     }
 
-    fn compile(&self, ir: Vec<Function>) {
+    fn compile(&self, ir: Vec<Function>) -> DriverResult<()> {
         let mut code = String::new();
         code.push_str(".intel_syntax noprefix\n");
         code.push_str(".section .text\n");
@@ -41,37 +42,40 @@ impl Driver for X86_64Driver {
         code.push_str("    syscall\n");
 
         let assembly_file = self.output_path.with_extension("s");
-        let output_path = self.output_path.with_extension("o");
-        fs::write(&assembly_file, code).unwrap();
+        let assembly_file_str = assembly_file.to_str().expect("Invalid path?");
+
+        let object_path = self.output_path.with_extension("o");
+        let object_path_str = object_path.to_str().expect("Invalid path?");
+
+        fs::write(&assembly_file, code).map_err(|_| DriverError::IOError {
+            file_name: assembly_file_str.to_owned(),
+        })?;
 
         let compile_output = Command::new("as")
-            .args([
-                "-mintel64",
-                assembly_file.to_str().unwrap(),
-                "-o",
-                output_path.to_str().unwrap(),
-            ])
+            .args(["-mintel64", assembly_file_str, "-o", object_path_str])
             .output()
-            .expect("Failed to compile for output path");
+            .map_err(|_| DriverError::CompilationFailure)?;
 
         if !compile_output.status.success() {
-            stdout().write_all(&compile_output.stdout).unwrap();
-            stderr().write_all(&compile_output.stderr).unwrap();
+            let _ = stdout().write_all(&compile_output.stdout);
+            let _ = stderr().write_all(&compile_output.stderr);
 
-            panic!("Failed to assemble, see the logs above for more information.");
+            return Err(DriverError::CompilationFailure);
         }
 
         let link_output = Command::new("ld")
-            .args(["-o", self.output_path.to_str().unwrap(), output_path.to_str().unwrap()])
+            .args(["-o", self.output_path.to_str().unwrap(), object_path_str])
             .output()
-            .expect("Failed to compile for output path");
+            .map_err(|_| DriverError::LinkingFailure)?;
 
         if !link_output.status.success() {
-            stdout().write_all(&link_output.stdout).unwrap();
-            stderr().write_all(&link_output.stderr).unwrap();
+            let _ = stdout().write_all(&link_output.stdout);
+            let _ = stderr().write_all(&link_output.stderr);
 
-            panic!("Failed to link, see the logs above for more information.");
+            return Err(DriverError::LinkingFailure);
         }
+
+        Ok(())
     }
 }
 

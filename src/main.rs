@@ -116,7 +116,8 @@ fn main() {
         Target::X86_64 => Box::new(X86_64Driver::new(args.output_path.clone())),
     };
 
-    driver.compile(functions);
-
-    println!("Compilation successful: {}", args.output_path.to_string_lossy());
+    match driver.compile(functions) {
+        Ok(_) => println!("Compilation successful: {}", args.output_path.to_string_lossy()),
+        Err(error) => report_error(&args.input_path, error, None),
+    };
 }

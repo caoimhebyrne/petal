@@ -1,9 +1,11 @@
+use crate::{driver::error::DriverError, ir::Function};
 use std::path::PathBuf;
 
-use crate::ir::Function;
-
 pub mod aarch64;
+pub mod error;
 pub mod x86_64;
+
+pub type DriverResult<T> = Result<T, DriverError>;
 
 // Responsible for generating assembly from the IR.
 pub trait Driver {
@@ -11,5 +13,5 @@ pub trait Driver {
     where
         Self: Sized;
 
-    fn compile(&self, ir: Vec<Function>);
+    fn compile(&self, ir: Vec<Function>) -> DriverResult<()>;
 }
