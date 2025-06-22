@@ -90,6 +90,7 @@ impl X86_64Driver {
         match value {
             Value::IntegerLiteral(literal) => literal.visit(self, function, code),
             Value::VariableReference(reference) => reference.visit(self, function, code),
+            Value::BinaryOperation(operation) => operation.visit(self, function, code),
         }
     }
 }

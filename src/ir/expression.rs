@@ -1,6 +1,13 @@
 use crate::{
-    ast::{self, node::expression::IdentifierReference},
-    ir::{IntegerLiteral, Value, VariableReference, context::Context, generator::IRResult},
+    ast::{
+        self,
+        node::{expression::IdentifierReference, operator::Operation},
+    },
+    ir::{
+        BinaryOperation, IntegerLiteral, Operand, Value, VariableReference,
+        context::Context,
+        generator::{IRResult, IntermediateRepresentation},
+    },
 };
 
 /// Visits an expression inthe AST, converting it to a [Value].
@@ -20,5 +27,21 @@ impl ExpressionVisitor for IdentifierReference {
     fn visit(&self, context: &mut Context) -> IRResult<Value> {
         let variable_index = context.function_scope(self.node)?.find_variable_index(&self.name);
         Ok(Value::VariableReference(VariableReference { variable_index }))
+    }
+}
+
+impl ExpressionVisitor for ast::node::expression::BinaryOperation {
+    fn visit(&self, context: &mut Context) -> IRResult<Value> {
+        Ok(Value::BinaryOperation(BinaryOperation {
+            left: Box::new(IntermediateRepresentation::visit_expression(context, &self.left)?),
+            right: Box::new(IntermediateRepresentation::visit_expression(context, &self.right)?),
+
+            operand: match self.operation {
+                Operation::Add => Operand::Add,
+                Operation::Subtract => Operand::Subtract,
+                Operation::Multiply => Operand::Multiply,
+                Operation::Divide => Operand::Divide,
+            },
+        }))
     }
 }

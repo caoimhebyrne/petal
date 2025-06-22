@@ -14,6 +14,24 @@ pub enum Value {
 
     /// A reference to a variable in the current scope, the associated value being the variable's index.
     VariableReference(VariableReference),
+
+    /// Performs a binary operation between two values.
+    BinaryOperation(BinaryOperation),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BinaryOperation {
+    pub left: Box<Value>,
+    pub right: Box<Value>,
+    pub operand: Operand,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Operand {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,6 +49,7 @@ impl Value {
         match self {
             Value::IntegerLiteral(_) => 4,
             Value::VariableReference(_) => 4,
+            Value::BinaryOperation(operation) => operation.left.size(),
         }
     }
 }
@@ -87,6 +106,9 @@ impl Display for Value {
         match self {
             Value::IntegerLiteral(literal) => write!(f, "{}", literal.value),
             Value::VariableReference(reference) => write!(f, "@{}", reference.variable_index),
+            Value::BinaryOperation(operation) => {
+                write!(f, "{}{}{}", operation.left, operation.operand, operation.right)
+            }
         }
     }
 }
@@ -116,5 +138,16 @@ impl Display for Function {
         }
 
         Ok(())
+    }
+}
+
+impl Display for Operand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Operand::Add => write!(f, "+"),
+            Operand::Subtract => write!(f, "-"),
+            Operand::Multiply => write!(f, "*"),
+            Operand::Divide => write!(f, "/"),
+        }
     }
 }

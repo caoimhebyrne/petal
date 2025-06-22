@@ -86,6 +86,7 @@ impl IntermediateRepresentation {
         match expression {
             Expression::IntegerLiteral(literal) => literal.visit(context),
             Expression::IdentifierReference(identifier_reference) => identifier_reference.visit(context),
+            Expression::BinaryOperation(operation) => operation.visit(context),
 
             _ => Err(IRError::new(
                 IRErrorKind::UnsupportedExpression(expression.clone()),
