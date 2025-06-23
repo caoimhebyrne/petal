@@ -1,7 +1,7 @@
 ## `petal` 🌸
 
 This is the compiler for my language, Petal. The plan for this compiler is for it to provide enough features to build
-a self-hosted compiler. LLVM is used for code-generation.
+a self-hosted compiler.
 
 ```go
 // This is the main function, it is called similar to how it would be called in C.
@@ -22,16 +22,6 @@ func main() -> i32 {
 ### Building
 1. Clone this git repository.
 2. Build the compiler using `cargo build`
-
-## TODO
-- [ ] Type aliases (`type <name> = <definition>`, e.g: `type string = &i8`)
-- [ ] Ditch LLVM and make my own IR?
-- [ ] Improve control flow
-  - [ ] Add `else` blocks
-  - [ ] While loops
-- [ ] Importing other modules
-- [ ] Structures
-- [ ] Standard library
 
 ### License
 
