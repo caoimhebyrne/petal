@@ -66,15 +66,20 @@ impl X86_64Driver {
         code.push_str(&format!(".global {}\n{}:\n", function.name, function.name));
 
         code.push_str("    push rbp\n");
-        code.push_str("    mov rbp, rsp\n");
-        code.push_str(&format!("    sub rsp, {}\n", stack_size_aligned));
+        if !function.variables.is_empty() {
+            code.push_str("    mov rbp, rsp\n");
+            code.push_str(&format!("    sub rsp, {}\n", stack_size_aligned));
+        }
 
         // Each function is just a list of operations.
         for operation in &function.body {
             self.compile_operation(operation, &function, code);
         }
 
-        code.push_str(&format!("    add rsp, {}\n", stack_size_aligned));
+        if !function.variables.is_empty() {
+            code.push_str(&format!("    add rsp, {}\n", stack_size_aligned));
+        }
+
         code.push_str("    pop rbp\n");
         code.push_str("    ret\n");
     }
