@@ -21,7 +21,7 @@ impl OperationVisitor for Return {
     fn visit(&self, driver: &Aarch64Driver, function: &Function, code: &mut String) {
         if let Some(value) = &self.value {
             let value = driver.compile_value(value, function, code);
-            code.push_str(&format!("    ldr w0, {}\n", value));
+            code.push_str(&format!("    mov x0, {}\n", value));
         }
     }
 }
