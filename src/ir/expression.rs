@@ -4,7 +4,7 @@ use crate::{
         node::{expression::IdentifierReference, operator::Operation},
     },
     ir::{
-        BinaryOperation, IntegerLiteral, Operand, Value, VariableReference,
+        BinaryOperation, FunctionCall, IntegerLiteral, Operand, Value, VariableReference,
         context::Context,
         generator::{IRResult, IntermediateRepresentation},
     },
@@ -42,6 +42,21 @@ impl ExpressionVisitor for ast::node::expression::BinaryOperation {
                 Operation::Multiply => Operand::Multiply,
                 Operation::Divide => Operand::Divide,
             },
+        }))
+    }
+}
+
+impl ExpressionVisitor for ast::node::expression::FunctionCall {
+    fn visit(&self, context: &mut Context) -> IRResult<Value> {
+        let arguments = self
+            .arguments
+            .iter()
+            .map(|it| IntermediateRepresentation::visit_expression(context, it))
+            .collect::<IRResult<Vec<Value>>>()?;
+
+        Ok(Value::FunctionCall(FunctionCall {
+            name: self.name.clone(),
+            arguments,
         }))
     }
 }

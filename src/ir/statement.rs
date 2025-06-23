@@ -4,7 +4,7 @@ use crate::{
         node::statement::{VariableDeclaration, VariableReassignment},
     },
     ir::{
-        Operation, Return, Store,
+        FunctionCall, Operation, Return, Store, Value,
         context::Context,
         generator::{IRResult, IntermediateRepresentation},
     },
@@ -56,5 +56,20 @@ impl StatementVisitor for ast::node::statement::Return {
         };
 
         Ok(Operation::Return(Return { value }))
+    }
+}
+
+impl StatementVisitor for ast::node::expression::FunctionCall {
+    fn visit(&self, context: &mut Context) -> IRResult<Operation> {
+        let arguments = self
+            .arguments
+            .iter()
+            .map(|it| IntermediateRepresentation::visit_expression(context, it))
+            .collect::<IRResult<Vec<Value>>>()?;
+
+        Ok(Operation::FunctionCall(FunctionCall {
+            name: self.name.clone(),
+            arguments,
+        }))
     }
 }

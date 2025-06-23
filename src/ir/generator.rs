@@ -74,6 +74,7 @@ impl IntermediateRepresentation {
             Statement::VariableDeclaration(declaration) => declaration.visit(context),
             Statement::VariableReassignment(reassignment) => reassignment.visit(context),
             Statement::Return(r#return) => r#return.visit(context),
+            Statement::FunctionCall(function_call) => StatementVisitor::visit(function_call, context),
 
             _ => Err(IRError::new(
                 IRErrorKind::UnsupportedStatement(statement.clone()),
@@ -87,6 +88,7 @@ impl IntermediateRepresentation {
             Expression::IntegerLiteral(literal) => literal.visit(context),
             Expression::IdentifierReference(identifier_reference) => identifier_reference.visit(context),
             Expression::BinaryOperation(operation) => operation.visit(context),
+            Expression::FunctionCall(function_call) => ExpressionVisitor::visit(function_call, context),
 
             _ => Err(IRError::new(
                 IRErrorKind::UnsupportedExpression(expression.clone()),

@@ -17,6 +17,9 @@ pub enum Value {
 
     /// Performs a binary operation between two values.
     BinaryOperation(BinaryOperation),
+
+    /// A call to another defined function.
+    FunctionCall(FunctionCall),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,6 +53,8 @@ impl Value {
             Value::IntegerLiteral(_) => 4,
             Value::VariableReference(_) => 4,
             Value::BinaryOperation(operation) => operation.left.size(),
+            // TODO
+            Value::FunctionCall(_) => 4,
         }
     }
 }
@@ -62,6 +67,9 @@ pub enum Operation {
 
     /// Returns a variable from the current function.
     Return(Return),
+
+    /// A call to another defined function.
+    FunctionCall(FunctionCall),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -73,6 +81,12 @@ pub struct Store {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Return {
     pub value: Option<Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FunctionCall {
+    pub name: String,
+    pub arguments: Vec<Value>,
 }
 
 /// A function defined in the IR.
@@ -109,6 +123,19 @@ impl Display for Value {
             Value::BinaryOperation(operation) => {
                 write!(f, "{}{}{}", operation.left, operation.operand, operation.right)
             }
+            Value::FunctionCall(function_call) => {
+                write!(
+                    f,
+                    "{}({})",
+                    function_call.name,
+                    function_call
+                        .arguments
+                        .iter()
+                        .map(|it| it.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                )
+            }
         }
     }
 }
@@ -124,6 +151,20 @@ impl Display for Operation {
                 } else {
                     write!(f, "return")
                 }
+            }
+
+            Operation::FunctionCall(function_call) => {
+                write!(
+                    f,
+                    "{}({})",
+                    function_call.name,
+                    function_call
+                        .arguments
+                        .iter()
+                        .map(|it| it.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                )
             }
         }
     }

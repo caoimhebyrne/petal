@@ -83,6 +83,7 @@ impl X86_64Driver {
         match operation {
             Operation::Store(store) => store.visit(self, function, code),
             Operation::Return(r#return) => r#return.visit(self, function, code),
+            _ => todo!(),
         }
     }
 
@@ -91,6 +92,8 @@ impl X86_64Driver {
             Value::IntegerLiteral(literal) => literal.visit(self, function, code),
             Value::VariableReference(reference) => reference.visit(self, function, code),
             Value::BinaryOperation(operation) => operation.visit(self, function, code),
+            Value::FunctionCall(function_call) => function_call.visit(self, function, code),
+            _ => todo!(),
         }
     }
 }

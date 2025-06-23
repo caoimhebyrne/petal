@@ -23,7 +23,7 @@ impl OperationVisitor for Return {
     fn visit(&self, driver: &X86_64Driver, function: &Function, code: &mut String) {
         if let Some(value) = &self.value {
             let value = driver.compile_value(value, function, code);
-            code.push_str(&format!("    mov eax, {}\n", value));
+            code.push_str(&format!("    mov rax, {}\n", value));
         }
     }
 }

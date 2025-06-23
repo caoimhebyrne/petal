@@ -1,6 +1,6 @@
 use crate::{
     driver::x86_64::X86_64Driver,
-    ir::{BinaryOperation, Function, IntegerLiteral, Operand, VariableReference},
+    ir::{BinaryOperation, Function, FunctionCall, IntegerLiteral, Operand, VariableReference},
 };
 
 pub trait ValueVisitor {
@@ -39,5 +39,16 @@ impl ValueVisitor for BinaryOperation {
         code.push_str(&format!("    {} eax, {}\n", instruction, right_value));
 
         return "eax".to_string();
+    }
+}
+
+impl ValueVisitor for FunctionCall {
+    fn visit(&self, _driver: &X86_64Driver, _function: &Function, code: &mut String) -> String {
+        if !self.arguments.is_empty() {
+            todo!()
+        }
+
+        code.push_str(&format!("    call {}\n", self.name));
+        "rax".to_string()
     }
 }
