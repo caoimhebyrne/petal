@@ -41,7 +41,7 @@ impl Driver for X86_64Driver {
             file_name: assembly_file_str.to_owned(),
         })?;
 
-        let compile_output = Command::new("gcc")
+        let compile_output = Command::new("cc")
             .args([assembly_file_str, "-o", self.output_path.to_str().unwrap()])
             .output()
             .map_err(|_| DriverError::CompilationFailure)?;
