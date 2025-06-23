@@ -35,13 +35,10 @@ impl Driver for Aarch64Driver {
         let assembly_file = self.output_path.with_extension("s");
         let assembly_file_str = assembly_file.to_str().expect("Invalid path?");
 
-        let object_path = self.output_path.with_extension("o");
-        let object_path_str = object_path.to_str().expect("Invalid path?");
-
         fs::write(&assembly_file, code).unwrap();
 
-        let compile_output = Command::new("as")
-            .args([assembly_file_str, "-o", object_path_str])
+        let compile_output = Command::new("cc")
+            .args([assembly_file_str, "-o", self.output_path.to_str().unwrap()])
             .output()
             .map_err(|_| DriverError::CompilationFailure)?;
 
@@ -52,25 +49,13 @@ impl Driver for Aarch64Driver {
             return Err(DriverError::CompilationFailure);
         }
 
-        let link_output = Command::new("ld")
-            .args(["-o", self.output_path.to_str().unwrap(), object_path_str])
-            .output()
-            .map_err(|_| DriverError::LinkingFailure)?;
-
-        if !link_output.status.success() {
-            let _ = stdout().write_all(&link_output.stdout);
-            let _ = stderr().write_all(&link_output.stderr);
-
-            return Err(DriverError::LinkingFailure);
-        }
-
         Ok(())
     }
 }
 
 impl Aarch64Driver {
     fn compile_function(&self, function: &Function, code: &mut String) {
-        code.push_str(&format!(".global {}\n{}:\n", function.name, function.name));
+        code.push_str(&format!(".global _{}\n_{}:\n", function.name, function.name));
 
         let stack_size: usize = function.variables.iter().map(|it| it.expected_value_size).sum();
         let stack_size_aligned = (stack_size + 15) & !15;
