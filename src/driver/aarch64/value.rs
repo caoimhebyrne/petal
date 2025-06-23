@@ -32,7 +32,11 @@ impl ValueVisitor for BinaryOperation {
             Operand::Subtract => "sub",
         };
 
-        code.push_str(&format!("{} x0, {}, {}", operation, left, right));
+        // These operations typically do not work with immediate values.
+        // r9 will be used for the left, and r10 will be used for the right.
+        code.push_str(&format!("    mov x9, {}\n", left));
+        code.push_str(&format!("    mov x10, {}\n", right));
+        code.push_str(&format!("    {} x0, {}, {}\n", operation, "x9", "x10"));
         return format!("x0");
     }
 }
