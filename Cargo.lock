@@ -133,6 +133,7 @@ dependencies = [
  "colored",
  "petal_codegen",
  "petal_core",
+ "petal_ir",
 ]
 
 [[package]]

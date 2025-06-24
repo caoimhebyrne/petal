@@ -1,19 +1,15 @@
 #![feature(impl_trait_in_bindings, path_file_prefix, path_add_extension)]
 #![allow(clippy::new_without_default)]
 
+use clap::Parser;
+use colored::Colorize;
+use petal_core::{ast::Ast, core::location::Location, lexer::Lexer, typechecker::Typechecker};
+use petal_ir::generator::IRGenerator;
 use std::{
     fmt::Display,
     fs,
     path::{Path, PathBuf},
     process::exit,
-};
-
-use clap::Parser;
-use colored::Colorize;
-use petal_codegen::driver::{Driver, aarch64::Aarch64Driver, x86_64::X86_64Driver};
-use petal_core::{
-    ast::Ast, core::location::Location, ir::generator::IntermediateRepresentation, lexer::Lexer,
-    typechecker::Typechecker,
 };
 
 #[derive(clap::ValueEnum, Clone, Default, Debug)]
@@ -91,21 +87,11 @@ fn main() {
 
     println!("[4/5] IR Generator");
 
-    let mut intermediate_representation = IntermediateRepresentation::new();
-    let functions = match intermediate_representation.parse(&nodes) {
+    let mut ir_generator = IRGenerator::new();
+    let functions = match ir_generator.generate(nodes) {
         Ok(value) => value,
-        Err(error) => report_error(&args.input_path, &error, error.location),
+        Err(error) => report_error(&args.input_path, &error, Some(error.location)),
     };
 
-    println!("[5/5] Codegen for {}", args.target);
-
-    let driver: Box<dyn Driver> = match args.target {
-        Target::Aarch64 => Box::new(Aarch64Driver::new(args.output_path.clone())),
-        Target::X86_64 => Box::new(X86_64Driver::new(args.output_path.clone())),
-    };
-
-    match driver.compile(functions) {
-        Ok(_) => println!("Compilation successful: {}", args.output_path.to_string_lossy()),
-        Err(error) => report_error(&args.input_path, error, None),
-    };
+    println!("{:?}", functions)
 }

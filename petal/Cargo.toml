@@ -8,3 +8,4 @@ clap = { version = "4.5.38", features = ["derive"] }
 colored = "3.0.0"
 petal_codegen = { version = "0.1.0", path = "../petal_codegen" }
 petal_core = { version = "0.1.0", path = "../petal_core" }
+petal_ir = { version = "0.1.0", path = "../petal_ir" }
