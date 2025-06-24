@@ -1,6 +1,5 @@
-use std::fmt::Display;
-
 use petal_core::core::location::Location;
+use std::fmt::Display;
 
 /// An error that occurred during the generation of the intermediate representation.
 ///
@@ -28,6 +27,9 @@ pub enum IRErrorKind {
 
     /// An attempt was made to use a function scope, but one wasn't started.
     ExpectedFunctionScope,
+
+    /// Type information was missing.
+    MissingTypeInformation,
 }
 
 impl IRError {
@@ -45,6 +47,10 @@ impl IRError {
 
     pub fn expected_function_scope(location: Location) -> IRError {
         IRError::new(IRErrorKind::ExpectedFunctionScope, location)
+    }
+
+    pub fn missing_type_information(location: Location) -> IRError {
+        IRError::new(IRErrorKind::MissingTypeInformation, location)
     }
 }
 
@@ -65,6 +71,8 @@ impl Display for IRError {
                 f,
                 "An attempt was made to use the current function scope, but one wasn't started. This is probably a bug..."
             ),
+
+            IRErrorKind::MissingTypeInformation => write!(f, "Type information was missing for an expression"),
         }
     }
 }

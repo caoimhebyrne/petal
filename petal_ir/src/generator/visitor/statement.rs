@@ -1,4 +1,4 @@
-use crate::{error::IRResult, function::Local, generator::IRGenerator, operation::Operation, value::Value};
+use crate::{error::IRResult, function::Local, generator::IRGenerator, operation::Operation};
 use petal_core::ast::node::statement::VariableDeclaration;
 
 /// A visitor for an AST statement.
@@ -9,21 +9,19 @@ pub trait StatementVisitor {
 
 impl StatementVisitor for VariableDeclaration {
     fn visit(&self, generator: &mut IRGenerator) -> IRResult<Operation> {
+        // If the value cannot be represented in the IR, there's no point in continuing with the declaration.
+        let initialization_value = generator.visit_expression(&self.value)?;
         let function_scope = generator.function_scope(self.node.location)?;
 
         // If a variable has been declared, we can insert it into this function scope's local variables.
         let local_index = function_scope.locals.len();
-        let value_type = self.declared_type.clone().into();
 
         function_scope.locals.push(Local {
             name: self.name.clone(),
-            value_type,
+            value_type: initialization_value.r#type.clone(),
         });
 
         // Then, we just need to store the initialization value into the local.
-        Ok(Operation::new_store_local(
-            local_index,
-            Value::new_integer_literal(0, value_type),
-        ))
+        Ok(Operation::new_store_local(local_index, initialization_value))
     }
 }

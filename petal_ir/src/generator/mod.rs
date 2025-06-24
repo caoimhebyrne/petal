@@ -1,12 +1,18 @@
 use crate::{
     error::{IRError, IRResult},
     function::{Function, Local},
-    generator::{function_scope::FunctionScope, visitor::statement::StatementVisitor},
+    generator::{
+        function_scope::FunctionScope,
+        visitor::{expression::ExpressionVisitor, statement::StatementVisitor},
+    },
     operation::Operation,
-    value::ValueType,
+    value::{Value, ValueType},
 };
 use petal_core::{
-    ast::node::statement::{FunctionDefinition, Statement},
+    ast::node::{
+        expression::Expression,
+        statement::{FunctionDefinition, Statement},
+    },
     core::location::Location,
     typechecker::r#type::kind::TypeKind,
 };
@@ -92,6 +98,15 @@ impl IRGenerator {
     pub(crate) fn visit_statement(&mut self, statement: &Statement) -> IRResult<Operation> {
         match statement {
             Statement::VariableDeclaration(declaration) => declaration.visit(self),
+
+            _ => todo!(),
+        }
+    }
+
+    /// Visits an [Expression], returning [Ok] if an implementation of [ExpressionVisitor] exists for it.
+    pub(crate) fn visit_expression(&mut self, expression: &Expression) -> IRResult<Value> {
+        match expression {
+            Expression::IntegerLiteral(literal) => literal.visit(self),
 
             _ => todo!(),
         }
