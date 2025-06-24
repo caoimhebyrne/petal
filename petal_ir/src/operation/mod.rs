@@ -1,4 +1,4 @@
-use crate::operation::store_local::StoreLocal;
+use crate::{operation::store_local::StoreLocal, value::Value};
 
 pub mod store_local;
 
@@ -19,4 +19,16 @@ pub struct Operation {
 pub enum OperationKind {
     /// Stores a [crate::value::Value] into a local at the provided index.
     StoreLocal(StoreLocal),
+}
+
+impl Operation {
+    pub fn new(kind: OperationKind) -> Operation {
+        Operation { kind }
+    }
+
+    pub fn new_store_local(index: usize, value: Value) -> Operation {
+        Operation {
+            kind: OperationKind::StoreLocal(StoreLocal { index, value }),
+        }
+    }
 }

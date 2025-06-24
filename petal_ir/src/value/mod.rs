@@ -36,3 +36,16 @@ pub enum ValueKind {
 pub enum ValueType {
     Integer { width: u8 },
 }
+
+impl Value {
+    pub fn new(kind: ValueKind, r#type: ValueType) -> Value {
+        Value { kind, r#type }
+    }
+
+    pub fn new_integer_literal(literal: u64, r#type: ValueType) -> Value {
+        Value {
+            kind: ValueKind::IntegerLiteral(IntegerLiteral { literal }),
+            r#type,
+        }
+    }
+}

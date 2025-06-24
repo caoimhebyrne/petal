@@ -26,8 +26,8 @@ pub enum IRErrorKind {
     /// An attempt was made to start a new function scope while the previous one was still ongoing.
     UnterminatedFunctionScope,
 
-    /// An attempt was made to close a function scope, but one wasn't started.
-    MismatchedFunctionScopeTermination,
+    /// An attempt was made to use a function scope, but one wasn't started.
+    ExpectedFunctionScope,
 }
 
 impl IRError {
@@ -43,8 +43,8 @@ impl IRError {
         IRError::new(IRErrorKind::UnterminatedFunctionScope, location)
     }
 
-    pub fn mismatched_function_scope_termination(location: Location) -> IRError {
-        IRError::new(IRErrorKind::MismatchedFunctionScopeTermination, location)
+    pub fn expected_function_scope(location: Location) -> IRError {
+        IRError::new(IRErrorKind::ExpectedFunctionScope, location)
     }
 }
 
@@ -61,9 +61,9 @@ impl Display for IRError {
                 "An attempt was made to start a function scope, but the previous one was not ended. If you're trying to use nested functions - those are not supported at the moment."
             ),
 
-            IRErrorKind::MismatchedFunctionScopeTermination => write!(
+            IRErrorKind::ExpectedFunctionScope => write!(
                 f,
-                "An attempt was made to end the current function scope, but one wasn't started. This is probably a bug..."
+                "An attempt was made to use the current function scope, but one wasn't started. This is probably a bug..."
             ),
         }
     }

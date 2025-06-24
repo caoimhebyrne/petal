@@ -1,7 +1,8 @@
 use crate::{
     error::{IRError, IRResult},
     function::{Function, Local},
-    generator::function_scope::FunctionScope,
+    generator::{function_scope::FunctionScope, visitor::statement::StatementVisitor},
+    operation::Operation,
     value::ValueType,
 };
 use petal_core::{
@@ -11,11 +12,13 @@ use petal_core::{
 };
 
 pub(crate) mod function_scope;
+pub(crate) mod value_type;
+pub(crate) mod visitor;
 
 /// Responsible for generating an intermediate representation from an abstract syntax tree.
 /// This intermediate representation is comprised of [crate::operation]s and [crate::value]s.
 pub struct IRGenerator {
-    pub(crate) function_scope: Option<FunctionScope>,
+    function_scope: Option<FunctionScope>,
 }
 
 impl IRGenerator {
@@ -68,7 +71,10 @@ impl IRGenerator {
             }
         }
 
-        // TODO: Parse the function's body.
+        // We can now parse the function's body.
+        for statement in &definition.body {
+            self.visit_statement(statement)?;
+        }
 
         // The function's body has been consumed, we can end the function scope.
         let function_scope = self.end_function_scope(definition.node.location)?;
@@ -82,6 +88,15 @@ impl IRGenerator {
         })
     }
 
+    /// Visits a [Statement], returning [Ok] if an implementation of [StatementVisitor] exists for it.
+    pub(crate) fn visit_statement(&mut self, statement: &Statement) -> IRResult<Operation> {
+        match statement {
+            Statement::VariableDeclaration(declaration) => declaration.visit(self),
+
+            _ => todo!(),
+        }
+    }
+
     /// Attempts to start a new function scope.
     ///
     /// If a function scope is already in-progress, this will return an [Err] as nested functions
@@ -93,10 +108,9 @@ impl IRGenerator {
 
         self.function_scope = Some(FunctionScope::new());
 
-        Ok(self
-            .function_scope
+        self.function_scope
             .as_mut()
-            .expect("Function scope was just set, but as_mut returned None?"))
+            .ok_or(IRError::expected_function_scope(location))
     }
 
     /// Attempts to end the current function scope.
@@ -106,11 +120,19 @@ impl IRGenerator {
     pub(crate) fn end_function_scope(&mut self, location: Location) -> IRResult<FunctionScope> {
         let old_scope = match self.function_scope.clone() {
             Some(value) => value,
-            _ => return Err(IRError::mismatched_function_scope_termination(location)),
+            _ => return Err(IRError::expected_function_scope(location)),
         };
 
         self.function_scope = None;
 
         Ok(old_scope)
+    }
+
+    /// Retrieves the current function scope if present.
+    /// Returns [Err] if a function scope is not active.
+    pub(crate) fn function_scope(&mut self, location: Location) -> IRResult<&mut FunctionScope> {
+        self.function_scope
+            .as_mut()
+            .ok_or(IRError::expected_function_scope(location))
     }
 }
