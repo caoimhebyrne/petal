@@ -1,11 +1,9 @@
-use crate::{
-    driver::{
-        Driver, DriverResult,
-        aarch64::{operation::OperationVisitor, value::ValueVisitor},
-        error::DriverError,
-    },
-    ir::{Function, Operation, Value},
+use crate::driver::{
+    Driver, DriverResult,
+    aarch64::{operation::OperationVisitor, value::ValueVisitor},
+    error::DriverError,
 };
+use petal_core::ir::{Function, Operation, Value};
 use std::{
     fs,
     io::{Write, stderr, stdout},

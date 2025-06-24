@@ -1,7 +1,5 @@
-use crate::{
-    driver::x86_64::X86_64Driver,
-    ir::{Function, Return, Store},
-};
+use crate::driver::x86_64::X86_64Driver;
+use petal_core::ir::{Function, Return, Store};
 
 pub trait OperationVisitor {
     fn visit(&self, driver: &X86_64Driver, function: &Function, code: &mut String);

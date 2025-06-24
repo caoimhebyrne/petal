@@ -1,7 +1,5 @@
-use crate::{
-    driver::x86_64::X86_64Driver,
-    ir::{BinaryOperation, Function, FunctionCall, IntegerLiteral, Operand, VariableReference},
-};
+use crate::driver::x86_64::X86_64Driver;
+use petal_core::ir::{BinaryOperation, Function, FunctionCall, IntegerLiteral, Operand, VariableReference};
 
 pub trait ValueVisitor {
     fn visit(&self, driver: &X86_64Driver, function: &Function, code: &mut String) -> String;

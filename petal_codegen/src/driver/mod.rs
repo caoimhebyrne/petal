@@ -1,4 +1,5 @@
-use crate::{driver::error::DriverError, ir::Function};
+use crate::driver::error::DriverError;
+use petal_core::ir::Function;
 use std::path::PathBuf;
 
 pub mod aarch64;

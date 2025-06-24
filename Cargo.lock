@@ -131,6 +131,14 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "colored",
+ "petal_codegen",
+ "petal_core",
+]
+
+[[package]]
+name = "petal_codegen"
+version = "0.1.0"
+dependencies = [
  "petal_core",
 ]
 
@@ -141,6 +149,9 @@ version = "0.1.0"
 [[package]]
 name = "petal_ir"
 version = "0.1.0"
+dependencies = [
+ "petal_core",
+]
 
 [[package]]
 name = "proc-macro2"

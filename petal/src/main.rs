@@ -10,12 +10,9 @@ use std::{
 
 use clap::Parser;
 use colored::Colorize;
+use petal_codegen::driver::{Driver, aarch64::Aarch64Driver, x86_64::X86_64Driver};
 use petal_core::{
-    ast::Ast,
-    core::location::Location,
-    driver::{Driver, aarch64::Aarch64Driver, x86_64::X86_64Driver},
-    ir::generator::IntermediateRepresentation,
-    lexer::Lexer,
+    ast::Ast, core::location::Location, ir::generator::IntermediateRepresentation, lexer::Lexer,
     typechecker::Typechecker,
 };
 

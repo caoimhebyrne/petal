@@ -1,7 +1,5 @@
-use crate::{
-    driver::aarch64::Aarch64Driver,
-    ir::{Function, Return, Store},
-};
+use crate::driver::aarch64::Aarch64Driver;
+use petal_core::ir::{Function, Return, Store};
 
 pub trait OperationVisitor {
     fn visit(&self, driver: &Aarch64Driver, function: &Function, code: &mut String);
