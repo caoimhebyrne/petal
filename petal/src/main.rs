@@ -1,8 +1,6 @@
 #![feature(impl_trait_in_bindings, path_file_prefix, path_add_extension)]
 #![allow(clippy::new_without_default)]
 
-use core::location::Location;
-use driver::Driver;
 use std::{
     fmt::Display,
     fs,
@@ -10,23 +8,16 @@ use std::{
     process::exit,
 };
 
-use ast::Ast;
 use clap::Parser;
 use colored::Colorize;
-use lexer::Lexer;
-use typechecker::Typechecker;
-
-use crate::{
-    driver::{aarch64::Aarch64Driver, x86_64::X86_64Driver},
+use petal_core::{
+    ast::Ast,
+    core::location::Location,
+    driver::{Driver, aarch64::Aarch64Driver, x86_64::X86_64Driver},
     ir::generator::IntermediateRepresentation,
+    lexer::Lexer,
+    typechecker::Typechecker,
 };
-
-pub mod ast;
-pub mod core;
-pub mod driver;
-pub mod ir;
-pub mod lexer;
-pub mod typechecker;
 
 #[derive(clap::ValueEnum, Clone, Default, Debug)]
 enum Target {

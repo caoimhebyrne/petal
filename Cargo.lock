@@ -131,7 +131,12 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "colored",
+ "petal_core",
 ]
+
+[[package]]
+name = "petal_core"
+version = "0.1.0"
 
 [[package]]
 name = "petal_ir"
