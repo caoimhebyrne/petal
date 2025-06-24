@@ -6,6 +6,7 @@ use crate::{
     ir::{
         FunctionCall, Operation, Return, Store, Value,
         context::Context,
+        error::{IRError, IRErrorKind},
         generator::{IRResult, IntermediateRepresentation},
     },
 };
@@ -24,7 +25,7 @@ impl StatementVisitor for VariableDeclaration {
         // A variable declaration just needs us to allocate a space on the stack.
         let index = context
             .function_scope(self.node)?
-            .declare_variable(&self.name, value.size(), self.node)?;
+            .declare_variable(&self.name, value.size(), false, self.node)?;
 
         Ok(Operation::Store(Store {
             variable_index: index,
@@ -37,7 +38,13 @@ impl StatementVisitor for VariableReassignment {
     fn visit(&self, context: &mut Context) -> IRResult<Operation> {
         let value = IntermediateRepresentation::visit_expression(context, &self.value)?;
 
-        let index = context.function_scope(self.node)?.find_variable_index(&self.name);
+        let (index, _) = context
+            .function_scope(self.node)?
+            .find_variable_index(&self.name)
+            .ok_or(IRError::new(
+                IRErrorKind::UndefinedVariable(self.name.clone()),
+                Some(self.node.location),
+            ))?;
 
         Ok(Operation::Store(Store {
             variable_index: index,

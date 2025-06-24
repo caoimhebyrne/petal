@@ -24,6 +24,9 @@ pub enum IRErrorKind {
 
     // A variable declaration occurred twice.
     VariableAlreadyDeclared(String),
+
+    // A variable was not declared.
+    UndefinedVariable(String),
 }
 
 #[derive(Debug, Clone)]
@@ -56,6 +59,10 @@ impl Display for IRError {
             IRErrorKind::UnsupportedExpression(expression) => write!(f, "Unsupported expression: {:?}", expression),
             IRErrorKind::VariableAlreadyDeclared(variable_name) => {
                 write!(f, "Variable already exists with the name '{}'", variable_name)
+            }
+
+            IRErrorKind::UndefinedVariable(variable_name) => {
+                write!(f, "A variable with the name '{}' has not been defined", variable_name)
             }
         }
     }

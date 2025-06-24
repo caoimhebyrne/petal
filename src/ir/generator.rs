@@ -1,5 +1,6 @@
 use crate::{
     ast::node::{
+        Node,
         expression::Expression,
         statement::{FunctionDefinition, Statement},
     },
@@ -49,6 +50,14 @@ impl IntermediateRepresentation {
         let mut body = vec![];
 
         self.context.start_function_scope()?;
+
+        for parameter in &definition.parameters {
+            let node = Node::new(parameter.location);
+
+            self.context
+                .function_scope(node)?
+                .declare_variable(&parameter.name, 4, true, node)?;
+        }
 
         for statement in &definition.body {
             body.push(IntermediateRepresentation::visit_statement(

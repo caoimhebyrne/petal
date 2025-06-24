@@ -45,6 +45,7 @@ pub struct IntegerLiteral {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VariableReference {
     pub variable_index: usize,
+    pub is_parameter: bool,
 }
 
 impl Value {
@@ -107,6 +108,9 @@ pub struct Function {
 pub struct Variable {
     /// The name of the variable.
     pub name: String,
+
+    // Whether the variable is a function parameter.
+    pub is_parameter: bool,
 
     /// The size of this variable's value.
     pub expected_value_size: usize,

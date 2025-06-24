@@ -52,7 +52,13 @@ impl FunctionScope {
 
     /// Declares a variable in this function's context.
     /// Returns the index of the declared variable if it exists, otherwise [Option::None].
-    pub fn declare_variable<'a>(&mut self, name: &'a str, size: usize, node: Node) -> IRResult<usize> {
+    pub fn declare_variable<'a>(
+        &mut self,
+        name: &'a str,
+        size: usize,
+        is_parameter: bool,
+        node: Node,
+    ) -> IRResult<usize> {
         if let Some(_) = self.variables.iter().find(|it| it.name == name) {
             return Err(IRError {
                 kind: IRErrorKind::VariableAlreadyDeclared(name.to_string()),
@@ -64,6 +70,7 @@ impl FunctionScope {
 
         self.variables.push(Variable {
             name: name.to_string(),
+            is_parameter,
             expected_value_size: size,
             stack_index: stack_size,
         });
@@ -72,10 +79,13 @@ impl FunctionScope {
     }
 
     /// Returns the index for a variable by its name, panicking if it does not exist.
-    pub fn find_variable_index<'a>(&mut self, name: &'a str) -> usize {
-        self.variables
-            .iter()
-            .position(|it| it.name == name)
-            .expect(&format!("{} was not declared", name))
+    pub fn find_variable_index<'a>(&mut self, name: &'a str) -> Option<(usize, &Variable)> {
+        for (idx, variable) in self.variables.iter().enumerate() {
+            if variable.name == name {
+                return Some((idx, variable));
+            }
+        }
+
+        None
     }
 }

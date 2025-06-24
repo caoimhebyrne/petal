@@ -6,6 +6,7 @@ use crate::{
     ir::{
         BinaryOperation, FunctionCall, IntegerLiteral, Operand, Value, VariableReference,
         context::Context,
+        error::{IRError, IRErrorKind},
         generator::{IRResult, IntermediateRepresentation},
     },
 };
@@ -25,8 +26,18 @@ impl ExpressionVisitor for ast::node::expression::IntegerLiteral {
 
 impl ExpressionVisitor for IdentifierReference {
     fn visit(&self, context: &mut Context) -> IRResult<Value> {
-        let variable_index = context.function_scope(self.node)?.find_variable_index(&self.name);
-        Ok(Value::VariableReference(VariableReference { variable_index }))
+        let (index, variable) = context
+            .function_scope(self.node)?
+            .find_variable_index(&self.name)
+            .ok_or(IRError::new(
+                IRErrorKind::UndefinedVariable(self.name.clone()),
+                Some(self.node.location),
+            ))?;
+
+        Ok(Value::VariableReference(VariableReference {
+            variable_index: index,
+            is_parameter: variable.is_parameter,
+        }))
     }
 }
 
