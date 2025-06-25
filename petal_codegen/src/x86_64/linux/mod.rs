@@ -1,12 +1,18 @@
 use crate::{
     Driver,
+    error::{DriverError, DriverResult},
     visitor::{OperationVisitor, ValueVisitor},
 };
 use petal_ir::{
-    error::IRResult,
     function::Function,
     operation::{Operation, OperationKind},
     value::{Value, ValueKind, ValueType},
+};
+use std::{
+    fs,
+    io::{ErrorKind, Write, stderr, stdout},
+    path::PathBuf,
+    process::Command,
 };
 
 mod visitor;
@@ -21,7 +27,7 @@ impl Driver for X86_64LinuxDriver {
         X86_64LinuxDriver { assembly: Vec::new() }
     }
 
-    fn generate(&mut self, functions: Vec<Function>) -> IRResult<()> {
+    fn generate(&mut self, functions: Vec<Function>, output_path: &PathBuf) -> DriverResult<()> {
         // The x86_64 linux driver uses assembly syntax, anything else is incorrect :)
         self.assembly.push(".intel_syntax noprefix".to_string());
 
@@ -30,15 +36,33 @@ impl Driver for X86_64LinuxDriver {
             self.generate_function(function)?;
         }
 
-        // TODO: Write to file and compile with `cc`.
-        println!("{}", self.assembly.join("\n"));
+        let assembly_file_path = output_path.with_extension("s");
+        fs::write(&assembly_file_path, self.assembly.join("\n")).map_err(|e| {
+            DriverError::unable_to_write(assembly_file_path.to_str().unwrap().to_string(), e.to_string(), None)
+        })?;
+
+        let compile_output = Command::new("cc")
+            .args([
+                "-o",
+                output_path.to_str().unwrap(),
+                assembly_file_path.to_str().unwrap(),
+            ])
+            .output()
+            .expect("Failed to execute `cc`.");
+
+        if !compile_output.status.success() {
+            let _ = stdout().write_all(&compile_output.stdout);
+            let _ = stderr().write_all(&compile_output.stderr);
+
+            return Err(DriverError::compilation_failure(None));
+        }
 
         Ok(())
     }
 }
 
 impl X86_64LinuxDriver {
-    fn generate_function(&mut self, function: &Function) -> IRResult<()> {
+    fn generate_function(&mut self, function: &Function) -> DriverResult<()> {
         // Each generated function is marked as global.
         self.assembly.push(format!(".global {}", function.name));
         self.assembly.push(format!("{}:", function.name));
@@ -73,7 +97,7 @@ impl X86_64LinuxDriver {
         Ok(())
     }
 
-    fn visit_operation(&mut self, function: &Function, operation: &Operation) -> IRResult<()> {
+    fn visit_operation(&mut self, function: &Function, operation: &Operation) -> DriverResult<()> {
         match operation.kind {
             OperationKind::StoreLocal(store_local) => store_local.visit(function, self),
             OperationKind::Return(r#return) => r#return.visit(function, self),
@@ -82,7 +106,7 @@ impl X86_64LinuxDriver {
         }
     }
 
-    fn visit_value(&mut self, function: &Function, value: &Value) -> IRResult<String> {
+    fn visit_value(&mut self, function: &Function, value: &Value) -> DriverResult<String> {
         match value.kind {
             ValueKind::IntegerLiteral(integer_literal) => integer_literal.visit(function, self),
             ValueKind::LocalReference(local_reference) => local_reference.visit(function, self),

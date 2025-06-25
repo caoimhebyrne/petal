@@ -1,6 +1,5 @@
-use crate::{X86_64LinuxDriver, visitor::OperationVisitor};
+use crate::{X86_64LinuxDriver, error::DriverResult, visitor::OperationVisitor};
 use petal_ir::{
-    error::IRResult,
     function::Function,
     operation::{r#return::Return, store_local::StoreLocal},
     value::ValueType,
@@ -9,7 +8,7 @@ use petal_ir::{
 impl OperationVisitor for StoreLocal {
     type Driver = X86_64LinuxDriver;
 
-    fn visit(&self, function: &Function, driver: &mut Self::Driver) -> IRResult<()> {
+    fn visit(&self, function: &Function, driver: &mut Self::Driver) -> DriverResult<()> {
         // The position of the variable on the stack depends on the size of the items before it.
         let stack_position = function
             .locals
@@ -34,7 +33,7 @@ impl OperationVisitor for StoreLocal {
 impl OperationVisitor for Return {
     type Driver = X86_64LinuxDriver;
 
-    fn visit(&self, function: &Function, driver: &mut Self::Driver) -> IRResult<()> {
+    fn visit(&self, function: &Function, driver: &mut Self::Driver) -> DriverResult<()> {
         if let Some(value) = self.value {
             let the_value = driver.visit_value(function, &value)?;
 

@@ -1,13 +1,14 @@
-use petal_ir::{error::IRResult, function::Function};
+use crate::error::DriverResult;
+use petal_ir::function::Function;
 
 pub trait OperationVisitor {
     type Driver: crate::Driver;
 
-    fn visit(&self, function: &Function, driver: &mut Self::Driver) -> IRResult<()>;
+    fn visit(&self, function: &Function, driver: &mut Self::Driver) -> DriverResult<()>;
 }
 
 pub trait ValueVisitor {
     type Driver: crate::Driver;
 
-    fn visit(&self, function: &Function, driver: &mut Self::Driver) -> IRResult<String>;
+    fn visit(&self, function: &Function, driver: &mut Self::Driver) -> DriverResult<String>;
 }

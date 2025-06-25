@@ -1,6 +1,5 @@
-use crate::{X86_64LinuxDriver, visitor::ValueVisitor};
+use crate::{X86_64LinuxDriver, error::DriverResult, visitor::ValueVisitor};
 use petal_ir::{
-    error::IRResult,
     function::Function,
     value::{integer_literal::IntegerLiteral, local_reference::LocalReference},
 };
@@ -8,7 +7,7 @@ use petal_ir::{
 impl ValueVisitor for IntegerLiteral {
     type Driver = X86_64LinuxDriver;
 
-    fn visit(&self, _function: &Function, _driver: &mut Self::Driver) -> IRResult<String> {
+    fn visit(&self, _function: &Function, _driver: &mut Self::Driver) -> DriverResult<String> {
         Ok(self.literal.to_string())
     }
 }
@@ -16,7 +15,7 @@ impl ValueVisitor for IntegerLiteral {
 impl ValueVisitor for LocalReference {
     type Driver = X86_64LinuxDriver;
 
-    fn visit(&self, function: &Function, _driver: &mut Self::Driver) -> IRResult<String> {
+    fn visit(&self, function: &Function, _driver: &mut Self::Driver) -> DriverResult<String> {
         if self.is_parameter {
             todo!()
         }

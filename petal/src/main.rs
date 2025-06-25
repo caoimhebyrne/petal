@@ -95,7 +95,7 @@ fn main() {
         Target::Aarch64MacOS => Box::new(Aarch64MacOSDriver::new()),
     };
 
-    if let Err(error) = driver.generate(functions) {
-        report_error(&args.input_path, &error, Some(error.location))
+    if let Err(error) = driver.generate(functions, &args.output_path) {
+        report_error(&args.input_path, &error, error.location)
     };
 }

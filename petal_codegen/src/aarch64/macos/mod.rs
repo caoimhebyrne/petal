@@ -1,4 +1,7 @@
-use crate::Driver;
+use std::path::PathBuf;
+
+use crate::{Driver, error::DriverResult};
+use petal_ir::function::Function;
 
 pub struct Aarch64MacOSDriver {
     /// The lines of assembly to output at the end of visiting the function's statements.
@@ -10,7 +13,7 @@ impl Driver for Aarch64MacOSDriver {
         Aarch64MacOSDriver { assembly: Vec::new() }
     }
 
-    fn generate(&mut self, functions: Vec<petal_ir::function::Function>) -> petal_ir::error::IRResult<()> {
+    fn generate(&mut self, _functions: Vec<Function>, _output_path: &PathBuf) -> DriverResult<()> {
         todo!()
     }
 }
