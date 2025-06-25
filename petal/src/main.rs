@@ -25,7 +25,7 @@ struct Args {
     #[arg(short, long("output"))]
     output_path: PathBuf,
 
-    #[arg(short, long("target"), default_value("x86_64"))]
+    #[arg(short, long("target"), default_value("x86_64-linux"))]
     target: Target,
 
     input_path: PathBuf,
