@@ -3,7 +3,7 @@
 
 use clap::Parser;
 use colored::Colorize;
-use petal_codegen::{Driver, X86_64LinuxDriver};
+use petal_codegen::{Aarch64MacOSDriver, Driver, X86_64LinuxDriver};
 use petal_core::{ast::Ast, core::location::Location, lexer::Lexer, typechecker::Typechecker};
 use petal_ir::generator::IRGenerator;
 use std::{
@@ -18,6 +18,9 @@ enum Target {
     #[clap(name = "x86_64-linux")]
     #[default]
     X86_64Linux,
+
+    #[clap(name = "aarch64-macos")]
+    Aarch64MacOS,
 }
 
 #[derive(Parser)]
@@ -87,8 +90,9 @@ fn main() {
 
     println!("[5/5] Codegen");
 
-    let mut driver: impl Driver = match args.target {
-        Target::X86_64Linux => X86_64LinuxDriver::new(),
+    let mut driver: Box<dyn Driver> = match args.target {
+        Target::X86_64Linux => Box::new(X86_64LinuxDriver::new()),
+        Target::Aarch64MacOS => Box::new(Aarch64MacOSDriver::new()),
     };
 
     if let Err(error) = driver.generate(functions) {
