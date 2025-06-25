@@ -1,5 +1,9 @@
-use crate::{operation::store_local::StoreLocal, value::Value};
+use crate::{
+    operation::{r#return::Return, store_local::StoreLocal},
+    value::Value,
+};
 
+pub mod r#return;
 pub mod store_local;
 
 /// Represents an operation in the intermediate representation.
@@ -19,6 +23,9 @@ pub struct Operation {
 pub enum OperationKind {
     /// Stores a [crate::value::Value] into a local at the provided index.
     StoreLocal(StoreLocal),
+
+    /// Returns a [crate::value::Value] from a function.
+    Return(Return),
 }
 
 impl Operation {
@@ -29,6 +36,12 @@ impl Operation {
     pub fn new_store_local(index: usize, value: Value) -> Operation {
         Operation {
             kind: OperationKind::StoreLocal(StoreLocal { index, value }),
+        }
+    }
+
+    pub fn new_return(value: Option<Value>) -> Operation {
+        Operation {
+            kind: OperationKind::Return(Return { value }),
         }
     }
 }

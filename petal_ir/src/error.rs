@@ -30,6 +30,9 @@ pub enum IRErrorKind {
 
     /// Type information was missing.
     MissingTypeInformation,
+
+    /// An identifier was referenced that doesn't exist.
+    UndefinedIdentifier,
 }
 
 impl IRError {
@@ -52,6 +55,10 @@ impl IRError {
     pub fn missing_type_information(location: Location) -> IRError {
         IRError::new(IRErrorKind::MissingTypeInformation, location)
     }
+
+    pub fn undefined_identifier(location: Location) -> IRError {
+        IRError::new(IRErrorKind::UndefinedIdentifier, location)
+    }
 }
 
 impl Display for IRError {
@@ -73,6 +80,8 @@ impl Display for IRError {
             ),
 
             IRErrorKind::MissingTypeInformation => write!(f, "Type information was missing for an expression"),
+
+            IRErrorKind::UndefinedIdentifier => write!(f, "Undefined identifier"),
         }
     }
 }

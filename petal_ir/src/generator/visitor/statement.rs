@@ -1,5 +1,5 @@
 use crate::{error::IRResult, function::Local, generator::IRGenerator, operation::Operation};
-use petal_core::ast::node::statement::VariableDeclaration;
+use petal_core::ast::node::{self, statement::VariableDeclaration};
 
 /// A visitor for an AST statement.
 /// This converts a [Statment] into an IR [Operation].
@@ -23,5 +23,17 @@ impl StatementVisitor for VariableDeclaration {
 
         // Then, we just need to store the initialization value into the local.
         Ok(Operation::new_store_local(local_index, initialization_value))
+    }
+}
+
+impl StatementVisitor for node::statement::Return {
+    fn visit(&self, generator: &mut IRGenerator) -> IRResult<Operation> {
+        let value = self
+            .value
+            .clone()
+            .map(|it| generator.visit_expression(&it))
+            .transpose()?;
+
+        Ok(Operation::new_return(value))
     }
 }

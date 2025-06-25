@@ -1,6 +1,7 @@
-use crate::value::integer_literal::IntegerLiteral;
+use crate::value::{integer_literal::IntegerLiteral, local_reference::LocalReference};
 
 pub mod integer_literal;
+pub mod local_reference;
 
 /// Represents a value in the intermediate representation.
 ///
@@ -25,6 +26,9 @@ pub struct Value {
 pub enum ValueKind {
     /// An integer literal defined in the source code.
     IntegerLiteral(IntegerLiteral),
+
+    /// A reference to a local variable or parameter.
+    LocalReference(LocalReference),
 }
 
 /// Represents the "type" of a value in the intermediate representation.
@@ -45,6 +49,13 @@ impl Value {
     pub fn new_integer_literal(literal: u64, r#type: ValueType) -> Value {
         Value {
             kind: ValueKind::IntegerLiteral(IntegerLiteral { literal }),
+            r#type,
+        }
+    }
+
+    pub fn new_local_reference(index: usize, is_parameter: bool, r#type: ValueType) -> Value {
+        Value {
+            kind: ValueKind::LocalReference(LocalReference { index, is_parameter }),
             r#type,
         }
     }

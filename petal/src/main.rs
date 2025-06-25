@@ -93,5 +93,5 @@ fn main() {
         Err(error) => report_error(&args.input_path, &error, Some(error.location)),
     };
 
-    println!("{:?}", functions)
+    println!("{:#?}", functions)
 }

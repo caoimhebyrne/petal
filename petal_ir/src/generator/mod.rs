@@ -6,7 +6,7 @@ use crate::{
         visitor::{expression::ExpressionVisitor, statement::StatementVisitor},
     },
     operation::Operation,
-    value::{Value, ValueType},
+    value::Value,
 };
 use petal_core::{
     ast::node::{
@@ -14,7 +14,6 @@ use petal_core::{
         statement::{FunctionDefinition, Statement},
     },
     core::location::Location,
-    typechecker::r#type::kind::TypeKind,
 };
 
 pub(crate) mod function_scope;
@@ -65,21 +64,17 @@ impl IRGenerator {
             let function_scope = self.start_function_scope(definition.node.location)?;
 
             for parameter in &definition.parameters {
-                let value_type = match &parameter.expected_type.kind {
-                    TypeKind::Integer(width) => ValueType::Integer { width: *width },
-                    _ => todo!(),
-                };
-
                 function_scope.locals.push(Local {
                     name: parameter.name.clone(),
-                    value_type,
+                    value_type: parameter.expected_type.clone().into(),
                 });
             }
         }
 
         // We can now parse the function's body.
+        let mut body = vec![];
         for statement in &definition.body {
-            self.visit_statement(statement)?;
+            body.push(self.visit_statement(statement)?);
         }
 
         // The function's body has been consumed, we can end the function scope.
@@ -88,7 +83,7 @@ impl IRGenerator {
         Ok(Function {
             name: definition.name.clone(),
             location: definition.node.location,
-            body: vec![],
+            body,
             locals: function_scope.locals,
             parameters: function_scope.parameters,
         })
@@ -98,6 +93,7 @@ impl IRGenerator {
     pub(crate) fn visit_statement(&mut self, statement: &Statement) -> IRResult<Operation> {
         match statement {
             Statement::VariableDeclaration(declaration) => declaration.visit(self),
+            Statement::Return(r#return) => r#return.visit(self),
 
             _ => todo!(),
         }
@@ -107,6 +103,7 @@ impl IRGenerator {
     pub(crate) fn visit_expression(&mut self, expression: &Expression) -> IRResult<Value> {
         match expression {
             Expression::IntegerLiteral(literal) => literal.visit(self),
+            Expression::IdentifierReference(identifier_reference) => identifier_reference.visit(self),
 
             _ => todo!(),
         }
