@@ -3,6 +3,7 @@
 
 use clap::Parser;
 use colored::Colorize;
+use petal_codegen::{Driver, X86_64LinuxDriver};
 use petal_core::{ast::Ast, core::location::Location, lexer::Lexer, typechecker::Typechecker};
 use petal_ir::generator::IRGenerator;
 use std::{
@@ -14,9 +15,9 @@ use std::{
 
 #[derive(clap::ValueEnum, Clone, Default, Debug)]
 enum Target {
-    Aarch64,
+    #[clap(name = "x86_64-linux")]
     #[default]
-    X86_64,
+    X86_64Linux,
 }
 
 #[derive(Parser)]
@@ -24,19 +25,10 @@ struct Args {
     #[arg(short, long("output"))]
     output_path: PathBuf,
 
-    #[arg(short, long("target"), default_value("x86-64"))]
+    #[arg(short, long("target"), default_value("x86_64"))]
     target: Target,
 
     input_path: PathBuf,
-}
-
-impl Display for Target {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Target::Aarch64 => write!(f, "aarch64"),
-            Target::X86_64 => write!(f, "x86_64"),
-        }
-    }
 }
 
 fn report_error(path: &Path, error: impl Display, location: Option<Location>) -> ! {
@@ -93,5 +85,13 @@ fn main() {
         Err(error) => report_error(&args.input_path, &error, Some(error.location)),
     };
 
-    println!("{:#?}", functions)
+    println!("[5/5] Codegen");
+
+    let mut driver: impl Driver = match args.target {
+        Target::X86_64Linux => X86_64LinuxDriver::new(),
+    };
+
+    if let Err(error) = driver.generate(functions) {
+        report_error(&args.input_path, &error, Some(error.location))
+    };
 }

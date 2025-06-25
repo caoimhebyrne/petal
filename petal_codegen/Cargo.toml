@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 petal_core = { version = "0.1.0", path = "../petal_core" }
+petal_ir = { version = "0.1.0", path = "../petal_ir" }

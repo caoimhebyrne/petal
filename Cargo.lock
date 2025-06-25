@@ -141,6 +141,7 @@ name = "petal_codegen"
 version = "0.1.0"
 dependencies = [
  "petal_core",
+ "petal_ir",
 ]
 
 [[package]]
