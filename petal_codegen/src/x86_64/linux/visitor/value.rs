@@ -1,7 +1,15 @@
-use crate::{X86_64LinuxDriver, error::DriverResult, visitor::ValueVisitor};
+use crate::{
+    X86_64LinuxDriver,
+    error::{DriverError, DriverResult},
+    visitor::ValueVisitor,
+};
 use petal_ir::{
     function::Function,
-    value::{integer_literal::IntegerLiteral, local_reference::LocalReference},
+    value::{
+        binary_operation::{BinaryOperation, Operand},
+        integer_literal::IntegerLiteral,
+        local_reference::LocalReference,
+    },
 };
 
 impl ValueVisitor for IntegerLiteral {
@@ -29,5 +37,29 @@ impl ValueVisitor for LocalReference {
             .sum::<usize>();
 
         Ok(format!("[rsp+{}]", stack_position))
+    }
+}
+
+impl ValueVisitor for BinaryOperation {
+    type Driver = X86_64LinuxDriver;
+
+    fn visit(&self, function: &Function, driver: &mut Self::Driver) -> DriverResult<String> {
+        let lhs = driver.visit_value(function, &self.lhs)?;
+        let rhs = driver.visit_value(function, &self.rhs)?;
+
+        // We can store the left value into `rax`, this is also going to be the result register
+        // for this operation.
+        driver.assembly.push(format!("mov rax, {}", lhs));
+
+        // We can then perform the operation between `rax` and the rhs value.
+        let instruction = match self.operand {
+            Operand::Add => "add",
+            Operand::Subtract => "sub",
+            Operand::Multiply => "imul",
+            Operand::Divide => return Err(DriverError::unsupported_operand(self.operand, None)),
+        };
+
+        driver.assembly.push(format!("{} rax, {}", instruction, rhs));
+        Ok("rax".to_string())
     }
 }

@@ -98,22 +98,26 @@ impl X86_64LinuxDriver {
     }
 
     fn visit_operation(&mut self, function: &Function, operation: &Operation) -> DriverResult<()> {
-        match operation.kind {
+        match &operation.kind {
             OperationKind::StoreLocal(store_local) => store_local.visit(function, self),
             OperationKind::Return(r#return) => r#return.visit(function, self),
 
             #[allow(unreachable_patterns)]
-            _ => Err(DriverError::unsupported_operation(*operation, Some(function.location))),
+            _ => Err(DriverError::unsupported_operation(
+                operation.clone(),
+                Some(function.location),
+            )),
         }
     }
 
     fn visit_value(&mut self, function: &Function, value: &Value) -> DriverResult<String> {
-        match value.kind {
+        match &value.kind {
             ValueKind::IntegerLiteral(integer_literal) => integer_literal.visit(function, self),
             ValueKind::LocalReference(local_reference) => local_reference.visit(function, self),
+            ValueKind::BinaryOperation(binary_operation) => binary_operation.visit(function, self),
 
             #[allow(unreachable_patterns)]
-            _ => Err(DriverError::unsupported_value(*value, Some(function.location))),
+            _ => Err(DriverError::unsupported_value(value.clone(), Some(function.location))),
         }
     }
 

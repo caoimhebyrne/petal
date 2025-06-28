@@ -104,6 +104,7 @@ impl IRGenerator {
         match expression {
             Expression::IntegerLiteral(literal) => literal.visit(self),
             Expression::IdentifierReference(identifier_reference) => identifier_reference.visit(self),
+            Expression::BinaryOperation(binary_operation) => binary_operation.visit(self),
 
             _ => todo!(),
         }

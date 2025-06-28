@@ -1,7 +1,10 @@
 use std::fmt::Display;
 
 use petal_core::core::location::Location;
-use petal_ir::{operation::Operation, value::Value};
+use petal_ir::{
+    operation::Operation,
+    value::{Value, binary_operation::Operand},
+};
 
 #[derive(Debug, Clone)]
 pub enum DriverErrorKind {
@@ -9,6 +12,7 @@ pub enum DriverErrorKind {
     UnableToWrite { file_name: String, message: String },
     UnsupportedOperation(Operation),
     UnsupportedValue(Value),
+    UnsupportedOperand(Operand),
 }
 
 #[derive(Debug, Clone)]
@@ -42,6 +46,10 @@ impl DriverError {
     pub fn unsupported_value(value: Value, location: Option<Location>) -> DriverError {
         DriverError::new(DriverErrorKind::UnsupportedValue(value), location)
     }
+
+    pub fn unsupported_operand(operand: Operand, location: Option<Location>) -> DriverError {
+        DriverError::new(DriverErrorKind::UnsupportedOperand(operand), location)
+    }
 }
 
 impl Display for DriverError {
@@ -61,6 +69,10 @@ impl Display for DriverError {
 
             DriverErrorKind::UnsupportedValue(value) => {
                 write!(f, "Unsupported value: {:?}", value)
+            }
+
+            DriverErrorKind::UnsupportedOperand(operand) => {
+                write!(f, "Unsupported operand: {:?}", operand)
             }
         }
     }

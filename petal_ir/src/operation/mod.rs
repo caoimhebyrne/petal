@@ -12,14 +12,14 @@ pub mod store_local;
 /// or interpreter.
 ///
 /// See [OperationKind].
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Operation {
     /// The kind of operation that this represents.
     pub kind: OperationKind,
 }
 
 /// The different kinds of operations in the intermediate representation.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OperationKind {
     /// Stores a [crate::value::Value] into a local at the provided index.
     StoreLocal(StoreLocal),

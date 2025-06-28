@@ -1,5 +1,10 @@
-use crate::value::{integer_literal::IntegerLiteral, local_reference::LocalReference};
+use crate::value::{
+    binary_operation::{BinaryOperation, Operand},
+    integer_literal::IntegerLiteral,
+    local_reference::LocalReference,
+};
 
+pub mod binary_operation;
 pub mod integer_literal;
 pub mod local_reference;
 
@@ -9,7 +14,7 @@ pub mod local_reference;
 /// at within the source code, and the actual value itself (see [kind]).
 ///
 /// See [ValueKind], [ValueType].
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Value {
     /// The kind of value that this represents.
     pub kind: ValueKind,
@@ -22,13 +27,16 @@ pub struct Value {
 ///
 /// A "value" is anything from a constant which was defined at compile time, to a binary operation
 /// between two values.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValueKind {
     /// An integer literal defined in the source code.
     IntegerLiteral(IntegerLiteral),
 
     /// A reference to a local variable or parameter.
     LocalReference(LocalReference),
+
+    /// A binary operation between two values.
+    BinaryOperation(BinaryOperation),
 }
 
 /// Represents the "type" of a value in the intermediate representation.
@@ -56,6 +64,17 @@ impl Value {
     pub fn new_local_reference(index: usize, is_parameter: bool, r#type: ValueType) -> Value {
         Value {
             kind: ValueKind::LocalReference(LocalReference { index, is_parameter }),
+            r#type,
+        }
+    }
+
+    pub fn new_binary_operation(lhs: Value, rhs: Value, operand: Operand, r#type: ValueType) -> Value {
+        Value {
+            kind: ValueKind::BinaryOperation(BinaryOperation {
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+                operand,
+            }),
             r#type,
         }
     }

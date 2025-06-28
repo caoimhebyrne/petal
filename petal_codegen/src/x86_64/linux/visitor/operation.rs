@@ -34,7 +34,7 @@ impl OperationVisitor for Return {
     type Driver = X86_64LinuxDriver;
 
     fn visit(&self, function: &Function, driver: &mut Self::Driver) -> DriverResult<()> {
-        if let Some(value) = self.value {
+        if let Some(value) = &self.value {
             let the_value = driver.visit_value(function, &value)?;
 
             driver.assembly.push(match value.r#type {
