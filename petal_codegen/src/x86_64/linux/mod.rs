@@ -70,6 +70,14 @@ impl X86_64LinuxDriver {
         // Prelude
         self.assembly.push("push rbp".to_string());
 
+        // This will be used later to populate the stack sizing instruction.
+        let before_body_idx = self.assembly.len();
+
+        for operation in &function.body {
+            self.visit_operation(&function, operation)?;
+        }
+
+        // After visiting all instructions, we can calculate the required stack size.
         // The stack is the size of the local variables allocated, and it must be 16-byte aligned.
         let stack_size_unaligned = function
             .locals
@@ -83,11 +91,8 @@ impl X86_64LinuxDriver {
 
         let stack_size = stack_size_unaligned + 15 & !15;
         if stack_size > 0 {
-            self.assembly.push(format!("sub rsp, {}", stack_size));
-        }
-
-        for operation in &function.body {
-            self.visit_operation(&function, operation)?;
+            self.assembly
+                .insert(before_body_idx, format!("sub rsp, {}", stack_size));
         }
 
         // Epilogue
