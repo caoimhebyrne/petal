@@ -69,6 +69,7 @@ impl X86_64LinuxDriver {
 
         // Prelude
         self.assembly.push("push rbp".to_string());
+        self.assembly.push("mov rbp, rsp".to_string());
 
         // This will be used later to populate the stack sizing instruction.
         let before_body_idx = self.assembly.len();
