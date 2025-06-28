@@ -1,6 +1,6 @@
 use crate::{
     error::{IRError, IRResult},
-    function::{Function, Local},
+    function::{Function, Local, LocalKind},
     generator::{
         function_scope::FunctionScope,
         visitor::{expression::ExpressionVisitor, statement::StatementVisitor},
@@ -64,9 +64,10 @@ impl IRGenerator {
             let function_scope = self.start_function_scope(definition.node.location)?;
 
             for parameter in &definition.parameters {
-                function_scope.parameters.push(Local {
+                function_scope.locals.push(Local {
                     name: parameter.name.clone(),
                     value_type: parameter.expected_type.clone().into(),
+                    kind: LocalKind::Parameter,
                 });
             }
         }
@@ -85,7 +86,6 @@ impl IRGenerator {
             location: definition.node.location,
             body,
             locals: function_scope.locals,
-            parameters: function_scope.parameters,
         })
     }
 

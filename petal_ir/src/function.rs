@@ -15,9 +15,6 @@ pub struct Function {
 
     /// The local variables allocated in this function's body.
     pub locals: Vec<Local>,
-
-    /// The parameters that this function has defined.
-    pub parameters: Vec<Local>,
 }
 
 /// A local defined within a [Function]'s body.
@@ -28,4 +25,16 @@ pub struct Local {
 
     /// The value type of the local variable.
     pub value_type: ValueType,
+
+    /// The kind of local that this is.
+    pub kind: LocalKind,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum LocalKind {
+    /// A variable defined within the function's scope.
+    Variable,
+
+    /// A parameter within in the function's definition.
+    Parameter,
 }

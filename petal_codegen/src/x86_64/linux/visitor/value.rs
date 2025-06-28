@@ -4,7 +4,7 @@ use crate::{
     visitor::ValueVisitor,
 };
 use petal_ir::{
-    function::Function,
+    function::{Function, LocalKind},
     value::{
         binary_operation::{BinaryOperation, Operand},
         function_call::FunctionCall,
@@ -25,7 +25,12 @@ impl ValueVisitor for LocalReference {
     type Driver = X86_64LinuxDriver;
 
     fn visit(&self, function: &Function, _driver: &mut Self::Driver) -> DriverResult<String> {
-        if self.is_parameter {
+        let local = function
+            .locals
+            .get(self.index)
+            .expect(&format!("Expected local at index {} but got None", self.index));
+
+        if local.kind == LocalKind::Parameter {
             return Ok(X86_64LinuxDriver::local_parameter_register(self.index));
         }
 

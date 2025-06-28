@@ -1,4 +1,9 @@
-use crate::{error::IRResult, function::Local, generator::IRGenerator, operation::Operation};
+use crate::{
+    error::IRResult,
+    function::{Local, LocalKind},
+    generator::IRGenerator,
+    operation::Operation,
+};
 use petal_core::ast::node::{self, statement::VariableDeclaration};
 
 /// A visitor for an AST statement.
@@ -19,6 +24,7 @@ impl StatementVisitor for VariableDeclaration {
         function_scope.locals.push(Local {
             name: self.name.clone(),
             value_type: initialization_value.r#type.clone(),
+            kind: LocalKind::Variable,
         });
 
         // Then, we just need to store the initialization value into the local.

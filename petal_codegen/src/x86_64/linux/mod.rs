@@ -4,7 +4,7 @@ use crate::{
     visitor::{OperationVisitor, ValueVisitor},
 };
 use petal_ir::{
-    function::Function,
+    function::{Function, LocalKind},
     operation::{Operation, OperationKind},
     value::{Value, ValueKind, ValueType},
 };
@@ -74,7 +74,11 @@ impl X86_64LinuxDriver {
         let stack_size_unaligned = function
             .locals
             .iter()
-            .map(|it| X86_64LinuxDriver::size_of(it.value_type))
+            .enumerate()
+            // Any parameters with an index higher than 6 should always be on the stack.
+            // Any non-parameters should always be on the stack.
+            .filter(|(idx, it)| *idx >= 6 || it.kind != LocalKind::Parameter)
+            .map(|(_, it)| X86_64LinuxDriver::size_of(it.value_type))
             .sum::<usize>();
 
         let stack_size = stack_size_unaligned + 15 & !15;

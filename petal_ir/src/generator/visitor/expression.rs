@@ -27,13 +27,9 @@ impl ExpressionVisitor for ast::node::expression::IdentifierReference {
         // An identifier reference must occur in a function scope.
         let function_scope = generator.function_scope(self.node.location)?;
 
-        let (index, is_parameter) = if let Some(idx) = function_scope.locals.iter().position(|it| it.name == self.name)
-        {
-            (idx, false)
-        } else if let Some(idx) = function_scope.parameters.iter().position(|it| it.name == self.name) {
-            (idx, true)
-        } else {
-            return Err(IRError::undefined_identifier(self.node.location));
+        let index = match function_scope.locals.iter().position(|it| it.name == self.name) {
+            Some(value) => value,
+            _ => return Err(IRError::undefined_identifier(self.node.location)),
         };
 
         let value_type = match &self.expected_type {
@@ -41,7 +37,7 @@ impl ExpressionVisitor for ast::node::expression::IdentifierReference {
             None => return Err(IRError::missing_type_information(self.node.location)),
         };
 
-        Ok(Value::new_local_reference(index, is_parameter, value_type))
+        Ok(Value::new_local_reference(index, value_type))
     }
 }
 

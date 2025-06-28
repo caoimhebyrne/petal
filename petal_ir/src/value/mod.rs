@@ -66,10 +66,10 @@ impl Value {
         }
     }
 
-    pub fn new_local_reference(index: usize, is_parameter: bool, r#type: ValueType) -> Value {
+    pub fn new_local_reference(index: usize, value_type: ValueType) -> Value {
         Value {
-            kind: ValueKind::LocalReference(LocalReference { index, is_parameter }),
-            r#type,
+            kind: ValueKind::LocalReference(LocalReference { index }),
+            r#type: value_type,
         }
     }
 
