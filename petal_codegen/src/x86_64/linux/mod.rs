@@ -10,7 +10,7 @@ use petal_ir::{
 };
 use std::{
     fs,
-    io::{ErrorKind, Write, stderr, stdout},
+    io::{Write, stderr, stdout},
     path::PathBuf,
     process::Command,
 };
@@ -102,7 +102,8 @@ impl X86_64LinuxDriver {
             OperationKind::StoreLocal(store_local) => store_local.visit(function, self),
             OperationKind::Return(r#return) => r#return.visit(function, self),
 
-            _ => todo!(),
+            #[allow(unreachable_patterns)]
+            _ => Err(DriverError::unsupported_operation(*operation, Some(function.location))),
         }
     }
 
@@ -111,7 +112,8 @@ impl X86_64LinuxDriver {
             ValueKind::IntegerLiteral(integer_literal) => integer_literal.visit(function, self),
             ValueKind::LocalReference(local_reference) => local_reference.visit(function, self),
 
-            _ => todo!(),
+            #[allow(unreachable_patterns)]
+            _ => Err(DriverError::unsupported_value(*value, Some(function.location))),
         }
     }
 
