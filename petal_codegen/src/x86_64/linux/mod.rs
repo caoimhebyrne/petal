@@ -32,8 +32,8 @@ impl Driver for X86_64LinuxDriver {
         self.assembly.push(".intel_syntax noprefix".to_string());
 
         // That's all of the setup done, we can start generating functions.
-        for function in &functions {
-            self.generate_function(function)?;
+        for mut function in functions {
+            self.generate_function(&mut function)?;
         }
 
         let assembly_file_path = output_path.with_extension("s");
@@ -62,7 +62,7 @@ impl Driver for X86_64LinuxDriver {
 }
 
 impl X86_64LinuxDriver {
-    fn generate_function(&mut self, function: &Function) -> DriverResult<()> {
+    fn generate_function(&mut self, function: &mut Function) -> DriverResult<()> {
         // Each generated function is marked as global.
         self.assembly.push(format!(".global {}", function.name));
         self.assembly.push(format!("{}:", function.name));
@@ -73,8 +73,8 @@ impl X86_64LinuxDriver {
         // This will be used later to populate the stack sizing instruction.
         let before_body_idx = self.assembly.len();
 
-        for operation in &function.body {
-            self.visit_operation(&function, operation)?;
+        for operation in &function.body.clone() {
+            self.visit_operation(function, operation)?;
         }
 
         // After visiting all instructions, we can calculate the required stack size.
@@ -85,7 +85,7 @@ impl X86_64LinuxDriver {
             .enumerate()
             // Any parameters with an index higher than 6 should always be on the stack.
             // Any non-parameters should always be on the stack.
-            .filter(|(idx, it)| *idx >= 6 || it.kind != LocalKind::Parameter)
+            .filter(|(_, it)| it.kind == LocalKind::Variable)
             .map(|(_, it)| X86_64LinuxDriver::size_of(it.value_type))
             .sum::<usize>();
 
@@ -106,7 +106,7 @@ impl X86_64LinuxDriver {
         Ok(())
     }
 
-    fn visit_operation(&mut self, function: &Function, operation: &Operation) -> DriverResult<()> {
+    fn visit_operation(&mut self, function: &mut Function, operation: &Operation) -> DriverResult<()> {
         match &operation.kind {
             OperationKind::StoreLocal(store_local) => store_local.visit(function, self),
             OperationKind::Return(r#return) => r#return.visit(function, self),
@@ -119,7 +119,7 @@ impl X86_64LinuxDriver {
         }
     }
 
-    fn visit_value(&mut self, function: &Function, value: &Value) -> DriverResult<String> {
+    fn visit_value(&mut self, function: &mut Function, value: &Value) -> DriverResult<String> {
         match &value.kind {
             ValueKind::IntegerLiteral(integer_literal) => integer_literal.visit(function, self),
             ValueKind::LocalReference(local_reference) => local_reference.visit(function, self),
@@ -131,7 +131,7 @@ impl X86_64LinuxDriver {
         }
     }
 
-    fn local_parameter_register(index: usize) -> String {
+    fn local_parameter_register(index: usize, value_type: ValueType, is_reference: bool) -> String {
         match index {
             0 => return "rdi".to_string(),
             1 => return "rsi".to_string(),
@@ -139,7 +139,14 @@ impl X86_64LinuxDriver {
             3 => return "rcx".to_string(),
             4 => return "r8".to_string(),
             5 => return "r9".to_string(),
-            _ => todo!("stack parameters"),
+            _ => {
+                let stack_position = index - 6;
+                let stack_index = X86_64LinuxDriver::size_of(value_type) * stack_position;
+                return format!(
+                    "qword ptr [rsp+{}]",
+                    if is_reference { 16 + stack_index } else { stack_index }
+                );
+            }
         }
     }
 

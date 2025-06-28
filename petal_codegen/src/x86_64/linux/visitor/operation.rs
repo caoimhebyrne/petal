@@ -8,7 +8,7 @@ use petal_ir::{
 impl OperationVisitor for StoreLocal {
     type Driver = X86_64LinuxDriver;
 
-    fn visit(&self, function: &Function, driver: &mut Self::Driver) -> DriverResult<()> {
+    fn visit(&self, function: &mut Function, driver: &mut Self::Driver) -> DriverResult<()> {
         // The position of the variable on the stack depends on the size of the items before it.
         let stack_position = function
             .locals
@@ -22,7 +22,7 @@ impl OperationVisitor for StoreLocal {
 
         // TODO: actual sizing
         let instruction = match self.value.r#type {
-            ValueType::Integer { .. } => format!("mov dword ptr [rsp+{}], {}", stack_position, value),
+            ValueType::Integer { .. } => format!("mov qword ptr [rsp+{}], {}", stack_position, value),
         };
 
         driver.assembly.push(instruction);
@@ -33,7 +33,7 @@ impl OperationVisitor for StoreLocal {
 impl OperationVisitor for Return {
     type Driver = X86_64LinuxDriver;
 
-    fn visit(&self, function: &Function, driver: &mut Self::Driver) -> DriverResult<()> {
+    fn visit(&self, function: &mut Function, driver: &mut Self::Driver) -> DriverResult<()> {
         if let Some(value) = &self.value {
             let the_value = driver.visit_value(function, &value)?;
 

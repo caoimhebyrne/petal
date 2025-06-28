@@ -4,7 +4,7 @@ use crate::{
     visitor::ValueVisitor,
 };
 use petal_ir::{
-    function::{Function, LocalKind},
+    function::{Function, Local, LocalKind},
     value::{
         binary_operation::{BinaryOperation, Operand},
         function_call::FunctionCall,
@@ -16,7 +16,7 @@ use petal_ir::{
 impl ValueVisitor for IntegerLiteral {
     type Driver = X86_64LinuxDriver;
 
-    fn visit(&self, _function: &Function, _driver: &mut Self::Driver) -> DriverResult<String> {
+    fn visit(&self, _function: &mut Function, _driver: &mut Self::Driver) -> DriverResult<String> {
         Ok(self.literal.to_string())
     }
 }
@@ -24,14 +24,18 @@ impl ValueVisitor for IntegerLiteral {
 impl ValueVisitor for LocalReference {
     type Driver = X86_64LinuxDriver;
 
-    fn visit(&self, function: &Function, _driver: &mut Self::Driver) -> DriverResult<String> {
+    fn visit(&self, function: &mut Function, _driver: &mut Self::Driver) -> DriverResult<String> {
         let local = function
             .locals
             .get(self.index)
             .expect(&format!("Expected local at index {} but got None", self.index));
 
         if local.kind == LocalKind::Parameter {
-            return Ok(X86_64LinuxDriver::local_parameter_register(self.index));
+            return Ok(X86_64LinuxDriver::local_parameter_register(
+                self.index,
+                local.value_type,
+                true,
+            ));
         }
 
         // The position of the variable on the stack depends on the size of the items before it.
@@ -49,7 +53,7 @@ impl ValueVisitor for LocalReference {
 impl ValueVisitor for BinaryOperation {
     type Driver = X86_64LinuxDriver;
 
-    fn visit(&self, function: &Function, driver: &mut Self::Driver) -> DriverResult<String> {
+    fn visit(&self, function: &mut Function, driver: &mut Self::Driver) -> DriverResult<String> {
         let lhs = driver.visit_value(function, &self.lhs)?;
         let rhs = driver.visit_value(function, &self.rhs)?;
 
@@ -66,16 +70,26 @@ impl ValueVisitor for BinaryOperation {
         };
 
         driver.assembly.push(format!("{} rax, {}", instruction, rhs));
-        Ok("rax".to_string())
+        driver.assembly.push(format!("mov r10, rax"));
+        Ok("r10".to_string())
     }
 }
 
 impl ValueVisitor for FunctionCall {
     type Driver = X86_64LinuxDriver;
 
-    fn visit(&self, function: &Function, driver: &mut Self::Driver) -> DriverResult<String> {
+    fn visit(&self, function: &mut Function, driver: &mut Self::Driver) -> DriverResult<String> {
         for (idx, argument) in self.arguments.iter().enumerate() {
-            let register = X86_64LinuxDriver::local_parameter_register(idx);
+            let register = X86_64LinuxDriver::local_parameter_register(idx, argument.r#type, false);
+
+            if idx >= 6 {
+                function.locals.push(Local {
+                    kind: LocalKind::Variable,
+                    name: "__petal_internal_tmp".into(),
+                    value_type: argument.r#type,
+                });
+            }
+
             let value = driver.visit_value(function, &argument)?;
             driver.assembly.push(format!("mov {}, {}", register, value));
         }
