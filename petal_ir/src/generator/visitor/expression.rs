@@ -65,3 +65,20 @@ impl ExpressionVisitor for ast::node::expression::BinaryOperation {
         Ok(Value::new_binary_operation(lhs, rhs, operand, value_type))
     }
 }
+
+impl ExpressionVisitor for ast::node::expression::FunctionCall {
+    fn visit(&self, generator: &mut IRGenerator) -> IRResult<Value> {
+        let arguments = self
+            .arguments
+            .iter()
+            .map(|it| generator.visit_expression(it))
+            .collect::<IRResult<Vec<Value>>>()?;
+
+        let value_type = match &self.expected_type {
+            Some(value) => value.clone().into(),
+            None => return Err(IRError::missing_type_information(self.node.location)),
+        };
+
+        Ok(Value::new_function_call(self.name.clone(), arguments, value_type))
+    }
+}

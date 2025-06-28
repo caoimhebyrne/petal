@@ -115,9 +115,22 @@ impl X86_64LinuxDriver {
             ValueKind::IntegerLiteral(integer_literal) => integer_literal.visit(function, self),
             ValueKind::LocalReference(local_reference) => local_reference.visit(function, self),
             ValueKind::BinaryOperation(binary_operation) => binary_operation.visit(function, self),
+            ValueKind::FunctionCall(function_call) => function_call.visit(function, self),
 
             #[allow(unreachable_patterns)]
             _ => Err(DriverError::unsupported_value(value.clone(), Some(function.location))),
+        }
+    }
+
+    fn local_parameter_register(index: usize) -> String {
+        match index {
+            0 => return "rdi".to_string(),
+            1 => return "rsi".to_string(),
+            2 => return "rdx".to_string(),
+            3 => return "rcx".to_string(),
+            4 => return "r8".to_string(),
+            5 => return "r9".to_string(),
+            _ => todo!("stack parameters"),
         }
     }
 

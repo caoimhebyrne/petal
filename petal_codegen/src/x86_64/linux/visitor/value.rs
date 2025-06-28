@@ -7,6 +7,7 @@ use petal_ir::{
     function::Function,
     value::{
         binary_operation::{BinaryOperation, Operand},
+        function_call::FunctionCall,
         integer_literal::IntegerLiteral,
         local_reference::LocalReference,
     },
@@ -25,7 +26,7 @@ impl ValueVisitor for LocalReference {
 
     fn visit(&self, function: &Function, _driver: &mut Self::Driver) -> DriverResult<String> {
         if self.is_parameter {
-            todo!()
+            return Ok(X86_64LinuxDriver::local_parameter_register(self.index));
         }
 
         // The position of the variable on the stack depends on the size of the items before it.
@@ -60,6 +61,21 @@ impl ValueVisitor for BinaryOperation {
         };
 
         driver.assembly.push(format!("{} rax, {}", instruction, rhs));
+        Ok("rax".to_string())
+    }
+}
+
+impl ValueVisitor for FunctionCall {
+    type Driver = X86_64LinuxDriver;
+
+    fn visit(&self, function: &Function, driver: &mut Self::Driver) -> DriverResult<String> {
+        for (idx, argument) in self.arguments.iter().enumerate() {
+            let register = X86_64LinuxDriver::local_parameter_register(idx);
+            let value = driver.visit_value(function, &argument)?;
+            driver.assembly.push(format!("mov {}, {}", register, value));
+        }
+
+        driver.assembly.push(format!("call {}", self.name));
         Ok("rax".to_string())
     }
 }

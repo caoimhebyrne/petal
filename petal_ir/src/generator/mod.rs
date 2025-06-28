@@ -64,7 +64,7 @@ impl IRGenerator {
             let function_scope = self.start_function_scope(definition.node.location)?;
 
             for parameter in &definition.parameters {
-                function_scope.locals.push(Local {
+                function_scope.parameters.push(Local {
                     name: parameter.name.clone(),
                     value_type: parameter.expected_type.clone().into(),
                 });
@@ -105,6 +105,7 @@ impl IRGenerator {
             Expression::IntegerLiteral(literal) => literal.visit(self),
             Expression::IdentifierReference(identifier_reference) => identifier_reference.visit(self),
             Expression::BinaryOperation(binary_operation) => binary_operation.visit(self),
+            Expression::FunctionCall(function_call) => function_call.visit(self),
 
             _ => todo!(),
         }

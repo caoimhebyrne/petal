@@ -1,10 +1,12 @@
 use crate::value::{
     binary_operation::{BinaryOperation, Operand},
+    function_call::FunctionCall,
     integer_literal::IntegerLiteral,
     local_reference::LocalReference,
 };
 
 pub mod binary_operation;
+pub mod function_call;
 pub mod integer_literal;
 pub mod local_reference;
 
@@ -37,6 +39,9 @@ pub enum ValueKind {
 
     /// A binary operation between two values.
     BinaryOperation(BinaryOperation),
+
+    /// A function call.
+    FunctionCall(FunctionCall),
 }
 
 /// Represents the "type" of a value in the intermediate representation.
@@ -75,6 +80,13 @@ impl Value {
                 rhs: Box::new(rhs),
                 operand,
             }),
+            r#type,
+        }
+    }
+
+    pub fn new_function_call(name: String, arguments: Vec<Value>, r#type: ValueType) -> Value {
+        Value {
+            kind: ValueKind::FunctionCall(FunctionCall { name, arguments }),
             r#type,
         }
     }
