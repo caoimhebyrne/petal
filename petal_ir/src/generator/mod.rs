@@ -94,6 +94,7 @@ impl IRGenerator {
     pub(crate) fn visit_statement(&mut self, statement: &Statement) -> IRResult<Operation> {
         match statement {
             Statement::VariableDeclaration(declaration) => declaration.visit(self),
+            Statement::VariableReassignment(reassignment) => reassignment.visit(self),
             Statement::Return(r#return) => r#return.visit(self),
             Statement::FunctionCall(function_call) => StatementVisitor::visit(function_call, self),
 

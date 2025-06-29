@@ -1,11 +1,14 @@
 use crate::{
-    error::IRResult,
+    error::{IRError, IRResult},
     function::{Local, LocalKind},
     generator::IRGenerator,
     operation::Operation,
     value::Value,
 };
-use petal_core::ast::node::{self, statement::VariableDeclaration};
+use petal_core::ast::node::{
+    self,
+    statement::{VariableDeclaration, VariableReassignment},
+};
 
 /// A visitor for an AST statement.
 /// This converts a [Statment] into an IR [Operation].
@@ -27,6 +30,24 @@ impl StatementVisitor for VariableDeclaration {
             value_type: initialization_value.r#type.clone(),
             kind: LocalKind::Variable,
         });
+
+        // Then, we just need to store the initialization value into the local.
+        Ok(Operation::new_store_local(local_index, initialization_value))
+    }
+}
+
+impl StatementVisitor for VariableReassignment {
+    fn visit(&self, generator: &mut IRGenerator) -> IRResult<Operation> {
+        // If the value cannot be represented in the IR, there's no point in continuing with the declaration.
+        let initialization_value = generator.visit_expression(&self.value)?;
+        let function_scope = generator.function_scope(self.node.location)?;
+
+        // The variable should have already been declared.
+        let local_index = function_scope
+            .locals
+            .iter()
+            .position(|it| it.name == self.name)
+            .ok_or(IRError::undefined_identifier(self.node.location))?;
 
         // Then, we just need to store the initialization value into the local.
         Ok(Operation::new_store_local(local_index, initialization_value))
