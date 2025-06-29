@@ -105,6 +105,7 @@ impl X86_64LinuxDriver {
             let before_body_idx = self.assembly.len();
 
             for operation in &function.body.clone() {
+                self.assembly.push("".into());
                 self.visit_operation(function, operation)?;
             }
 
