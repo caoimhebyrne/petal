@@ -8,6 +8,7 @@ use petal_ir::{
     value::{
         ValueType,
         binary_operation::{BinaryOperation, Operand},
+        data_section_reference::DataSectionReference,
         function_call::FunctionCall,
         integer_literal::IntegerLiteral,
         local_reference::LocalReference,
@@ -101,5 +102,12 @@ impl ValueVisitor for FunctionCall {
 
         driver.assembly.push(format!("call {}", self.name));
         Ok("rax".to_string())
+    }
+}
+impl ValueVisitor for DataSectionReference {
+    type Driver = X86_64LinuxDriver;
+
+    fn visit(&self, function: &mut Function, _driver: &mut Self::Driver) -> DriverResult<String> {
+        Ok(format!("[rip + {}_data_{}]", function.name, self.index))
     }
 }

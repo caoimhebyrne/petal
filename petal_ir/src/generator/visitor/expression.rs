@@ -22,6 +22,19 @@ impl ExpressionVisitor for ast::node::expression::IntegerLiteral {
     }
 }
 
+impl ExpressionVisitor for ast::node::expression::StringLiteral {
+    fn visit(&self, generator: &mut IRGenerator) -> IRResult<Value> {
+        // A string literal must occur in a function scope.
+        let function_scope = generator.function_scope(self.node.location)?;
+
+        // The index of the item is the current length of the data section.
+        let index = function_scope.data.len();
+        function_scope.data.push(self.value.clone().into_bytes());
+
+        Ok(Value::new_data_section_reference(index))
+    }
+}
+
 impl ExpressionVisitor for ast::node::expression::IdentifierReference {
     fn visit(&self, generator: &mut IRGenerator) -> IRResult<Value> {
         // An identifier reference must occur in a function scope.

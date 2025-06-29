@@ -20,16 +20,28 @@ mod visitor;
 pub struct X86_64LinuxDriver {
     /// The lines of assembly to output at the end of visiting the function's statements.
     pub assembly: Vec<String>,
+
+    /// The index of the rodata section.
+    pub rodata_index: usize,
 }
 
 impl Driver for X86_64LinuxDriver {
     fn new() -> Self {
-        X86_64LinuxDriver { assembly: Vec::new() }
+        X86_64LinuxDriver {
+            assembly: Vec::new(),
+            rodata_index: 0,
+        }
     }
 
     fn generate(&mut self, functions: Vec<Function>, output_path: &PathBuf) -> DriverResult<()> {
         // The x86_64 linux driver uses assembly syntax, anything else is incorrect :)
         self.assembly.push(".intel_syntax noprefix".to_string());
+
+        // The first section we generate is the rodata section.
+        self.assembly.push(".section .rodata".to_string());
+        self.rodata_index = self.assembly.len();
+
+        self.assembly.push(".section .text".to_string());
 
         // That's all of the setup done, we can start generating functions.
         for mut function in functions {
@@ -66,6 +78,21 @@ impl X86_64LinuxDriver {
         if function.is_external {
             self.assembly.push(format!(".extern {}", function.name));
         } else {
+            // If this function has any data, we can insert it into the rodata section.
+            for (index, data) in function.data.iter().enumerate() {
+                let bytes = data.iter().map(|it| format!("0x{:02x}", it));
+
+                self.assembly.insert(
+                    self.rodata_index,
+                    format!(
+                        "{}_data_{}: .byte {}",
+                        function.name,
+                        index,
+                        bytes.collect::<Vec<String>>().join(", ")
+                    ),
+                );
+            }
+
             // Each generated function is marked as global.
             self.assembly.push(format!(".global {}", function.name));
             self.assembly.push(format!("{}:", function.name));
@@ -131,6 +158,7 @@ impl X86_64LinuxDriver {
             ValueKind::LocalReference(local_reference) => local_reference.visit(function, self),
             ValueKind::BinaryOperation(binary_operation) => binary_operation.visit(function, self),
             ValueKind::FunctionCall(function_call) => ValueVisitor::visit(function_call, function, self),
+            ValueKind::DataSectionReference(data_section_reference) => data_section_reference.visit(function, self),
 
             #[allow(unreachable_patterns)]
             _ => Err(DriverError::unsupported_value(value.clone(), Some(function.location))),

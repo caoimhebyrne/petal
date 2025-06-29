@@ -16,6 +16,9 @@ pub struct Function {
     /// The local variables allocated in this function's body.
     pub locals: Vec<Local>,
 
+    /// The data used within this function.
+    pub data: Vec<Vec<u8>>,
+
     /// Whether the function is an external function.
     pub is_external: bool,
 }

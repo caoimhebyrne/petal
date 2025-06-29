@@ -87,6 +87,7 @@ impl IRGenerator {
             body,
             locals: function_scope.locals,
             is_external: definition.is_extern,
+            data: function_scope.data,
         })
     }
 
@@ -109,6 +110,7 @@ impl IRGenerator {
             Expression::IdentifierReference(identifier_reference) => identifier_reference.visit(self),
             Expression::BinaryOperation(binary_operation) => binary_operation.visit(self),
             Expression::FunctionCall(function_call) => ExpressionVisitor::visit(function_call, self),
+            Expression::StringLiteral(string_literal) => string_literal.visit(self),
 
             _ => todo!(),
         }

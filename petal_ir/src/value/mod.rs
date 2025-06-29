@@ -1,11 +1,13 @@
 use crate::value::{
     binary_operation::{BinaryOperation, Operand},
+    data_section_reference::DataSectionReference,
     function_call::FunctionCall,
     integer_literal::IntegerLiteral,
     local_reference::LocalReference,
 };
 
 pub mod binary_operation;
+pub mod data_section_reference;
 pub mod function_call;
 pub mod integer_literal;
 pub mod local_reference;
@@ -42,6 +44,9 @@ pub enum ValueKind {
 
     /// A function call.
     FunctionCall(FunctionCall),
+
+    /// A reference to some data within the data section.
+    DataSectionReference(DataSectionReference),
 }
 
 /// Represents the "type" of a value in the intermediate representation.
@@ -89,6 +94,13 @@ impl Value {
         Value {
             kind: ValueKind::FunctionCall(FunctionCall { name, arguments }),
             r#type,
+        }
+    }
+
+    pub fn new_data_section_reference(index: usize) -> Value {
+        Value {
+            kind: ValueKind::DataSectionReference(DataSectionReference { index }),
+            r#type: ValueType::Reference,
         }
     }
 }
