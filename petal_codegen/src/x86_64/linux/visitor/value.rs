@@ -6,6 +6,7 @@ use crate::{
 use petal_ir::{
     function::{Function, Local, LocalKind},
     value::{
+        ValueType,
         binary_operation::{BinaryOperation, Operand},
         function_call::FunctionCall,
         integer_literal::IntegerLiteral,
@@ -91,7 +92,11 @@ impl ValueVisitor for FunctionCall {
             }
 
             let value = driver.visit_value(function, &argument)?;
-            driver.assembly.push(format!("mov {}, {}", register, value));
+            if argument.r#type == ValueType::Reference {
+                driver.assembly.push(format!("lea {}, {}", register, value));
+            } else {
+                driver.assembly.push(format!("mov {}, {}", register, value));
+            }
         }
 
         driver.assembly.push(format!("call {}", self.name));

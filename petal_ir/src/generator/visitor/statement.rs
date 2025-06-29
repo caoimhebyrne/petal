@@ -27,7 +27,7 @@ impl StatementVisitor for VariableDeclaration {
 
         function_scope.locals.push(Local {
             name: self.name.clone(),
-            value_type: initialization_value.r#type.clone(),
+            value_type: self.declared_type.clone().into(),
             kind: LocalKind::Variable,
         });
 

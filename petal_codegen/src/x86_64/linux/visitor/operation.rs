@@ -21,8 +21,17 @@ impl OperationVisitor for StoreLocal {
         let value = driver.visit_value(function, &self.value)?;
 
         // TODO: actual sizing
-        let instruction = match self.value.r#type {
-            ValueType::Integer { .. } => format!("mov qword ptr [rsp+{}], {}", stack_position, value),
+        let local = function.locals.get(self.index).unwrap();
+
+        let local_reference = if local.kind == LocalKind::Parameter {
+            X86_64LinuxDriver::local_parameter_register(self.index, local.value_type, false)
+        } else {
+            format!("rsp+{}", stack_position)
+        };
+
+        let instruction = match local.value_type {
+            ValueType::Integer { .. } => format!("mov qword ptr [{}], {}", local_reference, value),
+            ValueType::Reference => format!("mov qword ptr [{}], {}", local_reference, value),
         };
 
         driver.assembly.push(instruction);
@@ -39,6 +48,7 @@ impl OperationVisitor for Return {
 
             driver.assembly.push(match value.r#type {
                 ValueType::Integer { .. } => format!("mov rax, {}", the_value),
+                ValueType::Reference => format!("ldr rax, {}", the_value),
             });
         }
 
@@ -62,7 +72,11 @@ impl OperationVisitor for FunctionCall {
             }
 
             let value = driver.visit_value(function, &argument)?;
-            driver.assembly.push(format!("mov {}, {}", register, value));
+            if argument.r#type == ValueType::Reference {
+                driver.assembly.push(format!("lea {}, {}", register, value));
+            } else {
+                driver.assembly.push(format!("mov {}, {}", register, value));
+            }
         }
 
         driver.assembly.push(format!("call {}", self.name));

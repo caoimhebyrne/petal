@@ -1,7 +1,7 @@
 use crate::{
     error::{IRError, IRResult},
     generator::IRGenerator,
-    value::{Value, binary_operation::Operand},
+    value::{Value, ValueType, binary_operation::Operand},
 };
 use petal_core::ast::{self, node::operator::Operation};
 
@@ -32,9 +32,15 @@ impl ExpressionVisitor for ast::node::expression::IdentifierReference {
             _ => return Err(IRError::undefined_identifier(self.node.location)),
         };
 
-        let value_type = match &self.expected_type {
+        let expected_value_type = match &self.expected_type {
             Some(value) => value.clone().into(),
             None => return Err(IRError::missing_type_information(self.node.location)),
+        };
+
+        let value_type = if self.is_reference {
+            ValueType::Reference
+        } else {
+            expected_value_type
         };
 
         Ok(Value::new_local_reference(index, value_type))

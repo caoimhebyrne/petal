@@ -52,6 +52,7 @@ pub enum ValueKind {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ValueType {
     Integer { width: u8 },
+    Reference,
 }
 
 impl Value {

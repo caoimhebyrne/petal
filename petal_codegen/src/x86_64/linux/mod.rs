@@ -159,6 +159,7 @@ impl X86_64LinuxDriver {
     fn size_of(value_type: ValueType) -> usize {
         match value_type {
             ValueType::Integer { width } => (width / 4).into(),
+            ValueType::Reference => 8,
         }
     }
 }
