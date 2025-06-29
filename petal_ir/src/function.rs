@@ -15,6 +15,9 @@ pub struct Function {
 
     /// The local variables allocated in this function's body.
     pub locals: Vec<Local>,
+
+    /// Whether the function is an external function.
+    pub is_external: bool,
 }
 
 /// A local defined within a [Function]'s body.

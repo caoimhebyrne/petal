@@ -1,6 +1,6 @@
 use crate::{
     operation::{r#return::Return, store_local::StoreLocal},
-    value::Value,
+    value::{Value, function_call::FunctionCall},
 };
 
 pub mod r#return;
@@ -26,6 +26,9 @@ pub enum OperationKind {
 
     /// Returns a [crate::value::Value] from a function.
     Return(Return),
+
+    /// Calls a function without a result.
+    FunctionCall(FunctionCall),
 }
 
 impl Operation {
@@ -42,6 +45,12 @@ impl Operation {
     pub fn new_return(value: Option<Value>) -> Operation {
         Operation {
             kind: OperationKind::Return(Return { value }),
+        }
+    }
+
+    pub fn new_function_call(name: String, arguments: Vec<Value>) -> Operation {
+        Operation {
+            kind: OperationKind::FunctionCall(FunctionCall { name, arguments }),
         }
     }
 }

@@ -86,6 +86,7 @@ impl IRGenerator {
             location: definition.node.location,
             body,
             locals: function_scope.locals,
+            is_external: definition.is_extern,
         })
     }
 
@@ -94,6 +95,7 @@ impl IRGenerator {
         match statement {
             Statement::VariableDeclaration(declaration) => declaration.visit(self),
             Statement::Return(r#return) => r#return.visit(self),
+            Statement::FunctionCall(function_call) => StatementVisitor::visit(function_call, self),
 
             _ => todo!(),
         }
@@ -105,7 +107,7 @@ impl IRGenerator {
             Expression::IntegerLiteral(literal) => literal.visit(self),
             Expression::IdentifierReference(identifier_reference) => identifier_reference.visit(self),
             Expression::BinaryOperation(binary_operation) => binary_operation.visit(self),
-            Expression::FunctionCall(function_call) => function_call.visit(self),
+            Expression::FunctionCall(function_call) => ExpressionVisitor::visit(function_call, self),
 
             _ => todo!(),
         }

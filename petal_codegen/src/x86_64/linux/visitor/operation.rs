@@ -1,8 +1,8 @@
 use crate::{X86_64LinuxDriver, error::DriverResult, visitor::OperationVisitor};
 use petal_ir::{
-    function::Function,
+    function::{Function, Local, LocalKind},
     operation::{r#return::Return, store_local::StoreLocal},
-    value::ValueType,
+    value::{ValueType, function_call::FunctionCall},
 };
 
 impl OperationVisitor for StoreLocal {
@@ -42,6 +42,30 @@ impl OperationVisitor for Return {
             });
         }
 
+        Ok(())
+    }
+}
+
+impl OperationVisitor for FunctionCall {
+    type Driver = X86_64LinuxDriver;
+
+    fn visit(&self, function: &mut Function, driver: &mut Self::Driver) -> DriverResult<()> {
+        for (idx, argument) in self.arguments.iter().enumerate() {
+            let register = X86_64LinuxDriver::local_parameter_register(idx, argument.r#type, false);
+
+            if idx >= 6 {
+                function.locals.push(Local {
+                    kind: LocalKind::Variable,
+                    name: "__petal_internal_tmp".into(),
+                    value_type: argument.r#type,
+                });
+            }
+
+            let value = driver.visit_value(function, &argument)?;
+            driver.assembly.push(format!("mov {}, {}", register, value));
+        }
+
+        driver.assembly.push(format!("call {}", self.name));
         Ok(())
     }
 }

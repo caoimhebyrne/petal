@@ -3,6 +3,7 @@ use crate::{
     function::{Local, LocalKind},
     generator::IRGenerator,
     operation::Operation,
+    value::Value,
 };
 use petal_core::ast::node::{self, statement::VariableDeclaration};
 
@@ -41,5 +42,17 @@ impl StatementVisitor for node::statement::Return {
             .transpose()?;
 
         Ok(Operation::new_return(value))
+    }
+}
+
+impl StatementVisitor for node::expression::FunctionCall {
+    fn visit(&self, generator: &mut IRGenerator) -> IRResult<Operation> {
+        let arguments = self
+            .arguments
+            .iter()
+            .map(|it| generator.visit_expression(it))
+            .collect::<IRResult<Vec<Value>>>()?;
+
+        Ok(Operation::new_function_call(self.name.clone(), arguments))
     }
 }

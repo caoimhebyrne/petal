@@ -63,46 +63,50 @@ impl Driver for X86_64LinuxDriver {
 
 impl X86_64LinuxDriver {
     fn generate_function(&mut self, function: &mut Function) -> DriverResult<()> {
-        // Each generated function is marked as global.
-        self.assembly.push(format!(".global {}", function.name));
-        self.assembly.push(format!("{}:", function.name));
+        if function.is_external {
+            self.assembly.push(format!(".extern {}", function.name));
+        } else {
+            // Each generated function is marked as global.
+            self.assembly.push(format!(".global {}", function.name));
+            self.assembly.push(format!("{}:", function.name));
 
-        // Prelude
-        self.assembly.push("push rbp".to_string());
-        self.assembly.push("mov rbp, rsp".to_string());
+            // Prelude
+            self.assembly.push("push rbp".to_string());
+            self.assembly.push("mov rbp, rsp".to_string());
 
-        // This will be used later to populate the stack sizing instruction.
-        let before_body_idx = self.assembly.len();
+            // This will be used later to populate the stack sizing instruction.
+            let before_body_idx = self.assembly.len();
 
-        for operation in &function.body.clone() {
-            self.visit_operation(function, operation)?;
+            for operation in &function.body.clone() {
+                self.visit_operation(function, operation)?;
+            }
+
+            // After visiting all instructions, we can calculate the required stack size.
+            // The stack is the size of the local variables allocated, and it must be 16-byte aligned.
+            let stack_size_unaligned = function
+                .locals
+                .iter()
+                .enumerate()
+                // Any parameters with an index higher than 6 should always be on the stack.
+                // Any non-parameters should always be on the stack.
+                .filter(|(_, it)| it.kind == LocalKind::Variable)
+                .map(|(_, it)| X86_64LinuxDriver::size_of(it.value_type))
+                .sum::<usize>();
+
+            let stack_size = stack_size_unaligned + 15 & !15;
+            if stack_size > 0 {
+                self.assembly
+                    .insert(before_body_idx, format!("sub rsp, {}", stack_size));
+            }
+
+            // Epilogue
+            if stack_size > 0 {
+                self.assembly.push(format!("add rsp, {}", stack_size));
+            }
+
+            self.assembly.push("pop rbp".to_string());
+            self.assembly.push("ret".to_string());
         }
-
-        // After visiting all instructions, we can calculate the required stack size.
-        // The stack is the size of the local variables allocated, and it must be 16-byte aligned.
-        let stack_size_unaligned = function
-            .locals
-            .iter()
-            .enumerate()
-            // Any parameters with an index higher than 6 should always be on the stack.
-            // Any non-parameters should always be on the stack.
-            .filter(|(_, it)| it.kind == LocalKind::Variable)
-            .map(|(_, it)| X86_64LinuxDriver::size_of(it.value_type))
-            .sum::<usize>();
-
-        let stack_size = stack_size_unaligned + 15 & !15;
-        if stack_size > 0 {
-            self.assembly
-                .insert(before_body_idx, format!("sub rsp, {}", stack_size));
-        }
-
-        // Epilogue
-        if stack_size > 0 {
-            self.assembly.push(format!("add rsp, {}", stack_size));
-        }
-
-        self.assembly.push("pop rbp".to_string());
-        self.assembly.push("ret".to_string());
 
         Ok(())
     }
@@ -111,6 +115,7 @@ impl X86_64LinuxDriver {
         match &operation.kind {
             OperationKind::StoreLocal(store_local) => store_local.visit(function, self),
             OperationKind::Return(r#return) => r#return.visit(function, self),
+            OperationKind::FunctionCall(function_call) => OperationVisitor::visit(function_call, function, self),
 
             #[allow(unreachable_patterns)]
             _ => Err(DriverError::unsupported_operation(
@@ -125,7 +130,7 @@ impl X86_64LinuxDriver {
             ValueKind::IntegerLiteral(integer_literal) => integer_literal.visit(function, self),
             ValueKind::LocalReference(local_reference) => local_reference.visit(function, self),
             ValueKind::BinaryOperation(binary_operation) => binary_operation.visit(function, self),
-            ValueKind::FunctionCall(function_call) => function_call.visit(function, self),
+            ValueKind::FunctionCall(function_call) => ValueVisitor::visit(function_call, function, self),
 
             #[allow(unreachable_patterns)]
             _ => Err(DriverError::unsupported_value(value.clone(), Some(function.location))),
