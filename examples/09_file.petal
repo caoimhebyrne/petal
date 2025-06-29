@@ -1,0 +1,33 @@
+// Petal does not have a standard library yet, but we can still use functions from libc
+// to do a lot of things, like reading a file and writing it back out to stdout.
+
+extern func fopen(pathname: &i8, mode: &i8) -> i32;
+extern func fread(destination: &i32, size: i8, items: i8, file: &i32) -> i32;
+extern func fseek(file: &i32, offset: i32, whence: i32);
+extern func ftell(file: &i32) -> i32;
+extern func malloc(size: i32) -> &i32;
+extern func free(ptr: &i32);
+extern func printf(format: &i32);
+
+func main() -> i32 {
+    // Constants from stdio.
+    i32 SEEK_SET = 0;
+    i32 SEEK_END = 2;
+
+    // Open the file for reading.
+    i32 file_ptr = fopen("./examples/09_file.petal", "r");
+
+    // Before reading, we need to know the size of the file.
+    fseek(file_ptr, 0, SEEK_END);
+    i32 file_size = ftell(file_ptr);
+    fseek(file_ptr, 0, SEEK_SET);
+
+    // Read the file into the content buffer.
+    &i32 content = malloc(file_size);
+    fread(content, 1, file_size, file_ptr);
+
+    // Write the file to stdout.
+    printf(content);
+
+    return 0;
+}
