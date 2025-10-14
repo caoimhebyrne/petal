@@ -1,6 +1,8 @@
+use crate::{
+    core::source_span::SourceSpan,
+    lexer::token::{Keyword, Token, TokenKind},
+};
 use std::str::Chars;
-
-use crate::lexer::token::{Keyword, Token, TokenKind};
 
 pub mod token;
 
@@ -30,8 +32,10 @@ impl<'a> Lexer<'a> {
 
         Token {
             kind: token_kind,
-            start: start_offset,
-            end: end_offset,
+            span: SourceSpan {
+                start: start_offset,
+                end: end_offset,
+            },
         }
     }
 
@@ -159,8 +163,7 @@ mod tests {
             "this_is_an_identifier",
             Token {
                 kind: TokenKind::Identifier("this_is_an_identifier".to_string()),
-                start: 0,
-                end: 21,
+                span: SourceSpan { start: 0, end: 21 }
             }
         );
     }
@@ -171,8 +174,7 @@ mod tests {
             "512",
             Token {
                 kind: TokenKind::IntegerLiteral(512),
-                start: 0,
-                end: 3,
+                span: SourceSpan { start: 0, end: 3 }
             }
         );
     }
@@ -183,28 +185,23 @@ mod tests {
             "let identifier = 123456789;",
             Token {
                 kind: TokenKind::Keyword(Keyword::Let),
-                start: 0,
-                end: 3,
+                span: SourceSpan { start: 0, end: 3 }
             },
             Token {
                 kind: TokenKind::Identifier("identifier".to_string()),
-                start: 3,
-                end: 14,
+                span: SourceSpan { start: 3, end: 14 }
             },
             Token {
                 kind: TokenKind::Equals,
-                start: 14,
-                end: 16,
+                span: SourceSpan { start: 14, end: 16 }
             },
             Token {
                 kind: TokenKind::IntegerLiteral(123456789),
-                start: 16,
-                end: 26,
+                span: { SourceSpan { start: 16, end: 26 } }
             },
             Token {
                 kind: TokenKind::Semicolon,
-                start: 26,
-                end: 27,
+                span: SourceSpan { start: 26, end: 27 }
             }
         );
     }
@@ -223,7 +220,7 @@ mod tests {
             let lexer_token = lexer.next_token();
             assert_eq!(lexer_token, *token);
 
-            current_end_index = lexer_token.end;
+            current_end_index = lexer_token.span.end;
         }
 
         // Now that we've looped over all of the tokens, we can assert that the final one is the EOF token.
@@ -231,8 +228,10 @@ mod tests {
             lexer.next_token(),
             Token {
                 kind: TokenKind::EOF,
-                start: current_end_index,
-                end: current_end_index,
+                span: SourceSpan {
+                    start: current_end_index,
+                    end: current_end_index,
+                }
             }
         )
     }

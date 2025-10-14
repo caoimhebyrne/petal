@@ -1,14 +1,13 @@
+use crate::core::source_span::SourceSpan;
+
 /// A token is a small piece of information parsed from the source code.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Token {
     /// The type of token that this is.
     pub kind: TokenKind,
 
-    /// The start offset of the token in the source code.
-    pub start: usize,
-
-    /// The end offset of the token in the source code.
-    pub end: usize,
+    /// The span in the source code that this token is in.
+    pub span: SourceSpan,
 }
 
 /// Represents the different kinds of tokens that are available.
