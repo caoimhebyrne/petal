@@ -1,0 +1,9 @@
+// This example illustrates how to create a `main` function with Petal.
+
+// All functions are defined with the `func` keyword. The `main` function must return an `i32` (32-bit integer). The
+// value returned by this function will be used as the process' exit code.
+func main() -> i32 {
+    // The `return` keyword allows you to return a value from a function. If a function's return type is `void`, then
+    // no value should be provided.
+    return 0;
+}
