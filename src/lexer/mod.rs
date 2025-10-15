@@ -56,7 +56,7 @@ impl<'a> Lexer<'a> {
 
                 '/' => return self.parse_forward_slash_or_comment(),
 
-                '1'..'9' => return self.parse_integer_literal(character),
+                '0'..'9' => return self.parse_integer_literal(character),
 
                 _ => {
                     // If this is an alphabetic character, we can attempt to parse an identifier.
