@@ -148,7 +148,7 @@ mod tests {
 
     macro_rules! assert_tokens {
         ($source:expr $(, $e:expr)* ) => {
-            assert_tokens($source, &vec![$($e),*]);
+            assert_tokens($source, &vec![$($e),*])
         };
     }
 
