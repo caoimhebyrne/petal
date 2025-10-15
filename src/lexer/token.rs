@@ -10,6 +10,16 @@ pub struct Token {
     pub span: SourceSpan,
 }
 
+impl Token {
+    /// Returns whether this token is considered to be whitespace. If true, most parsers can ignore it.
+    pub fn is_considered_whitespace(&self) -> bool {
+        match self.kind {
+            TokenKind::Comment(_) => true,
+            _ => false,
+        }
+    }
+}
+
 /// Represents the different kinds of tokens that are available.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TokenKind {
@@ -32,6 +42,13 @@ pub enum TokenKind {
 
     // ;
     Semicolon,
+
+    // /
+    ForwardSlash,
+
+    // This is a token that is ignored by most implementations, but might be useful in the future for some
+    // cool tooling.
+    Comment(String),
 }
 
 /// Represents the different kinds of keywords that are available.

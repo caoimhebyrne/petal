@@ -48,6 +48,8 @@ impl<'a> Lexer<'a> {
                 '=' => return TokenKind::Equals,
                 ';' => return TokenKind::Semicolon,
 
+                '/' => return self.parse_forward_slash_or_comment(),
+
                 '1'..'9' => return self.parse_integer_literal(character),
 
                 _ => {
@@ -119,6 +121,40 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Attempts to parse a forward slash token or a commenet token from the current position in the source text.
+    fn parse_forward_slash_or_comment(&mut self) -> TokenKind {
+        // If the next character is not another slash, then this was a single slash token.
+        if self.peek() != Some('/') {
+            return TokenKind::ForwardSlash;
+        }
+
+        // We can consume the next forward slash, it is part of a comment.
+        self.chars.next();
+
+        // Now, we can read all of the comment until a new-line occurs (or the end-of-file).
+        let mut characters = vec![];
+
+        while let Some(character) = self.peek() {
+            // If the character is a new-line, then the comment is over.
+            if character == '\n' || character == '\r' {
+                break;
+            }
+
+            // Otherwise, it is part of the comment string.
+            characters.push(character);
+            self.chars.next();
+        }
+
+        // If the first character in the comment is a space, and it is immediately followed by another character,
+        // then we can trim it. Otherwise, we should retain the weird spacing.
+        if characters.len() >= 2 && characters[0] == ' ' && characters[1] != ' ' {
+            characters.remove(0);
+        }
+
+        let comment = characters.iter().collect::<String>();
+        TokenKind::Comment(comment)
+    }
+
     /// Attempts to match a keyword from the input string, returning [Option::None] if a matching keyword was not found.
     fn match_keyword(string: &str) -> Option<Keyword> {
         let keyword = match string {
@@ -177,6 +213,43 @@ mod tests {
                 span: SourceSpan { start: 0, end: 3 }
             }
         );
+    }
+
+    #[test]
+    fn test_comment() {
+        assert_tokens!(
+            "// Hello, world!",
+            Token {
+                kind: TokenKind::Comment("Hello, world!".to_string()),
+                span: SourceSpan { start: 0, end: 16 },
+            }
+        )
+    }
+
+    #[test]
+    fn test_comment_with_weird_spacing() {
+        assert_tokens!(
+            "//    Hello, world!\n;",
+            Token {
+                kind: TokenKind::Comment("    Hello, world!".to_string()),
+                span: SourceSpan { start: 0, end: 19 },
+            },
+            Token {
+                kind: TokenKind::Semicolon,
+                span: SourceSpan { start: 19, end: 21 },
+            }
+        )
+    }
+
+    #[test]
+    fn test_forward_slash() {
+        assert_tokens!(
+            "/",
+            Token {
+                kind: TokenKind::ForwardSlash,
+                span: SourceSpan { start: 0, end: 1 }
+            }
+        )
     }
 
     #[test]
