@@ -211,6 +211,17 @@ mod tests {
     }
 
     #[test]
+    fn test_identifier_with_numeric_characters() {
+        assert_tokens!(
+            "i32_abc",
+            Token {
+                kind: TokenKind::Identifier("i32_abc".to_string()),
+                span: SourceSpan { start: 0, end: 7 },
+            }
+        )
+    }
+
+    #[test]
     fn test_integer_literal() {
         assert_tokens!(
             "512",
@@ -219,6 +230,17 @@ mod tests {
                 span: SourceSpan { start: 0, end: 3 }
             }
         );
+    }
+
+    #[test]
+    fn test_zero_integer_literal() {
+        assert_tokens!(
+            "0",
+            Token {
+                kind: TokenKind::IntegerLiteral(0),
+                span: SourceSpan { start: 0, end: 1 }
+            }
+        )
     }
 
     #[test]
