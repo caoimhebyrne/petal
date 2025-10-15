@@ -46,6 +46,24 @@ pub enum TokenKind {
     // /
     ForwardSlash,
 
+    // (
+    LeftParenthesis,
+
+    // (
+    RightParenthesis,
+
+    // {
+    LeftBrace,
+
+    // }
+    RightBrace,
+
+    // -
+    Hyphen,
+
+    // >
+    RightAngleBracket,
+
     // This is a token that is ignored by most implementations, but might be useful in the future for some
     // cool tooling.
     Comment(String),

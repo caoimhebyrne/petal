@@ -47,6 +47,12 @@ impl<'a> Lexer<'a> {
 
                 '=' => return TokenKind::Equals,
                 ';' => return TokenKind::Semicolon,
+                '(' => return TokenKind::LeftParenthesis,
+                ')' => return TokenKind::RightParenthesis,
+                '{' => return TokenKind::LeftBrace,
+                '}' => return TokenKind::RightBrace,
+                '-' => return TokenKind::Hyphen,
+                '>' => return TokenKind::RightAngleBracket,
 
                 '/' => return self.parse_forward_slash_or_comment(),
 
