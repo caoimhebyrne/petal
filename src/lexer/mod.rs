@@ -1,9 +1,13 @@
 use crate::{
-    core::source_span::SourceSpan,
-    lexer::token::{Keyword, Token, TokenKind},
+    core::{error::Error, source_span::SourceSpan},
+    lexer::{
+        error::LexerErrorKind,
+        token::{Keyword, Token, TokenKind},
+    },
 };
 use std::str::Chars;
 
+pub mod error;
 pub mod token;
 
 /// The lexer is responsible for taking an input string and producing tokens from that input.
@@ -25,34 +29,36 @@ impl<'a> Lexer<'a> {
     }
 
     /// Returns the token at the lexer's current position.
-    pub fn next_token(&mut self) -> Token {
+    pub fn next_token(&mut self) -> Result<Token, Error<LexerErrorKind>> {
         let start_offset = self.offset();
-        let token_kind = self.next_kind();
+        let token_kind_result = self.next_kind();
         let end_offset = self.offset();
 
-        Token {
-            kind: token_kind,
-            span: SourceSpan {
-                start: start_offset,
-                end: end_offset,
-            },
+        let span = SourceSpan {
+            start: start_offset,
+            end: end_offset,
+        };
+
+        match token_kind_result {
+            Ok(kind) => Ok(Token { kind, span }),
+            Err(kind) => Err(Error { kind, span }),
         }
     }
 
     /// Returns the next token kind at the lexer's current position.
-    fn next_kind(&mut self) -> TokenKind {
+    fn next_kind(&mut self) -> Result<TokenKind, LexerErrorKind> {
         while let Some(character) = self.chars.next() {
-            match character {
+            let kind = match character {
                 ' ' | '\n' | '\t' => continue,
 
-                '=' => return TokenKind::Equals,
-                ';' => return TokenKind::Semicolon,
-                '(' => return TokenKind::LeftParenthesis,
-                ')' => return TokenKind::RightParenthesis,
-                '{' => return TokenKind::LeftBrace,
-                '}' => return TokenKind::RightBrace,
-                '-' => return TokenKind::Hyphen,
-                '>' => return TokenKind::RightAngleBracket,
+                '=' => TokenKind::Equals,
+                ';' => TokenKind::Semicolon,
+                '(' => TokenKind::LeftParenthesis,
+                ')' => TokenKind::RightParenthesis,
+                '{' => TokenKind::LeftBrace,
+                '}' => TokenKind::RightBrace,
+                '-' => TokenKind::Hyphen,
+                '>' => TokenKind::RightAngleBracket,
 
                 '/' => return self.parse_forward_slash_or_comment(),
 
@@ -65,17 +71,22 @@ impl<'a> Lexer<'a> {
                     }
 
                     // Otherwise, this is an unexpected character.
-                    panic!("Unexpected character: '{}'", character)
+                    return Err(LexerErrorKind::UnexpectedCharacter(character));
                 }
-            }
+            };
+
+            return Ok(kind);
         }
 
         // If we break out of the loop, that means the end of the file was reached.
-        TokenKind::EOF
+        Ok(TokenKind::EOF)
     }
 
     /// Returns a TokenKind containing the integer literal at the current position in the source text.
-    fn parse_integer_literal(&mut self, first_character: char) -> TokenKind {
+    fn parse_integer_literal(
+        &mut self,
+        first_character: char,
+    ) -> Result<TokenKind, LexerErrorKind> {
         // The first character must always be an int character.
         let mut characters: Vec<char> = vec![first_character];
 
@@ -96,13 +107,16 @@ impl<'a> Lexer<'a> {
         let integer_string = characters.iter().collect::<String>();
         let integer = integer_string
             .parse::<u64>()
-            .expect(&format!("Invalid integer literal: '{}'", integer_string));
+            .map_err(|_| LexerErrorKind::InvalidIntegerLiteral)?;
 
-        TokenKind::IntegerLiteral(integer)
+        Ok(TokenKind::IntegerLiteral(integer))
     }
 
     /// Returns a TokenKind containing the identifier or keyword at the current position in the source text.
-    fn parse_identifier_or_keyword(&mut self, first_character: char) -> TokenKind {
+    fn parse_identifier_or_keyword(
+        &mut self,
+        first_character: char,
+    ) -> Result<TokenKind, LexerErrorKind> {
         let mut characters: Vec<char> = vec![first_character];
 
         // We can then loop over the characters until we reach a character that is not supported in an identifier.
@@ -120,18 +134,20 @@ impl<'a> Lexer<'a> {
 
         // We now have a vec of characters that we can collect for the identifier.
         let identifier = characters.iter().collect::<String>();
-        if let Some(keyword) = Lexer::match_keyword(&identifier) {
+        let kind = if let Some(keyword) = Lexer::match_keyword(&identifier) {
             TokenKind::Keyword(keyword)
         } else {
             TokenKind::Identifier(identifier)
-        }
+        };
+
+        Ok(kind)
     }
 
     /// Attempts to parse a forward slash token or a commenet token from the current position in the source text.
-    fn parse_forward_slash_or_comment(&mut self) -> TokenKind {
+    fn parse_forward_slash_or_comment(&mut self) -> Result<TokenKind, LexerErrorKind> {
         // If the next character is not another slash, then this was a single slash token.
         if self.peek() != Some('/') {
-            return TokenKind::ForwardSlash;
+            return Ok(TokenKind::ForwardSlash);
         }
 
         // We can consume the next forward slash, it is part of a comment.
@@ -158,7 +174,7 @@ impl<'a> Lexer<'a> {
         }
 
         let comment = characters.iter().collect::<String>();
-        TokenKind::Comment(comment)
+        Ok(TokenKind::Comment(comment))
     }
 
     /// Attempts to match a keyword from the input string, returning [Option::None] if a matching keyword was not found.
@@ -244,6 +260,19 @@ mod tests {
     }
 
     #[test]
+    fn test_invalid_integer_literal() {
+        let mut lexer = Lexer::new("123456789123456789123456789123456789");
+
+        assert_eq!(
+            lexer.next_token(),
+            Err(Error {
+                kind: LexerErrorKind::InvalidIntegerLiteral,
+                span: SourceSpan { start: 0, end: 36 },
+            })
+        )
+    }
+
+    #[test]
     fn test_comment() {
         assert_tokens!(
             "// Hello, world!",
@@ -318,7 +347,7 @@ mod tests {
         let mut current_end_index: usize = 0;
 
         for token in tokens {
-            let lexer_token = lexer.next_token();
+            let lexer_token = lexer.next_token().expect("next_token should not fail!");
             assert_eq!(lexer_token, *token);
 
             current_end_index = lexer_token.span.end;
@@ -326,7 +355,7 @@ mod tests {
 
         // Now that we've looped over all of the tokens, we can assert that the final one is the EOF token.
         assert_eq!(
-            lexer.next_token(),
+            lexer.next_token().expect("next_token should not fail!"),
             Token {
                 kind: TokenKind::EOF,
                 span: SourceSpan {
