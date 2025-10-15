@@ -60,7 +60,7 @@ impl<'a> Lexer<'a> {
 
                 _ => {
                     // If this is an alphabetic character, we can attempt to parse an identifier.
-                    if character.is_alphabetic() {
+                    if character.is_alphabetic() || character == '_' {
                         return self.parse_identifier_or_keyword(character);
                     }
 
@@ -109,7 +109,7 @@ impl<'a> Lexer<'a> {
         while let Some(character) = self.peek() {
             // If the character is not supported as an identifier character, we can assume that the end of the
             // identifier has been reached.
-            if !character.is_alphabetic() && character != '_' {
+            if !character.is_alphanumeric() && character != '_' {
                 break;
             }
 
