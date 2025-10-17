@@ -43,15 +43,13 @@ fn dump_ast<'a>(file_name: &'a str, contents: &'a str) {
         let node = match ast_parser.next_statement() {
             Ok(value) => value,
             Err(error) => {
-                print_error(file_name, contents, error);
+                let (line, column) = error.span.get_line_and_column(contents);
+                eprintln!("error({}:{}:{}): {}", file_name, line, column, error);
+
                 process::exit(1);
             }
         };
 
         println!("{:?}", node);
     }
-}
-
-fn print_error<'a>(file_name: &'a str, _contents: &'a str, error: Error) {
-    eprintln!("error({}): {}", file_name, error);
 }

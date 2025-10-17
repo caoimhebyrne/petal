@@ -15,4 +15,34 @@ impl SourceSpan {
             end: end.end,
         }
     }
+
+    /// Returns the line and column within the provided source string that corresponds to the start of this source span.
+    pub fn get_line_and_column(&self, string: &str) -> (usize, usize) {
+        // If the start of this span is larger than the string's length, then we can just return 0,0.
+        if self.start > string.len() {
+            return (0, 0);
+        }
+
+        let mut line = 1;
+        let mut column = 1;
+
+        // We can then iterate over each character, incrementing line and column accordingly until we reach the
+        // start index.
+        for (index, character) in string.char_indices() {
+            // If the index is equal to the start offset, then we have calculated what we need to calculate.
+            if index == self.start {
+                break;
+            }
+
+            // Otherwise, we can attempt to increment line and or column depending on what the character is.
+            if character == '\n' {
+                line += 1;
+                column = 0;
+            } else {
+                column += 1;
+            }
+        }
+
+        (line, column)
+    }
 }
