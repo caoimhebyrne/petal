@@ -1,6 +1,6 @@
 use std::{env, fs, process};
 
-use crate::{ast::ASTParser, core::error::Error, lexer::Lexer};
+use crate::{ast::ASTParser, lexer::Lexer};
 
 pub mod ast;
 pub mod core;

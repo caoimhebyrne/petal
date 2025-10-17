@@ -6,8 +6,8 @@ use crate::{
     },
     core::{error::Error, source_span::SourceSpan},
     lexer::{
-        Lexer,
         token::{Keyword, Token, TokenKind},
+        Lexer,
     },
 };
 
