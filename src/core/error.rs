@@ -1,7 +1,6 @@
-use crate::{
-    ast::error::ASTErrorKind, core::source_span::SourceSpan, lexer::error::LexerErrorKind,
-};
 use std::fmt::{Debug, Display};
+
+use crate::{ast::error::ASTErrorKind, core::source_span::SourceSpan, lexer::error::LexerErrorKind};
 
 /// Represents the different kinds of errors that can occur during compilation.
 #[derive(Debug, Clone, PartialEq)]

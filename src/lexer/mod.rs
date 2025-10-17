@@ -1,3 +1,5 @@
+use std::str::Chars;
+
 use crate::{
     core::{error::Error, source_span::SourceSpan},
     lexer::{
@@ -5,7 +7,6 @@ use crate::{
         token::{Keyword, Token, TokenKind},
     },
 };
-use std::str::Chars;
 
 pub mod error;
 pub mod token;
@@ -86,10 +87,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Returns a TokenKind containing the integer literal at the current position in the source text.
-    fn parse_integer_literal(
-        &mut self,
-        first_character: char,
-    ) -> Result<TokenKind, LexerErrorKind> {
+    fn parse_integer_literal(&mut self, first_character: char) -> Result<TokenKind, LexerErrorKind> {
         // The first character must always be an int character.
         let mut characters: Vec<char> = vec![first_character];
 
@@ -116,10 +114,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Returns a TokenKind containing the identifier or keyword at the current position in the source text.
-    fn parse_identifier_or_keyword(
-        &mut self,
-        first_character: char,
-    ) -> Result<TokenKind, LexerErrorKind> {
+    fn parse_identifier_or_keyword(&mut self, first_character: char) -> Result<TokenKind, LexerErrorKind> {
         let mut characters: Vec<char> = vec![first_character];
 
         // We can then loop over the characters until we reach a character that is not supported in an identifier.
@@ -170,8 +165,8 @@ impl<'a> Lexer<'a> {
             self.chars.next();
         }
 
-        // If the first character in the comment is a space, and it is immediately followed by another character,
-        // then we can trim it. Otherwise, we should retain the weird spacing.
+        // If the first character in the comment is a space, and it is immediately followed by another character, then
+        // we can trim it. Otherwise, we should retain the weird spacing.
         if characters.len() >= 2 && characters[0] == ' ' && characters[1] != ' ' {
             characters.remove(0);
         }
@@ -339,7 +334,7 @@ mod tests {
         );
     }
 
-    /// A helper method to assert that the tokens in the provided [Vec] can be consumed from a [Lexer] that has been
+    /// A helper method to assert that the tokens in the provided [Vec] can be  consumed from a [Lexer] that has been
     /// initialized with the provided `source` text.
     ///
     /// This also asserts that the final token in the stream is the EOF token.

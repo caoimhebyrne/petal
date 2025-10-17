@@ -1,9 +1,6 @@
+use std::{env, fs, process};
+
 use crate::{ast::ASTParser, core::error::Error, lexer::Lexer};
-use std::{
-    env,
-    fmt::{Debug, Display},
-    fs, process,
-};
 
 pub mod ast;
 pub mod core;
