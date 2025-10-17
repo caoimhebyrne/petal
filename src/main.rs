@@ -39,7 +39,16 @@ fn main() {
 
 fn dump_ast<'a>(file_name: &'a str, contents: &'a str) {
     let mut lexer = Lexer::new(&contents);
-    let mut ast_parser = ASTParser::new(&mut lexer);
+
+    let token_stream = match lexer.get_stream() {
+        Ok(value) => value,
+        Err(error) => {
+            print_error(file_name, contents, error);
+            process::exit(1);
+        }
+    };
+
+    let mut ast_parser = ASTParser::new(token_stream);
 
     loop {
         let node = match ast_parser.next_statement() {

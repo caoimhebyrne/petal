@@ -4,11 +4,13 @@ use crate::{
     core::{error::Error, source_span::SourceSpan},
     lexer::{
         error::LexerErrorKind,
+        stream::TokenStream,
         token::{Keyword, Token, TokenKind},
     },
 };
 
 pub mod error;
+pub mod stream;
 pub mod token;
 
 /// The lexer is responsible for taking an input string and producing tokens from that input.
@@ -29,8 +31,24 @@ impl<'a> Lexer<'a> {
         };
     }
 
+    /// Returns a stream of tokens that has been read from the source within the [Lexer].
+    pub fn get_stream(&mut self) -> Result<TokenStream, Error> {
+        let mut tokens = vec![];
+
+        loop {
+            let token = self.next_token()?;
+            if token.kind == TokenKind::EOF {
+                break;
+            }
+
+            tokens.push(token);
+        }
+
+        Ok(TokenStream::new(tokens))
+    }
+
     /// Returns the token at the lexer's current position.
-    pub fn next_token(&mut self) -> Result<Token, Error> {
+    fn next_token(&mut self) -> Result<Token, Error> {
         // Before reading the next token, we should attempt to consume any whitespace. This will ensure that our
         // offsets are correct.
         while let Some(character) = self.peek() {

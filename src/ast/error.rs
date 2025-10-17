@@ -1,6 +1,9 @@
 use std::fmt::Display;
 
-use crate::lexer::token::TokenKind;
+use crate::{
+    core::{error::Error, source_span::SourceSpan},
+    lexer::token::TokenKind,
+};
 
 /// Represents the different kinds of errors that can be returned when parsing an AST.
 #[derive(Debug, Clone, PartialEq)]
@@ -10,6 +13,15 @@ pub enum ASTErrorKind {
 
     /// A certain token was expected at a point in the source code, but a different token was found.
     UnexpectedToken { expected: TokenKind, received: TokenKind },
+}
+
+impl ASTErrorKind {
+    pub fn unexpected_end_of_file() -> Error {
+        Error {
+            kind: ASTErrorKind::UnexpectedEndOfFile.into(),
+            span: SourceSpan { start: 0, end: 0 },
+        }
+    }
 }
 
 impl Display for ASTErrorKind {
