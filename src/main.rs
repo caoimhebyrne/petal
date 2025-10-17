@@ -40,7 +40,7 @@ fn dump_ast<'a>(file_name: &'a str, contents: &'a str) {
     let mut ast_parser = ASTParser::new(&mut lexer);
 
     loop {
-        let node = match ast_parser.next_node() {
+        let node = match ast_parser.next_statement() {
             Ok(value) => value,
             Err(error) => {
                 print_error(file_name, contents, error);
