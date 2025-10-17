@@ -2,7 +2,7 @@ use crate::{
     ast::{
         error::ASTErrorKind,
         expression::{Expression, ExpressionKind},
-        statement::{Statement, StatementKind, VariableDeclaration},
+        statement::{Statement, VariableDeclaration},
     },
     core::{error::Error, source_span::SourceSpan},
     lexer::{
@@ -41,12 +41,9 @@ impl<'a> ASTParser<'a> {
         // And finally, an expression must be provided for the initial value.
         let value = self.next_expression()?;
 
-        let variable_declaration_span = SourceSpan::between(&let_token.span, &value.span);
-        let variable_declaration = VariableDeclaration::new(identifier, value);
-
         Ok(Statement {
-            kind: StatementKind::VariableDeclaration(variable_declaration),
-            span: variable_declaration_span,
+            span: SourceSpan::between(&let_token.span, &value.span),
+            kind: VariableDeclaration::new(identifier, value).into(),
         })
     }
 
@@ -97,6 +94,7 @@ impl<'a> ASTParser<'a> {
 
         match &token.kind {
             TokenKind::Identifier(identifier) => Ok((identifier.into(), token)),
+
             _ => Error {
                 kind: ASTErrorKind::UnexpectedToken {
                     expected: TokenKind::Identifier("".into()),
@@ -149,13 +147,14 @@ mod tests {
         assert_eq!(
             ast_parser.next_statement().expect("next_statement should not fail!"),
             Statement {
-                kind: StatementKind::VariableDeclaration(VariableDeclaration {
-                    name: "identifier".to_string(),
-                    value: Expression {
+                kind: VariableDeclaration::new(
+                    "identifier".to_string(),
+                    Expression {
                         kind: ExpressionKind::IntegerLiteral(123456),
                         span: SourceSpan { start: 16, end: 23 }
                     }
-                }),
+                )
+                .into(),
                 span: SourceSpan { start: 0, end: 23 }
             }
         )

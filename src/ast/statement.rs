@@ -35,3 +35,10 @@ impl VariableDeclaration {
         VariableDeclaration { name, value }
     }
 }
+
+/// Allows `.into()` to be called on a [VariableDeclaration] to turn it into a [StatementKind].
+impl Into<StatementKind> for VariableDeclaration {
+    fn into(self) -> StatementKind {
+        StatementKind::VariableDeclaration(self)
+    }
+}
