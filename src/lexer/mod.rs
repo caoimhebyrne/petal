@@ -29,7 +29,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Returns the token at the lexer's current position.
-    pub fn next_token(&mut self) -> Result<Token, Error<LexerErrorKind>> {
+    pub fn next_token(&mut self) -> Result<Token, Error> {
         let start_offset = self.offset();
         let token_kind_result = self.next_kind();
         let end_offset = self.offset();
@@ -41,7 +41,10 @@ impl<'a> Lexer<'a> {
 
         match token_kind_result {
             Ok(kind) => Ok(Token { kind, span }),
-            Err(kind) => Err(Error { kind, span }),
+            Err(kind) => Err(Error {
+                kind: kind.into(),
+                span,
+            }),
         }
     }
 
@@ -266,7 +269,7 @@ mod tests {
         assert_eq!(
             lexer.next_token(),
             Err(Error {
-                kind: LexerErrorKind::InvalidIntegerLiteral,
+                kind: LexerErrorKind::InvalidIntegerLiteral.into(),
                 span: SourceSpan { start: 0, end: 36 },
             })
         )

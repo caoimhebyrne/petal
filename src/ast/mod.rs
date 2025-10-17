@@ -20,10 +20,10 @@ impl<'a> ASTParser<'a> {
     }
 
     /// Returns the next AST node at the current position in the source code.
-    pub fn next_node(&mut self) -> Result<Node, Error<ASTErrorKind>> {
+    pub fn next_node(&mut self) -> Result<Node, Error> {
         // TODO: Implement.
         Error {
-            kind: ASTErrorKind::UnexpectedEndOfFile,
+            kind: ASTErrorKind::UnexpectedEndOfFile.into(),
             span: SourceSpan { start: 0, end: 0 },
         }
         .into()

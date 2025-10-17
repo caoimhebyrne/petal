@@ -50,10 +50,11 @@ fn dump_ast<'a>(file_name: &'a str, contents: &'a str) {
                 process::exit(1);
             }
         };
+
         println!("{:?}", node);
     }
 }
 
-fn print_error<'a, K: Debug + Display>(file_name: &'a str, _contents: &'a str, error: Error<K>) {
-    println!("error({}): {}", file_name, error.kind)
+fn print_error<'a>(file_name: &'a str, _contents: &'a str, error: Error) {
+    eprintln!("error({}): {}", file_name, error);
 }
