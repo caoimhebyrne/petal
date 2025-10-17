@@ -16,6 +16,11 @@ impl SourceSpan {
         }
     }
 
+    /// Returns the length of this source span in characters.
+    pub fn length(&self) -> usize {
+        return self.end - self.start;
+    }
+
     /// Returns the line and column within the provided source string that corresponds to the start of this source span.
     pub fn get_line_and_column(&self, string: &str) -> (usize, usize) {
         // If the start of this span is larger than the string's length, then we can just return 0,0.
@@ -37,7 +42,7 @@ impl SourceSpan {
             // Otherwise, we can attempt to increment line and or column depending on what the character is.
             if character == '\n' {
                 line += 1;
-                column = 0;
+                column = 1;
             } else {
                 column += 1;
             }
