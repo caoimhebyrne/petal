@@ -11,8 +11,7 @@ pub struct Token {
 }
 
 impl Token {
-    /// Returns whether this token is considered to be whitespace. If true, most
-    /// parsers can ignore it.
+    /// Returns whether this token is considered to be whitespace. If true, most parsers can ignore it.
     pub fn is_considered_whitespace(&self) -> bool {
         match self.kind {
             TokenKind::Comment(_) => true,
@@ -31,7 +30,8 @@ pub enum TokenKind {
     IntegerLiteral(u64),
 
     /// An identifier.
-    /// FIXME: A `String` is not optimal here. It would make sense to implement some string intering in the future: https://en.wikipedia.org/wiki/String_interning
+    /// FIXME: A `String` is not optimal here. It would make sense to implement some string intering in the future:
+    /// https://en.wikipedia.org/wiki/String_interning
     Identifier(String),
 
     /// A keyword.
