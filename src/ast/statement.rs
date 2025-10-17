@@ -28,3 +28,10 @@ pub struct VariableDeclaration {
     /// The value being assigned to the variable.
     pub value: Expression,
 }
+
+impl VariableDeclaration {
+    /// Creates a new [VariableDeclaration] with a [name] and [value].
+    pub fn new(name: String, value: Expression) -> VariableDeclaration {
+        VariableDeclaration { name, value }
+    }
+}
