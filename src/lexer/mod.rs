@@ -31,6 +31,16 @@ impl<'a> Lexer<'a> {
 
     /// Returns the token at the lexer's current position.
     pub fn next_token(&mut self) -> Result<Token, Error> {
+        // Before reading the next token, we should attempt to consume any whitespace. This will ensure that our
+        // offsets are correct.
+        while let Some(character) = self.peek() {
+            if Lexer::is_whitespace(character) {
+                self.chars.next();
+            } else {
+                break;
+            }
+        }
+
         let start_offset = self.offset();
         let token_kind_result = self.next_kind();
         let end_offset = self.offset();
@@ -53,8 +63,6 @@ impl<'a> Lexer<'a> {
     fn next_kind(&mut self) -> Result<TokenKind, LexerErrorKind> {
         while let Some(character) = self.chars.next() {
             let kind = match character {
-                ' ' | '\n' | '\t' => continue,
-
                 '=' => TokenKind::Equals,
                 ';' => TokenKind::Semicolon,
                 '(' => TokenKind::LeftParenthesis,
@@ -69,6 +77,11 @@ impl<'a> Lexer<'a> {
                 '0'..'9' => return self.parse_integer_literal(character),
 
                 _ => {
+                    // If the character is considered to be whitespace, then continue.
+                    if Lexer::is_whitespace(character) {
+                        continue;
+                    }
+
                     // If this is an alphabetic character, we can attempt to parse an identifier.
                     if character.is_alphabetic() || character == '_' {
                         return self.parse_identifier_or_keyword(character);
@@ -186,6 +199,11 @@ impl<'a> Lexer<'a> {
         Some(keyword)
     }
 
+    /// Returns whether the provided character can be considered as whitespace.
+    fn is_whitespace(character: char) -> bool {
+        return character == '\n' || character == '\t' || character == ' ';
+    }
+
     /// Returns the current length offset from the source text (in UTF-8 bytes).
     fn offset(&self) -> usize {
         self.source.len() - self.chars.as_str().len()
@@ -291,7 +309,7 @@ mod tests {
             },
             Token {
                 kind: TokenKind::Semicolon,
-                span: SourceSpan { start: 19, end: 21 },
+                span: SourceSpan { start: 20, end: 21 },
             }
         )
     }
@@ -308,7 +326,7 @@ mod tests {
     }
 
     #[test]
-    fn test_variable_assignment() {
+    fn test_variable_declaration() {
         assert_tokens!(
             "let identifier = 123456789;",
             Token {
@@ -317,15 +335,15 @@ mod tests {
             },
             Token {
                 kind: TokenKind::Identifier("identifier".to_string()),
-                span: SourceSpan { start: 3, end: 14 }
+                span: SourceSpan { start: 4, end: 14 }
             },
             Token {
                 kind: TokenKind::Equals,
-                span: SourceSpan { start: 14, end: 16 }
+                span: SourceSpan { start: 15, end: 16 }
             },
             Token {
                 kind: TokenKind::IntegerLiteral(123456789),
-                span: { SourceSpan { start: 16, end: 26 } }
+                span: { SourceSpan { start: 17, end: 26 } }
             },
             Token {
                 kind: TokenKind::Semicolon,

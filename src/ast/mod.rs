@@ -6,8 +6,8 @@ use crate::{
     },
     core::{error::Error, source_span::SourceSpan},
     lexer::{
-        token::{Keyword, Token, TokenKind},
         Lexer,
+        token::{Keyword, Token, TokenKind},
     },
 };
 
@@ -151,7 +151,7 @@ mod tests {
                     "identifier".to_string(),
                     Expression {
                         kind: ExpressionKind::IntegerLiteral(123456),
-                        span: SourceSpan { start: 16, end: 23 }
+                        span: SourceSpan { start: 17, end: 23 }
                     }
                 )
                 .into(),
