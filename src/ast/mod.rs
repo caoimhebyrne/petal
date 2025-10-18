@@ -94,7 +94,7 @@ impl<'s> ASTParser<'s> {
             return Error {
                 kind: ASTErrorKind::UnexpectedToken {
                     expected: kind,
-                    received: token.kind.clone(),
+                    received: token.kind,
                 }
                 .into(),
                 span: token.span,
@@ -102,7 +102,7 @@ impl<'s> ASTParser<'s> {
             .into();
         }
 
-        Ok(token.clone())
+        Ok(*token)
     }
 
     /// Expects an identifier token to be produced by the lexer, returning an [Err] if a different token was returned.
@@ -113,13 +113,10 @@ impl<'s> ASTParser<'s> {
             .ok_or_else(|| ASTErrorKind::unexpected_end_of_file())?;
 
         match token.kind {
-            TokenKind::Identifier(reference) => Ok((reference, token.clone())),
+            TokenKind::Identifier(reference) => Ok((reference, *token)),
 
             _ => Error {
-                kind: ASTErrorKind::ExpectedIdentifier {
-                    received: token.kind.clone(),
-                }
-                .into(),
+                kind: ASTErrorKind::ExpectedIdentifier { received: token.kind }.into(),
                 span: token.span,
             }
             .into(),
