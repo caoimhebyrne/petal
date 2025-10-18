@@ -20,18 +20,18 @@ pub mod expression;
 pub mod statement;
 
 /// Converts tokens from a [Lexer] into an Abstract Syntax Tree.
-pub struct ASTParser<'s, S: StringInternPool> {
+pub struct ASTParser<'s> {
     /// The string intern pool to read strings from.
     #[allow(dead_code)]
-    string_intern_pool: &'s mut S,
+    string_intern_pool: &'s mut dyn StringInternPool,
 
     /// The token stream to read tokens from.
     token_stream: TokenStream,
 }
 
-impl<'s, S: StringInternPool> ASTParser<'s, S> {
+impl<'s> ASTParser<'s> {
     /// Creates a new [ASTParser] which reads from the provided [Lexer].
-    pub fn new(string_intern_pool: &'s mut S, token_stream: TokenStream) -> Self {
+    pub fn new(string_intern_pool: &'s mut dyn StringInternPool, token_stream: TokenStream) -> Self {
         return ASTParser {
             string_intern_pool,
             token_stream,
