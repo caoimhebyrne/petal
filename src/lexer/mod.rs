@@ -14,20 +14,20 @@ pub mod stream;
 pub mod token;
 
 /// The lexer is responsible for taking an input string and producing tokens from that input.
-pub struct Lexer<'source, 'pool> {
+pub struct Lexer<'a> {
     /// The source being parsed.
-    source: &'source str,
+    source: &'a str,
 
     /// The remaining characters to be consumed from the source.
-    chars: Chars<'source>,
+    chars: Chars<'a>,
 
     /// The [StringInternPool] to allocate string instances in.
-    string_intern_pool: &'pool mut dyn StringInternPool,
+    string_intern_pool: &'a mut dyn StringInternPool,
 }
 
-impl<'source, 'pool> Lexer<'source, 'pool> {
+impl<'a> Lexer<'a> {
     /// Creates a new Lexer instance.
-    pub fn new(string_intern_pool: &'pool mut dyn StringInternPool, source: &'source str) -> Self {
+    pub fn new(string_intern_pool: &'a mut dyn StringInternPool, source: &'a str) -> Self {
         return Lexer {
             source,
             string_intern_pool,
