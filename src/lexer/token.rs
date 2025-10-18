@@ -1,7 +1,7 @@
 use crate::core::{source_span::SourceSpan, string_intern::StringReference};
 
 /// A token is a small piece of information parsed from the source code.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Token {
     /// The type of token that this is.
     pub kind: TokenKind,
@@ -21,7 +21,7 @@ impl Token {
 }
 
 /// Represents the different kinds of tokens that are available.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenKind {
     /// The end-of-file token.
     EOF,
@@ -68,7 +68,7 @@ pub enum TokenKind {
 }
 
 /// Represents the different kinds of keywords that are available.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Keyword {
     /// Variable definition.
     Let,

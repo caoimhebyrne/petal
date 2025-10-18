@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 /// Represents the different errors that can be returned by a [Lexer].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LexerErrorKind {
     /// An unexpected character was found in the source code.
     UnexpectedCharacter(char),
