@@ -32,7 +32,7 @@ pub struct VariableDeclaration {
 
 impl VariableDeclaration {
     /// Creates a new [VariableDeclaration] with a [name] and [value].
-    pub fn new(identifier_reference: StringReference, value: Expression) -> VariableDeclaration {
+    pub fn new(identifier_reference: StringReference, value: Expression) -> Self {
         VariableDeclaration {
             identifier_reference,
             value,
@@ -41,8 +41,8 @@ impl VariableDeclaration {
 }
 
 /// Allows `.into()` to be called on a [VariableDeclaration] to turn it into a [StatementKind].
-impl Into<StatementKind> for VariableDeclaration {
-    fn into(self) -> StatementKind {
-        StatementKind::VariableDeclaration(self)
+impl From<VariableDeclaration> for StatementKind {
+    fn from(value: VariableDeclaration) -> Self {
+        StatementKind::VariableDeclaration(value)
     }
 }

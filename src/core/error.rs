@@ -25,8 +25,10 @@ pub struct Error {
     pub span: SourceSpan,
 }
 
+pub type Result<T> = core::result::Result<T, Error>;
+
 impl Error {
-    pub fn unresolved_string(reference: StringReference, span: SourceSpan) -> Error {
+    pub fn unresolved_string(reference: StringReference, span: SourceSpan) -> Self {
         Error {
             kind: ErrorKind::UnresolvedString(reference),
             span,
@@ -55,22 +57,22 @@ impl Display for ErrorKind {
 }
 
 /// Allows .into() to be called on an `Error to convert it into a `Result<T, Error>`.
-impl<T> From<Error> for Result<T, Error> {
-    fn from(value: Error) -> Result<T, Error> {
+impl<T> From<Error> for core::result::Result<T, Error> {
+    fn from(value: Error) -> Self {
         return Err(value);
     }
 }
 
 /// Allows `.into()` to be called on a `ASTErrorKind` to turn it into an `ErrorKind`.
 impl From<ASTErrorKind> for ErrorKind {
-    fn from(value: ASTErrorKind) -> ErrorKind {
+    fn from(value: ASTErrorKind) -> Self {
         ErrorKind::AST(value)
     }
 }
 
 /// Allows `.into()` to be called on a `LexerErrorKind` to turn it into an `ErrorKind`.
 impl From<LexerErrorKind> for ErrorKind {
-    fn from(value: LexerErrorKind) -> ErrorKind {
+    fn from(value: LexerErrorKind) -> Self {
         ErrorKind::Lexer(value)
     }
 }

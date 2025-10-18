@@ -9,7 +9,7 @@ pub struct SourceSpan {
 
 impl SourceSpan {
     /// Returns a [SourceSpan] containing the start and end offset between the two provided spans.
-    pub fn between(start: &SourceSpan, end: &SourceSpan) -> SourceSpan {
+    pub fn between(start: &SourceSpan, end: &SourceSpan) -> Self {
         SourceSpan {
             start: start.start,
             end: end.end,

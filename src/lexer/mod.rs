@@ -1,13 +1,19 @@
 use std::str::Chars;
 
 use crate::{
-    core::{error::Error, source_span::SourceSpan, string_intern::StringInternPool},
+    core::{
+        error::{Error, Result},
+        source_span::SourceSpan,
+        string_intern::StringInternPool,
+    },
     lexer::{
         error::LexerErrorKind,
         stream::TokenStream,
         token::{Keyword, Token, TokenKind},
     },
 };
+
+type LexerResult<T> = core::result::Result<T, LexerErrorKind>;
 
 pub mod error;
 pub mod stream;
@@ -36,7 +42,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Returns a stream of tokens that has been read from the source within the [Lexer].
-    pub fn get_stream(&mut self) -> Result<TokenStream, Error> {
+    pub fn get_stream(&mut self) -> Result<TokenStream> {
         let mut tokens = vec![];
 
         loop {
@@ -52,7 +58,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Returns the token at the lexer's current position.
-    fn next_token(&mut self) -> Result<Token, Error> {
+    fn next_token(&mut self) -> Result<Token> {
         // Before reading the next token, we should attempt to consume any whitespace. This will ensure that our
         // offsets are correct.
         while let Some(character) = self.peek() {
@@ -82,7 +88,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Returns the next token kind at the lexer's current position.
-    fn next_kind(&mut self) -> Result<TokenKind, LexerErrorKind> {
+    fn next_kind(&mut self) -> LexerResult<TokenKind> {
         while let Some(character) = self.chars.next() {
             let kind = match character {
                 '=' => TokenKind::Equals,
@@ -122,7 +128,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Returns a TokenKind containing the integer literal at the current position in the source text.
-    fn parse_integer_literal(&mut self, first_character: char) -> Result<TokenKind, LexerErrorKind> {
+    fn parse_integer_literal(&mut self, first_character: char) -> LexerResult<TokenKind> {
         // The first character must always be an int character.
         let mut characters: Vec<char> = vec![first_character];
 
@@ -149,7 +155,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Returns a TokenKind containing the identifier or keyword at the current position in the source text.
-    fn parse_identifier_or_keyword(&mut self, first_character: char) -> Result<TokenKind, LexerErrorKind> {
+    fn parse_identifier_or_keyword(&mut self, first_character: char) -> LexerResult<TokenKind> {
         let mut characters: Vec<char> = vec![first_character];
 
         // We can then loop over the characters until we reach a character that is not supported in an identifier.
@@ -178,7 +184,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Attempts to parse a forward slash token or a commenet token from the current position in the source text.
-    fn parse_forward_slash_or_comment(&mut self) -> Result<TokenKind, LexerErrorKind> {
+    fn parse_forward_slash_or_comment(&mut self) -> LexerResult<TokenKind> {
         // If the next character is not another slash, then this was a single slash token.
         if self.peek() != Some('/') {
             return Ok(TokenKind::ForwardSlash);

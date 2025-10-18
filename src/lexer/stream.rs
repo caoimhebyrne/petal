@@ -11,7 +11,7 @@ pub struct TokenStream {
 
 impl TokenStream {
     /// Returns a new [TokenStream] from a [Vec] of [Token]s.
-    pub fn new(tokens: Vec<Token>) -> TokenStream {
+    pub fn new(tokens: Vec<Token>) -> Self {
         TokenStream { tokens, index: 0 }
     }
 

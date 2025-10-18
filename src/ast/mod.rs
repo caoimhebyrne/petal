@@ -5,7 +5,7 @@ use crate::{
         statement::{Statement, VariableDeclaration},
     },
     core::{
-        error::Error,
+        error::{Error, Result},
         source_span::SourceSpan,
         string_intern::{StringInternPool, StringReference},
     },
@@ -39,7 +39,7 @@ impl<'a> ASTParser<'a> {
     }
 
     /// Returns the next AST node at the current position in the source code.
-    pub fn next_statement(&mut self) -> Result<Statement, Error> {
+    pub fn next_statement(&mut self) -> Result<Statement> {
         // The start of a variable declaration must always start with the `let` keyword.
         let let_token = self.expect_token(TokenKind::Keyword(Keyword::Let))?;
 
@@ -58,7 +58,7 @@ impl<'a> ASTParser<'a> {
         })
     }
 
-    fn next_expression(&mut self) -> Result<Expression, Error> {
+    fn next_expression(&mut self) -> Result<Expression> {
         // The only expression type that is supported is the integer literal.
         let token = self
             .token_stream
@@ -83,7 +83,7 @@ impl<'a> ASTParser<'a> {
     }
 
     /// Expects a certain [TokenKind] to be produced by the lexer, returning an [Err] if a different token was returned.
-    fn expect_token(&mut self, kind: TokenKind) -> Result<Token, Error> {
+    fn expect_token(&mut self, kind: TokenKind) -> Result<Token> {
         let token = self
             .token_stream
             .next_non_whitespace()
@@ -106,7 +106,7 @@ impl<'a> ASTParser<'a> {
     }
 
     /// Expects an identifier token to be produced by the lexer, returning an [Err] if a different token was returned.
-    fn expect_identifier(&mut self) -> Result<(StringReference, Token), Error> {
+    fn expect_identifier(&mut self) -> Result<(StringReference, Token)> {
         let token = self
             .token_stream
             .next_non_whitespace()
