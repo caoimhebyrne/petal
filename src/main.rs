@@ -4,7 +4,7 @@ use colored::Colorize;
 
 use crate::{
     ast::ASTParser,
-    core::{error::Error, string_intern::StringInternPool},
+    core::{error::Error, string_intern::StringInternPoolImpl},
     lexer::Lexer,
 };
 
@@ -42,7 +42,7 @@ fn main() {
 }
 
 fn dump_ast<'a>(file_name: &'a str, contents: &'a str) {
-    let mut string_intern_pool = StringInternPool::new();
+    let mut string_intern_pool = StringInternPoolImpl::new();
     let mut lexer = Lexer::new(&mut string_intern_pool, &contents);
 
     let token_stream = match lexer.get_stream() {

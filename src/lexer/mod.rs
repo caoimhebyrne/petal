@@ -14,20 +14,20 @@ pub mod stream;
 pub mod token;
 
 /// The lexer is responsible for taking an input string and producing tokens from that input.
-pub struct Lexer<'a, 's> {
+pub struct Lexer<'a, 's, S: StringInternPool> {
     /// The source being parsed.
     source: &'a str,
 
     /// The [StringInternPool] to allocate string instances in.
-    string_intern_pool: &'s mut StringInternPool,
+    string_intern_pool: &'s mut S,
 
     /// The remaining characters to be consumed from the source.
     chars: Chars<'a>,
 }
 
-impl<'a, 's> Lexer<'a, 's> {
+impl<'a, 's, S: StringInternPool> Lexer<'a, 's, S> {
     /// Creates a new Lexer instance.
-    pub fn new(string_intern_pool: &'s mut StringInternPool, source: &'a str) -> Lexer<'a, 's> {
+    pub fn new(string_intern_pool: &'s mut S, source: &'a str) -> Self {
         return Lexer {
             source,
             string_intern_pool,
@@ -56,7 +56,7 @@ impl<'a, 's> Lexer<'a, 's> {
         // Before reading the next token, we should attempt to consume any whitespace. This will ensure that our
         // offsets are correct.
         while let Some(character) = self.peek() {
-            if Lexer::is_whitespace(character) {
+            if Self::is_whitespace(character) {
                 self.chars.next();
             } else {
                 break;
@@ -100,7 +100,7 @@ impl<'a, 's> Lexer<'a, 's> {
 
                 _ => {
                     // If the character is considered to be whitespace, then continue.
-                    if Lexer::is_whitespace(character) {
+                    if Self::is_whitespace(character) {
                         continue;
                     }
 
@@ -167,7 +167,7 @@ impl<'a, 's> Lexer<'a, 's> {
 
         // We now have a vec of characters that we can collect for the identifier.
         let identifier = characters.iter().collect::<String>();
-        let kind = if let Some(keyword) = Lexer::match_keyword(&identifier) {
+        let kind = if let Some(keyword) = Self::match_keyword(&identifier) {
             TokenKind::Keyword(keyword)
         } else {
             let reference = self.string_intern_pool.intern(&identifier);
@@ -244,7 +244,7 @@ impl<'a, 's> Lexer<'a, 's> {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::core::string_intern::StringReference;
+    use crate::core::string_intern::{StringInternPoolImpl, StringReference};
 
     macro_rules! assert_tokens {
         ($string_intern_pool:expr, $source:expr $(, $e:expr)* ) => {
@@ -254,13 +254,13 @@ mod tests {
 
     #[test]
     fn test_empty_file() {
-        let mut string_intern_pool: StringInternPool = StringInternPool::new();
+        let mut string_intern_pool = StringInternPoolImpl::new();
         assert_tokens!(&mut string_intern_pool, "");
     }
 
     #[test]
     fn test_identifier() {
-        let mut string_intern_pool: StringInternPool = StringInternPool::new();
+        let mut string_intern_pool: StringInternPoolImpl = StringInternPoolImpl::new();
         let identifier_reference = StringReference(0);
 
         assert_tokens!(
@@ -280,7 +280,7 @@ mod tests {
 
     #[test]
     fn test_identifier_with_numeric_characters() {
-        let mut string_intern_pool: StringInternPool = StringInternPool::new();
+        let mut string_intern_pool: StringInternPoolImpl = StringInternPoolImpl::new();
         let identifier_reference = StringReference(0);
 
         assert_tokens!(
@@ -300,7 +300,7 @@ mod tests {
 
     #[test]
     fn test_integer_literal() {
-        let mut string_intern_pool = StringInternPool::new();
+        let mut string_intern_pool = StringInternPoolImpl::new();
 
         assert_tokens!(
             &mut string_intern_pool,
@@ -314,7 +314,7 @@ mod tests {
 
     #[test]
     fn test_zero_integer_literal() {
-        let mut string_intern_pool = StringInternPool::new();
+        let mut string_intern_pool = StringInternPoolImpl::new();
 
         assert_tokens!(
             &mut string_intern_pool,
@@ -328,7 +328,7 @@ mod tests {
 
     #[test]
     fn test_invalid_integer_literal() {
-        let mut string_intern_pool: StringInternPool = StringInternPool::new();
+        let mut string_intern_pool: StringInternPoolImpl = StringInternPoolImpl::new();
         let mut lexer = Lexer::new(&mut string_intern_pool, "123456789123456789123456789123456789");
 
         assert_eq!(
@@ -342,7 +342,7 @@ mod tests {
 
     #[test]
     fn test_comment() {
-        let mut string_intern_pool: StringInternPool = StringInternPool::new();
+        let mut string_intern_pool: StringInternPoolImpl = StringInternPoolImpl::new();
         let comment_reference = StringReference(0);
 
         assert_tokens!(
@@ -362,7 +362,7 @@ mod tests {
 
     #[test]
     fn test_comment_with_weird_spacing() {
-        let mut string_intern_pool: StringInternPool = StringInternPool::new();
+        let mut string_intern_pool: StringInternPoolImpl = StringInternPoolImpl::new();
         let comment_reference = StringReference(0);
 
         assert_tokens!(
@@ -386,7 +386,7 @@ mod tests {
 
     #[test]
     fn test_forward_slash() {
-        let mut string_intern_pool: StringInternPool = StringInternPool::new();
+        let mut string_intern_pool: StringInternPoolImpl = StringInternPoolImpl::new();
 
         assert_tokens!(
             &mut string_intern_pool,
@@ -400,7 +400,7 @@ mod tests {
 
     #[test]
     fn test_variable_declaration() {
-        let mut string_intern_pool = StringInternPool::new();
+        let mut string_intern_pool = StringInternPoolImpl::new();
         let identifier_reference = StringReference(0);
 
         assert_tokens!(
@@ -438,7 +438,7 @@ mod tests {
     /// initialized with the provided `source` text.
     ///
     /// This also asserts that the final token in the stream is the EOF token.
-    fn assert_tokens(string_intern_pool: &mut StringInternPool, source: &'static str, tokens: &Vec<Token>) {
+    fn assert_tokens<S: StringInternPool>(string_intern_pool: &mut S, source: &'static str, tokens: &Vec<Token>) {
         let mut lexer = Lexer::new(string_intern_pool, source);
 
         // We need to keep track of the current end index for when we assert the EOF token at the end.

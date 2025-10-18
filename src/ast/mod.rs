@@ -20,18 +20,18 @@ pub mod expression;
 pub mod statement;
 
 /// Converts tokens from a [Lexer] into an Abstract Syntax Tree.
-pub struct ASTParser<'s> {
+pub struct ASTParser<'s, S: StringInternPool> {
     /// The string intern pool to read strings from.
     #[allow(dead_code)]
-    string_intern_pool: &'s mut StringInternPool,
+    string_intern_pool: &'s mut S,
 
     /// The token stream to read tokens from.
     token_stream: TokenStream,
 }
 
-impl<'s> ASTParser<'s> {
+impl<'s, S: StringInternPool> ASTParser<'s, S> {
     /// Creates a new [ASTParser] which reads from the provided [Lexer].
-    pub fn new(string_intern_pool: &'s mut StringInternPool, token_stream: TokenStream) -> ASTParser<'s> {
+    pub fn new(string_intern_pool: &'s mut S, token_stream: TokenStream) -> Self {
         return ASTParser {
             string_intern_pool,
             token_stream,
@@ -129,13 +129,13 @@ mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.\
     use super::*;
     use crate::{
-        core::{source_span::SourceSpan, string_intern::StringInternPool},
+        core::{source_span::SourceSpan, string_intern::StringInternPoolImpl},
         lexer::Lexer,
     };
 
     #[test]
     fn test_variable_declaration() {
-        let mut string_intern_pool = StringInternPool::new();
+        let mut string_intern_pool = StringInternPoolImpl::new();
         let identifier_reference = StringReference(0);
 
         let mut lexer = Lexer::new(&mut string_intern_pool, "let identifier = 123456;");
