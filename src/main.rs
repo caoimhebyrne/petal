@@ -41,7 +41,7 @@ fn main() {
     dump_ast(&file_path, &contents);
 }
 
-fn dump_ast<'a>(file_name: &'a str, contents: &'a str) {
+fn dump_ast(file_name: &str, contents: &str) {
     let mut string_intern_pool = StringInternPoolImpl::new();
     let mut lexer = Lexer::new(&mut string_intern_pool, &contents);
 
