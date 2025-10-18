@@ -1,12 +1,19 @@
 use std::fmt::{Debug, Display};
 
-use crate::{ast::error::ASTErrorKind, core::source_span::SourceSpan, lexer::error::LexerErrorKind};
+use crate::{
+    ast::error::ASTErrorKind,
+    core::{source_span::SourceSpan, string_intern::StringReference},
+    lexer::error::LexerErrorKind,
+};
 
 /// Represents the different kinds of errors that can occur during compilation.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ErrorKind {
     AST(ASTErrorKind),
     Lexer(LexerErrorKind),
+
+    /// A string could not be found in the interning pool.
+    UnresolvedString(StringReference),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -16,6 +23,15 @@ pub struct Error {
 
     /// The location in the source that the error occurred at.
     pub span: SourceSpan,
+}
+
+impl Error {
+    pub fn unresolved_string(reference: StringReference, span: SourceSpan) -> Error {
+        Error {
+            kind: ErrorKind::UnresolvedString(reference),
+            span,
+        }
+    }
 }
 
 impl Display for Error {
@@ -29,6 +45,11 @@ impl Display for ErrorKind {
         match self {
             ErrorKind::AST(kind) => write!(f, "{}", kind),
             ErrorKind::Lexer(kind) => write!(f, "{}", kind),
+            ErrorKind::UnresolvedString(reference) => write!(
+                f,
+                "Internal error: could not resolve string reference '{:?}'",
+                reference
+            ),
         }
     }
 }

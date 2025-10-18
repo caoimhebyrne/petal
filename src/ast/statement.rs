@@ -1,4 +1,7 @@
-use crate::{ast::expression::Expression, core::source_span::SourceSpan};
+use crate::{
+    ast::expression::Expression,
+    core::{source_span::SourceSpan, string_intern::StringReference},
+};
 
 /// A statement can be seen as an action that does not return a value.
 #[derive(Debug, Clone, PartialEq)]
@@ -21,9 +24,7 @@ pub enum StatementKind {
 #[derive(Debug, Clone, PartialEq)]
 pub struct VariableDeclaration {
     /// The name of the variable being declared.
-    /// FIXME: A `String` is not optimal here. It would make sense to implement some string intering in the future:
-    /// https://en.wikipedia.org/wiki/String_interning
-    pub name: String,
+    pub identifier_reference: StringReference,
 
     /// The value being assigned to the variable.
     pub value: Expression,
@@ -31,8 +32,11 @@ pub struct VariableDeclaration {
 
 impl VariableDeclaration {
     /// Creates a new [VariableDeclaration] with a [name] and [value].
-    pub fn new(name: String, value: Expression) -> VariableDeclaration {
-        VariableDeclaration { name, value }
+    pub fn new(identifier_reference: StringReference, value: Expression) -> VariableDeclaration {
+        VariableDeclaration {
+            identifier_reference,
+            value,
+        }
     }
 }
 

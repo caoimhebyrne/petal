@@ -4,7 +4,11 @@ use crate::{
         expression::{Expression, ExpressionKind},
         statement::{Statement, VariableDeclaration},
     },
-    core::{error::Error, source_span::SourceSpan},
+    core::{
+        error::Error,
+        source_span::SourceSpan,
+        string_intern::{StringInternPool, StringReference},
+    },
     lexer::{
         stream::TokenStream,
         token::{Keyword, Token, TokenKind},
@@ -16,15 +20,22 @@ pub mod expression;
 pub mod statement;
 
 /// Converts tokens from a [Lexer] into an Abstract Syntax Tree.
-pub struct ASTParser {
+pub struct ASTParser<'s> {
+    /// The string intern pool to read strings from.
+    #[allow(dead_code)]
+    string_intern_pool: &'s mut StringInternPool,
+
     /// The token stream to read tokens from.
     token_stream: TokenStream,
 }
 
-impl ASTParser {
+impl<'s> ASTParser<'s> {
     /// Creates a new [ASTParser] which reads from the provided [Lexer].
-    pub fn new(token_stream: TokenStream) -> ASTParser {
-        return ASTParser { token_stream };
+    pub fn new(string_intern_pool: &'s mut StringInternPool, token_stream: TokenStream) -> ASTParser<'s> {
+        return ASTParser {
+            string_intern_pool,
+            token_stream,
+        };
     }
 
     /// Returns the next AST node at the current position in the source code.
@@ -33,7 +44,7 @@ impl ASTParser {
         let let_token = self.expect_token(TokenKind::Keyword(Keyword::Let))?;
 
         // The next token must be an identifier.
-        let (identifier, _) = self.expect_identifier()?;
+        let (identifier_reference, _) = self.expect_identifier()?;
 
         // The next token must be an equals.
         self.expect_token(TokenKind::Equals)?;
@@ -43,7 +54,7 @@ impl ASTParser {
 
         Ok(Statement {
             span: SourceSpan::between(&let_token.span, &value.span),
-            kind: VariableDeclaration::new(identifier, value).into(),
+            kind: VariableDeclaration::new(identifier_reference, value).into(),
         })
     }
 
@@ -95,18 +106,17 @@ impl ASTParser {
     }
 
     /// Expects an identifier token to be produced by the lexer, returning an [Err] if a different token was returned.
-    fn expect_identifier(&mut self) -> Result<(String, Token), Error> {
+    fn expect_identifier(&mut self) -> Result<(StringReference, Token), Error> {
         let token = self
             .token_stream
             .next_non_whitespace()
             .ok_or_else(|| ASTErrorKind::unexpected_end_of_file())?;
 
-        match &token.kind {
-            TokenKind::Identifier(identifier) => Ok((identifier.into(), token.clone())),
+        match token.kind {
+            TokenKind::Identifier(reference) => Ok((reference, token.clone())),
 
             _ => Error {
-                kind: ASTErrorKind::UnexpectedToken {
-                    expected: TokenKind::Identifier("".into()),
+                kind: ASTErrorKind::ExpectedIdentifier {
                     received: token.kind.clone(),
                 }
                 .into(),
@@ -121,21 +131,26 @@ impl ASTParser {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.\
     use super::*;
-    use crate::{core::source_span::SourceSpan, lexer::Lexer};
+    use crate::{
+        core::{source_span::SourceSpan, string_intern::StringInternPool},
+        lexer::Lexer,
+    };
 
     #[test]
     fn test_variable_declaration() {
-        let mut lexer = Lexer::new("let identifier = 123456;");
+        let mut string_intern_pool = StringInternPool::new();
+        let identifier_reference = StringReference(0);
 
+        let mut lexer = Lexer::new(&mut string_intern_pool, "let identifier = 123456;");
         let token_stream = lexer.get_stream().expect("get_stream should not fail");
 
-        let mut ast_parser = ASTParser::new(token_stream);
+        let mut ast_parser = ASTParser::new(&mut string_intern_pool, token_stream);
 
         assert_eq!(
             ast_parser.next_statement().expect("next_statement should not fail!"),
             Statement {
                 kind: VariableDeclaration::new(
-                    "identifier".to_string(),
+                    identifier_reference,
                     Expression {
                         kind: ExpressionKind::IntegerLiteral(123456),
                         span: SourceSpan { start: 17, end: 23 }
@@ -144,6 +159,11 @@ mod tests {
                 .into(),
                 span: SourceSpan { start: 0, end: 23 }
             }
-        )
+        );
+
+        assert_eq!(
+            string_intern_pool.resolve_reference(&identifier_reference),
+            Some("identifier")
+        );
     }
 }

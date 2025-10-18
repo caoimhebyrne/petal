@@ -13,6 +13,9 @@ pub enum ASTErrorKind {
 
     /// A certain token was expected at a point in the source code, but a different token was found.
     UnexpectedToken { expected: TokenKind, received: TokenKind },
+
+    /// An identifier was expected at a point in the source code, but a different token was found.
+    ExpectedIdentifier { received: TokenKind },
 }
 
 impl ASTErrorKind {
@@ -34,6 +37,9 @@ impl Display for ASTErrorKind {
                     "Expected token '{:?}', but received token '{:?}'",
                     expected, received
                 )
+            }
+            ASTErrorKind::ExpectedIdentifier { received } => {
+                write!(f, "Expected an identifier, but received token '{:?}'", received)
             }
         }
     }

@@ -1,4 +1,4 @@
-use crate::core::source_span::SourceSpan;
+use crate::core::{source_span::SourceSpan, string_intern::StringReference};
 
 /// A token is a small piece of information parsed from the source code.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -30,9 +30,7 @@ pub enum TokenKind {
     IntegerLiteral(u64),
 
     /// An identifier.
-    /// FIXME: A `String` is not optimal here. It would make sense to implement some string intering in the future:
-    /// https://en.wikipedia.org/wiki/String_interning
-    Identifier(String),
+    Identifier(StringReference),
 
     /// A keyword.
     Keyword(Keyword),
@@ -66,7 +64,7 @@ pub enum TokenKind {
 
     // This is a token that is ignored by most implementations, but might be useful in the future for some
     // cool tooling.
-    Comment(String),
+    Comment(StringReference),
 }
 
 /// Represents the different kinds of keywords that are available.

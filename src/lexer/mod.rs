@@ -1,7 +1,7 @@
 use std::str::Chars;
 
 use crate::{
-    core::{error::Error, source_span::SourceSpan},
+    core::{error::Error, source_span::SourceSpan, string_intern::StringInternPool},
     lexer::{
         error::LexerErrorKind,
         stream::TokenStream,
@@ -14,19 +14,23 @@ pub mod stream;
 pub mod token;
 
 /// The lexer is responsible for taking an input string and producing tokens from that input.
-pub struct Lexer<'a> {
+pub struct Lexer<'a, 's> {
     /// The source being parsed.
     source: &'a str,
+
+    /// The [StringInternPool] to allocate string instances in.
+    string_intern_pool: &'s mut StringInternPool,
 
     /// The remaining characters to be consumed from the source.
     chars: Chars<'a>,
 }
 
-impl<'a> Lexer<'a> {
+impl<'a, 's> Lexer<'a, 's> {
     /// Creates a new Lexer instance.
-    pub fn new(source: &'a str) -> Lexer<'a> {
+    pub fn new(string_intern_pool: &'s mut StringInternPool, source: &'a str) -> Lexer<'a, 's> {
         return Lexer {
             source,
+            string_intern_pool,
             chars: source.chars(),
         };
     }
@@ -166,7 +170,8 @@ impl<'a> Lexer<'a> {
         let kind = if let Some(keyword) = Lexer::match_keyword(&identifier) {
             TokenKind::Keyword(keyword)
         } else {
-            TokenKind::Identifier(identifier)
+            let reference = self.string_intern_pool.intern(&identifier);
+            TokenKind::Identifier(reference)
         };
 
         Ok(kind)
@@ -203,7 +208,9 @@ impl<'a> Lexer<'a> {
         }
 
         let comment = characters.iter().collect::<String>();
-        Ok(TokenKind::Comment(comment))
+        let reference = self.string_intern_pool.intern(&comment);
+
+        Ok(TokenKind::Comment(reference))
     }
 
     /// Attempts to match a keyword from the input string, returning [Option::None] if a matching keyword was not found.
@@ -237,43 +244,66 @@ impl<'a> Lexer<'a> {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
+    use crate::core::string_intern::StringReference;
 
     macro_rules! assert_tokens {
-        ($source:expr $(, $e:expr)* ) => {
-            assert_tokens($source, &vec![$($e),*])
+        ($string_intern_pool:expr, $source:expr $(, $e:expr)* ) => {
+            assert_tokens($string_intern_pool, $source, &vec![$($e),*])
         };
     }
 
     #[test]
     fn test_empty_file() {
-        assert_tokens!("");
+        let mut string_intern_pool: StringInternPool = StringInternPool::new();
+        assert_tokens!(&mut string_intern_pool, "");
     }
 
     #[test]
     fn test_identifier() {
+        let mut string_intern_pool: StringInternPool = StringInternPool::new();
+        let identifier_reference = StringReference(0);
+
         assert_tokens!(
+            &mut string_intern_pool,
             "this_is_an_identifier",
             Token {
-                kind: TokenKind::Identifier("this_is_an_identifier".to_string()),
+                kind: TokenKind::Identifier(identifier_reference),
                 span: SourceSpan { start: 0, end: 21 }
             }
         );
-    }
 
-    #[test]
-    fn test_identifier_with_numeric_characters() {
-        assert_tokens!(
-            "i32_abc",
-            Token {
-                kind: TokenKind::Identifier("i32_abc".to_string()),
-                span: SourceSpan { start: 0, end: 7 },
-            }
+        assert_eq!(
+            string_intern_pool.resolve_reference(&identifier_reference),
+            Some("this_is_an_identifier")
         )
     }
 
     #[test]
-    fn test_integer_literal() {
+    fn test_identifier_with_numeric_characters() {
+        let mut string_intern_pool: StringInternPool = StringInternPool::new();
+        let identifier_reference = StringReference(0);
+
         assert_tokens!(
+            &mut string_intern_pool,
+            "i32_abc",
+            Token {
+                kind: TokenKind::Identifier(identifier_reference),
+                span: SourceSpan { start: 0, end: 7 },
+            }
+        );
+
+        assert_eq!(
+            string_intern_pool.resolve_reference(&identifier_reference),
+            Some("i32_abc")
+        );
+    }
+
+    #[test]
+    fn test_integer_literal() {
+        let mut string_intern_pool = StringInternPool::new();
+
+        assert_tokens!(
+            &mut string_intern_pool,
             "512",
             Token {
                 kind: TokenKind::IntegerLiteral(512),
@@ -284,7 +314,10 @@ mod tests {
 
     #[test]
     fn test_zero_integer_literal() {
+        let mut string_intern_pool = StringInternPool::new();
+
         assert_tokens!(
+            &mut string_intern_pool,
             "0",
             Token {
                 kind: TokenKind::IntegerLiteral(0),
@@ -295,7 +328,8 @@ mod tests {
 
     #[test]
     fn test_invalid_integer_literal() {
-        let mut lexer = Lexer::new("123456789123456789123456789123456789");
+        let mut string_intern_pool: StringInternPool = StringInternPool::new();
+        let mut lexer = Lexer::new(&mut string_intern_pool, "123456789123456789123456789123456789");
 
         assert_eq!(
             lexer.next_token(),
@@ -308,33 +342,54 @@ mod tests {
 
     #[test]
     fn test_comment() {
+        let mut string_intern_pool: StringInternPool = StringInternPool::new();
+        let comment_reference = StringReference(0);
+
         assert_tokens!(
+            &mut string_intern_pool,
             "// Hello, world!",
             Token {
-                kind: TokenKind::Comment("Hello, world!".to_string()),
+                kind: TokenKind::Comment(comment_reference),
                 span: SourceSpan { start: 0, end: 16 },
             }
-        )
+        );
+
+        assert_eq!(
+            string_intern_pool.resolve_reference(&comment_reference),
+            Some("Hello, world!")
+        );
     }
 
     #[test]
     fn test_comment_with_weird_spacing() {
+        let mut string_intern_pool: StringInternPool = StringInternPool::new();
+        let comment_reference = StringReference(0);
+
         assert_tokens!(
+            &mut string_intern_pool,
             "//    Hello, world!\n;",
             Token {
-                kind: TokenKind::Comment("    Hello, world!".to_string()),
+                kind: TokenKind::Comment(StringReference(0)),
                 span: SourceSpan { start: 0, end: 19 },
             },
             Token {
                 kind: TokenKind::Semicolon,
                 span: SourceSpan { start: 20, end: 21 },
             }
-        )
+        );
+
+        assert_eq!(
+            string_intern_pool.resolve_reference(&comment_reference),
+            Some("    Hello, world!")
+        );
     }
 
     #[test]
     fn test_forward_slash() {
+        let mut string_intern_pool: StringInternPool = StringInternPool::new();
+
         assert_tokens!(
+            &mut string_intern_pool,
             "/",
             Token {
                 kind: TokenKind::ForwardSlash,
@@ -345,14 +400,18 @@ mod tests {
 
     #[test]
     fn test_variable_declaration() {
+        let mut string_intern_pool = StringInternPool::new();
+        let identifier_reference = StringReference(0);
+
         assert_tokens!(
+            &mut string_intern_pool,
             "let identifier = 123456789;",
             Token {
                 kind: TokenKind::Keyword(Keyword::Let),
                 span: SourceSpan { start: 0, end: 3 }
             },
             Token {
-                kind: TokenKind::Identifier("identifier".to_string()),
+                kind: TokenKind::Identifier(identifier_reference),
                 span: SourceSpan { start: 4, end: 14 }
             },
             Token {
@@ -368,14 +427,19 @@ mod tests {
                 span: SourceSpan { start: 26, end: 27 }
             }
         );
+
+        assert_eq!(
+            string_intern_pool.resolve_reference(&identifier_reference),
+            Some("identifier")
+        )
     }
 
     /// A helper method to assert that the tokens in the provided [Vec] can be  consumed from a [Lexer] that has been
     /// initialized with the provided `source` text.
     ///
     /// This also asserts that the final token in the stream is the EOF token.
-    fn assert_tokens(source: &'static str, tokens: &Vec<Token>) {
-        let mut lexer = Lexer::new(source);
+    fn assert_tokens(string_intern_pool: &mut StringInternPool, source: &'static str, tokens: &Vec<Token>) {
+        let mut lexer = Lexer::new(string_intern_pool, source);
 
         // We need to keep track of the current end index for when we assert the EOF token at the end.
         let mut current_end_index: usize = 0;

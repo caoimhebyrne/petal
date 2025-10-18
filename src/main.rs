@@ -2,7 +2,11 @@ use std::{env, fs, process};
 
 use colored::Colorize;
 
-use crate::{ast::ASTParser, core::error::Error, lexer::Lexer};
+use crate::{
+    ast::ASTParser,
+    core::{error::Error, string_intern::StringInternPool},
+    lexer::Lexer,
+};
 
 pub mod ast;
 pub mod core;
@@ -38,7 +42,8 @@ fn main() {
 }
 
 fn dump_ast<'a>(file_name: &'a str, contents: &'a str) {
-    let mut lexer = Lexer::new(&contents);
+    let mut string_intern_pool = StringInternPool::new();
+    let mut lexer = Lexer::new(&mut string_intern_pool, &contents);
 
     let token_stream = match lexer.get_stream() {
         Ok(value) => value,
@@ -48,7 +53,7 @@ fn dump_ast<'a>(file_name: &'a str, contents: &'a str) {
         }
     };
 
-    let mut ast_parser = ASTParser::new(token_stream);
+    let mut ast_parser = ASTParser::new(&mut string_intern_pool, token_stream);
 
     loop {
         let node = match ast_parser.next_statement() {
