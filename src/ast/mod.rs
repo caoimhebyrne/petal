@@ -2,10 +2,13 @@ use crate::{
     ast::{
         error::ASTErrorKind,
         expression::{Expression, ExpressionKind},
-        statement::{FunctionDeclaration, ReturnStatement, Statement, VariableDeclaration},
+        statement::{
+            Statement, function_declaration::FunctionDeclaration, r#return::ReturnStatement,
+            variable_declaration::VariableDeclaration,
+        },
     },
     core::{
-        error::{Error, Result},
+        error::Result,
         source_span::SourceSpan,
         string_intern::{StringInternPool, StringReference},
     },
@@ -70,19 +73,13 @@ impl<'a> ASTParser<'a> {
 
         let integer_literal = match token.kind {
             TokenKind::IntegerLiteral(literal) => literal,
-            _ => {
-                return Error {
-                    kind: ASTErrorKind::UnexpectedEndOfFile.into(),
-                    span: token.span,
-                }
-                .into();
-            }
+            _ => return ASTErrorKind::unexpected_end_of_file().into(),
         };
 
-        Ok(Expression {
-            kind: ExpressionKind::IntegerLiteral(integer_literal),
-            span: token.span,
-        })
+        Ok(Expression::new(
+            ExpressionKind::IntegerLiteral(integer_literal),
+            token.span,
+        ))
     }
 
     /// Attempts to parse a variable declaration node at the current position.
@@ -99,10 +96,12 @@ impl<'a> ASTParser<'a> {
         // And finally, an expression must be provided for the initial value.
         let value = self.next_expression()?;
 
-        Ok(Statement {
-            span: SourceSpan::between(&let_token.span, &value.span),
-            kind: VariableDeclaration::new(identifier_reference, value).into(),
-        })
+        let span = SourceSpan::between(&let_token.span, &value.span);
+
+        Ok(Statement::new(
+            VariableDeclaration::new(identifier_reference, value),
+            span,
+        ))
     }
 
     /// Attempts to parse a function declaration node at the current position.
@@ -157,10 +156,10 @@ impl<'a> ASTParser<'a> {
 
         self.expect_token(TokenKind::RightBrace)?;
 
-        Ok(Statement {
-            kind: FunctionDeclaration::new(identifier_reference, body).into(),
-            span: SourceSpan::between(&func_token.span, &left_brace_token.span),
-        })
+        Ok(Statement::new(
+            FunctionDeclaration::new(identifier_reference, body),
+            SourceSpan::between(&func_token.span, &left_brace_token.span),
+        ))
     }
 
     /// Attempts to parse a return statement node at the current position.
@@ -180,10 +179,10 @@ impl<'a> ASTParser<'a> {
             None => return_token.span,
         };
 
-        Ok(Statement {
-            kind: ReturnStatement::new(value).into(),
-            span: SourceSpan::between(&return_token.span, &end_span),
-        })
+        Ok(Statement::new(
+            ReturnStatement::new(value),
+            SourceSpan::between(&return_token.span, &end_span),
+        ))
     }
 
     /// Expects a certain [TokenKind] to be produced by the lexer, returning an [Err] if a different token was returned.
@@ -195,15 +194,7 @@ impl<'a> ASTParser<'a> {
 
         // If the token's kind does not match, we can return an error.
         if token.kind != kind {
-            return Error {
-                kind: ASTErrorKind::ExpectedToken {
-                    expected: kind,
-                    received: token.kind,
-                }
-                .into(),
-                span: token.span,
-            }
-            .into();
+            return ASTErrorKind::expected_token(kind, token).into();
         }
 
         Ok(*token)
@@ -218,12 +209,7 @@ impl<'a> ASTParser<'a> {
 
         match token.kind {
             TokenKind::Identifier(reference) => Ok((reference, *token)),
-
-            _ => Error {
-                kind: ASTErrorKind::ExpectedIdentifier { received: token.kind }.into(),
-                span: token.span,
-            }
-            .into(),
+            _ => ASTErrorKind::expected_identifier(token).into(),
         }
     }
 }

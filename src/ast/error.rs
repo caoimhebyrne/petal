@@ -29,6 +29,27 @@ impl ASTErrorKind {
         }
     }
 
+    pub fn expected_token(expected: TokenKind, received: &Token) -> Error {
+        Error {
+            kind: ASTErrorKind::ExpectedToken {
+                expected,
+                received: received.kind,
+            }
+            .into(),
+            span: received.span,
+        }
+    }
+
+    pub fn expected_identifier(received: &Token) -> Error {
+        Error {
+            kind: ASTErrorKind::ExpectedIdentifier {
+                received: received.kind,
+            }
+            .into(),
+            span: received.span,
+        }
+    }
+
     pub fn expected_statement(received: &Token) -> Error {
         Error {
             kind: ASTErrorKind::ExpectedStatement {

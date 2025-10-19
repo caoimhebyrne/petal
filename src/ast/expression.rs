@@ -10,6 +10,12 @@ pub struct Expression {
     pub span: SourceSpan,
 }
 
+impl Expression {
+    pub fn new(kind: ExpressionKind, span: SourceSpan) -> Self {
+        Expression { kind, span }
+    }
+}
+
 /// The different kinds of expressions that exist.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExpressionKind {
