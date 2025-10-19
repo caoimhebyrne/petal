@@ -85,7 +85,9 @@ fn print_error(file_name: &str, contents: &str, error: Error) {
     );
 
     // In order to print some more context, we can attempt to print the line before the one that the error occurred on.
-    if let Some(line) = contents.lines().nth(error_line_number - 2) {
+    if error_line_number > 2
+        && let Some(line) = contents.lines().nth(error_line_number - 2)
+    {
         eprintln!("{} {}", format!("{} |", error_line_number - 1).white(), line.white());
     }
 
