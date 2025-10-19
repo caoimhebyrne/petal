@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use crate::{
     core::{error::Error, source_span::SourceSpan},
-    lexer::token::TokenKind,
+    lexer::token::{Token, TokenKind},
 };
 
 /// Represents the different kinds of errors that can be returned when parsing an AST.
@@ -12,10 +12,13 @@ pub enum ASTErrorKind {
     UnexpectedEndOfFile,
 
     /// A certain token was expected at a point in the source code, but a different token was found.
-    UnexpectedToken { expected: TokenKind, received: TokenKind },
+    ExpectedToken { expected: TokenKind, received: TokenKind },
 
     /// An identifier was expected at a point in the source code, but a different token was found.
     ExpectedIdentifier { received: TokenKind },
+
+    /// A statement was expected, but a different token kind was received.
+    ExpectedStatement { received: TokenKind },
 }
 
 impl ASTErrorKind {
@@ -25,13 +28,23 @@ impl ASTErrorKind {
             span: SourceSpan { start: 0, end: 0 },
         }
     }
+
+    pub fn expected_statement(received: &Token) -> Error {
+        Error {
+            kind: ASTErrorKind::ExpectedStatement {
+                received: received.kind,
+            }
+            .into(),
+            span: received.span,
+        }
+    }
 }
 
 impl Display for ASTErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ASTErrorKind::UnexpectedEndOfFile => write!(f, "Unexpected end-of-file"),
-            ASTErrorKind::UnexpectedToken { expected, received } => {
+            ASTErrorKind::ExpectedToken { expected, received } => {
                 write!(
                     f,
                     "Expected token '{:?}', but received token '{:?}'",
@@ -40,6 +53,9 @@ impl Display for ASTErrorKind {
             }
             ASTErrorKind::ExpectedIdentifier { received } => {
                 write!(f, "Expected an identifier, but received token '{:?}'", received)
+            }
+            ASTErrorKind::ExpectedStatement { received } => {
+                write!(f, "Expected any statement, but received token '{:?}'", received)
             }
         }
     }

@@ -38,7 +38,23 @@ impl TokenStream {
     }
 
     /// Returns the token at the current index without advancing the stream.
-    pub fn peek(&mut self) -> Option<&Token> {
+    pub fn peek(&self) -> Option<&Token> {
         return self.tokens.get(self.index);
+    }
+
+    /// Returns the next token in the stream that is not a comment token, without advancing the iterator.
+    pub fn peek_non_whitespace(&self) -> Option<&Token> {
+        let mut cursor = self.index;
+
+        while let Some(token) = self.tokens.get(cursor) {
+            cursor += 1;
+
+            // If this token is not whitespace, then we can return it.
+            if !token.is_considered_whitespace() {
+                return Some(token);
+            }
+        }
+
+        None
     }
 }

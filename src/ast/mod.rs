@@ -2,7 +2,7 @@ use crate::{
     ast::{
         error::ASTErrorKind,
         expression::{Expression, ExpressionKind},
-        statement::{Statement, VariableDeclaration},
+        statement::{FunctionDeclaration, Statement, VariableDeclaration},
     },
     core::{
         error::{Error, Result},
@@ -40,22 +40,24 @@ impl<'a> ASTParser<'a> {
 
     /// Returns the next AST node at the current position in the source code.
     pub fn next_statement(&mut self) -> Result<Statement> {
-        // The start of a variable declaration must always start with the `let` keyword.
-        let let_token = self.expect_token(TokenKind::Keyword(Keyword::Let))?;
+        let token = self
+            .token_stream
+            .peek_non_whitespace()
+            .ok_or_else(|| ASTErrorKind::unexpected_end_of_file())?;
 
-        // The next token must be an identifier.
-        let (identifier_reference, _) = self.expect_identifier()?;
+        let (statement_result, expect_semicolon) = match token.kind {
+            TokenKind::Keyword(Keyword::Let) => (self.parse_variable_declaration_node(), true),
+            TokenKind::Keyword(Keyword::Func) => (self.parse_function_declaration_node(), false),
 
-        // The next token must be an equals.
-        self.expect_token(TokenKind::Equals)?;
+            _ => return ASTErrorKind::expected_statement(token).into(),
+        };
 
-        // And finally, an expression must be provided for the initial value.
-        let value = self.next_expression()?;
+        // If the parsed statement must end in a semicolon, we can expect one to be present.
+        if expect_semicolon {
+            self.expect_token(TokenKind::Semicolon)?;
+        }
 
-        Ok(Statement {
-            span: SourceSpan::between(&let_token.span, &value.span),
-            kind: VariableDeclaration::new(identifier_reference, value).into(),
-        })
+        statement_result
     }
 
     fn next_expression(&mut self) -> Result<Expression> {
@@ -82,6 +84,82 @@ impl<'a> ASTParser<'a> {
         })
     }
 
+    /// Attempts to parse a variable declaration node at the current position.
+    fn parse_variable_declaration_node(&mut self) -> Result<Statement> {
+        // The start of a variable declaration must always start with the `let` keyword.
+        let let_token = self.expect_token(TokenKind::Keyword(Keyword::Let))?;
+
+        // The next token must be an identifier.
+        let (identifier_reference, _) = self.expect_identifier()?;
+
+        // The next token must be an equals.
+        self.expect_token(TokenKind::Equals)?;
+
+        // And finally, an expression must be provided for the initial value.
+        let value = self.next_expression()?;
+
+        Ok(Statement {
+            span: SourceSpan::between(&let_token.span, &value.span),
+            kind: VariableDeclaration::new(identifier_reference, value).into(),
+        })
+    }
+
+    /// Attempts to parse a function declaration node at the current position.
+    fn parse_function_declaration_node(&mut self) -> Result<Statement> {
+        // The start of a function declaration must always start with the `func` keyword.
+        let func_token = self.expect_token(TokenKind::Keyword(Keyword::Func))?;
+
+        // The next token must be an identifier.
+        let (identifier_reference, _) = self.expect_identifier()?;
+
+        // The next token must be an opening parenthesis.
+        self.expect_token(TokenKind::LeftParenthesis)?;
+
+        // TODO: Parse parameters.
+
+        // After the parameters, there must be a closing parenthesis.
+        self.expect_token(TokenKind::RightParenthesis)?;
+
+        // There might be a hyphen, and if there is, we can attempt to parse the return type.
+        if let Some(TokenKind::Hyphen) = self.token_stream.peek_non_whitespace().map(|it| it.kind) {
+            // We can consume the hyphen token.
+            self.expect_token(TokenKind::Hyphen)?;
+
+            // And then, there must be a right angle bracket.
+            self.expect_token(TokenKind::RightAngleBracket)?;
+
+            // And finally, there must be an identifier for the function's return type.
+            let (_return_type_identifier, _return_type_token) = self.expect_identifier()?;
+
+            // TODO: Create a `Type` with the reference and span for the type.
+        }
+
+        // We can then consume statements until we find a closing brace.
+        let left_brace_token = self.expect_token(TokenKind::LeftBrace)?;
+
+        let mut body: Vec<Statement> = Vec::new();
+
+        loop {
+            let next_token = self
+                .token_stream
+                .peek_non_whitespace()
+                .ok_or(ASTErrorKind::unexpected_end_of_file())?;
+
+            // If the next token is a closing brace, then we have reached the end of the function body.
+            if next_token.kind == TokenKind::RightBrace {
+                break;
+            }
+
+            // Otherwise, we can attempt to parse a statement and add it to the body.
+            body.push(self.next_statement()?);
+        }
+
+        Ok(Statement {
+            kind: FunctionDeclaration::new(identifier_reference, body).into(),
+            span: SourceSpan::between(&func_token.span, &left_brace_token.span),
+        })
+    }
+
     /// Expects a certain [TokenKind] to be produced by the lexer, returning an [Err] if a different token was returned.
     fn expect_token(&mut self, kind: TokenKind) -> Result<Token> {
         let token = self
@@ -92,7 +170,7 @@ impl<'a> ASTParser<'a> {
         // If the token's kind does not match, we can return an error.
         if token.kind != kind {
             return Error {
-                kind: ASTErrorKind::UnexpectedToken {
+                kind: ASTErrorKind::ExpectedToken {
                     expected: kind,
                     received: token.kind,
                 }
@@ -161,6 +239,69 @@ mod tests {
         assert_eq!(
             string_intern_pool.resolve_reference(&identifier_reference),
             Some("identifier")
+        );
+    }
+
+    #[test]
+    fn test_empty_function_declaration() {
+        let mut string_intern_pool = StringInternPoolImpl::new();
+        let function_name_reference = StringReference(0);
+
+        let mut lexer = Lexer::new(&mut string_intern_pool, "func test() {}");
+        let token_stream = lexer.get_stream().expect("get_stream should not fail");
+
+        let mut ast_parser = ASTParser::new(&mut string_intern_pool, token_stream);
+
+        assert_eq!(
+            ast_parser.next_statement().expect("next_statement should not fail!"),
+            Statement {
+                kind: FunctionDeclaration::new(function_name_reference, vec![]).into(),
+                span: SourceSpan { start: 0, end: 13 }
+            }
+        );
+
+        assert_eq!(
+            string_intern_pool.resolve_reference(&function_name_reference),
+            Some("test")
+        );
+    }
+
+    #[test]
+    fn test_function_declaration() {
+        let mut string_intern_pool = StringInternPoolImpl::new();
+        let function_name_reference = StringReference(0);
+        let identifier_reference = StringReference(1);
+
+        let mut lexer = Lexer::new(&mut string_intern_pool, "func test() { let i = 4; }");
+        let token_stream = lexer.get_stream().expect("get_stream should not fail");
+
+        let mut ast_parser = ASTParser::new(&mut string_intern_pool, token_stream);
+
+        assert_eq!(
+            ast_parser.next_statement().expect("next_statement should not fail!"),
+            Statement {
+                kind: FunctionDeclaration::new(
+                    function_name_reference,
+                    vec![Statement {
+                        kind: VariableDeclaration::new(
+                            identifier_reference,
+                            Expression {
+                                kind: ExpressionKind::IntegerLiteral(4).into(),
+                                span: SourceSpan { start: 22, end: 23 }
+                            }
+                        )
+                        .into(),
+                        span: SourceSpan { start: 14, end: 23 }
+                    }]
+                )
+                .into(),
+                span: SourceSpan { start: 0, end: 13 }
+            }
+        );
+
+        assert_eq!(
+            string_intern_pool.resolve_reference(&function_name_reference),
+            Some("test")
         );
     }
 }
