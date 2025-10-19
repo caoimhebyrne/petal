@@ -3,7 +3,7 @@ use std::{env, fs, process};
 use colored::Colorize;
 
 use crate::{
-    ast::ASTParser,
+    ast::{ASTParser, visitor::dump_visitor::DumpASTVisitor},
     core::{error::Error, string_intern::StringInternPoolImpl},
     lexer::Lexer,
 };
@@ -54,17 +54,11 @@ fn dump_ast(file_name: &str, contents: &str) {
     };
 
     let mut ast_parser = ASTParser::new(&mut string_intern_pool, token_stream);
+    let visitor = DumpASTVisitor::new();
 
-    loop {
-        let node = match ast_parser.next_statement() {
-            Ok(value) => value,
-            Err(error) => {
-                print_error(file_name, contents, error);
-                process::exit(1);
-            }
-        };
-
-        println!("{:?}", node);
+    if let Err(error) = ast_parser.parse(&visitor) {
+        print_error(file_name, contents, error);
+        process::exit(1);
     }
 }
 

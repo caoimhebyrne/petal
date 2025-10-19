@@ -6,6 +6,7 @@ use crate::{
             Statement, function_declaration::FunctionDeclaration, r#return::ReturnStatement,
             variable_declaration::VariableDeclaration,
         },
+        visitor::ASTVisitor,
     },
     core::{
         error::Result,
@@ -21,6 +22,7 @@ use crate::{
 pub mod error;
 pub mod expression;
 pub mod statement;
+pub mod visitor;
 
 /// Converts tokens from a [Lexer] into an Abstract Syntax Tree.
 pub struct ASTParser<'a> {
@@ -41,8 +43,20 @@ impl<'a> ASTParser<'a> {
         };
     }
 
+    /// Parses the token stream that this parser was created with into an AST, calling on the provided [ASTVistior]
+    /// to consume any nodes.
+    pub fn parse(&mut self, visitor: &dyn ASTVisitor) -> Result<()> {
+        // While there are still characters left in the token stream, we should try to parse a statement.
+        while self.token_stream.has_remaining() {
+            let statement = self.next_statement()?;
+            visitor.visit(&statement)?;
+        }
+
+        Ok(())
+    }
+
     /// Returns the next AST node at the current position in the source code.
-    pub fn next_statement(&mut self) -> Result<Statement> {
+    fn next_statement(&mut self) -> Result<Statement> {
         let token = self
             .token_stream
             .peek_non_whitespace()

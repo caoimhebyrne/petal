@@ -57,4 +57,9 @@ impl TokenStream {
 
         None
     }
+
+    /// Returns whether the end of the stream has been reached.
+    pub fn has_remaining(&self) -> bool {
+        self.index < self.tokens.len()
+    }
 }
