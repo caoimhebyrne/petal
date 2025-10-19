@@ -1,10 +1,10 @@
-use std::{env, fs, process};
+use std::{env, process};
 
 use colored::Colorize;
 
 use crate::{
     ast::{ASTParser, visitor::dump_visitor::DumpASTVisitor},
-    core::{error::Error, string_intern::StringInternPoolImpl},
+    core::{error::Error, module::Module},
     lexer::Lexer,
 };
 
@@ -29,48 +29,39 @@ fn main() {
         }
     };
 
-    let contents = match fs::read_to_string(&file_path) {
-        Ok(value) => value,
-
-        Err(error) => {
-            eprintln!("ERROR: Failed to read from file '{}': {}", file_path, error);
-            process::exit(1);
-        }
-    };
-
-    dump_ast(&file_path, &contents);
+    let mut module = Module::new(&file_path).expect("failed to create module");
+    dump_ast(&mut module);
 }
 
-fn dump_ast(file_name: &str, contents: &str) {
-    let mut string_intern_pool = StringInternPoolImpl::new();
-    let mut lexer = Lexer::new(&mut string_intern_pool, &contents);
+fn dump_ast(module: &mut Module) {
+    let mut lexer = Lexer::new(module.string_intern_pool.as_mut(), &module.contents);
 
     let token_stream = match lexer.get_stream() {
         Ok(value) => value,
         Err(error) => {
-            print_error(file_name, contents, error);
+            print_error(&module, error);
             process::exit(1);
         }
     };
 
-    let mut ast_parser = ASTParser::new(&mut string_intern_pool, token_stream);
+    let mut ast_parser = ASTParser::new(module.string_intern_pool.as_mut(), token_stream);
     let visitor = DumpASTVisitor::new();
 
     if let Err(error) = ast_parser.parse(&visitor) {
-        print_error(file_name, contents, error);
+        print_error(&module, error);
         process::exit(1);
     }
 }
 
-fn print_error(file_name: &str, contents: &str, error: Error) {
-    let (error_line_number, error_column_number) = error.span.get_line_and_column(contents);
+fn print_error(module: &Module, error: Error) {
+    let (error_line_number, error_column_number) = error.span.get_line_and_column(&module.contents);
 
     eprintln!(
         "{}: {}",
         format!(
             "{}({}:{}:{})",
             String::from("error").red().bold(),
-            file_name,
+            module.file_path,
             error_line_number,
             error_column_number
         )
@@ -80,14 +71,14 @@ fn print_error(file_name: &str, contents: &str, error: Error) {
 
     // In order to print some more context, we can attempt to print the line before the one that the error occurred on.
     if error_line_number > 2
-        && let Some(line) = contents.lines().nth(error_line_number - 2)
+        && let Some(line) = module.contents.lines().nth(error_line_number - 2)
     {
         eprintln!("{} {}", format!("{} |", error_line_number - 1).white(), line.white());
     }
 
     // We can then print the line that the error was found on, with some carets underneath to indicate the token that
     // caused the error.
-    if let Some(line) = contents.lines().nth(error_line_number - 1) {
+    if let Some(line) = module.contents.lines().nth(error_line_number - 1) {
         eprintln!("{} {}", format!("{} |", error_line_number).white(), line.bright_white());
 
         eprintln!(
