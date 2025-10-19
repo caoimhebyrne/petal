@@ -224,6 +224,7 @@ impl<'a> Lexer<'a> {
         let keyword = match string {
             "let" => Keyword::Let,
             "func" => Keyword::Func,
+            "return" => Keyword::Return,
             _ => return None,
         };
 

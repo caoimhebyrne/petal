@@ -75,4 +75,7 @@ pub enum Keyword {
 
     /// Function definition.
     Func,
+
+    /// A return statement.
+    Return,
 }

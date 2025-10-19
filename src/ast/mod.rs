@@ -2,7 +2,7 @@ use crate::{
     ast::{
         error::ASTErrorKind,
         expression::{Expression, ExpressionKind},
-        statement::{FunctionDeclaration, Statement, VariableDeclaration},
+        statement::{FunctionDeclaration, ReturnStatement, Statement, VariableDeclaration},
     },
     core::{
         error::{Error, Result},
@@ -48,6 +48,7 @@ impl<'a> ASTParser<'a> {
         let (statement_result, expect_semicolon) = match token.kind {
             TokenKind::Keyword(Keyword::Let) => (self.parse_variable_declaration_node(), true),
             TokenKind::Keyword(Keyword::Func) => (self.parse_function_declaration_node(), false),
+            TokenKind::Keyword(Keyword::Return) => (self.parse_return_statement_node(), true),
 
             _ => return ASTErrorKind::expected_statement(token).into(),
         };
@@ -154,9 +155,34 @@ impl<'a> ASTParser<'a> {
             body.push(self.next_statement()?);
         }
 
+        self.expect_token(TokenKind::RightBrace)?;
+
         Ok(Statement {
             kind: FunctionDeclaration::new(identifier_reference, body).into(),
             span: SourceSpan::between(&func_token.span, &left_brace_token.span),
+        })
+    }
+
+    /// Attempts to parse a return statement node at the current position.
+    fn parse_return_statement_node(&mut self) -> Result<Statement> {
+        // The first token must be the return keyword.
+        let return_token = self.expect_token(TokenKind::Keyword(Keyword::Return))?;
+
+        // If the next token is not a semicolon, then there should be a value.
+        let mut value: Option<Expression> = None;
+        if self.token_stream.peek_non_whitespace().map(|it| it.kind) != Some(TokenKind::Semicolon) {
+            value = Some(self.next_expression()?);
+        }
+
+        // If a value was present, we can use its span as the end span, otherwise, we can just use the return token.
+        let end_span = match &value {
+            Some(value) => value.span,
+            None => return_token.span,
+        };
+
+        Ok(Statement {
+            kind: ReturnStatement::new(value).into(),
+            span: SourceSpan::between(&return_token.span, &end_span),
         })
     }
 
@@ -302,6 +328,46 @@ mod tests {
         assert_eq!(
             string_intern_pool.resolve_reference(&function_name_reference),
             Some("test")
+        );
+    }
+
+    #[test]
+    fn test_return_void() {
+        let mut string_intern_pool = StringInternPoolImpl::new();
+
+        let mut lexer = Lexer::new(&mut string_intern_pool, "return;");
+        let token_stream = lexer.get_stream().expect("get_stream should not fail");
+
+        let mut ast_parser = ASTParser::new(&mut string_intern_pool, token_stream);
+
+        assert_eq!(
+            ast_parser.next_statement().expect("next_statement should not fail!"),
+            Statement {
+                kind: ReturnStatement::new(None).into(),
+                span: SourceSpan { start: 0, end: 6 }
+            }
+        );
+    }
+
+    #[test]
+    fn test_return_with_value() {
+        let mut string_intern_pool = StringInternPoolImpl::new();
+
+        let mut lexer = Lexer::new(&mut string_intern_pool, "return 123;");
+        let token_stream = lexer.get_stream().expect("get_stream should not fail");
+
+        let mut ast_parser = ASTParser::new(&mut string_intern_pool, token_stream);
+
+        assert_eq!(
+            ast_parser.next_statement().expect("next_statement should not fail!"),
+            Statement {
+                kind: ReturnStatement::new(Some(Expression {
+                    kind: ExpressionKind::IntegerLiteral(123).into(),
+                    span: SourceSpan { start: 7, end: 10 }
+                }))
+                .into(),
+                span: SourceSpan { start: 0, end: 10 }
+            }
         );
     }
 }

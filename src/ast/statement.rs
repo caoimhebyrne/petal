@@ -21,6 +21,9 @@ pub enum StatementKind {
 
     /// A function declaration statement, e.g: `func <name>() { <body> }`
     FunctionDeclaration(FunctionDeclaration),
+
+    /// A return statement, e.g. `return <value>;`
+    ReturnStatement(ReturnStatement),
 }
 
 /// A variable declaration statement, e.g: `let <identifier> = <expression>;`
@@ -71,5 +74,26 @@ impl FunctionDeclaration {
 impl From<FunctionDeclaration> for StatementKind {
     fn from(value: FunctionDeclaration) -> Self {
         StatementKind::FunctionDeclaration(value)
+    }
+}
+
+/// A return statement, e.g. `return <value>;`
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReturnStatement {
+    /// The value being returned.
+    pub value: Option<Expression>,
+}
+
+impl ReturnStatement {
+    /// Creates a new [ReturnStatement] with a [value].
+    pub fn new(value: Option<Expression>) -> Self {
+        ReturnStatement { value }
+    }
+}
+
+/// Allows `.into()` to be called on a [ReturnStatement] to turn it into a [StatementKind].
+impl From<ReturnStatement> for StatementKind {
+    fn from(value: ReturnStatement) -> Self {
+        StatementKind::ReturnStatement(value)
     }
 }
