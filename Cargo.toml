@@ -5,4 +5,8 @@ edition = "2024"
 
 [dependencies]
 colored = "3.0.0"
-inkwell = { version = "0.6.0", features = ["llvm18-1"] }
+inkwell = { version = "0.6.0", default-features = false, features = [
+    "llvm18-1",
+    "target-arm",
+    "target-x86",
+] }
