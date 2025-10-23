@@ -8,6 +8,9 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        llvm-version: [18]
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -19,6 +22,12 @@ jobs:
           ~/.cargo/git
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Install LLVM
+      run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh ${{ matrix.llvm-version }}
+          sudo apt-get update
     - name: Build
       run: cargo build --verbose
     - name: Run tests
