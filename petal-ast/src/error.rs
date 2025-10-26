@@ -20,6 +20,9 @@ pub enum ASTErrorKind {
 
     /// A statement was expected, but a different token kind was received.
     ExpectedStatement { received: TokenKind },
+
+    /// An expression was expected, but a different token kind was received.
+    ExpectedExpression { received: TokenKind },
 }
 
 impl ASTErrorKind {
@@ -54,6 +57,15 @@ impl ASTErrorKind {
             received.span,
         )
     }
+
+    pub fn expected_expression(received: &Token) -> Error {
+        Error::new(
+            ASTErrorKind::ExpectedExpression {
+                received: received.kind,
+            },
+            received.span,
+        )
+    }
 }
 
 impl ErrorKind for ASTErrorKind {}
@@ -62,6 +74,7 @@ impl Display for ASTErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ASTErrorKind::UnexpectedEndOfFile => write!(f, "Unexpected end-of-file"),
+
             ASTErrorKind::ExpectedToken { expected, received } => {
                 write!(
                     f,
@@ -69,11 +82,17 @@ impl Display for ASTErrorKind {
                     expected, received
                 )
             }
+
             ASTErrorKind::ExpectedIdentifier { received } => {
                 write!(f, "Expected an identifier, but received token '{:?}'", received)
             }
+
             ASTErrorKind::ExpectedStatement { received } => {
                 write!(f, "Expected any statement, but received token '{:?}'", received)
+            }
+
+            ASTErrorKind::ExpectedExpression { received } => {
+                write!(f, "Expected an expression, but received token '{:?}'", received)
             }
         }
     }

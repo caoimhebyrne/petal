@@ -12,12 +12,14 @@ use crate::{
         variable_declaration::VariableDeclaration,
     },
     stream::StatementStream,
+    token_stream_ext::TokenStreamExt,
 };
 
 pub mod error;
 pub mod expression;
 pub mod statement;
 pub mod stream;
+pub mod token_stream_ext;
 pub mod visitor;
 
 /// Converts tokens from a [Lexer] into an Abstract Syntax Tree.
@@ -46,10 +48,7 @@ impl ASTParser {
 
     /// Returns the next AST node at the current position in the source code.
     fn next_statement(&mut self) -> Result<Statement> {
-        let token = self
-            .token_stream
-            .peek_non_whitespace()
-            .ok_or_else(|| ASTErrorKind::unexpected_end_of_file())?;
+        let token = self.token_stream.peek_non_whitespace_or_err()?;
 
         let (statement_result, expect_semicolon) = match token.kind {
             TokenKind::Keyword(Keyword::Let) => (self.parse_variable_declaration_node(), true),
@@ -69,14 +68,12 @@ impl ASTParser {
 
     fn next_expression(&mut self) -> Result<Expression> {
         // The only expression type that is supported is the integer literal.
-        let token = self
-            .token_stream
-            .next_non_whitespace()
-            .ok_or_else(|| ASTErrorKind::unexpected_end_of_file())?;
+        let token = self.token_stream.next_non_whitespace_or_err()?;
 
         let integer_literal = match token.kind {
             TokenKind::IntegerLiteral(literal) => literal,
-            _ => return ASTErrorKind::unexpected_end_of_file().into(),
+
+            _ => return ASTErrorKind::expected_expression(&token).into(),
         };
 
         Ok(Expression::new(
@@ -143,12 +140,8 @@ impl ASTParser {
         let mut body: Vec<Statement> = Vec::new();
 
         loop {
-            let next_token = self
-                .token_stream
-                .peek_non_whitespace()
-                .ok_or(ASTErrorKind::unexpected_end_of_file())?;
-
             // If the next token is a closing brace, then we have reached the end of the function body.
+            let next_token = self.token_stream.peek_non_whitespace_or_err()?;
             if next_token.kind == TokenKind::RightBrace {
                 break;
             }
@@ -190,12 +183,8 @@ impl ASTParser {
 
     /// Expects a certain [TokenKind] to be produced by the lexer, returning an [Err] if a different token was returned.
     fn expect_token(&mut self, kind: TokenKind) -> Result<Token> {
-        let token = self
-            .token_stream
-            .next_non_whitespace()
-            .ok_or_else(|| ASTErrorKind::unexpected_end_of_file())?;
-
         // If the token's kind does not match, we can return an error.
+        let token = self.token_stream.next_non_whitespace_or_err()?;
         if token.kind != kind {
             return ASTErrorKind::expected_token(kind, token).into();
         }
@@ -205,13 +194,10 @@ impl ASTParser {
 
     /// Expects an identifier token to be produced by the lexer, returning an [Err] if a different token was returned.
     fn expect_identifier(&mut self) -> Result<(StringReference, Token)> {
-        let token = self
-            .token_stream
-            .next_non_whitespace()
-            .ok_or_else(|| ASTErrorKind::unexpected_end_of_file())?;
-
+        let token = self.token_stream.next_non_whitespace_or_err()?;
         match token.kind {
             TokenKind::Identifier(reference) => Ok((reference, *token)),
+
             _ => ASTErrorKind::expected_identifier(token).into(),
         }
     }
