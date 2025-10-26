@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use crate::core::error::ErrorKind;
+
 /// Represents the different errors that can be returned by a [Lexer].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LexerErrorKind {
@@ -23,3 +25,5 @@ impl Display for LexerErrorKind {
         }
     }
 }
+
+impl ErrorKind for LexerErrorKind {}

@@ -80,10 +80,7 @@ impl<'a> Lexer<'a> {
 
         match token_kind_result {
             Ok(kind) => Ok(Token { kind, span }),
-            Err(kind) => Err(Error {
-                kind: kind.into(),
-                span,
-            }),
+            Err(kind) => Err(Error::new(kind, span)),
         }
     }
 
@@ -340,10 +337,10 @@ mod tests {
 
         assert_eq!(
             lexer.next_token(),
-            Err(Error {
-                kind: LexerErrorKind::InvalidIntegerLiteral.into(),
-                span: SourceSpan { start: 0, end: 36 },
-            })
+            Err(Error::new(
+                LexerErrorKind::InvalidIntegerLiteral,
+                SourceSpan { start: 0, end: 36 }
+            ))
         )
     }
 

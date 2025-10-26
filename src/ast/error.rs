@@ -1,7 +1,10 @@
 use std::fmt::Display;
 
 use crate::{
-    core::{error::Error, source_span::SourceSpan},
+    core::{
+        error::{Error, ErrorKind},
+        source_span::SourceSpan,
+    },
     lexer::token::{Token, TokenKind},
 };
 
@@ -23,43 +26,39 @@ pub enum ASTErrorKind {
 
 impl ASTErrorKind {
     pub fn unexpected_end_of_file() -> Error {
-        Error {
-            kind: ASTErrorKind::UnexpectedEndOfFile.into(),
-            span: SourceSpan { start: 0, end: 0 },
-        }
+        Error::new(ASTErrorKind::UnexpectedEndOfFile, SourceSpan { start: 0, end: 0 })
     }
 
     pub fn expected_token(expected: TokenKind, received: &Token) -> Error {
-        Error {
-            kind: ASTErrorKind::ExpectedToken {
+        Error::new(
+            ASTErrorKind::ExpectedToken {
                 expected,
                 received: received.kind,
-            }
-            .into(),
-            span: received.span,
-        }
+            },
+            received.span,
+        )
     }
 
     pub fn expected_identifier(received: &Token) -> Error {
-        Error {
-            kind: ASTErrorKind::ExpectedIdentifier {
+        Error::new(
+            ASTErrorKind::ExpectedIdentifier {
                 received: received.kind,
-            }
-            .into(),
-            span: received.span,
-        }
+            },
+            received.span,
+        )
     }
 
     pub fn expected_statement(received: &Token) -> Error {
-        Error {
-            kind: ASTErrorKind::ExpectedStatement {
+        Error::new(
+            ASTErrorKind::ExpectedStatement {
                 received: received.kind,
-            }
-            .into(),
-            span: received.span,
-        }
+            },
+            received.span,
+        )
     }
 }
+
+impl ErrorKind for ASTErrorKind {}
 
 impl Display for ASTErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
