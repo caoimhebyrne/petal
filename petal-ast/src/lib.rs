@@ -13,6 +13,7 @@ use crate::{
     },
     stream::StatementStream,
     token_stream_ext::TokenStreamExt,
+    r#type::Type,
 };
 
 pub mod error;
@@ -20,6 +21,7 @@ pub mod expression;
 pub mod statement;
 pub mod stream;
 pub mod token_stream_ext;
+pub mod r#type;
 pub mod visitor;
 
 /// Converts tokens from a [Lexer] into an Abstract Syntax Tree.
@@ -118,9 +120,10 @@ impl ASTParser {
         // TODO: Parse parameters.
 
         // After the parameters, there must be a closing parenthesis.
-        self.expect_token(TokenKind::RightParenthesis)?;
+        let right_parenthesis_token = self.expect_token(TokenKind::RightParenthesis)?;
 
         // There might be a hyphen, and if there is, we can attempt to parse the return type.
+        let mut return_type = Type::void(right_parenthesis_token.span);
         if let Some(TokenKind::Hyphen) = self.token_stream.peek_non_whitespace().map(|it| it.kind) {
             // We can consume the hyphen token.
             self.expect_token(TokenKind::Hyphen)?;
@@ -129,9 +132,8 @@ impl ASTParser {
             self.expect_token(TokenKind::RightAngleBracket)?;
 
             // And finally, there must be an identifier for the function's return type.
-            let (_return_type_identifier, _return_type_token) = self.expect_identifier()?;
-
-            // TODO: Create a `Type` with the reference and span for the type.
+            let (return_type_identifier, return_type_token) = self.expect_identifier()?;
+            return_type = Type::unresolved(return_type_identifier, return_type_token.span);
         }
 
         // We can then consume statements until we find a closing brace.
@@ -153,7 +155,7 @@ impl ASTParser {
         self.expect_token(TokenKind::RightBrace)?;
 
         Ok(Statement::new(
-            FunctionDeclaration::new(identifier_reference, body),
+            FunctionDeclaration::new(identifier_reference, return_type, body),
             SourceSpan::between(&func_token.span, &left_brace_token.span),
         ))
     }
@@ -210,6 +212,7 @@ mod tests {
 
     // Note this useful idiom: importing names from outer (for mod tests) scope.\
     use super::*;
+    use crate::r#type::Type;
 
     #[test]
     fn test_variable_declaration() {
@@ -255,7 +258,12 @@ mod tests {
         assert_eq!(
             ast_parser.next_statement().expect("next_statement should not fail!"),
             Statement {
-                kind: FunctionDeclaration::new(function_name_reference, vec![]).into(),
+                kind: FunctionDeclaration::new(
+                    function_name_reference,
+                    Type::void(SourceSpan { start: 10, end: 11 }),
+                    vec![]
+                )
+                .into(),
                 span: SourceSpan { start: 0, end: 13 }
             }
         );
@@ -282,6 +290,7 @@ mod tests {
             Statement {
                 kind: FunctionDeclaration::new(
                     function_name_reference,
+                    Type::void(SourceSpan { start: 10, end: 11 }),
                     vec![Statement {
                         kind: VariableDeclaration::new(
                             identifier_reference,
@@ -302,6 +311,41 @@ mod tests {
         assert_eq!(
             string_intern_pool.resolve_reference(&function_name_reference),
             Some("test")
+        );
+    }
+
+    #[test]
+    fn test_function_declaration_with_return_type() {
+        let mut string_intern_pool = StringInternPoolImpl::new();
+        let function_name_reference = StringReference(0);
+        let function_return_type_reference = StringReference(1);
+
+        let mut lexer = Lexer::new(&mut string_intern_pool, "func test() -> i32 {}");
+        let token_stream = lexer.get_stream().expect("get_stream should not fail");
+
+        let mut ast_parser = ASTParser::new(token_stream);
+
+        assert_eq!(
+            ast_parser.next_statement().expect("next_statement should not fail!"),
+            Statement {
+                kind: FunctionDeclaration::new(
+                    function_name_reference,
+                    Type::unresolved(function_return_type_reference, SourceSpan { start: 15, end: 18 }),
+                    vec![]
+                )
+                .into(),
+                span: SourceSpan { start: 0, end: 20 }
+            }
+        );
+
+        assert_eq!(
+            string_intern_pool.resolve_reference(&function_name_reference),
+            Some("test")
+        );
+
+        assert_eq!(
+            string_intern_pool.resolve_reference(&function_return_type_reference),
+            Some("i32")
         );
     }
 

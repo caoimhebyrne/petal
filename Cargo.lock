@@ -19,6 +19,7 @@ dependencies = [
  "petal-ast",
  "petal-core",
  "petal-lexer",
+ "petal-typechecker",
  "pico-args",
 ]
 
@@ -38,6 +39,14 @@ version = "0.1.0"
 name = "petal-lexer"
 version = "0.1.0"
 dependencies = [
+ "petal-core",
+]
+
+[[package]]
+name = "petal-typechecker"
+version = "0.1.0"
+dependencies = [
+ "petal-ast",
  "petal-core",
 ]
 

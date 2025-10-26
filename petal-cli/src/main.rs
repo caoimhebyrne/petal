@@ -4,6 +4,7 @@ use colored::Colorize;
 use petal_ast::{ASTParser, visitor::dump_visitor::DumpASTVisitor};
 use petal_core::{error::Error, module::Module};
 use petal_lexer::Lexer;
+use petal_typechecker::Typechecker;
 
 use crate::args::Args;
 
@@ -53,6 +54,11 @@ fn main() {
             process::exit(1);
         }
     };
+
+    if let Err(error) = statement_stream.visit(&Typechecker::new(module.string_intern_pool.as_ref())) {
+        print_error(&module, error);
+        process::exit(1);
+    }
 
     if args.dump_ast {
         if let Err(error) = statement_stream.visit(&DumpASTVisitor::new()) {
