@@ -1,6 +1,6 @@
 use std::{fs, io, path::PathBuf};
 
-use crate::core::string_intern::{StringInternPool, StringInternPoolImpl};
+use crate::string_intern::{StringInternPool, StringInternPoolImpl};
 
 /// A module is a single compilation unit, i.e. a single file being processed by the compiler.
 pub struct Module {

@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::core::error::ErrorKind;
+use petal_core::error::ErrorKind;
 
 /// Represents the different errors that can be returned by a [Lexer].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

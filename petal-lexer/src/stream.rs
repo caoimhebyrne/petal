@@ -1,4 +1,4 @@
-use crate::lexer::token::Token;
+use crate::token::Token;
 
 /// A [TokenStream] wraps a [Vec] of [Tokens], allowing the caller to peek and consume at the same time.
 pub struct TokenStream {

@@ -1,0 +1,10 @@
+[package]
+name = "petal-lexer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+petal-core = { path = "../petal-core" }
+
+[lib]
+doctest = false

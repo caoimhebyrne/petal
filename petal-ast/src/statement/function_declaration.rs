@@ -1,7 +1,6 @@
-use crate::{
-    ast::statement::{Statement, StatementKind},
-    core::string_intern::StringReference,
-};
+use petal_core::string_intern::StringReference;
+
+use crate::statement::{Statement, StatementKind};
 
 /// A function declaration statement, e.g. `func <name>() { <body> }`
 #[derive(Debug, Clone, PartialEq)]

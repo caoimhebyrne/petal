@@ -1,0 +1,12 @@
+[package]
+name = "petal"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+petal-ast = { path = "../petal-ast" }
+petal-core = { path = "../petal-core" }
+petal-lexer = { path = "../petal-lexer" }
+
+colored = "3.0.0"
+pico-args = "0.5.0"

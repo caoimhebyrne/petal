@@ -1,7 +1,6 @@
-use crate::{
-    ast::{statement::Statement, visitor::ASTVisitor},
-    core::error::Result,
-};
+use petal_core::error::Result;
+
+use crate::{statement::Statement, visitor::ASTVisitor};
 
 /// Wraps a [Vec] of AST [Statement]s, allowing the caller to pass a ASTVisitor to consume the [Vec] of [Statement]s.
 pub struct StatementStream {

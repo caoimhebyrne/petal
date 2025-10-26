@@ -1,4 +1,4 @@
-use crate::core::{source_span::SourceSpan, string_intern::StringReference};
+use petal_core::{source_span::SourceSpan, string_intern::StringReference};
 
 /// A token is a small piece of information parsed from the source code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

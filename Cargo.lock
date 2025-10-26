@@ -16,7 +16,29 @@ name = "petal"
 version = "0.1.0"
 dependencies = [
  "colored",
+ "petal-ast",
+ "petal-core",
+ "petal-lexer",
  "pico-args",
+]
+
+[[package]]
+name = "petal-ast"
+version = "0.1.0"
+dependencies = [
+ "petal-core",
+ "petal-lexer",
+]
+
+[[package]]
+name = "petal-core"
+version = "0.1.0"
+
+[[package]]
+name = "petal-lexer"
+version = "0.1.0"
+dependencies = [
+ "petal-core",
 ]
 
 [[package]]

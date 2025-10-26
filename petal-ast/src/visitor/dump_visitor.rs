@@ -1,7 +1,6 @@
-use crate::{
-    ast::{statement::Statement, visitor::ASTVisitor},
-    core::error::Result,
-};
+use petal_core::error::Result;
+
+use crate::{statement::Statement, visitor::ASTVisitor};
 
 /// An [ASTVisitor] which prints information about the visited nodes to standard output.
 pub struct DumpASTVisitor {}

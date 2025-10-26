@@ -1,16 +1,15 @@
 use std::str::Chars;
 
+use petal_core::{
+    error::{Error, Result},
+    source_span::SourceSpan,
+    string_intern::StringInternPool,
+};
+
 use crate::{
-    core::{
-        error::{Error, Result},
-        source_span::SourceSpan,
-        string_intern::StringInternPool,
-    },
-    lexer::{
-        error::LexerErrorKind,
-        stream::TokenStream,
-        token::{Keyword, Token, TokenKind},
-    },
+    error::LexerErrorKind,
+    stream::TokenStream,
+    token::{Keyword, Token, TokenKind},
 };
 
 type LexerResult<T> = core::result::Result<T, LexerErrorKind>;
@@ -246,9 +245,10 @@ impl<'a> Lexer<'a> {
 
 #[cfg(test)]
 mod tests {
+    use petal_core::string_intern::{StringInternPoolImpl, StringReference};
+
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
-    use crate::core::string_intern::{StringInternPoolImpl, StringReference};
 
     macro_rules! assert_tokens {
         ($string_intern_pool:expr, $source:expr $(, $e:expr)* ) => {

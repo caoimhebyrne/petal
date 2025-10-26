@@ -1,8 +1,7 @@
-use crate::{
-    ast::statement::{
-        function_declaration::FunctionDeclaration, r#return::ReturnStatement, variable_declaration::VariableDeclaration,
-    },
-    core::source_span::SourceSpan,
+use petal_core::source_span::SourceSpan;
+
+use crate::statement::{
+    function_declaration::FunctionDeclaration, r#return::ReturnStatement, variable_declaration::VariableDeclaration,
 };
 
 pub mod function_declaration;

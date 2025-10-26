@@ -1,4 +1,4 @@
-use crate::core::source_span::SourceSpan;
+use petal_core::source_span::SourceSpan;
 
 /// An expression can be seen as an action that can return a value.
 #[derive(Debug, Clone, PartialEq)]

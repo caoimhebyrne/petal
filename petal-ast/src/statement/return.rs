@@ -1,4 +1,4 @@
-use crate::ast::{expression::Expression, statement::StatementKind};
+use crate::{expression::Expression, statement::StatementKind};
 
 /// A return statement, e.g. `return <value>;`
 #[derive(Debug, Clone, PartialEq)]

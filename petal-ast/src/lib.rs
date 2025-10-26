@@ -1,18 +1,17 @@
+use petal_core::{error::Result, source_span::SourceSpan, string_intern::StringReference};
+use petal_lexer::{
+    stream::TokenStream,
+    token::{Keyword, Token, TokenKind},
+};
+
 use crate::{
-    ast::{
-        error::ASTErrorKind,
-        expression::{Expression, ExpressionKind},
-        statement::{
-            Statement, function_declaration::FunctionDeclaration, r#return::ReturnStatement,
-            variable_declaration::VariableDeclaration,
-        },
-        stream::StatementStream,
+    error::ASTErrorKind,
+    expression::{Expression, ExpressionKind},
+    statement::{
+        Statement, function_declaration::FunctionDeclaration, r#return::ReturnStatement,
+        variable_declaration::VariableDeclaration,
     },
-    core::{error::Result, source_span::SourceSpan, string_intern::StringReference},
-    lexer::{
-        stream::TokenStream,
-        token::{Keyword, Token, TokenKind},
-    },
+    stream::StatementStream,
 };
 
 pub mod error;
@@ -220,15 +219,11 @@ impl ASTParser {
 
 #[cfg(test)]
 mod tests {
+    use petal_core::string_intern::{StringInternPool, StringInternPoolImpl};
+    use petal_lexer::Lexer;
+
     // Note this useful idiom: importing names from outer (for mod tests) scope.\
     use super::*;
-    use crate::{
-        core::{
-            source_span::SourceSpan,
-            string_intern::{StringInternPool, StringInternPoolImpl},
-        },
-        lexer::Lexer,
-    };
 
     #[test]
     fn test_variable_declaration() {

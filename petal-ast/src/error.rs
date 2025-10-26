@@ -1,12 +1,10 @@
 use std::fmt::Display;
 
-use crate::{
-    core::{
-        error::{Error, ErrorKind},
-        source_span::SourceSpan,
-    },
-    lexer::token::{Token, TokenKind},
+use petal_core::{
+    error::{Error, ErrorKind},
+    source_span::SourceSpan,
 };
+use petal_lexer::token::{Token, TokenKind};
 
 /// Represents the different kinds of errors that can be returned when parsing an AST.
 #[derive(Debug, Clone, PartialEq)]

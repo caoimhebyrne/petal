@@ -1,18 +1,13 @@
 use std::process;
 
 use colored::Colorize;
+use petal_ast::{ASTParser, visitor::dump_visitor::DumpASTVisitor};
+use petal_core::{error::Error, module::Module};
+use petal_lexer::Lexer;
 
-use crate::{
-    args::Args,
-    ast::{ASTParser, visitor::dump_visitor::DumpASTVisitor},
-    core::{error::Error, module::Module},
-    lexer::Lexer,
-};
+use crate::args::Args;
 
 pub mod args;
-pub mod ast;
-pub mod core;
-pub mod lexer;
 
 /// This is the entrypoint for the Petal compiler.
 fn main() {

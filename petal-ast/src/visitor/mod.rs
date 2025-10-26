@@ -1,4 +1,6 @@
-use crate::{ast::statement::Statement, core::error::Result};
+use petal_core::error::Result;
+
+use crate::statement::Statement;
 
 pub mod dump_visitor;
 

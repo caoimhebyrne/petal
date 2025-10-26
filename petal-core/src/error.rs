@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display};
 
-use crate::core::{dyn_compare::DynCompare, source_span::SourceSpan};
+use crate::{dyn_compare::DynCompare, source_span::SourceSpan};
 
 /// A trait for all error kind enums to implement.
 pub trait ErrorKind: Display + Debug + DynCompare {}

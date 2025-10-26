@@ -1,7 +1,6 @@
-use crate::{
-    ast::{expression::Expression, statement::StatementKind},
-    core::string_intern::StringReference,
-};
+use petal_core::string_intern::StringReference;
+
+use crate::{expression::Expression, statement::StatementKind};
 
 /// A variable declaration statement, e.g: `let <identifier> = <expression>;`
 #[derive(Debug, Clone, PartialEq)]
