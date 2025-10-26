@@ -30,10 +30,6 @@ fn main() {
     };
 
     let mut module = Module::new(&file_path).expect("failed to create module");
-    dump_ast(&mut module);
-}
-
-fn dump_ast(module: &mut Module) {
     let mut lexer = Lexer::new(module.string_intern_pool.as_mut(), &module.contents);
 
     let token_stream = match lexer.get_stream() {
@@ -45,9 +41,16 @@ fn dump_ast(module: &mut Module) {
     };
 
     let mut ast_parser = ASTParser::new(token_stream);
-    let visitor = DumpASTVisitor::new();
 
-    if let Err(error) = ast_parser.parse(&visitor) {
+    let mut statement_stream = match ast_parser.parse() {
+        Ok(value) => value,
+        Err(error) => {
+            print_error(&module, error);
+            process::exit(1);
+        }
+    };
+
+    if let Err(error) = statement_stream.visit(&DumpASTVisitor::new()) {
         print_error(&module, error);
         process::exit(1);
     }

@@ -6,7 +6,7 @@ use crate::{
             Statement, function_declaration::FunctionDeclaration, r#return::ReturnStatement,
             variable_declaration::VariableDeclaration,
         },
-        visitor::ASTVisitor,
+        stream::StatementStream,
     },
     core::{error::Result, source_span::SourceSpan, string_intern::StringReference},
     lexer::{
@@ -18,6 +18,7 @@ use crate::{
 pub mod error;
 pub mod expression;
 pub mod statement;
+pub mod stream;
 pub mod visitor;
 
 /// Converts tokens from a [Lexer] into an Abstract Syntax Tree.
@@ -32,16 +33,16 @@ impl ASTParser {
         return ASTParser { token_stream };
     }
 
-    /// Parses the token stream that this parser was created with into an AST, calling on the provided [ASTVistior]
-    /// to consume any nodes.
-    pub fn parse(&mut self, visitor: &dyn ASTVisitor) -> Result<()> {
+    /// Parses the token stream that this parser was created with into a [StatementStream].
+    pub fn parse(&mut self) -> Result<StatementStream> {
+        let mut statements = Vec::new();
+
         // While there are still characters left in the token stream, we should try to parse a statement.
         while self.token_stream.has_remaining() {
-            let statement = self.next_statement()?;
-            visitor.visit(&statement)?;
+            statements.push(self.next_statement()?);
         }
 
-        Ok(())
+        Ok(StatementStream::new(statements))
     }
 
     /// Returns the next AST node at the current position in the source code.
