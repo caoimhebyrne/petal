@@ -8,11 +8,7 @@ use crate::{
         },
         visitor::ASTVisitor,
     },
-    core::{
-        error::Result,
-        source_span::SourceSpan,
-        string_intern::{StringInternPool, StringReference},
-    },
+    core::{error::Result, source_span::SourceSpan, string_intern::StringReference},
     lexer::{
         stream::TokenStream,
         token::{Keyword, Token, TokenKind},
@@ -25,22 +21,15 @@ pub mod statement;
 pub mod visitor;
 
 /// Converts tokens from a [Lexer] into an Abstract Syntax Tree.
-pub struct ASTParser<'a> {
-    /// The string intern pool to read strings from.
-    #[allow(dead_code)]
-    string_intern_pool: &'a mut dyn StringInternPool,
-
+pub struct ASTParser {
     /// The token stream to read tokens from.
     token_stream: TokenStream,
 }
 
-impl<'a> ASTParser<'a> {
+impl ASTParser {
     /// Creates a new [ASTParser] which reads from the provided [Lexer].
-    pub fn new(string_intern_pool: &'a mut dyn StringInternPool, token_stream: TokenStream) -> Self {
-        return ASTParser {
-            string_intern_pool,
-            token_stream,
-        };
+    pub fn new(token_stream: TokenStream) -> Self {
+        return ASTParser { token_stream };
     }
 
     /// Parses the token stream that this parser was created with into an AST, calling on the provided [ASTVistior]
@@ -233,7 +222,10 @@ mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.\
     use super::*;
     use crate::{
-        core::{source_span::SourceSpan, string_intern::StringInternPoolImpl},
+        core::{
+            source_span::SourceSpan,
+            string_intern::{StringInternPool, StringInternPoolImpl},
+        },
         lexer::Lexer,
     };
 
@@ -245,7 +237,7 @@ mod tests {
         let mut lexer = Lexer::new(&mut string_intern_pool, "let identifier = 123456;");
         let token_stream = lexer.get_stream().expect("get_stream should not fail");
 
-        let mut ast_parser = ASTParser::new(&mut string_intern_pool, token_stream);
+        let mut ast_parser = ASTParser::new(token_stream);
 
         assert_eq!(
             ast_parser.next_statement().expect("next_statement should not fail!"),
@@ -276,7 +268,7 @@ mod tests {
         let mut lexer = Lexer::new(&mut string_intern_pool, "func test() {}");
         let token_stream = lexer.get_stream().expect("get_stream should not fail");
 
-        let mut ast_parser = ASTParser::new(&mut string_intern_pool, token_stream);
+        let mut ast_parser = ASTParser::new(token_stream);
 
         assert_eq!(
             ast_parser.next_statement().expect("next_statement should not fail!"),
@@ -301,7 +293,7 @@ mod tests {
         let mut lexer = Lexer::new(&mut string_intern_pool, "func test() { let i = 4; }");
         let token_stream = lexer.get_stream().expect("get_stream should not fail");
 
-        let mut ast_parser = ASTParser::new(&mut string_intern_pool, token_stream);
+        let mut ast_parser = ASTParser::new(token_stream);
 
         assert_eq!(
             ast_parser.next_statement().expect("next_statement should not fail!"),
@@ -338,7 +330,7 @@ mod tests {
         let mut lexer = Lexer::new(&mut string_intern_pool, "return;");
         let token_stream = lexer.get_stream().expect("get_stream should not fail");
 
-        let mut ast_parser = ASTParser::new(&mut string_intern_pool, token_stream);
+        let mut ast_parser = ASTParser::new(token_stream);
 
         assert_eq!(
             ast_parser.next_statement().expect("next_statement should not fail!"),
@@ -356,7 +348,7 @@ mod tests {
         let mut lexer = Lexer::new(&mut string_intern_pool, "return 123;");
         let token_stream = lexer.get_stream().expect("get_stream should not fail");
 
-        let mut ast_parser = ASTParser::new(&mut string_intern_pool, token_stream);
+        let mut ast_parser = ASTParser::new(token_stream);
 
         assert_eq!(
             ast_parser.next_statement().expect("next_statement should not fail!"),

@@ -44,7 +44,7 @@ fn dump_ast(module: &mut Module) {
         }
     };
 
-    let mut ast_parser = ASTParser::new(module.string_intern_pool.as_mut(), token_stream);
+    let mut ast_parser = ASTParser::new(token_stream);
     let visitor = DumpASTVisitor::new();
 
     if let Err(error) = ast_parser.parse(&visitor) {
