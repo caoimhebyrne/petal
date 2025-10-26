@@ -1,35 +1,44 @@
-use std::{env, process};
+use std::process;
 
 use colored::Colorize;
 
 use crate::{
+    args::Args,
     ast::{ASTParser, visitor::dump_visitor::DumpASTVisitor},
     core::{error::Error, module::Module},
     lexer::Lexer,
 };
 
+pub mod args;
 pub mod ast;
 pub mod core;
 pub mod lexer;
 
 /// This is the entrypoint for the Petal compiler.
 fn main() {
-    let mut args = env::args();
+    let args = match Args::from_env() {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("error: {}", error);
 
-    // The first argument to the program must always be the name of the binary.
-    let program_name = args.next().unwrap_or_else(|| "petal".into());
-
-    // Then, we must have a file path to read from.
-    let file_path = match args.next() {
-        Some(value) => value,
-
-        None => {
-            eprintln!("Usage: {} <file_path>", program_name);
-            process::exit(1);
+            Args::print_help();
+            process::exit(-1);
         }
     };
 
-    let mut module = Module::new(&file_path).expect("failed to create module");
+    if args.help {
+        Args::print_help();
+        return;
+    }
+
+    let mut module = match Module::new(args.input) {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("error: {}", error);
+            process::exit(-1);
+        }
+    };
+
     let mut lexer = Lexer::new(module.string_intern_pool.as_mut(), &module.contents);
 
     let token_stream = match lexer.get_stream() {
@@ -50,9 +59,11 @@ fn main() {
         }
     };
 
-    if let Err(error) = statement_stream.visit(&DumpASTVisitor::new()) {
-        print_error(&module, error);
-        process::exit(1);
+    if args.dump_ast {
+        if let Err(error) = statement_stream.visit(&DumpASTVisitor::new()) {
+            print_error(&module, error);
+            process::exit(1);
+        }
     }
 }
 
@@ -64,7 +75,7 @@ fn print_error(module: &Module, error: Error) {
         format!(
             "{}({}:{}:{})",
             String::from("error").red().bold(),
-            module.file_path,
+            module.input.display(),
             error_line_number,
             error_column_number
         )
