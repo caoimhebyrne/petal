@@ -1,6 +1,9 @@
 use std::fmt::Display;
 
-use petal_ast::statement::{Statement, StatementKind};
+use petal_ast::{
+    statement::{Statement, StatementKind},
+    r#type::{Type, TypeKind},
+};
 use petal_core::{
     error::{Error, ErrorKind},
     source_span::SourceSpan,
@@ -18,6 +21,12 @@ pub enum TypecheckerErrorKind {
 
     /// A statement was encountered that could not be typechecked.
     UnsupportedStatement(StatementKind),
+
+    /// The typechecker's context was missing (for whatever reason).
+    MissingContext,
+
+    /// A type was expected, but a different one was received.
+    ExpectedType { expected: TypeKind, received: TypeKind },
 }
 
 impl TypecheckerErrorKind {
@@ -33,6 +42,20 @@ impl TypecheckerErrorKind {
         Error::new(
             TypecheckerErrorKind::UnsupportedStatement(statement.kind.clone()),
             statement.span,
+        )
+    }
+
+    pub fn missing_context(span: SourceSpan) -> Error {
+        Error::new(TypecheckerErrorKind::MissingContext, span)
+    }
+
+    pub fn expected_type(expected: &Type, received: &Type) -> Error {
+        Error::new(
+            TypecheckerErrorKind::ExpectedType {
+                expected: expected.kind,
+                received: received.kind,
+            },
+            received.span,
         )
     }
 }
@@ -52,6 +75,15 @@ impl Display for TypecheckerErrorKind {
 
             TypecheckerErrorKind::UnsupportedStatement(kind) => {
                 write!(f, "Unable to type-check statement: '{:?}'", kind)
+            }
+
+            TypecheckerErrorKind::MissingContext => write!(
+                f,
+                "An internal error occurred in the typechecker: unable to find a context"
+            ),
+
+            TypecheckerErrorKind::ExpectedType { expected, received } => {
+                write!(f, "Expected type '{}' but received type '{}'", expected, received)
             }
         }
     }

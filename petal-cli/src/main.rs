@@ -55,13 +55,13 @@ fn main() {
         }
     };
 
-    if let Err(error) = statement_stream.visit(&Typechecker::new(module.string_intern_pool.as_ref())) {
+    if let Err(error) = statement_stream.visit(&mut Typechecker::new(module.string_intern_pool.as_ref())) {
         print_error(&module, error);
         process::exit(1);
     }
 
     if args.dump_ast {
-        if let Err(error) = statement_stream.visit(&DumpASTVisitor::new()) {
+        if let Err(error) = statement_stream.visit(&mut DumpASTVisitor::new()) {
             print_error(&module, error);
             process::exit(1);
         }

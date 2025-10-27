@@ -231,6 +231,7 @@ mod tests {
                     identifier_reference,
                     Expression {
                         kind: ExpressionKind::IntegerLiteral(123456),
+                        r#type: None,
                         span: SourceSpan { start: 17, end: 23 }
                     }
                 )
@@ -296,6 +297,7 @@ mod tests {
                             identifier_reference,
                             Expression {
                                 kind: ExpressionKind::IntegerLiteral(4).into(),
+                                r#type: None,
                                 span: SourceSpan { start: 22, end: 23 }
                             }
                         )
@@ -381,6 +383,7 @@ mod tests {
             Statement {
                 kind: ReturnStatement::new(Some(Expression {
                     kind: ExpressionKind::IntegerLiteral(123).into(),
+                    r#type: None,
                     span: SourceSpan { start: 7, end: 10 }
                 }))
                 .into(),

@@ -13,7 +13,7 @@ impl DumpASTVisitor {
 }
 
 impl ASTVisitor for DumpASTVisitor {
-    fn visit(&self, statement: &mut Statement) -> Result<()> {
+    fn visit(&mut self, statement: &mut Statement) -> Result<()> {
         println!("{:#?}", statement);
 
         Ok(())

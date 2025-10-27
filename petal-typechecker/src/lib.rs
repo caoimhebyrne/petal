@@ -1,25 +1,32 @@
 use petal_ast::{
-    statement::{Statement, StatementKind, function_declaration::FunctionDeclaration},
+    statement::Statement,
     r#type::{ResolvedTypeKind, Type, TypeKind},
     visitor::ASTVisitor,
 };
-use petal_core::{error::Result, string_intern::StringInternPool};
+use petal_core::{error::Result, source_span::SourceSpan, string_intern::StringInternPool};
 
-use crate::{error::TypecheckerErrorKind, r#trait::Typecheck};
+use crate::{context::TypecheckerContext, error::TypecheckerErrorKind, typecheck::Typecheck};
 
+pub mod context;
 pub mod error;
-pub mod r#trait;
+pub mod typecheck;
 
 /// Responsible for resolving all types within an AST.
 pub struct Typechecker<'a> {
     /// The StringInternPool implementation to read identifiers from.
     string_intern_pool: &'a dyn StringInternPool,
+
+    /// The context of the typechecker, set once a function declaration is being checked.
+    context: Option<TypecheckerContext>,
 }
 
 impl<'a> Typechecker<'a> {
     /// Creates a new [Typechecker].
     pub fn new(string_intern_pool: &'a dyn StringInternPool) -> Self {
-        Typechecker { string_intern_pool }
+        Typechecker {
+            string_intern_pool,
+            context: None,
+        }
     }
 
     /// Resolves the provided type if it has not yet been resolved.
@@ -45,23 +52,21 @@ impl<'a> Typechecker<'a> {
         r#type.resolve(resolved_type_kind);
         Ok(*r#type)
     }
-}
 
-impl<'a> ASTVisitor for Typechecker<'a> {
-    fn visit(&self, statement: &mut Statement) -> Result<()> {
-        match &mut statement.kind {
-            StatementKind::FunctionDeclaration(declaration) => declaration.typecheck(self)?,
+    /// Expects a typechecker's context to be bound, returning an error if it has not been bound.
+    pub fn context(&self, span: Option<SourceSpan>) -> Result<&TypecheckerContext> {
+        let unwrapped_span = span.unwrap_or(SourceSpan { start: 0, end: 0 });
 
-            _ => return TypecheckerErrorKind::unsupported_statement(statement).into(),
-        };
-
-        Ok(())
+        self.context
+            .as_ref()
+            .ok_or(TypecheckerErrorKind::missing_context(unwrapped_span))
     }
 }
 
-impl Typecheck for FunctionDeclaration {
-    fn typecheck(&mut self, typechecker: &Typechecker) -> Result<Type> {
-        typechecker.resolve(&mut self.return_type)
+impl<'a> ASTVisitor for Typechecker<'a> {
+    fn visit(&mut self, statement: &mut Statement) -> Result<()> {
+        statement.typecheck(self)?;
+        Ok(())
     }
 }
 

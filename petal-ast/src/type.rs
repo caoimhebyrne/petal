@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use petal_core::{source_span::SourceSpan, string_intern::StringReference};
 
 /// A type associated with an AST node.
@@ -45,6 +47,15 @@ pub enum TypeKind {
     Resolved(ResolvedTypeKind),
 }
 
+impl Display for TypeKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TypeKind::Unresolved(_) => write!(f, "<unresolved>"),
+            TypeKind::Resolved(kind) => write!(f, "{}", kind),
+        }
+    }
+}
+
 /// The kinds of resolved types that exist.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResolvedTypeKind {
@@ -53,6 +64,15 @@ pub enum ResolvedTypeKind {
 
     /// The 'void' type.
     Void,
+}
+
+impl Display for ResolvedTypeKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ResolvedTypeKind::Integer(size) => write!(f, "i{}", size),
+            ResolvedTypeKind::Void => write!(f, "void"),
+        }
+    }
 }
 
 impl Into<TypeKind> for ResolvedTypeKind {

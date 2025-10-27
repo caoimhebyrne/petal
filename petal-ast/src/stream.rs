@@ -15,7 +15,7 @@ impl StatementStream {
     }
 
     /// Calls [ASTVisitor.visitStatement] on the provided [visitor] for all statements held within this stream.
-    pub fn visit(&mut self, visitor: &dyn ASTVisitor) -> Result<()> {
+    pub fn visit(&mut self, visitor: &mut dyn ASTVisitor) -> Result<()> {
         for statement in &mut self.statements {
             visitor.visit(statement)?;
         }
