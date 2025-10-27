@@ -7,6 +7,7 @@ edition = "2024"
 petal-ast = { path = "../petal-ast" }
 petal-core = { path = "../petal-core" }
 petal-lexer = { path = "../petal-lexer" }
+petal-llvm-codegen = { path = "../petal-llvm-codegen" }
 petal-typechecker = { path = "../petal-typechecker" }
 
 colored = "3.0.0"
