@@ -70,9 +70,6 @@ pub enum TokenKind {
 /// Represents the different kinds of keywords that are available.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Keyword {
-    /// Variable definition.
-    Let,
-
     /// Function definition.
     Func,
 

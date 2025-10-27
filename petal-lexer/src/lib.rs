@@ -218,7 +218,6 @@ impl<'a> Lexer<'a> {
     /// Attempts to match a keyword from the input string, returning [Option::None] if a matching keyword was not found.
     fn match_keyword(string: &str) -> Option<Keyword> {
         let keyword = match string {
-            "let" => Keyword::Let,
             "func" => Keyword::Func,
             "return" => Keyword::Return,
             _ => return None,
@@ -405,13 +404,14 @@ mod tests {
     #[test]
     fn test_variable_declaration() {
         let mut string_intern_pool = StringInternPoolImpl::new();
-        let identifier_reference = StringReference(0);
+        let type_reference = StringReference(0);
+        let identifier_reference = StringReference(1);
 
         assert_tokens!(
             &mut string_intern_pool,
-            "let identifier = 123456789;",
+            "i32 identifier = 123456789;",
             Token {
-                kind: TokenKind::Keyword(Keyword::Let),
+                kind: TokenKind::Identifier(type_reference),
                 span: SourceSpan { start: 0, end: 3 }
             },
             Token {
@@ -432,10 +432,12 @@ mod tests {
             }
         );
 
+        assert_eq!(string_intern_pool.resolve_reference(&type_reference), Some("i32"));
+
         assert_eq!(
             string_intern_pool.resolve_reference(&identifier_reference),
             Some("identifier")
-        )
+        );
     }
 
     /// A helper method to assert that the tokens in the provided [Vec] can be  consumed from a [Lexer] that has been

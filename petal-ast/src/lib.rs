@@ -53,9 +53,13 @@ impl ASTParser {
         let token = self.token_stream.peek_non_whitespace_or_err()?;
 
         let (statement_result, expect_semicolon) = match token.kind {
-            TokenKind::Keyword(Keyword::Let) => (self.parse_variable_declaration_node(), true),
             TokenKind::Keyword(Keyword::Func) => (self.parse_function_declaration_node(), false),
             TokenKind::Keyword(Keyword::Return) => (self.parse_return_statement_node(), true),
+
+            TokenKind::Identifier(_) => {
+                // TODO: If this is an identifier, we should look ahead to make sure that it is a variable declaration.
+                (self.parse_variable_declaration_node(), true)
+            }
 
             _ => return ASTErrorKind::expected_statement(token).into(),
         };
@@ -86,8 +90,8 @@ impl ASTParser {
 
     /// Attempts to parse a variable declaration node at the current position.
     fn parse_variable_declaration_node(&mut self) -> Result<Statement> {
-        // The start of a variable declaration must always start with the `let` keyword.
-        let let_token = self.expect_token(TokenKind::Keyword(Keyword::Let))?;
+        // The start of a variable declaration must always start with the type identifier.
+        let (type_reference, type_token) = self.expect_identifier()?;
 
         // The next token must be an identifier.
         let (identifier_reference, _) = self.expect_identifier()?;
@@ -98,10 +102,14 @@ impl ASTParser {
         // And finally, an expression must be provided for the initial value.
         let value = self.next_expression()?;
 
-        let span = SourceSpan::between(&let_token.span, &value.span);
+        let span = SourceSpan::between(&type_token.span, &value.span);
 
         Ok(Statement::new(
-            VariableDeclaration::new(identifier_reference, value),
+            VariableDeclaration::new(
+                identifier_reference,
+                Type::unresolved(type_reference, type_token.span),
+                value,
+            ),
             span,
         ))
     }
@@ -217,9 +225,10 @@ mod tests {
     #[test]
     fn test_variable_declaration() {
         let mut string_intern_pool = StringInternPoolImpl::new();
-        let identifier_reference = StringReference(0);
+        let type_reference = StringReference(0);
+        let identifier_reference = StringReference(1);
 
-        let mut lexer = Lexer::new(&mut string_intern_pool, "let identifier = 123456;");
+        let mut lexer = Lexer::new(&mut string_intern_pool, "i32 identifier = 123456;");
         let token_stream = lexer.get_stream().expect("get_stream should not fail");
 
         let mut ast_parser = ASTParser::new(token_stream);
@@ -229,6 +238,7 @@ mod tests {
             Statement {
                 kind: VariableDeclaration::new(
                     identifier_reference,
+                    Type::unresolved(type_reference, SourceSpan { start: 0, end: 3 }),
                     Expression {
                         kind: ExpressionKind::IntegerLiteral(123456),
                         r#type: None,
@@ -239,6 +249,8 @@ mod tests {
                 span: SourceSpan { start: 0, end: 23 }
             }
         );
+
+        assert_eq!(string_intern_pool.resolve_reference(&type_reference), Some("i32"));
 
         assert_eq!(
             string_intern_pool.resolve_reference(&identifier_reference),
@@ -279,9 +291,10 @@ mod tests {
     fn test_function_declaration() {
         let mut string_intern_pool = StringInternPoolImpl::new();
         let function_name_reference = StringReference(0);
-        let identifier_reference = StringReference(1);
+        let type_reference = StringReference(1);
+        let identifier_reference = StringReference(2);
 
-        let mut lexer = Lexer::new(&mut string_intern_pool, "func test() { let i = 4; }");
+        let mut lexer = Lexer::new(&mut string_intern_pool, "func test() { i32 i = 4; }");
         let token_stream = lexer.get_stream().expect("get_stream should not fail");
 
         let mut ast_parser = ASTParser::new(token_stream);
@@ -295,6 +308,7 @@ mod tests {
                     vec![Statement {
                         kind: VariableDeclaration::new(
                             identifier_reference,
+                            Type::unresolved(type_reference, SourceSpan { start: 14, end: 17 }),
                             Expression {
                                 kind: ExpressionKind::IntegerLiteral(4).into(),
                                 r#type: None,
@@ -314,6 +328,8 @@ mod tests {
             string_intern_pool.resolve_reference(&function_name_reference),
             Some("test")
         );
+
+        assert_eq!(string_intern_pool.resolve_reference(&type_reference), Some("i32"));
     }
 
     #[test]
