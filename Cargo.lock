@@ -133,6 +133,8 @@ name = "petal-llvm-codegen"
 version = "0.1.0"
 dependencies = [
  "inkwell",
+ "petal-ast",
+ "petal-core",
 ]
 
 [[package]]
