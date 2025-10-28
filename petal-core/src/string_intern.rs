@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 /// A reference to an intern'd string.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StringReference(pub usize);
 
 /// A pool of 'intern'ed strings.

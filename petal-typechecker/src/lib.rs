@@ -54,11 +54,11 @@ impl<'a> Typechecker<'a> {
     }
 
     /// Expects a typechecker's context to be bound, returning an error if it has not been bound.
-    pub fn context(&self, span: Option<SourceSpan>) -> Result<&TypecheckerContext> {
+    pub fn context(&mut self, span: Option<SourceSpan>) -> Result<&mut TypecheckerContext> {
         let unwrapped_span = span.unwrap_or(SourceSpan { start: 0, end: 0 });
 
         self.context
-            .as_ref()
+            .as_mut()
             .ok_or(TypecheckerErrorKind::missing_context(unwrapped_span))
     }
 }

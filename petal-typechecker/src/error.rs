@@ -34,6 +34,12 @@ pub enum TypecheckerErrorKind {
 
     /// A value was not returned from a function block.
     MissingReturnStatement,
+
+    /// A variable was already declared with the same name.
+    DuplicateVariableDeclaration,
+
+    /// A variable was referenced that was not declared.
+    UndeclaredVariable(String),
 }
 
 impl TypecheckerErrorKind {
@@ -76,6 +82,14 @@ impl TypecheckerErrorKind {
     pub fn missing_return_statement(span: SourceSpan) -> Error {
         Error::new(TypecheckerErrorKind::MissingReturnStatement, span)
     }
+
+    pub fn duplicate_variable_declaration(span: SourceSpan) -> Error {
+        Error::new(TypecheckerErrorKind::DuplicateVariableDeclaration, span)
+    }
+
+    pub fn undeclared_variable(name: &str, span: SourceSpan) -> Error {
+        Error::new(TypecheckerErrorKind::UndeclaredVariable(name.to_owned()), span)
+    }
 }
 
 impl Display for TypecheckerErrorKind {
@@ -112,6 +126,12 @@ impl Display for TypecheckerErrorKind {
                 f,
                 "A return statement was not found in the function block, and the function's return type is not void"
             ),
+
+            TypecheckerErrorKind::DuplicateVariableDeclaration => {
+                write!(f, "A variable with the same name already exists in this scope")
+            }
+
+            TypecheckerErrorKind::UndeclaredVariable(name) => write!(f, "Undeclared variable: '{}'", name),
         }
     }
 }

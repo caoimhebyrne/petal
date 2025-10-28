@@ -1,5 +1,8 @@
 use petal_ast::{
-    statement::{Statement, StatementKind, function_declaration::FunctionDeclaration, r#return::ReturnStatement},
+    statement::{
+        Statement, StatementKind, function_declaration::FunctionDeclaration, r#return::ReturnStatement,
+        variable_declaration::VariableDeclaration,
+    },
     r#type::{ResolvedTypeKind, Type, TypeKind},
 };
 use petal_core::{error::Result, source_span::SourceSpan};
@@ -11,7 +14,9 @@ impl Typecheck for Statement {
         match &mut self.kind {
             StatementKind::FunctionDeclaration(declaration) => declaration.typecheck(typechecker, span),
             StatementKind::ReturnStatement(return_statement) => return_statement.typecheck(typechecker, span),
+            StatementKind::VariableDeclaration(declaration) => declaration.typecheck(typechecker, span),
 
+            #[allow(unreachable_patterns)]
             _ => return TypecheckerErrorKind::unsupported_statement(self).into(),
         }
     }
@@ -71,5 +76,27 @@ impl Typecheck for ReturnStatement {
         }
 
         Ok(r#type)
+    }
+}
+
+impl Typecheck for VariableDeclaration {
+    fn typecheck(&mut self, typechecker: &mut Typechecker, span: SourceSpan) -> Result<Type> {
+        // We need to be able to resolve the type of the variable.
+        let variable_type = typechecker.resolve(&mut self.r#type)?;
+
+        // The type of the value must match the variable's type.
+        let value_type = self.value.typecheck(typechecker, span)?;
+        if variable_type.kind != value_type.kind {
+            return TypecheckerErrorKind::expected_type(&variable_type, &value_type).into();
+        }
+
+        // Now that the types are okay, we can attempt to insert the variable declaration into the typechecker context.
+        let context = typechecker.context(Some(span))?;
+        if context.variable_declaration_exists(self.identifier_reference) {
+            return TypecheckerErrorKind::duplicate_variable_declaration(span).into();
+        }
+
+        context.add_variable_declaration(self.identifier_reference, variable_type);
+        Ok(variable_type)
     }
 }
