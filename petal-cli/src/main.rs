@@ -69,10 +69,20 @@ fn main() {
     }
 
     let codegen_context = LLVMCodegenContext::new();
-    let mut codegen = LLVMCodegen::new(&codegen_context);
+    let mut codegen = LLVMCodegen::new(&codegen_context, module.string_intern_pool.as_ref());
 
     if let Err(error) = statement_stream.visit(&mut codegen) {
         print_error(&module, error);
+        process::exit(1);
+    }
+
+    if let Err(error) = codegen.compile() {
+        eprintln!(
+            "{}: {}",
+            String::from("error").red().bold(),
+            format!("{}", error).bold(),
+        );
+
         process::exit(1);
     }
 }
