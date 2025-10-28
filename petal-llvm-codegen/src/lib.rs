@@ -23,15 +23,19 @@ pub struct LLVMCodegenContext {
     /// This MUST outlive the [LLVMCodegen] struct that contains the module and builder, hence why it's in here.
     pub(crate) llvm_context: Context,
 
+    /// The name of the module being compiled.
+    pub(crate) module_name: String,
+
     /// Whether the module's bytecode should be dumped to stderr before compilation.
     pub(crate) dump_bytecode: bool,
 }
 
 impl LLVMCodegenContext {
     /// Creates a new [LLVMCodegenContext].
-    pub fn new(dump_bytecode: bool) -> Self {
+    pub fn new(dump_bytecode: bool, module_name: String) -> Self {
         LLVMCodegenContext {
             llvm_context: Context::create(),
+            module_name: module_name,
             dump_bytecode,
         }
     }
@@ -58,8 +62,7 @@ impl<'ctx> LLVMCodegen<'ctx> {
         LLVMCodegen {
             codegen_context,
             string_intern_pool,
-            // TODO: Derive the module name from the input file's name.
-            llvm_module: codegen_context.llvm_context.create_module("module"),
+            llvm_module: codegen_context.llvm_context.create_module(&codegen_context.module_name),
             llvm_builder: codegen_context.llvm_context.create_builder(),
         }
     }

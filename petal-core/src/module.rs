@@ -25,4 +25,15 @@ impl Module {
             string_intern_pool: Box::new(StringInternPoolImpl::new()),
         })
     }
+
+    /// Returns the name of the module.
+    pub fn name(&self) -> String {
+        self.input
+            .with_extension("")
+            .file_name()
+            .map(|it| it.to_str())
+            .flatten()
+            .unwrap_or("unnamed_moule")
+            .to_string()
+    }
 }
