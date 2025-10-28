@@ -1,6 +1,6 @@
 use petal_ast::{
     statement::{Statement, StatementKind, function_declaration::FunctionDeclaration, r#return::ReturnStatement},
-    r#type::Type,
+    r#type::{ResolvedTypeKind, Type, TypeKind},
 };
 use petal_core::{error::Result, source_span::SourceSpan};
 
@@ -18,15 +18,37 @@ impl Typecheck for Statement {
 }
 
 impl Typecheck for FunctionDeclaration {
-    fn typecheck(&mut self, typechecker: &mut Typechecker, _span: SourceSpan) -> Result<Type> {
+    fn typecheck(&mut self, typechecker: &mut Typechecker, span: SourceSpan) -> Result<Type> {
         let return_type = typechecker.resolve(&mut self.return_type)?;
 
         // Now that we have resolved the return type, we can bind the function context.
         typechecker.context = Some(TypecheckerContext::new(return_type));
 
+        let mut contains_return_statement = false;
+
         // We must also type-check each of the statements within the body of the function declaration.
         for statement in &mut self.body {
             statement.typecheck(typechecker, statement.span)?;
+
+            // TODO: When we introduce if-blocks, this will probably need to move somewhere else.
+            if let StatementKind::ReturnStatement(_) = statement.kind {
+                contains_return_statement = true;
+            }
+        }
+
+        // FIXME: I don't really like this being here :(
+        //
+        // If a return statement was not found, we can insert one if this is a function with a return type of void.
+        // Otherwise, we must throw an error, as a value was never returned.
+        if !contains_return_statement {
+            if return_type.kind == TypeKind::Resolved(ResolvedTypeKind::Void) {
+                self.body.push(Statement::new(
+                    StatementKind::ReturnStatement(ReturnStatement { value: None }),
+                    span,
+                ));
+            } else {
+                return TypecheckerErrorKind::missing_return_statement(span).into();
+            }
         }
 
         typechecker.context = None;

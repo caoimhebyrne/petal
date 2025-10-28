@@ -27,6 +27,9 @@ pub enum TypecheckerErrorKind {
 
     /// A type was expected, but a different one was received.
     ExpectedType { expected: TypeKind, received: TypeKind },
+
+    /// A value was not returned from a function block.
+    MissingReturnStatement,
 }
 
 impl TypecheckerErrorKind {
@@ -58,6 +61,10 @@ impl TypecheckerErrorKind {
             received.span,
         )
     }
+
+    pub fn missing_return_statement(span: SourceSpan) -> Error {
+        Error::new(TypecheckerErrorKind::MissingReturnStatement, span)
+    }
 }
 
 impl Display for TypecheckerErrorKind {
@@ -85,6 +92,11 @@ impl Display for TypecheckerErrorKind {
             TypecheckerErrorKind::ExpectedType { expected, received } => {
                 write!(f, "Expected type '{}' but received type '{}'", expected, received)
             }
+
+            TypecheckerErrorKind::MissingReturnStatement => write!(
+                f,
+                "A return statement was not found in the function block, and the function's return type is not void"
+            ),
         }
     }
 }
