@@ -60,7 +60,7 @@ impl Display for TypeKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResolvedTypeKind {
     /// An integer type.
-    Integer(usize),
+    Integer(u32),
 
     /// The 'void' type.
     Void,
