@@ -11,6 +11,10 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+    # https://github.com/TheDan64/inkwell/issues/490
+    - name: Install dependencies
+      run: |
+        sudo apt install libpolly-18-dev
     - name: Cache
       uses: actions/cache@v4
       with:
