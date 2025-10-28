@@ -4,7 +4,7 @@ use petal_ast::{
 };
 use petal_core::{error::Result, source_span::SourceSpan};
 
-use crate::{Typechecker, typecheck::Typecheck};
+use crate::{Typechecker, error::TypecheckerErrorKind, typecheck::Typecheck};
 
 impl Typecheck for Expression {
     fn typecheck(&mut self, _typechecker: &mut Typechecker, _span: SourceSpan) -> Result<Type> {
@@ -20,6 +20,8 @@ impl Typecheck for Expression {
         //       type.
         let r#type = match self.kind {
             ExpressionKind::IntegerLiteral(_) => Type::new(ResolvedTypeKind::Integer(32), self.span),
+
+            _ => return TypecheckerErrorKind::unsupported_expression(&self).into(),
         };
 
         self.r#type = Some(r#type);

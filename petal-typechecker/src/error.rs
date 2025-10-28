@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use petal_ast::{
+    expression::{Expression, ExpressionKind},
     statement::{Statement, StatementKind},
     r#type::{Type, TypeKind},
 };
@@ -21,6 +22,9 @@ pub enum TypecheckerErrorKind {
 
     /// A statement was encountered that could not be typechecked.
     UnsupportedStatement(StatementKind),
+
+    /// An expression was encountered that could not be typechecked.,
+    UnsupportedExpression(ExpressionKind),
 
     /// The typechecker's context was missing (for whatever reason).
     MissingContext,
@@ -45,6 +49,13 @@ impl TypecheckerErrorKind {
         Error::new(
             TypecheckerErrorKind::UnsupportedStatement(statement.kind.clone()),
             statement.span,
+        )
+    }
+
+    pub fn unsupported_expression(expression: &Expression) -> Error {
+        Error::new(
+            TypecheckerErrorKind::UnsupportedExpression(expression.kind.clone()),
+            expression.span,
         )
     }
 
@@ -82,6 +93,10 @@ impl Display for TypecheckerErrorKind {
 
             TypecheckerErrorKind::UnsupportedStatement(kind) => {
                 write!(f, "Unable to type-check statement: '{:?}'", kind)
+            }
+
+            TypecheckerErrorKind::UnsupportedExpression(kind) => {
+                write!(f, "Unable to type-check expression: '{:?}'", kind)
             }
 
             TypecheckerErrorKind::MissingContext => write!(
