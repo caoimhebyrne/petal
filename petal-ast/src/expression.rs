@@ -1,4 +1,4 @@
-use petal_core::source_span::SourceSpan;
+use petal_core::{source_span::SourceSpan, string_intern::StringReference};
 
 use crate::r#type::Type;
 
@@ -30,4 +30,7 @@ impl Expression {
 pub enum ExpressionKind {
     // An integer literal, e.g: `12345`.
     IntegerLiteral(u64),
+
+    /// A reference to an identifier.
+    IdentifierReference(StringReference),
 }

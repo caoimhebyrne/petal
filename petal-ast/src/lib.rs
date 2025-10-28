@@ -76,16 +76,14 @@ impl ASTParser {
         // The only expression type that is supported is the integer literal.
         let token = self.token_stream.next_non_whitespace_or_err()?;
 
-        let integer_literal = match token.kind {
-            TokenKind::IntegerLiteral(literal) => literal,
+        let expression_kind = match token.kind {
+            TokenKind::IntegerLiteral(literal) => ExpressionKind::IntegerLiteral(literal),
+            TokenKind::Identifier(reference) => ExpressionKind::IdentifierReference(reference),
 
             _ => return ASTErrorKind::expected_expression(&token).into(),
         };
 
-        Ok(Expression::new(
-            ExpressionKind::IntegerLiteral(integer_literal),
-            token.span,
-        ))
+        Ok(Expression::new(expression_kind, token.span))
     }
 
     /// Attempts to parse a variable declaration node at the current position.
