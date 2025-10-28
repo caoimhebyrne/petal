@@ -1,0 +1,9 @@
+// This example illustrates how to use variables in Petal.
+
+func main() -> i32 {
+    // A variable is declared with its type, name, and an initial value.
+    i32 my_value = 10;
+
+    // The variable's name can then be referenced as a value, for example, when returning from a function.
+    return my_value;
+}
