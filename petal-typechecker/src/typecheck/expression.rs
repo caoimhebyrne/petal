@@ -2,12 +2,12 @@ use petal_ast::{
     expression::{Expression, ExpressionKind},
     r#type::{ResolvedTypeKind, Type},
 };
-use petal_core::error::Result;
+use petal_core::{error::Result, source_span::SourceSpan};
 
 use crate::{Typechecker, typecheck::Typecheck};
 
 impl Typecheck for Expression {
-    fn typecheck(&mut self, _typechecker: &mut Typechecker) -> Result<Type> {
+    fn typecheck(&mut self, _typechecker: &mut Typechecker, _span: SourceSpan) -> Result<Type> {
         // If the expression already has a type, then we can just return that.
         if let Some(r#type) = self.r#type {
             return Ok(r#type);

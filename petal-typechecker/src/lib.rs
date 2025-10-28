@@ -65,7 +65,7 @@ impl<'a> Typechecker<'a> {
 
 impl<'a> ASTVisitor for Typechecker<'a> {
     fn visit(&mut self, statement: &mut Statement) -> Result<()> {
-        statement.typecheck(self)?;
+        statement.typecheck(self, statement.span)?;
         Ok(())
     }
 }
