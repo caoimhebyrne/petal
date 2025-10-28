@@ -6,14 +6,14 @@ use petal_core::error::Result;
 pub struct LLVMCodegenContext {
     /// The LLVM context that contains all of the entities within the LLVM API (like the module).
     /// This MUST outlive the [LLVMCodegen] struct that contains the module and builder, hence why it's in here.
-    pub(crate) context: Context,
+    pub(crate) llvm_context: Context,
 }
 
 impl LLVMCodegenContext {
     /// Creates a new [LLVMCodegenContext].
     pub fn new() -> Self {
         LLVMCodegenContext {
-            context: Context::create(),
+            llvm_context: Context::create(),
         }
     }
 }
@@ -24,10 +24,10 @@ pub struct LLVMCodegen<'ctx> {
     pub(crate) codegen_context: &'ctx LLVMCodegenContext,
 
     /// The LLVM module being used.
-    pub(crate) module: Module<'ctx>,
+    pub(crate) llvm_module: Module<'ctx>,
 
     /// The builder being used.
-    pub(crate) builder: Builder<'ctx>,
+    pub(crate) llvm_builder: Builder<'ctx>,
 }
 
 impl<'ctx> LLVMCodegen<'ctx> {
@@ -36,8 +36,8 @@ impl<'ctx> LLVMCodegen<'ctx> {
         LLVMCodegen {
             codegen_context,
             // TODO: Derive the module name from the input file's name.
-            module: codegen_context.context.create_module("module"),
-            builder: codegen_context.context.create_builder(),
+            llvm_module: codegen_context.llvm_context.create_module("module"),
+            llvm_builder: codegen_context.llvm_context.create_builder(),
         }
     }
 }
