@@ -8,8 +8,9 @@ const HELP_MESSAGE: &str = "\
 usage: petal [flags] <input>
 
 flags:
-    --help      Prints this message.
-    --dump-ast  Prints the abstract syntax tree to stdout once parsed.
+    --help           Prints this message.
+    --dump-ast       Prints the abstract syntax tree to stdout once parsed.
+    --dump-bytecode  Prints the LLVM bytecode to stderr once parsed.
 
 args:
     <input>     The file to parse.
@@ -23,6 +24,9 @@ pub struct Args {
     /// Whether the raw AST representation should be dumped.
     pub dump_ast: bool,
 
+    /// Whether the LLVM bytecode should be dumped.
+    pub dump_bytecode: bool,
+
     /// The input file to read from.
     pub input: PathBuf,
 }
@@ -35,6 +39,8 @@ impl Args {
             help: arguments.contains(["-h", "--help"]),
 
             dump_ast: arguments.contains("--dump-ast"),
+
+            dump_bytecode: arguments.contains("--dump-bytecode"),
 
             input: arguments
                 .free_from_str()

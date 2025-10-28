@@ -1,23 +1,38 @@
-use inkwell::{builder::Builder, context::Context, module::Module};
-use petal_ast::{statement::Statement, visitor::ASTVisitor};
-use petal_core::{error::Result, string_intern::StringInternPool};
+use inkwell::{
+    builder::Builder,
+    context::Context,
+    module::Module,
+    types::{BasicType, BasicTypeEnum, FunctionType},
+};
+use petal_ast::{
+    statement::Statement,
+    r#type::{ResolvedTypeKind, Type, TypeKind},
+    visitor::ASTVisitor,
+};
+use petal_core::{error::Result, source_span::SourceSpan, string_intern::StringInternPool};
 
-use crate::codegen::Codegen;
+use crate::{codegen::Codegen, error::LLVMCodegenErrorKind, string_intern_pool_ext::StringInternPoolExt};
 
 pub mod codegen;
+pub mod error;
+pub mod string_intern_pool_ext;
 
 /// The context passed to an [LLVMCodegen] during initialization.
 pub struct LLVMCodegenContext {
     /// The LLVM context that contains all of the entities within the LLVM API (like the module).
     /// This MUST outlive the [LLVMCodegen] struct that contains the module and builder, hence why it's in here.
     pub(crate) llvm_context: Context,
+
+    /// Whether the module's bytecode should be dumped to stderr before compilation.
+    pub(crate) dump_bytecode: bool,
 }
 
 impl LLVMCodegenContext {
     /// Creates a new [LLVMCodegenContext].
-    pub fn new() -> Self {
+    pub fn new(dump_bytecode: bool) -> Self {
         LLVMCodegenContext {
             llvm_context: Context::create(),
+            dump_bytecode,
         }
     }
 }
@@ -56,13 +71,74 @@ impl<'ctx> LLVMCodegen<'ctx> {
             return Err(error.to_string());
         }
 
+        if self.codegen_context.dump_bytecode {
+            println!("{}", self.llvm_module.print_to_string().to_string());
+        }
+
         // TODO: Create the target machine, write the object file to a temporary path and return that path.
         Ok(())
+    }
+
+    /// Converts the provided type to a function type.
+    /// TODO: Include parameters.
+    pub fn create_function_type(&self, r#type: Type) -> Result<FunctionType<'ctx>> {
+        let (type_kind, _) = self.ensure_resolved(Some(r#type), r#type.span)?;
+
+        let llvm_type = match type_kind {
+            ResolvedTypeKind::Integer(size) => self
+                .codegen_context
+                .llvm_context
+                .custom_width_int_type(size)
+                .fn_type(&[], false),
+
+            ResolvedTypeKind::Void => self.codegen_context.llvm_context.void_type().fn_type(&[], false),
+        };
+
+        Ok(llvm_type)
+    }
+
+    /// Converts the provided type to a value type.
+    pub fn create_value_type(&self, maybe_type: Option<Type>, span: SourceSpan) -> Result<BasicTypeEnum<'ctx>> {
+        let (type_kind, type_span) = self.ensure_resolved(maybe_type, span)?;
+
+        let llvm_type = match type_kind {
+            ResolvedTypeKind::Integer(size) => self
+                .codegen_context
+                .llvm_context
+                .custom_width_int_type(size)
+                .as_basic_type_enum(),
+
+            _ => return LLVMCodegenErrorKind::bad_value_type(type_kind, type_span).into(),
+        };
+
+        Ok(llvm_type)
+    }
+
+    /// Asserts that the provided type is resolved, returning an error if it is not.
+    pub fn ensure_resolved(
+        &self,
+        maybe_type: Option<Type>,
+        span: SourceSpan,
+    ) -> Result<(ResolvedTypeKind, SourceSpan)> {
+        let r#type = maybe_type.ok_or(LLVMCodegenErrorKind::unresolved_type("missing", span))?;
+
+        let kind = match r#type.kind {
+            TypeKind::Resolved(kind) => kind,
+            TypeKind::Unresolved(reference) => {
+                let type_name = self
+                    .string_intern_pool
+                    .resolve_reference_or_err(&reference, r#type.span)?;
+
+                return LLVMCodegenErrorKind::unresolved_type(type_name, r#type.span).into();
+            }
+        };
+
+        Ok((kind, r#type.span))
     }
 }
 
 impl<'ctx> ASTVisitor for LLVMCodegen<'ctx> {
     fn visit(&mut self, statement: &mut Statement) -> Result<()> {
-        statement.codegen(self).map(|_| ())
+        statement.codegen(self, statement.span).map(|_| ())
     }
 }

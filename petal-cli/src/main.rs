@@ -68,7 +68,7 @@ fn main() {
         }
     }
 
-    let codegen_context = LLVMCodegenContext::new();
+    let codegen_context = LLVMCodegenContext::new(args.dump_bytecode);
     let mut codegen = LLVMCodegen::new(&codegen_context, module.string_intern_pool.as_ref());
 
     if let Err(error) = statement_stream.visit(&mut codegen) {
