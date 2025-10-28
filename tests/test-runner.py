@@ -22,10 +22,10 @@ def log_info(message: str):
     print(f'\033[1;34mINFO:\033[0m {message}')
 
 def log_pass(message: str):
-    print(f'\033[1;32mPASS:\033[0m {message}')
+    print(f'\033[1;32mPASS: {message}\033[0m')
 
 def log_fail(message: str):
-    print(f'\033[1;31mFAIL:\033[0m {message}')
+    print(f'\033[1;31mFAIL: {message}\033[0m')
 
 def log_error(message: str):
     print(f'\033[1;31mERROR:\033[0m {message}')
