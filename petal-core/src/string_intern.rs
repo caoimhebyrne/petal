@@ -1,4 +1,9 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
+
+use crate::{
+    error::{Error, ErrorKind, Result},
+    source_span::SourceSpan,
+};
 
 /// A reference to an intern'd string.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -14,6 +19,12 @@ pub trait StringInternPool {
 
     /// Returns a string slice for the provided [StringReference], if it exists.
     fn resolve_reference(&self, reference: &StringReference) -> Option<&str>;
+
+    /// Returns a string slice for the provided [StringReference].
+    ///
+    /// Errors:
+    /// - [StringInternPoolError::UndefinedStringReference] If a string could not be found for the provided reference.
+    fn resolve_reference_or_err(&self, reference: &StringReference, span: SourceSpan) -> Result<&str>;
 }
 
 /// A "default" implementation of [StringInternPool] which copies strings to a [Vec] when interning them.
@@ -56,7 +67,36 @@ impl StringInternPool for StringInternPoolImpl {
     fn resolve_reference(&self, reference: &StringReference) -> Option<&str> {
         self.allocated_strings.get(reference.0).map(|it| it.as_str())
     }
+
+    fn resolve_reference_or_err(&self, reference: &StringReference, span: SourceSpan) -> Result<&str> {
+        self.resolve_reference(reference)
+            .ok_or(StringInternPoolError::undefined_string_reference(*reference, span))
+    }
 }
+
+#[derive(Debug, PartialEq)]
+pub enum StringInternPoolError {
+    UndefinedStringReference(StringReference),
+}
+
+impl StringInternPoolError {
+    /// Creates a new [Error] with the kind as a [StringInternPoolError::UndefinedStringReference] kind.
+    pub fn undefined_string_reference(reference: StringReference, span: SourceSpan) -> Error {
+        Error::new(StringInternPoolError::UndefinedStringReference(reference), span)
+    }
+}
+
+impl Display for StringInternPoolError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            StringInternPoolError::UndefinedStringReference(reference) => {
+                write!(f, "Undefined string reference: '{:?}'", reference)
+            }
+        }
+    }
+}
+
+impl ErrorKind for StringInternPoolError {}
 
 #[cfg(test)]
 mod tests {
