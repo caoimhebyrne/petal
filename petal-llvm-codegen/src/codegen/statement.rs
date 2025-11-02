@@ -1,17 +1,23 @@
-use inkwell::values::BasicValueEnum;
+use inkwell::values::{BasicValue, BasicValueEnum};
 use petal_ast::statement::{
     Statement, StatementKind, function_declaration::FunctionDeclaration, r#return::ReturnStatement,
+    variable_declaration::VariableDeclaration,
 };
 use petal_core::{error::Result, source_span::SourceSpan};
 
-use crate::{LLVMCodegen, codegen::Codegen, error::LLVMCodegenErrorKind, string_intern_pool_ext::StringInternPoolExt};
+use crate::{
+    LLVMCodegen, codegen::Codegen, context::Variable, error::LLVMCodegenErrorKind,
+    string_intern_pool_ext::StringInternPoolExt,
+};
 
 impl<'ctx> Codegen<'ctx> for Statement {
     fn codegen(&self, codegen: &mut LLVMCodegen<'ctx>, _span: SourceSpan) -> Result<BasicValueEnum<'ctx>> {
         match &self.kind {
             StatementKind::FunctionDeclaration(declaration) => declaration.codegen(codegen, self.span),
             StatementKind::ReturnStatement(return_statement) => return_statement.codegen(codegen, self.span),
+            StatementKind::VariableDeclaration(declaration) => declaration.codegen(codegen, self.span),
 
+            #[allow(unreachable_patterns)]
             _ => return LLVMCodegenErrorKind::unable_to_codegen_statement(self).into(),
         }
     }
@@ -28,11 +34,13 @@ impl<'ctx> Codegen<'ctx> for FunctionDeclaration {
 
         let block = codegen.llvm_context.append_basic_block(function, "entry");
         codegen.llvm_builder.position_at_end(block);
+        codegen.context.start_scope_context();
 
         for statement in &self.body {
             statement.codegen(codegen, statement.span)?;
         }
 
+        codegen.context.end_scope_context();
         Ok(function.as_global_value().as_pointer_value().into())
     }
 }
@@ -48,5 +56,37 @@ impl<'ctx> Codegen<'ctx> for ReturnStatement {
 
         // This is the 'unit' type. I would prefer not to have to do this, but we need to return a BasicValueEnum.
         Ok(codegen.llvm_context.bool_type().const_zero().into())
+    }
+}
+
+impl<'ctx> Codegen<'ctx> for VariableDeclaration {
+    fn codegen(&self, codegen: &mut LLVMCodegen<'ctx>, span: SourceSpan) -> Result<BasicValueEnum<'ctx>> {
+        // We first need to get the value type of the variable, and then allocate some space on the stack for it.
+        let value_type = codegen.create_value_type(Some(self.r#type), span)?;
+
+        let variable_name = codegen
+            .string_intern_pool
+            .resolve_reference_or_err(&self.identifier_reference, span)?;
+
+        let pointer = codegen
+            .llvm_builder
+            .build_alloca(value_type, variable_name)
+            .map_err(|err| LLVMCodegenErrorKind::builder_error(err, span))?;
+
+        // We can then store the initial value into the allocated stack space.
+        let initial_value = self.value.codegen(codegen, span)?;
+
+        codegen
+            .llvm_builder
+            .build_store(pointer, initial_value)
+            .map_err(|err| LLVMCodegenErrorKind::builder_error(err, span))?;
+
+        // Finally, now that we've built the variable declaration, we can add the variable to the scope's context.
+        codegen
+            .context
+            .scope_context(span)?
+            .declare_variable(self.identifier_reference, Variable::new(value_type, pointer));
+
+        Ok(pointer.as_basic_value_enum())
     }
 }
