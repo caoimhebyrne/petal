@@ -16,9 +16,7 @@ use petal_ast::{
 use petal_codegen_driver::{Driver, options::DriverOptions};
 use petal_core::{error::Result, source_span::SourceSpan, string_intern::StringInternPool};
 
-use crate::{
-    codegen::Codegen, context::CodegenContext, error::LLVMCodegenErrorKind, string_intern_pool_ext::StringInternPoolExt,
-};
+use crate::{codegen::Codegen, context::CodegenContext, error::LLVMCodegenErrorKind};
 
 pub mod codegen;
 pub mod context;

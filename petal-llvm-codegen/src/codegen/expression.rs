@@ -2,7 +2,7 @@ use inkwell::values::{BasicValue, BasicValueEnum};
 use petal_ast::expression::{BinaryOperation, Expression, ExpressionKind, Operation};
 use petal_core::{error::Result, source_span::SourceSpan};
 
-use crate::{LLVMCodegen, codegen::Codegen, error::LLVMCodegenErrorKind, string_intern_pool_ext::StringInternPoolExt};
+use crate::{LLVMCodegen, codegen::Codegen, error::LLVMCodegenErrorKind};
 
 impl<'ctx> Codegen<'ctx> for Expression {
     fn codegen(&self, codegen: &mut LLVMCodegen<'ctx>, span: SourceSpan) -> Result<BasicValueEnum<'ctx>> {

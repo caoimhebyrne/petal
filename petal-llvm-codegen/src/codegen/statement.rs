@@ -5,10 +5,7 @@ use petal_ast::statement::{
 };
 use petal_core::{error::Result, source_span::SourceSpan};
 
-use crate::{
-    LLVMCodegen, codegen::Codegen, context::Variable, error::LLVMCodegenErrorKind,
-    string_intern_pool_ext::StringInternPoolExt,
-};
+use crate::{LLVMCodegen, codegen::Codegen, context::Variable, error::LLVMCodegenErrorKind};
 
 impl<'ctx> Codegen<'ctx> for Statement {
     fn codegen(&self, codegen: &mut LLVMCodegen<'ctx>, _span: SourceSpan) -> Result<BasicValueEnum<'ctx>> {
