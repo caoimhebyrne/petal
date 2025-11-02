@@ -8,7 +8,9 @@ use crate::{
     error::ASTErrorKind,
     expression::{Expression, ExpressionKind},
     statement::{
-        Statement, function_declaration::FunctionDeclaration, r#return::ReturnStatement,
+        Statement,
+        function_declaration::{FunctionDeclaration, FunctionParameter},
+        r#return::ReturnStatement,
         variable_declaration::VariableDeclaration,
     },
     stream::StatementStream,
@@ -123,7 +125,36 @@ impl ASTParser {
         // The next token must be an opening parenthesis.
         self.expect_token(TokenKind::LeftParenthesis)?;
 
-        // TODO: Parse parameters.
+        // If the next token is not a right parenthesis, we can assume that it is the first parameter.
+        let mut parameters = Vec::new();
+        if self.token_stream.peek_non_whitespace().map(|it| it.kind) != Some(TokenKind::RightParenthesis) {
+            loop {
+                // The first token in a parameter must be an identifier which holds its name.
+                let (identifier_reference, identifier_token) = self.expect_identifier()?;
+
+                // The next token must be a colon.
+                self.expect_token(TokenKind::Colon)?;
+
+                // The next token must be the type of the parameter.
+                let (type_identifier, type_token) = self.expect_identifier()?;
+                let value_type = Type::unresolved(type_identifier, type_token.span);
+
+                parameters.push(FunctionParameter::new(
+                    identifier_reference,
+                    value_type,
+                    SourceSpan::between(&identifier_token.span, &type_token.span),
+                ));
+
+                // If the next token is a comma, we can consume it and continue the loop.
+                if self.token_stream.peek_non_whitespace().map(|it| it.kind) == Some(TokenKind::Comma) {
+                    self.expect_token(TokenKind::Comma)?;
+                    continue;
+                }
+
+                // Otherwise, we have reached the end of the parameter list.
+                break;
+            }
+        }
 
         // After the parameters, there must be a closing parenthesis.
         let right_parenthesis_token = self.expect_token(TokenKind::RightParenthesis)?;
@@ -161,7 +192,7 @@ impl ASTParser {
         self.expect_token(TokenKind::RightBrace)?;
 
         Ok(Statement::new(
-            FunctionDeclaration::new(identifier_reference, return_type, body),
+            FunctionDeclaration::new(identifier_reference, parameters, return_type, body),
             SourceSpan::between(&func_token.span, &left_brace_token.span),
         ))
     }
@@ -271,6 +302,7 @@ mod tests {
             Statement {
                 kind: FunctionDeclaration::new(
                     function_name_reference,
+                    vec![],
                     Type::void(SourceSpan { start: 10, end: 11 }),
                     vec![]
                 )
@@ -302,6 +334,7 @@ mod tests {
             Statement {
                 kind: FunctionDeclaration::new(
                     function_name_reference,
+                    vec![],
                     Type::void(SourceSpan { start: 10, end: 11 }),
                     vec![Statement {
                         kind: VariableDeclaration::new(
@@ -331,6 +364,108 @@ mod tests {
     }
 
     #[test]
+    fn test_empty_function_declaration_with_parameter() {
+        let mut string_intern_pool = StringInternPoolImpl::new();
+        let function_name_reference = StringReference(0);
+        let p0_name_reference = StringReference(1);
+        let p0_type_reference = StringReference(2);
+
+        let mut lexer = Lexer::new(&mut string_intern_pool, "func test(name: i32) {}");
+        let token_stream = lexer.get_stream().expect("get_stream should not fail");
+
+        let mut ast_parser = ASTParser::new(token_stream);
+
+        assert_eq!(
+            ast_parser.next_statement().expect("next_statement should not fail!"),
+            Statement {
+                kind: FunctionDeclaration::new(
+                    function_name_reference,
+                    vec![FunctionParameter::new(
+                        p0_name_reference,
+                        Type {
+                            kind: r#type::TypeKind::Unresolved(p0_type_reference),
+                            span: SourceSpan { start: 16, end: 19 }
+                        },
+                        SourceSpan { start: 10, end: 19 }
+                    )],
+                    Type::void(SourceSpan { start: 19, end: 20 }),
+                    vec![]
+                )
+                .into(),
+                span: SourceSpan { start: 0, end: 22 }
+            }
+        );
+
+        assert_eq!(
+            string_intern_pool.resolve_reference(&function_name_reference),
+            Some("test")
+        );
+
+        assert_eq!(string_intern_pool.resolve_reference(&p0_name_reference), Some("name"));
+
+        assert_eq!(string_intern_pool.resolve_reference(&p0_type_reference), Some("i32"));
+    }
+
+    #[test]
+    fn test_empty_function_declaration_with_parameters() {
+        let mut string_intern_pool = StringInternPoolImpl::new();
+        let function_name_reference = StringReference(0);
+
+        let p0_name_reference = StringReference(1);
+        let p0_type_reference = StringReference(2);
+
+        let p1_name_reference = StringReference(3);
+        let p1_type_reference = StringReference(2);
+
+        let mut lexer = Lexer::new(&mut string_intern_pool, "func test(name: i32, other: i32) {}");
+        let token_stream = lexer.get_stream().expect("get_stream should not fail");
+
+        let mut ast_parser = ASTParser::new(token_stream);
+
+        assert_eq!(
+            ast_parser.next_statement().expect("next_statement should not fail!"),
+            Statement {
+                kind: FunctionDeclaration::new(
+                    function_name_reference,
+                    vec![
+                        FunctionParameter::new(
+                            p0_name_reference,
+                            Type {
+                                kind: r#type::TypeKind::Unresolved(p0_type_reference),
+                                span: SourceSpan { start: 16, end: 19 }
+                            },
+                            SourceSpan { start: 10, end: 19 }
+                        ),
+                        FunctionParameter::new(
+                            p1_name_reference,
+                            Type {
+                                kind: r#type::TypeKind::Unresolved(p1_type_reference),
+                                span: SourceSpan { start: 28, end: 31 }
+                            },
+                            SourceSpan { start: 21, end: 31 }
+                        )
+                    ],
+                    Type::void(SourceSpan { start: 31, end: 32 }),
+                    vec![]
+                )
+                .into(),
+                span: SourceSpan { start: 0, end: 34 }
+            }
+        );
+
+        assert_eq!(
+            string_intern_pool.resolve_reference(&function_name_reference),
+            Some("test")
+        );
+
+        assert_eq!(string_intern_pool.resolve_reference(&p0_name_reference), Some("name"));
+        assert_eq!(string_intern_pool.resolve_reference(&p0_type_reference), Some("i32"));
+
+        assert_eq!(string_intern_pool.resolve_reference(&p1_name_reference), Some("other"));
+        assert_eq!(string_intern_pool.resolve_reference(&p1_type_reference), Some("i32"));
+    }
+
+    #[test]
     fn test_function_declaration_with_return_type() {
         let mut string_intern_pool = StringInternPoolImpl::new();
         let function_name_reference = StringReference(0);
@@ -346,6 +481,7 @@ mod tests {
             Statement {
                 kind: FunctionDeclaration::new(
                     function_name_reference,
+                    vec![],
                     Type::unresolved(function_return_type_reference, SourceSpan { start: 15, end: 18 }),
                     vec![]
                 )

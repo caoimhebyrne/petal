@@ -1,15 +1,41 @@
-use petal_core::string_intern::StringReference;
+use petal_core::{source_span::SourceSpan, string_intern::StringReference};
 
 use crate::{
     statement::{Statement, StatementKind},
     r#type::Type,
 };
 
+/// A parameter defined in a [FunctionDeclaration].
+#[derive(Debug, Clone, PartialEq)]
+pub struct FunctionParameter {
+    /// The identifier of the parameter.
+    pub name_reference: StringReference,
+
+    /// The type of the parameter's expected value.
+    pub value_type: Type,
+
+    /// The span within the source code that the paramter was defined at.
+    pub span: SourceSpan,
+}
+
+impl FunctionParameter {
+    pub fn new(name_reference: StringReference, value_type: Type, span: SourceSpan) -> Self {
+        FunctionParameter {
+            name_reference,
+            value_type,
+            span,
+        }
+    }
+}
+
 /// A function declaration statement, e.g. `func <name>() { <body> }`
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDeclaration {
     /// The name of the function.
     pub name_reference: StringReference,
+
+    /// The parameters of the function.
+    pub parameters: Vec<FunctionParameter>,
 
     /// The return type of the function.
     pub return_type: Type,
@@ -20,9 +46,15 @@ pub struct FunctionDeclaration {
 
 impl FunctionDeclaration {
     /// Creates a new [FunctionDeclaration] with a [name_reference] and [body]
-    pub fn new(name_reference: StringReference, return_type: Type, body: Vec<Statement>) -> Self {
+    pub fn new(
+        name_reference: StringReference,
+        parameters: Vec<FunctionParameter>,
+        return_type: Type,
+        body: Vec<Statement>,
+    ) -> Self {
         FunctionDeclaration {
             name_reference,
+            parameters,
             return_type,
             body,
         }

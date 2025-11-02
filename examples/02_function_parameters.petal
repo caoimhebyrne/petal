@@ -1,0 +1,8 @@
+// The `main` function accepts two parameters: `argc` and `argv`.
+//
+// `argc` is the number of arguments passed to the program, and `argv` is a reference to the first argument passed to
+// the program.
+func main(argc: i32) -> i32 {
+    // Remember: The return value of the `main` function is equal to the process' exit code.
+    return argc;
+}

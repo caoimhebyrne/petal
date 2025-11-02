@@ -95,15 +95,20 @@ impl<'a> Lexer<'a> {
                 '}' => TokenKind::RightBrace,
                 '-' => TokenKind::Hyphen,
                 '>' => TokenKind::RightAngleBracket,
+                ':' => TokenKind::Colon,
+                ',' => TokenKind::Comma,
 
                 '/' => return self.parse_forward_slash_or_comment(),
-
-                '0'..'9' => return self.parse_integer_literal(character),
 
                 _ => {
                     // If the character is considered to be whitespace, then continue.
                     if Self::is_whitespace(character) {
                         continue;
+                    }
+
+                    // If this is a numeric character, we can attempt to parse an integer literal.
+                    if character.is_numeric() {
+                        return self.parse_integer_literal(character);
                     }
 
                     // If this is an alphabetic character, we can attempt to parse an identifier.
