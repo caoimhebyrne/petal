@@ -27,7 +27,15 @@ impl Typecheck for FunctionDeclaration {
         let return_type = typechecker.resolve(&mut self.return_type)?;
 
         // Now that we have resolved the return type, we can bind the function context.
-        typechecker.context = Some(TypecheckerContext::new(return_type));
+        let mut context = TypecheckerContext::new(return_type);
+
+        // We can add each parameter to the list of variable declarations within the context.
+        for parameter in &mut self.parameters {
+            let value_type = typechecker.resolve(&mut parameter.value_type)?;
+            context.add_variable_declaration(parameter.name_reference, value_type);
+        }
+
+        typechecker.context = Some(context);
 
         let mut contains_return_statement = false;
 
