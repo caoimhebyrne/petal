@@ -77,18 +77,6 @@ impl ASTParser {
     /// This is the "top level" expression parsing function. It pretty much immediately delegates to
     /// [ASTParser::parse_plus_minus_binop].
     fn expect_expression(&mut self) -> Result<Expression> {
-        // If the first token is an opening parenthesis, we can assume that it contains an expression that needs to
-        // be parsed.
-        if self.token_stream.peek_non_whitespace().map(|it| it.kind) == Some(TokenKind::LeftParenthesis) {
-            self.expect_token(TokenKind::LeftParenthesis)?;
-
-            let expression = self.expect_expression()?;
-
-            self.expect_token(TokenKind::RightParenthesis)?;
-
-            return Ok(expression);
-        }
-
         self.parse_plus_minus_binop()
     }
 
@@ -149,6 +137,16 @@ impl ASTParser {
     /// This is the "bottom level" of expression parsing. It does not concern itself with any binary operation or
     /// parenthesis, it just parses a raw value (i.e. integer literal, identifier reference, etc.).
     fn expect_value(&mut self) -> Result<Expression> {
+        if self.token_stream.peek_non_whitespace().map(|it| it.kind) == Some(TokenKind::LeftParenthesis) {
+            self.expect_token(TokenKind::LeftParenthesis)?;
+
+            let expression = self.expect_expression()?;
+
+            self.expect_token(TokenKind::RightParenthesis)?;
+
+            return Ok(expression);
+        }
+
         // The only expression type that is supported is the integer literal.
         let token = self.token_stream.next_non_whitespace_or_err()?;
 
