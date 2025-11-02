@@ -68,6 +68,12 @@ pub enum TokenKind {
     // ,
     Comma,
 
+    // +
+    Plus,
+
+    // *
+    Asterisk,
+
     // This is a token that is ignored by most implementations, but might be useful in the future for some
     // cool tooling.
     Comment(StringReference),

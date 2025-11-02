@@ -6,7 +6,7 @@ use petal_lexer::{
 
 use crate::{
     error::ASTErrorKind,
-    expression::{Expression, ExpressionKind},
+    expression::{BinaryOperation, Expression, ExpressionKind, Operation},
     statement::{
         Statement,
         function_declaration::{FunctionDeclaration, FunctionParameter},
@@ -44,14 +44,14 @@ impl ASTParser {
 
         // While there are still characters left in the token stream, we should try to parse a statement.
         while self.token_stream.has_remaining() {
-            statements.push(self.next_statement()?);
+            statements.push(self.expect_statement()?);
         }
 
         Ok(StatementStream::new(statements))
     }
 
     /// Returns the next AST node at the current position in the source code.
-    fn next_statement(&mut self) -> Result<Statement> {
+    fn expect_statement(&mut self) -> Result<Statement> {
         let token = self.token_stream.peek_non_whitespace_or_err()?;
 
         let (statement_result, expect_semicolon) = match token.kind {
@@ -74,7 +74,81 @@ impl ASTParser {
         statement_result
     }
 
-    fn next_expression(&mut self) -> Result<Expression> {
+    /// This is the "top level" expression parsing function. It pretty much immediately delegates to
+    /// [ASTParser::parse_plus_minus_binop].
+    fn expect_expression(&mut self) -> Result<Expression> {
+        // If the first token is an opening parenthesis, we can assume that it contains an expression that needs to
+        // be parsed.
+        if self.token_stream.peek_non_whitespace().map(|it| it.kind) == Some(TokenKind::LeftParenthesis) {
+            self.expect_token(TokenKind::LeftParenthesis)?;
+
+            let expression = self.expect_expression()?;
+
+            self.expect_token(TokenKind::RightParenthesis)?;
+
+            return Ok(expression);
+        }
+
+        self.parse_plus_minus_binop()
+    }
+
+    /// Attempts to parse a plus or minus binary operation. If a value is not followed by a plus or minus operator, the
+    /// value will be returned without any binary operation inclusion.
+    fn parse_plus_minus_binop(&mut self) -> Result<Expression> {
+        let left_value = self.parse_multiplication_division_binop()?;
+
+        let operation = match self.token_stream.peek_non_whitespace().map(|it| it.kind) {
+            Some(TokenKind::Plus) => Operation::Add,
+            Some(TokenKind::Hyphen) => Operation::Subtract,
+
+            // There was no binary operator, we can just return the value.
+            _ => return Ok(left_value),
+        };
+
+        // We can consume the token now that we are interested in it.
+        self.token_stream.next();
+
+        // We can then get the value on the right-hand side of the expression.
+        let right_value = self.expect_expression()?;
+
+        let source_span = SourceSpan::between(&left_value.span, &right_value.span);
+
+        return Ok(Expression::new(
+            ExpressionKind::BinaryOperation(BinaryOperation::new(left_value, right_value, operation)),
+            source_span,
+        ));
+    }
+
+    /// Attempts to parse a multiplication or division binary operation. If a value is not followed by a multiply or
+    /// divide operator, the value will be returned without any binary operation inclusion.
+    fn parse_multiplication_division_binop(&mut self) -> Result<Expression> {
+        let left_value = self.expect_value()?;
+
+        let operation = match self.token_stream.peek_non_whitespace().map(|it| it.kind) {
+            Some(TokenKind::Asterisk) => Operation::Multiply,
+            Some(TokenKind::ForwardSlash) => Operation::Divide,
+
+            // There was no binary operator, we can just return the value.
+            _ => return Ok(left_value),
+        };
+
+        // We can consume the token now that we are interested in it.
+        self.token_stream.next();
+
+        // We can then get the value on the right-hand side of the expression.
+        let right_value = self.expect_expression()?;
+
+        let source_span = SourceSpan::between(&left_value.span, &right_value.span);
+
+        return Ok(Expression::new(
+            ExpressionKind::BinaryOperation(BinaryOperation::new(left_value, right_value, operation)),
+            source_span,
+        ));
+    }
+
+    /// This is the "bottom level" of expression parsing. It does not concern itself with any binary operation or
+    /// parenthesis, it just parses a raw value (i.e. integer literal, identifier reference, etc.).
+    fn expect_value(&mut self) -> Result<Expression> {
         // The only expression type that is supported is the integer literal.
         let token = self.token_stream.next_non_whitespace_or_err()?;
 
@@ -100,7 +174,7 @@ impl ASTParser {
         self.expect_token(TokenKind::Equals)?;
 
         // And finally, an expression must be provided for the initial value.
-        let value = self.next_expression()?;
+        let value = self.expect_expression()?;
 
         let span = SourceSpan::between(&type_token.span, &value.span);
 
@@ -186,7 +260,7 @@ impl ASTParser {
             }
 
             // Otherwise, we can attempt to parse a statement and add it to the body.
-            body.push(self.next_statement()?);
+            body.push(self.expect_statement()?);
         }
 
         self.expect_token(TokenKind::RightBrace)?;
@@ -205,7 +279,7 @@ impl ASTParser {
         // If the next token is not a semicolon, then there should be a value.
         let mut value: Option<Expression> = None;
         if self.token_stream.peek_non_whitespace().map(|it| it.kind) != Some(TokenKind::Semicolon) {
-            value = Some(self.next_expression()?);
+            value = Some(self.expect_expression()?);
         }
 
         // If a value was present, we can use its span as the end span, otherwise, we can just use the return token.
@@ -263,7 +337,7 @@ mod tests {
         let mut ast_parser = ASTParser::new(token_stream);
 
         assert_eq!(
-            ast_parser.next_statement().expect("next_statement should not fail!"),
+            ast_parser.expect_statement().expect("next_statement should not fail!"),
             Statement {
                 kind: VariableDeclaration::new(
                     identifier_reference,
@@ -298,7 +372,7 @@ mod tests {
         let mut ast_parser = ASTParser::new(token_stream);
 
         assert_eq!(
-            ast_parser.next_statement().expect("next_statement should not fail!"),
+            ast_parser.expect_statement().expect("next_statement should not fail!"),
             Statement {
                 kind: FunctionDeclaration::new(
                     function_name_reference,
@@ -330,7 +404,7 @@ mod tests {
         let mut ast_parser = ASTParser::new(token_stream);
 
         assert_eq!(
-            ast_parser.next_statement().expect("next_statement should not fail!"),
+            ast_parser.expect_statement().expect("next_statement should not fail!"),
             Statement {
                 kind: FunctionDeclaration::new(
                     function_name_reference,
@@ -376,7 +450,7 @@ mod tests {
         let mut ast_parser = ASTParser::new(token_stream);
 
         assert_eq!(
-            ast_parser.next_statement().expect("next_statement should not fail!"),
+            ast_parser.expect_statement().expect("next_statement should not fail!"),
             Statement {
                 kind: FunctionDeclaration::new(
                     function_name_reference,
@@ -423,7 +497,7 @@ mod tests {
         let mut ast_parser = ASTParser::new(token_stream);
 
         assert_eq!(
-            ast_parser.next_statement().expect("next_statement should not fail!"),
+            ast_parser.expect_statement().expect("next_statement should not fail!"),
             Statement {
                 kind: FunctionDeclaration::new(
                     function_name_reference,
@@ -477,7 +551,7 @@ mod tests {
         let mut ast_parser = ASTParser::new(token_stream);
 
         assert_eq!(
-            ast_parser.next_statement().expect("next_statement should not fail!"),
+            ast_parser.expect_statement().expect("next_statement should not fail!"),
             Statement {
                 kind: FunctionDeclaration::new(
                     function_name_reference,
@@ -511,7 +585,7 @@ mod tests {
         let mut ast_parser = ASTParser::new(token_stream);
 
         assert_eq!(
-            ast_parser.next_statement().expect("next_statement should not fail!"),
+            ast_parser.expect_statement().expect("next_statement should not fail!"),
             Statement {
                 kind: ReturnStatement::new(None).into(),
                 span: SourceSpan { start: 0, end: 6 }
@@ -529,7 +603,7 @@ mod tests {
         let mut ast_parser = ASTParser::new(token_stream);
 
         assert_eq!(
-            ast_parser.next_statement().expect("next_statement should not fail!"),
+            ast_parser.expect_statement().expect("next_statement should not fail!"),
             Statement {
                 kind: ReturnStatement::new(Some(Expression {
                     kind: ExpressionKind::IntegerLiteral(123).into(),

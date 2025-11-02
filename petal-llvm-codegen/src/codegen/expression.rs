@@ -1,5 +1,5 @@
 use inkwell::values::{BasicValue, BasicValueEnum};
-use petal_ast::expression::{Expression, ExpressionKind};
+use petal_ast::expression::{BinaryOperation, Expression, ExpressionKind, Operation};
 use petal_core::{error::Result, source_span::SourceSpan};
 
 use crate::{LLVMCodegen, codegen::Codegen, error::LLVMCodegenErrorKind, string_intern_pool_ext::StringInternPoolExt};
@@ -28,8 +28,30 @@ impl<'ctx> Codegen<'ctx> for Expression {
                 Ok(value.as_basic_value_enum())
             }
 
+            ExpressionKind::BinaryOperation(binary_operation) => binary_operation.codegen(codegen, span),
+
             #[allow(unreachable_patterns)]
             _ => return LLVMCodegenErrorKind::unable_to_codegen_expression(&self).into(),
         }
+    }
+}
+
+impl<'ctx> Codegen<'ctx> for BinaryOperation {
+    fn codegen(&self, codegen: &mut LLVMCodegen<'ctx>, span: SourceSpan) -> Result<BasicValueEnum<'ctx>> {
+        // FIXME: This assumes that both values are integer types.
+        let left_value = self.left.codegen(codegen, span)?.into_int_value();
+        let right_value = self.right.codegen(codegen, span)?.into_int_value();
+
+        let result = match self.operation {
+            Operation::Add => codegen.llvm_builder.build_int_add(left_value, right_value, "add"),
+            Operation::Subtract => codegen.llvm_builder.build_int_sub(left_value, right_value, "sub"),
+            Operation::Multiply => codegen.llvm_builder.build_int_mul(left_value, right_value, "mul"),
+            Operation::Divide => codegen
+                .llvm_builder
+                .build_int_signed_div(left_value, right_value, "div"),
+        }
+        .map_err(|err| LLVMCodegenErrorKind::builder_error(err, span))?;
+
+        Ok(result.as_basic_value_enum())
     }
 }

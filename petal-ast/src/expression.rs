@@ -33,4 +33,41 @@ pub enum ExpressionKind {
 
     /// A reference to an identifier.
     IdentifierReference(StringReference),
+
+    /// A binary operation between two other expressions.
+    BinaryOperation(BinaryOperation),
+}
+
+/// A binary operation between two [Expression]s.
+///
+/// The value type of a [BinaryOperation] should always be the [Expression::type] of the [BinaryOperation::left]
+#[derive(Debug, Clone, PartialEq)]
+pub struct BinaryOperation {
+    /// The expression on the left-hand side.
+    pub left: Box<Expression>,
+
+    /// The expression on the right-hand side.
+    pub right: Box<Expression>,
+
+    /// The operation to perform on the two expressions.
+    pub operation: Operation,
+}
+
+impl BinaryOperation {
+    pub fn new(left: Expression, right: Expression, operation: Operation) -> Self {
+        BinaryOperation {
+            left: Box::new(left),
+            right: Box::new(right),
+            operation,
+        }
+    }
+}
+
+/// An operation to perform on two values within a [BinaryOperation].
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Operation {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
 }
