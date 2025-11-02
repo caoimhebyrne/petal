@@ -1,0 +1,5 @@
+// #compile-failure: Unknown variable: 'undeclared'
+
+func main() -> i32 {
+    return undeclared;
+}
