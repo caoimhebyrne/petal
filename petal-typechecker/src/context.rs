@@ -32,7 +32,7 @@ impl<'a> TypecheckerContext<'a> {
     }
 
     /// Creates a [FunctionContext] instance and binds it to this [TypecheckerContext].
-    pub fn start_function_context(&mut self, return_type: Type) -> Result<()> {
+    pub fn start_function_context(&mut self, return_type: Type, _span: SourceSpan) -> Result<()> {
         // TODO: Do we need to throw an error if a function context is already bound?
 
         self.function_context = Some(FunctionContext::new(return_type, self.string_intern_pool));
@@ -40,8 +40,15 @@ impl<'a> TypecheckerContext<'a> {
     }
 
     /// Un-binds the function context that may or may not be currently bound to this [TypecheckerContext].
-    pub fn end_function_context(&mut self) -> Result<()> {
-        // TODO: Do we need to throw an error if a function context is not yet bound?
+    ///
+    /// Errors:
+    /// - [TypecheckerError::ExpectedFunctionContext] If a function context has not been bound to this
+    ///   [TypecheckerContext] yet.
+    pub fn end_function_context(&mut self, span: SourceSpan) -> Result<()> {
+        // If a function context has not been bound yet, there is nothing to end.
+        if self.function_context.is_none() {
+            return TypecheckerError::expected_function_context(span).into();
+        }
 
         self.function_context = None;
         Ok(())
@@ -49,7 +56,7 @@ impl<'a> TypecheckerContext<'a> {
 
     /// Returns the current [FunctionContext] that is bound to this [TypecheckerContext].
     ///
-    /// Errors;
+    /// Errors:
     /// - [TypecheckerError::ExpectedFunctionContext] If a function context has not been bound to this
     ///   [TypecheckerContext] yet.
     pub fn function_context(&mut self, span: SourceSpan) -> Result<&mut FunctionContext<'a>> {

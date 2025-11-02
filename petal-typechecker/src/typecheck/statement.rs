@@ -31,13 +31,13 @@ impl<'a> Typecheck<'a> for FunctionDeclaration {
 
         // Now that we've type-checked the function's information, we can create a function context and typecheck any
         // statements within the function body.
-        typechecker.context.start_function_context(self.return_type)?;
+        typechecker.context.start_function_context(self.return_type, span)?;
 
         for statement in &mut self.body {
             typechecker.check_statement(statement)?;
         }
 
-        typechecker.context.end_function_context()?;
+        typechecker.context.end_function_context(span)?;
 
         // This statement does not have a return value, so we return void instead.
         Ok(Type::void(span))
