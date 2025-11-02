@@ -4,10 +4,10 @@ use inkwell::{
     builder::Builder,
     context::Context,
     module::Module,
-    types::{BasicType, BasicTypeEnum, FunctionType},
+    types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType},
 };
 use petal_ast::{
-    statement::Statement,
+    statement::{Statement, function_declaration::FunctionParameter},
     r#type::{ResolvedTypeKind, Type, TypeKind},
     visitor::ASTVisitor,
 };
@@ -46,13 +46,30 @@ pub struct LLVMCodegen<'ctx> {
 
 impl<'ctx> LLVMCodegen<'ctx> {
     /// Converts the provided type to a function type.
-    /// TODO: Include parameters.
-    pub fn create_function_type(&self, r#type: Type) -> Result<FunctionType<'ctx>> {
+    pub fn create_function_type(
+        &self,
+        r#type: Type,
+        parameters: &Vec<FunctionParameter>,
+    ) -> Result<FunctionType<'ctx>> {
         let (type_kind, _) = self.ensure_resolved(Some(r#type), r#type.span)?;
 
+        let mut parameter_types: Vec<BasicMetadataTypeEnum<'ctx>> = Vec::new();
+
+        for parameter in parameters {
+            let value_type: BasicMetadataTypeEnum = self
+                .create_value_type(Some(parameter.value_type), parameter.span)?
+                .into();
+
+            parameter_types.push(value_type);
+        }
+
         let llvm_type = match type_kind {
-            ResolvedTypeKind::Integer(size) => self.llvm_context.custom_width_int_type(size).fn_type(&[], false),
-            ResolvedTypeKind::Void => self.llvm_context.void_type().fn_type(&[], false),
+            ResolvedTypeKind::Integer(size) => self
+                .llvm_context
+                .custom_width_int_type(size)
+                .fn_type(&parameter_types, false),
+
+            ResolvedTypeKind::Void => self.llvm_context.void_type().fn_type(&parameter_types, false),
         };
 
         Ok(llvm_type)

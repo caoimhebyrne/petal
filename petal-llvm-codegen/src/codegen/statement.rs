@@ -29,12 +29,41 @@ impl<'ctx> Codegen<'ctx> for FunctionDeclaration {
             .string_intern_pool
             .resolve_reference_or_err(&self.name_reference, span)?;
 
-        let function_type = codegen.create_function_type(self.return_type)?;
+        let function_type = codegen.create_function_type(self.return_type, &self.parameters)?;
         let function = codegen.llvm_module.add_function(function_name, function_type, None);
 
         let block = codegen.llvm_context.append_basic_block(function, "entry");
         codegen.llvm_builder.position_at_end(block);
         codegen.context.start_scope_context();
+
+        for (index, parameter_value) in function.get_params().iter().enumerate() {
+            let parameter = self
+                .parameters
+                .iter()
+                .nth(index)
+                .expect("LLVM parameters did not match function params!");
+
+            let parameter_name = codegen
+                .string_intern_pool
+                .resolve_reference_or_err(&parameter.name_reference, parameter.span)?;
+
+            parameter_value.set_name(parameter_name);
+
+            let pointer = codegen
+                .llvm_builder
+                .build_alloca(parameter_value.get_type(), parameter_name)
+                .map_err(|err| LLVMCodegenErrorKind::builder_error(err, span))?;
+
+            codegen
+                .llvm_builder
+                .build_store(pointer, *parameter_value)
+                .map_err(|err| LLVMCodegenErrorKind::builder_error(err, span))?;
+
+            codegen.context.scope_context(parameter.span)?.declare_variable(
+                parameter.name_reference,
+                Variable::new(parameter_value.get_type(), pointer),
+            );
+        }
 
         for statement in &self.body {
             statement.codegen(codegen, statement.span)?;
