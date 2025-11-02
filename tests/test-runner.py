@@ -41,7 +41,7 @@ class TestCaseOptions:
         self.compile_failure = ''
 
     @staticmethod
-    def parse(source_file_path: Path) -> TestCaseOptions:
+    def parse(source_file_path: Path):
         options: TestCaseOptions = TestCaseOptions()
         source_file_contents: str = source_file_path.read_text()
 
