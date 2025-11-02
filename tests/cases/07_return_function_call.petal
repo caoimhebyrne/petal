@@ -1,0 +1,9 @@
+// exit-code: 32
+
+func get_value() -> i32 {
+    return 32;
+}
+
+func main() -> i32 {
+    return get_value();
+}

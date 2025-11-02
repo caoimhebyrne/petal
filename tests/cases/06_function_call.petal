@@ -1,0 +1,12 @@
+// exit-code: 0
+
+func other() {
+    // TODO: Remove explicit return when implicit returns are back.
+    return;
+}
+
+func main() -> i32 {
+    other();
+
+    return 0;
+}

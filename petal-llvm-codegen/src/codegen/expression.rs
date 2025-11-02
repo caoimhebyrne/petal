@@ -29,6 +29,7 @@ impl<'ctx> Codegen<'ctx> for Expression {
             }
 
             ExpressionKind::BinaryOperation(binary_operation) => binary_operation.codegen(codegen, span),
+            ExpressionKind::FunctionCall(call) => call.codegen(codegen, span),
 
             #[allow(unreachable_patterns)]
             _ => return LLVMCodegenErrorKind::unable_to_codegen_expression(&self).into(),

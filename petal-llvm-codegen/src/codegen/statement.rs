@@ -13,6 +13,7 @@ impl<'ctx> Codegen<'ctx> for Statement {
             StatementKind::FunctionDeclaration(declaration) => declaration.codegen(codegen, self.span),
             StatementKind::ReturnStatement(return_statement) => return_statement.codegen(codegen, self.span),
             StatementKind::VariableDeclaration(declaration) => declaration.codegen(codegen, self.span),
+            StatementKind::FunctionCall(call) => call.codegen(codegen, self.span),
 
             #[allow(unreachable_patterns)]
             _ => return LLVMCodegenErrorKind::unable_to_codegen_statement(self).into(),

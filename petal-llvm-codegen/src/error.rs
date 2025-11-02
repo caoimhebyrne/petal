@@ -35,6 +35,9 @@ pub enum LLVMCodegenErrorKind {
     /// A scope context was expected, but one was not bound.
     MissingScopeContext,
 
+    /// A function was referenced that was not declared.
+    UndeclaredFunction(String),
+
     /// A variable was referenced that was not declared.
     UndeclaredVariable(StringReference),
 }
@@ -72,6 +75,10 @@ impl LLVMCodegenErrorKind {
 
     pub fn missing_scope_context(span: SourceSpan) -> Error {
         Error::new(LLVMCodegenErrorKind::MissingScopeContext, span)
+    }
+
+    pub fn undeclared_function(identifier: &str, span: SourceSpan) -> Error {
+        Error::new(LLVMCodegenErrorKind::UndeclaredFunction(identifier.to_owned()), span)
     }
 
     pub fn undeclared_variable(identifier: StringReference, span: SourceSpan) -> Error {
@@ -112,6 +119,14 @@ impl Display for LLVMCodegenErrorKind {
 
             LLVMCodegenErrorKind::MissingScopeContext => {
                 write!(f, "A scope context was expected, but one was not found, this is a bug")
+            }
+
+            LLVMCodegenErrorKind::UndeclaredFunction(identifier) => {
+                write!(
+                    f,
+                    "A function ({:?} was referenced, but it has not been declared yet, this is a bug",
+                    identifier
+                )
             }
 
             LLVMCodegenErrorKind::UndeclaredVariable(identifier) => {
