@@ -1,9 +1,6 @@
 // exit-code: 0
 
-func other() {
-    // TODO: Remove explicit return when implicit returns are back.
-    return;
-}
+func other() {}
 
 func main() -> i32 {
     other();

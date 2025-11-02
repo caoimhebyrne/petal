@@ -1,7 +1,7 @@
 use petal_core::{source_span::SourceSpan, string_intern::StringReference};
 
 use crate::{
-    statement::{Statement, StatementKind},
+    statement::{Statement, StatementKind, r#return::ReturnStatement},
     r#type::Type,
 };
 
@@ -58,6 +58,14 @@ impl FunctionDeclaration {
             return_type,
             body,
         }
+    }
+
+    /// Inserts an implicit return statement at the end of this [FunctionDeclaration]'s body.
+    pub fn insert_implicit_return_void(&mut self, span: SourceSpan) {
+        self.body.push(Statement {
+            kind: StatementKind::ReturnStatement(ReturnStatement::new(None)),
+            span: self.body.last().map(|it| it.span).unwrap_or(span),
+        });
     }
 }
 

@@ -1,8 +1,9 @@
 use petal_ast::{
     statement::{
-        function_declaration::FunctionDeclaration, r#return::ReturnStatement, variable_declaration::VariableDeclaration,
+        StatementKind, function_declaration::FunctionDeclaration, r#return::ReturnStatement,
+        variable_declaration::VariableDeclaration,
     },
-    r#type::Type,
+    r#type::{ResolvedTypeKind, Type, TypeKind},
 };
 use petal_core::{error::Result, source_span::SourceSpan};
 
@@ -33,8 +34,26 @@ impl<'a> Typecheck<'a> for FunctionDeclaration {
         // statements within the function body.
         typechecker.context.start_function_context(self.return_type, span)?;
 
+        // If we do not encounter a return statement in a void method, then we can insert one implicitly.
+        let mut found_return_statement = false;
+
         for statement in &mut self.body {
             typechecker.check_statement(statement)?;
+
+            if let StatementKind::ReturnStatement(_) = statement.kind {
+                found_return_statement = true;
+            }
+        }
+
+        if !found_return_statement {
+            // If a return statement was not present, and this was a void function, we can insert one implicitly.
+            // Otherwise, we must return an error. All blocks must have a terminator and we cannot provide one
+            // implicitly for a non-void return type.
+            if self.return_type.kind == TypeKind::Resolved(ResolvedTypeKind::Void) {
+                self.insert_implicit_return_void(span);
+            } else {
+                return TypecheckerError::missing_return_statement(span).into();
+            }
         }
 
         typechecker.context.end_function_context(span)?;

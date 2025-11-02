@@ -27,6 +27,10 @@ pub enum TypecheckerError {
     #[display("Expected type '{expected}' but received type '{received}'")]
     ExpectedType { expected: TypeKind, received: TypeKind },
 
+    /// A return statement was missing in a function block without a void return type.
+    #[display("The function's return type is non-void, and no return statement was found within its body")]
+    MissingReturnStatement,
+
     /// A type could not be resolved by the typechecker.
     #[display("Unable to resolve type: '{0:?}")]
     UnableToResolveType(TypeKind),
@@ -67,6 +71,11 @@ impl TypecheckerError {
     /// Creates a new [Error] with the kind as a [TypecheckerError::ExpectedType] kind.
     pub fn expected_type(expected: TypeKind, received: TypeKind, span: SourceSpan) -> Error {
         Error::new(TypecheckerError::ExpectedType { expected, received }, span)
+    }
+
+    /// Creates a new [Error] with the kind as a [TypecheckerError::MissingReturnStatement] kind.
+    pub fn missing_return_statement(span: SourceSpan) -> Error {
+        Error::new(TypecheckerError::MissingReturnStatement, span)
     }
 
     /// Creates a new [Error] with the kind as a [TypecheckerError::UnableToResolveType] kind.
