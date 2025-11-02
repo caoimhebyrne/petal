@@ -1,0 +1,4 @@
+func main() -> i32 {
+    i32 my_value = 512;
+    return my_value;
+}
