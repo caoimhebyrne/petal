@@ -1,4 +1,4 @@
-use crate::token::Token;
+use crate::token::{Token, TokenKind};
 
 /// A [TokenStream] wraps a [Vec] of [Tokens], allowing the caller to peek and consume at the same time.
 pub struct TokenStream {
@@ -16,7 +16,7 @@ impl TokenStream {
     }
 
     /// Returns the token at the current index advancing the stream.
-    pub fn next(&mut self) -> Option<&Token> {
+    pub fn consume(&mut self) -> Option<&Token> {
         return self.tokens.get(self.index).map(|it| {
             self.index += 1;
             it
@@ -24,7 +24,7 @@ impl TokenStream {
     }
 
     /// Returns the next token in the stream that is not considered to be whitespace.
-    pub fn next_non_whitespace(&mut self) -> Option<&Token> {
+    pub fn consume_non_whitespace(&mut self) -> Option<&Token> {
         while let Some(token) = self.tokens.get(self.index) {
             self.index += 1;
 
@@ -61,6 +61,21 @@ impl TokenStream {
         }
 
         None
+    }
+
+    /// Returns whether the token at the current index of the stream is of a certain type.
+    pub fn next_is(&self, kind: TokenKind) -> bool {
+        self.peek_non_whitespace().map(|it| it.kind == kind).unwrap_or(false)
+    }
+
+    /// Returns whether the token at the current index + a certain offset of the stream is of a certain type.
+    pub fn nth_is(&self, offset: usize, kind: TokenKind) -> bool {
+        self.peek_nth(offset).map(|it| it.kind == kind).unwrap_or(false)
+    }
+
+    /// Returns whether the token after the one at the curernt index of the stream is of a certain type.
+    pub fn after_next_is(&self, kind: TokenKind) -> bool {
+        self.nth_is(1, kind)
     }
 
     /// Returns whether the end of the stream has been reached.
