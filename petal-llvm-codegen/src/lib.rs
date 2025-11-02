@@ -30,7 +30,7 @@ pub struct LLVMCodegen<'ctx> {
     pub(crate) string_intern_pool: &'ctx dyn StringInternPool,
 
     /// The [CodegenContext] used during the compilation.
-    pub(crate) codegen_context: CodegenContext<'ctx>,
+    pub(crate) context: CodegenContext<'ctx>,
 
     /// The [LLVMContextHolder] which contains the LLVM [Context] to be used by this codegen.
     pub(crate) llvm_context: &'ctx Context,
@@ -104,7 +104,7 @@ impl<'ctx> Driver<'ctx> for LLVMCodegen<'ctx> {
             llvm_builder: llvm_context.create_builder(),
             string_intern_pool,
             driver_options: options,
-            codegen_context: CodegenContext::new(),
+            context: CodegenContext::new(),
         }
     }
 
