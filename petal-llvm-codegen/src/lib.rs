@@ -12,19 +12,25 @@ use petal_ast::{
 use petal_codegen_driver::{Driver, options::DriverOptions};
 use petal_core::{error::Result, source_span::SourceSpan, string_intern::StringInternPool};
 
-use crate::{codegen::Codegen, error::LLVMCodegenErrorKind, string_intern_pool_ext::StringInternPoolExt};
+use crate::{
+    codegen::Codegen, context::CodegenContext, error::LLVMCodegenErrorKind, string_intern_pool_ext::StringInternPoolExt,
+};
 
 pub mod codegen;
+pub mod context;
 pub mod error;
 pub mod string_intern_pool_ext;
 
 /// An implementation of a code generator which produces a final binary using LLVM.
-pub struct LLVMCodegen<'s, 'ctx> {
+pub struct LLVMCodegen<'ctx> {
     /// The [DriverOptions] passed to this LLVM codegen driver.
     pub(crate) driver_options: DriverOptions,
 
     /// The StringInternPool implementation to use when reading identifiers.
-    pub(crate) string_intern_pool: &'s dyn StringInternPool,
+    pub(crate) string_intern_pool: &'ctx dyn StringInternPool,
+
+    /// The [CodegenContext] used during the compilation.
+    pub(crate) codegen_context: CodegenContext<'ctx>,
 
     /// The [LLVMContextHolder] which contains the LLVM [Context] to be used by this codegen.
     pub(crate) llvm_context: &'ctx Context,
@@ -36,7 +42,7 @@ pub struct LLVMCodegen<'s, 'ctx> {
     pub(crate) llvm_builder: Builder<'ctx>,
 }
 
-impl<'s, 'ctx> LLVMCodegen<'s, 'ctx> {
+impl<'ctx> LLVMCodegen<'ctx> {
     /// Converts the provided type to a function type.
     /// TODO: Include parameters.
     pub fn create_function_type(&self, r#type: Type) -> Result<FunctionType<'ctx>> {
@@ -86,18 +92,19 @@ impl<'s, 'ctx> LLVMCodegen<'s, 'ctx> {
     }
 }
 
-impl<'s, 'ctx> Driver<'s> for LLVMCodegen<'s, 'ctx> {
-    fn new(options: DriverOptions, string_intern_pool: &'s dyn StringInternPool) -> Self {
+impl<'ctx> Driver<'ctx> for LLVMCodegen<'ctx> {
+    fn new(options: DriverOptions, string_intern_pool: &'ctx dyn StringInternPool) -> Self {
         // We're creating and leaking the LLVM context here. The `Drop` implementation of this struct will ensure that
         // this is cleaned up successfully.
         let llvm_context: &'ctx Context = Box::leak(Box::new(Context::create()));
 
         LLVMCodegen {
-            string_intern_pool,
             llvm_context,
             llvm_module: llvm_context.create_module(&options.module_name),
             llvm_builder: llvm_context.create_builder(),
+            string_intern_pool,
             driver_options: options,
+            codegen_context: CodegenContext::new(),
         }
     }
 
@@ -115,14 +122,14 @@ impl<'s, 'ctx> Driver<'s> for LLVMCodegen<'s, 'ctx> {
     }
 }
 
-impl<'s, 'ctx> ASTVisitor for LLVMCodegen<'s, 'ctx> {
+impl<'ctx> ASTVisitor for LLVMCodegen<'ctx> {
     fn visit(&mut self, statement: &mut Statement) -> Result<()> {
         statement.codegen(self, statement.span).map(|_| ())
     }
 }
 
 /// The drop implementation ensures that the context that was leaked in the constructor is cleaned up properly.
-impl<'s, 'ctx> Drop for LLVMCodegen<'s, 'ctx> {
+impl<'ctx> Drop for LLVMCodegen<'ctx> {
     fn drop(&mut self) {
         // SAFETY: We know that the `llvm_context` within the codegen was created using [Box::leak] in the `new` factory
         // function.

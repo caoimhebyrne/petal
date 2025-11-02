@@ -7,7 +7,7 @@ use petal_core::{error::Result, source_span::SourceSpan};
 use crate::{LLVMCodegen, codegen::Codegen, error::LLVMCodegenErrorKind, string_intern_pool_ext::StringInternPoolExt};
 
 impl<'ctx> Codegen<'ctx> for Statement {
-    fn codegen(&self, codegen: &'ctx LLVMCodegen, _span: SourceSpan) -> Result<BasicValueEnum<'ctx>> {
+    fn codegen(&self, codegen: &mut LLVMCodegen<'ctx>, _span: SourceSpan) -> Result<BasicValueEnum<'ctx>> {
         match &self.kind {
             StatementKind::FunctionDeclaration(declaration) => declaration.codegen(codegen, self.span),
             StatementKind::ReturnStatement(return_statement) => return_statement.codegen(codegen, self.span),
@@ -18,7 +18,7 @@ impl<'ctx> Codegen<'ctx> for Statement {
 }
 
 impl<'ctx> Codegen<'ctx> for FunctionDeclaration {
-    fn codegen(&self, codegen: &'ctx LLVMCodegen, span: SourceSpan) -> Result<BasicValueEnum<'ctx>> {
+    fn codegen(&self, codegen: &mut LLVMCodegen<'ctx>, span: SourceSpan) -> Result<BasicValueEnum<'ctx>> {
         let function_name = codegen
             .string_intern_pool
             .resolve_reference_or_err(&self.name_reference, span)?;
@@ -38,7 +38,7 @@ impl<'ctx> Codegen<'ctx> for FunctionDeclaration {
 }
 
 impl<'ctx> Codegen<'ctx> for ReturnStatement {
-    fn codegen(&self, codegen: &'ctx LLVMCodegen, span: SourceSpan) -> Result<BasicValueEnum<'ctx>> {
+    fn codegen(&self, codegen: &mut LLVMCodegen<'ctx>, span: SourceSpan) -> Result<BasicValueEnum<'ctx>> {
         if let Some(return_value) = self.value.as_ref().map(|it| it.codegen(codegen, it.span)).transpose()? {
             codegen.llvm_builder.build_return(Some(&return_value))
         } else {

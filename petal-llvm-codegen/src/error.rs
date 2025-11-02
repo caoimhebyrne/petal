@@ -31,6 +31,12 @@ pub enum LLVMCodegenErrorKind {
 
     /// An error occurred while building the LLVM bytecode.
     BuilderError(BuilderError),
+
+    /// A scope context was expected, but one was not bound.
+    MissingScopeContext,
+
+    /// A variable was referenced that was not declared.
+    UndeclaredVariable(StringReference),
 }
 
 impl LLVMCodegenErrorKind {
@@ -63,6 +69,14 @@ impl LLVMCodegenErrorKind {
     pub fn builder_error(error: BuilderError, span: SourceSpan) -> Error {
         Error::new(LLVMCodegenErrorKind::BuilderError(error), span)
     }
+
+    pub fn missing_scope_context(span: SourceSpan) -> Error {
+        Error::new(LLVMCodegenErrorKind::MissingScopeContext, span)
+    }
+
+    pub fn undeclared_variable(identifier: StringReference, span: SourceSpan) -> Error {
+        Error::new(LLVMCodegenErrorKind::UndeclaredVariable(identifier), span)
+    }
 }
 
 impl Display for LLVMCodegenErrorKind {
@@ -94,6 +108,18 @@ impl Display for LLVMCodegenErrorKind {
 
             LLVMCodegenErrorKind::BuilderError(error) => {
                 write!(f, "LLVM builder error: '{}'", error)
+            }
+
+            LLVMCodegenErrorKind::MissingScopeContext => {
+                write!(f, "A scope context was expected, but one was not found, this is a bug")
+            }
+
+            LLVMCodegenErrorKind::UndeclaredVariable(identifier) => {
+                write!(
+                    f,
+                    "A variable ({:?}) was referenced, but it has not been declared yet, this is a bug",
+                    identifier
+                )
             }
         }
     }

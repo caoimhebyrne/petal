@@ -9,5 +9,5 @@ pub mod statement;
 /// Allows a type to implement codegen for itself.
 pub trait Codegen<'ctx> {
     /// Generates code using LLVM for a specific type.
-    fn codegen(&self, codegen: &'ctx LLVMCodegen, span: SourceSpan) -> Result<BasicValueEnum<'ctx>>;
+    fn codegen(&self, codegen: &mut LLVMCodegen<'ctx>, span: SourceSpan) -> Result<BasicValueEnum<'ctx>>;
 }
