@@ -133,6 +133,7 @@ def collect_test_cases() -> list[TestCase]:
 
             test_cases.append(TestCase(test_case_name, source_file_path, bytecode))
     
+    test_cases.sort(key=lambda it: it.name)
     return test_cases
 
 # Attempts to find a petal compiler in a neighbouring directory to the tests directory.
