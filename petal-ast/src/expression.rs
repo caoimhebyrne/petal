@@ -1,6 +1,6 @@
 use petal_core::{source_span::SourceSpan, string_intern::StringReference};
 
-use crate::r#type::Type;
+use crate::{statement::function_call::FunctionCall, r#type::Type};
 
 /// An expression can be seen as an action that can return a value.
 #[derive(Debug, Clone, PartialEq)]
@@ -36,6 +36,9 @@ pub enum ExpressionKind {
 
     /// A binary operation between two other expressions.
     BinaryOperation(BinaryOperation),
+
+    /// A function call, e.g. `<name>()`.
+    FunctionCall(FunctionCall),
 }
 
 /// A binary operation between two [Expression]s.

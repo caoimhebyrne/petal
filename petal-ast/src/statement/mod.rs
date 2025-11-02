@@ -1,9 +1,11 @@
 use petal_core::source_span::SourceSpan;
 
 use crate::statement::{
-    function_declaration::FunctionDeclaration, r#return::ReturnStatement, variable_declaration::VariableDeclaration,
+    function_call::FunctionCall, function_declaration::FunctionDeclaration, r#return::ReturnStatement,
+    variable_declaration::VariableDeclaration,
 };
 
+pub mod function_call;
 pub mod function_declaration;
 pub mod r#return;
 pub mod variable_declaration;
@@ -39,4 +41,7 @@ pub enum StatementKind {
 
     /// A return statement, e.g. `return <value>;`
     ReturnStatement(ReturnStatement),
+
+    /// A function call, e.g. `<name>();`
+    FunctionCall(FunctionCall),
 }

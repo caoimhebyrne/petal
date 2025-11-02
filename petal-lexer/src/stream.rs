@@ -42,6 +42,11 @@ impl TokenStream {
         return self.tokens.get(self.index);
     }
 
+    /// Returns the token at the current index + a certain offset without advancing the stream.
+    pub fn peek_nth(&self, offset: usize) -> Option<&Token> {
+        self.tokens.get(self.index + offset)
+    }
+
     /// Returns the next token in the stream that is not a comment token, without advancing the iterator.
     pub fn peek_non_whitespace(&self) -> Option<&Token> {
         let mut cursor = self.index;

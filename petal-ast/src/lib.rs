@@ -9,6 +9,7 @@ use crate::{
     expression::{BinaryOperation, Expression, ExpressionKind, Operation},
     statement::{
         Statement,
+        function_call::FunctionCall,
         function_declaration::{FunctionDeclaration, FunctionParameter},
         r#return::ReturnStatement,
         variable_declaration::VariableDeclaration,
@@ -59,8 +60,13 @@ impl ASTParser {
             TokenKind::Keyword(Keyword::Return) => (self.parse_return_statement_node(), true),
 
             TokenKind::Identifier(_) => {
-                // TODO: If this is an identifier, we should look ahead to make sure that it is a variable declaration.
-                (self.parse_variable_declaration_node(), true)
+                if self.token_stream.peek_nth(1).map(|it| it.kind) == Some(TokenKind::LeftParenthesis) {
+                    (self.parse_function_call_statement(), true)
+                } else {
+                    // TODO: If this is an identifier, we should look ahead to make sure that it is a variable
+                    // declaration.
+                    (self.parse_variable_declaration_node(), true)
+                }
             }
 
             _ => return ASTErrorKind::expected_statement(token).into(),
@@ -148,11 +154,17 @@ impl ASTParser {
         }
 
         // The only expression type that is supported is the integer literal.
-        let token = self.token_stream.next_non_whitespace_or_err()?;
+        let token = *self.token_stream.next_non_whitespace_or_err()?;
 
         let expression_kind = match token.kind {
             TokenKind::IntegerLiteral(literal) => ExpressionKind::IntegerLiteral(literal),
-            TokenKind::Identifier(reference) => ExpressionKind::IdentifierReference(reference),
+            TokenKind::Identifier(reference) => {
+                if self.token_stream.peek_non_whitespace().map(|it| it.kind) == Some(TokenKind::LeftParenthesis) {
+                    return self.parse_function_call_expression((reference, token));
+                }
+
+                ExpressionKind::IdentifierReference(reference)
+            }
 
             _ => return ASTErrorKind::expected_expression(&token).into(),
         };
@@ -289,6 +301,46 @@ impl ASTParser {
         Ok(Statement::new(
             ReturnStatement::new(value),
             SourceSpan::between(&return_token.span, &end_span),
+        ))
+    }
+
+    /// Attempts to parse a function call at the current position.
+    fn parse_function_call(
+        &mut self,
+        identifier: Option<(StringReference, Token)>,
+    ) -> Result<(FunctionCall, SourceSpan)> {
+        // The first token must be an identifier.
+        let (identifier_reference, identifier_token) = match identifier {
+            Some(value) => value,
+            None => self.expect_identifier()?,
+        };
+
+        // The next token must be an opening parenthesis.
+        self.expect_token(TokenKind::LeftParenthesis)?;
+
+        // The next token must be a closing parenthesis.
+        let closing_parenthesis = self.expect_token(TokenKind::RightParenthesis)?;
+
+        Ok((
+            FunctionCall::new(identifier_reference),
+            SourceSpan::between(&identifier_token.span, &closing_parenthesis.span),
+        ))
+    }
+
+    /// Attempts to parse a function call statement at the current position.
+    fn parse_function_call_statement(&mut self) -> Result<Statement> {
+        let (function_call, source_span) = self.parse_function_call(None)?;
+
+        Ok(Statement::new(function_call, source_span))
+    }
+
+    /// Attempts to parse a function call expression at the current position.
+    fn parse_function_call_expression(&mut self, identifier: (StringReference, Token)) -> Result<Expression> {
+        let (function_call, source_span) = self.parse_function_call(Some(identifier))?;
+
+        Ok(Expression::new(
+            ExpressionKind::FunctionCall(function_call),
+            source_span,
         ))
     }
 
