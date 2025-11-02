@@ -1,110 +1,115 @@
 use petal_ast::{
-    statement::Statement,
+    expression::{Expression, ExpressionKind},
+    statement::{Statement, StatementKind},
     r#type::{ResolvedTypeKind, Type, TypeKind},
     visitor::ASTVisitor,
 };
-use petal_core::{error::Result, source_span::SourceSpan, string_intern::StringInternPool};
+use petal_core::{error::Result, string_intern::StringInternPool};
 
-use crate::{context::TypecheckerContext, error::TypecheckerErrorKind, typecheck::Typecheck};
+use crate::{context::TypecheckerContext, error::TypecheckerError, typecheck::Typecheck};
 
-pub mod context;
-pub mod error;
-pub mod typecheck;
+pub(crate) mod context;
+pub(crate) mod error;
+pub(crate) mod typecheck;
 
-/// Responsible for resolving all types within an AST.
+/// The Petal typechecker is not only a typechecker, it also ensures that all types are resolvable and are understood
+/// at compile time.
+///
+/// To typecheck an AST, call [petal_ast::StatementStream::visit] with this [Typechecker].
 pub struct Typechecker<'a> {
-    /// The StringInternPool implementation to read identifiers from.
-    string_intern_pool: &'a dyn StringInternPool,
+    /// The [TypecheckerContext] containing extra information about the current type-checking session.
+    pub(crate) context: TypecheckerContext<'a>,
 
-    /// The context of the typechecker, set once a function declaration is being checked.
-    context: Option<TypecheckerContext>,
+    /// The [StringInternPool] to read strings from.
+    pub(crate) string_intern_pool: &'a dyn StringInternPool,
 }
 
 impl<'a> Typechecker<'a> {
     /// Creates a new [Typechecker].
     pub fn new(string_intern_pool: &'a dyn StringInternPool) -> Self {
         Typechecker {
+            context: TypecheckerContext::new(string_intern_pool),
             string_intern_pool,
-            context: None,
         }
     }
 
-    /// Resolves the provided type if it has not yet been resolved.
-    pub fn resolve(&self, r#type: &mut Type) -> Result<Type> {
-        // If the provided type is resolved, we do not need to do anything else.
-        let type_name_reference = match r#type.kind {
-            TypeKind::Resolved(_) => return Ok(*r#type),
-            TypeKind::Unresolved(reference) => reference,
-        };
+    /// Checks and resolves all types involved in a [Statement].
+    ///
+    /// Returns:
+    /// The [Type] that this statement produces. If the statement does not result in a type, then [Type::void] will be
+    /// returned.
+    pub fn check_statement(&mut self, statement: &mut Statement) -> Result<Type> {
+        match &mut statement.kind {
+            StatementKind::FunctionDeclaration(declaration) => declaration.typecheck(self, statement.span),
+            StatementKind::ReturnStatement(r#return) => r#return.typecheck(self, statement.span),
+            StatementKind::FunctionCall(function_call) => function_call.typecheck(self, statement.span),
+            StatementKind::VariableDeclaration(declaration) => declaration.typecheck(self, statement.span),
 
-        // Otherwise, we must attempt to resolve it.
-        let type_name = self.string_intern_pool.resolve_reference(&type_name_reference).ok_or(
-            TypecheckerErrorKind::unresolvable_string_reference(type_name_reference, r#type.span),
-        )?;
-
-        let resolved_type_kind = match type_name {
-            "void" => ResolvedTypeKind::Void,
-            "i32" => ResolvedTypeKind::Integer(32),
-
-            _ => return TypecheckerErrorKind::unresolvable_type(type_name, r#type.span).into(),
-        };
-
-        r#type.resolve(resolved_type_kind);
-        Ok(*r#type)
+            #[allow(unreachable_patterns)]
+            _ => TypecheckerError::unsupported_statement(statement.clone()).into(),
+        }
     }
 
-    /// Expects a typechecker's context to be bound, returning an error if it has not been bound.
-    pub fn context(&mut self, span: Option<SourceSpan>) -> Result<&mut TypecheckerContext> {
-        let unwrapped_span = span.unwrap_or(SourceSpan { start: 0, end: 0 });
+    /// Checks and resolves all types involved in an [Expression]. This also sets the [Expression::type] to the resolved
+    /// type.
+    ///
+    /// Returns:
+    /// The [Type] that this expression produces.
+    pub fn check_expression(&mut self, expression: &mut Expression) -> Result<Type> {
+        let r#type = match &mut expression.kind {
+            ExpressionKind::FunctionCall(function_call) => function_call.typecheck(self, expression.span)?,
+            ExpressionKind::BinaryOperation(operation) => operation.typecheck(self, expression.span)?,
 
-        self.context
-            .as_mut()
-            .ok_or(TypecheckerErrorKind::missing_context(unwrapped_span))
+            ExpressionKind::IdentifierReference(reference) => {
+                // A variable must've been declared with the provided name already.
+                let variable = self
+                    .context
+                    .function_context(expression.span)?
+                    .get_variable(reference, expression.span)?;
+
+                variable.r#type
+            }
+
+            // TODO: When multiple integer widths are supported, we will need to add inference by passing an "expected"
+            // type to `check_expression`.
+            ExpressionKind::IntegerLiteral(_) => Type::new(ResolvedTypeKind::Integer(32), expression.span),
+
+            #[allow(unreachable_patterns)]
+            _ => return TypecheckerError::unsupported_expression(expression.clone()).into(),
+        };
+
+        // All expressions have an associated 'type' field which should always be present after typechecking.
+        expression.r#type = Some(r#type);
+        Ok(r#type)
+    }
+
+    /// Attempts to resolve the provided [Type] if it has not been resolved already.
+    pub fn resolve_type(&self, r#type: &Type) -> Result<Type> {
+        // If the provided type has been resolved already, then we don't need to do anything else.
+        let type_name_reference = match r#type.kind {
+            TypeKind::Unresolved(reference) => reference,
+            TypeKind::Resolved(_) => return Ok(*r#type),
+        };
+
+        // Otherwise, we can attempt to resolve the type from its name.
+        let type_name = self
+            .string_intern_pool
+            .resolve_reference_or_err(&type_name_reference, r#type.span)?;
+
+        let kind = match type_name {
+            "i32" => ResolvedTypeKind::Integer(32),
+            "void" => ResolvedTypeKind::Void,
+
+            _ => return TypecheckerError::unable_to_resolve_type(r#type).into(),
+        };
+
+        // We can now construct a new resolved type from the resolved kind.
+        Ok(Type::new(TypeKind::Resolved(kind), r#type.span))
     }
 }
 
 impl<'a> ASTVisitor for Typechecker<'a> {
     fn visit(&mut self, statement: &mut Statement) -> Result<()> {
-        statement.typecheck(self, statement.span)?;
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod typechecker_tests {
-    use petal_core::{source_span::SourceSpan, string_intern::StringInternPoolImpl};
-
-    use super::*;
-
-    #[test]
-    fn can_resolve_void() {
-        let mut string_intern_pool = StringInternPoolImpl::new();
-        let void_string_reference = string_intern_pool.intern("void");
-
-        let mut r#type = Type {
-            kind: TypeKind::Unresolved(void_string_reference),
-            span: SourceSpan { start: 0, end: 0 },
-        };
-
-        let typechecker = Typechecker::new(&string_intern_pool);
-        typechecker.resolve(&mut r#type).expect("resolve should succeed");
-
-        assert_eq!(r#type.kind, TypeKind::Resolved(ResolvedTypeKind::Void))
-    }
-
-    #[test]
-    fn can_resolve_i32() {
-        let mut string_intern_pool = StringInternPoolImpl::new();
-        let i32_string_reference = string_intern_pool.intern("i32");
-
-        let mut r#type = Type {
-            kind: TypeKind::Unresolved(i32_string_reference),
-            span: SourceSpan { start: 0, end: 0 },
-        };
-
-        let typechecker = Typechecker::new(&string_intern_pool);
-        typechecker.resolve(&mut r#type).expect("resolve should succeed");
-
-        assert_eq!(r#type.kind, TypeKind::Resolved(ResolvedTypeKind::Integer(32)))
+        self.check_statement(statement).map(|_| ())
     }
 }

@@ -30,11 +30,6 @@ impl Type {
     pub fn void(span: SourceSpan) -> Self {
         Type::new(ResolvedTypeKind::Void, span)
     }
-
-    /// Converts this type to a resolved type of the provided [ResolvedTypeKind].
-    pub fn resolve(&mut self, kind: ResolvedTypeKind) {
-        self.kind = TypeKind::Resolved(kind);
-    }
 }
 
 /// Represents the kinds of types that can be associated with an AST node.

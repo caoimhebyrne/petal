@@ -1,5 +1,4 @@
-use std::fmt::Display;
-
+use enum_display::EnumDisplay;
 use petal_ast::{
     expression::{Expression, ExpressionKind},
     statement::{Statement, StatementKind},
@@ -8,132 +7,95 @@ use petal_ast::{
 use petal_core::{
     error::{Error, ErrorKind},
     source_span::SourceSpan,
-    string_intern::StringReference,
 };
 
-/// Represents the different kinds of errors that can be thrown during a typecheck.
-#[derive(Debug, Clone, PartialEq)]
-pub enum TypecheckerErrorKind {
-    /// A string reference was encountered that could not be resolved.
-    UnresolvableStringReference(StringReference),
+#[derive(Debug, PartialEq, EnumDisplay)]
+pub enum TypecheckerError {
+    /// An attempt was made to declare a function, but one already exists with the same name.
+    #[display("A function already exists with the name: '{0}")]
+    DuplicateFunctionDeclaration(String),
 
-    /// A type was referenced that could not be resolved.
-    UnresolvableType(String),
+    /// An attempt was made to declare a varaible, but one already exists with the provided name.
+    #[display("A variable already exists with the name: '{0}")]
+    DuplicateVariableDeclaration(String),
 
-    /// A statement was encountered that could not be typechecked.
-    UnsupportedStatement(StatementKind),
+    /// A function context was expected, but one was not available.
+    #[display("Expected a function context, but one was not available -- this may be a compiler bug")]
+    ExpectedFunctionContext,
 
-    /// An expression was encountered that could not be typechecked.,
-    UnsupportedExpression(ExpressionKind),
-
-    /// The typechecker's context was missing (for whatever reason).
-    MissingContext,
-
-    /// A type was expected, but a different one was received.
+    /// A type was expected, but a different type was received.
+    #[display("Expected type '{expected}' but received type '{received}'")]
     ExpectedType { expected: TypeKind, received: TypeKind },
 
-    /// A value was not returned from a function block.
-    MissingReturnStatement,
+    /// A type could not be resolved by the typechecker.
+    #[display("Unable to resolve type: '{0:?}")]
+    UnableToResolveType(TypeKind),
 
-    /// A variable was already declared with the same name.
-    DuplicateVariableDeclaration,
+    /// A function was referenced, but it has not been defined yet.
+    #[display("Unknown function: '{0}'")]
+    UndeclaredFunction(String),
 
-    /// A variable was referenced that was not declared.
+    /// A variable was referenced, but it has not been defined yet.
+    #[display("Unknown variable: '{0}'")]
     UndeclaredVariable(String),
+
+    /// An expression is not supported by the typechecker yet.
+    #[display("Unable to type-check expression: {0:?}")]
+    UnsupportedExpression(ExpressionKind),
+
+    /// A statement is not supported by the typechecker yet.
+    #[display("Unable to type-check statement: {0:?}")]
+    UnsupportedStatement(StatementKind),
 }
 
-impl TypecheckerErrorKind {
-    pub fn unresolvable_string_reference(reference: StringReference, span: SourceSpan) -> Error {
-        Error::new(TypecheckerErrorKind::UnresolvableStringReference(reference), span)
+impl TypecheckerError {
+    /// Creates a new [Error] with the kind as a [TypecheckerError::DuplicateFunctionDeclaration] kind.
+    pub fn duplicate_function_declaration(name: &str, span: SourceSpan) -> Error {
+        Error::new(TypecheckerError::DuplicateFunctionDeclaration(name.to_owned()), span)
     }
 
-    pub fn unresolvable_type(name: &str, span: SourceSpan) -> Error {
-        Error::new(TypecheckerErrorKind::UnresolvableType(name.to_owned()), span)
+    /// Creates a new [Error] with the kind as a [TypecheckerError::DuplicateVariableDeclaration] kind.
+    pub fn duplicate_variable_declaration(name: &str, span: SourceSpan) -> Error {
+        Error::new(TypecheckerError::DuplicateVariableDeclaration(name.to_owned()), span)
     }
 
-    pub fn unsupported_statement(statement: &Statement) -> Error {
+    /// Creates a new [Error] with the kind as a [TypecheckerError::ExpectedFunctionContext] kind.
+    pub fn expected_function_context(span: SourceSpan) -> Error {
+        Error::new(TypecheckerError::ExpectedFunctionContext, span)
+    }
+
+    /// Creates a new [Error] with the kind as a [TypecheckerError::ExpectedType] kind.
+    pub fn expected_type(expected: TypeKind, received: TypeKind, span: SourceSpan) -> Error {
+        Error::new(TypecheckerError::ExpectedType { expected, received }, span)
+    }
+
+    /// Creates a new [Error] with the kind as a [TypecheckerError::UnableToResolveType] kind.
+    pub fn unable_to_resolve_type(r#type: &Type) -> Error {
+        Error::new(TypecheckerError::UnableToResolveType(r#type.kind), r#type.span)
+    }
+
+    /// Creates a new [Error] with the kind as a [TypecheckerError::UndeclaredFunction] kind.
+    pub fn undeclared_function(name: &str, span: SourceSpan) -> Error {
+        Error::new(TypecheckerError::UndeclaredFunction(name.to_owned()), span)
+    }
+
+    /// Creates a new [Error] with the kind as a [TypecheckerError:UndeclaredVariable] kind.
+    pub fn undeclared_variable(name: &str, span: SourceSpan) -> Error {
+        Error::new(TypecheckerError::UndeclaredVariable(name.to_owned()), span)
+    }
+
+    /// Creates a new [Error] with the kind as a [TypecheckerError::UnsupportedExpression] kind.
+    pub fn unsupported_expression(expression: Expression) -> Error {
         Error::new(
-            TypecheckerErrorKind::UnsupportedStatement(statement.kind.clone()),
-            statement.span,
-        )
-    }
-
-    pub fn unsupported_expression(expression: &Expression) -> Error {
-        Error::new(
-            TypecheckerErrorKind::UnsupportedExpression(expression.kind.clone()),
+            TypecheckerError::UnsupportedExpression(expression.kind),
             expression.span,
         )
     }
 
-    pub fn missing_context(span: SourceSpan) -> Error {
-        Error::new(TypecheckerErrorKind::MissingContext, span)
-    }
-
-    pub fn expected_type(expected: &Type, received: &Type) -> Error {
-        Error::new(
-            TypecheckerErrorKind::ExpectedType {
-                expected: expected.kind,
-                received: received.kind,
-            },
-            received.span,
-        )
-    }
-
-    pub fn missing_return_statement(span: SourceSpan) -> Error {
-        Error::new(TypecheckerErrorKind::MissingReturnStatement, span)
-    }
-
-    pub fn duplicate_variable_declaration(span: SourceSpan) -> Error {
-        Error::new(TypecheckerErrorKind::DuplicateVariableDeclaration, span)
-    }
-
-    pub fn undeclared_variable(name: &str, span: SourceSpan) -> Error {
-        Error::new(TypecheckerErrorKind::UndeclaredVariable(name.to_owned()), span)
+    /// Creates a new [Error] with the kind as a [TypecheckerError::UnsupportedStatement] kind.
+    pub fn unsupported_statement(statement: Statement) -> Error {
+        Error::new(TypecheckerError::UnsupportedStatement(statement.kind), statement.span)
     }
 }
 
-impl Display for TypecheckerErrorKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TypecheckerErrorKind::UnresolvableStringReference(reference) => {
-                write!(
-                    f,
-                    "Unable to resolve string reference: '{:?}', this is 100% a compiler bug",
-                    reference
-                )
-            }
-
-            TypecheckerErrorKind::UnresolvableType(name) => write!(f, "Unable to resolve type: '{}'", name),
-
-            TypecheckerErrorKind::UnsupportedStatement(kind) => {
-                write!(f, "Unable to type-check statement: '{:?}'", kind)
-            }
-
-            TypecheckerErrorKind::UnsupportedExpression(kind) => {
-                write!(f, "Unable to type-check expression: '{:?}'", kind)
-            }
-
-            TypecheckerErrorKind::MissingContext => write!(
-                f,
-                "An internal error occurred in the typechecker: unable to find a context"
-            ),
-
-            TypecheckerErrorKind::ExpectedType { expected, received } => {
-                write!(f, "Expected type '{}' but received type '{}'", expected, received)
-            }
-
-            TypecheckerErrorKind::MissingReturnStatement => write!(
-                f,
-                "A return statement was not found in the function block, and the function's return type is not void"
-            ),
-
-            TypecheckerErrorKind::DuplicateVariableDeclaration => {
-                write!(f, "A variable with the same name already exists in this scope")
-            }
-
-            TypecheckerErrorKind::UndeclaredVariable(name) => write!(f, "Undeclared variable: '{}'", name),
-        }
-    }
-}
-
-impl ErrorKind for TypecheckerErrorKind {}
+impl ErrorKind for TypecheckerError {}

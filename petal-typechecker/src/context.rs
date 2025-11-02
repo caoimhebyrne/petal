@@ -1,34 +1,175 @@
 use std::collections::HashMap;
 
 use petal_ast::r#type::Type;
-use petal_core::string_intern::StringReference;
+use petal_core::{
+    error::Result,
+    source_span::SourceSpan,
+    string_intern::{StringInternPool, StringReference},
+};
 
-#[derive(Debug)]
-pub struct TypecheckerContext {
-    /// The return type of the current function.
-    pub return_type: Type,
+use crate::error::TypecheckerError;
 
-    /// A map of identifier references to their expected type.
-    pub variable_declarations: HashMap<StringReference, Type>,
+/// The context attached to a [crate::Typechecker].
+pub struct TypecheckerContext<'a> {
+    /// The [FunctionContext] that is currently bound to this [TypecheckerContext].
+    function_context: Option<FunctionContext<'a>>,
+
+    /// A map of [StringReference]s for function names to their [Function]s.
+    functions: HashMap<StringReference, Function>,
+
+    /// The [StringInternPool] to read strings from.
+    string_intern_pool: &'a dyn StringInternPool,
 }
 
-impl TypecheckerContext {
-    pub fn new(return_type: Type) -> Self {
+impl<'a> TypecheckerContext<'a> {
+    /// Creates a new [TypecheckerContext].
+    pub fn new(string_intern_pool: &'a dyn StringInternPool) -> Self {
         TypecheckerContext {
-            return_type,
-            variable_declarations: HashMap::new(),
+            function_context: None,
+            functions: HashMap::new(),
+            string_intern_pool,
         }
     }
 
-    pub fn add_variable_declaration(&mut self, reference: StringReference, r#type: Type) {
-        self.variable_declarations.insert(reference, r#type);
+    /// Creates a [FunctionContext] instance and binds it to this [TypecheckerContext].
+    pub fn start_function_context(&mut self, return_type: Type) -> Result<()> {
+        // TODO: Do we need to throw an error if a function context is already bound?
+
+        self.function_context = Some(FunctionContext::new(return_type, self.string_intern_pool));
+        Ok(())
     }
 
-    pub fn variable_declaration_exists(&self, reference: StringReference) -> bool {
-        self.variable_declarations.contains_key(&reference)
+    /// Un-binds the function context that may or may not be currently bound to this [TypecheckerContext].
+    pub fn end_function_context(&mut self) -> Result<()> {
+        // TODO: Do we need to throw an error if a function context is not yet bound?
+
+        self.function_context = None;
+        Ok(())
     }
 
-    pub fn get_variable_type(&self, reference: StringReference) -> Option<&Type> {
-        self.variable_declarations.get(&reference)
+    /// Returns the current [FunctionContext] that is bound to this [TypecheckerContext].
+    ///
+    /// Errors;
+    /// - [TypecheckerError::ExpectedFunctionContext] If a function context has not been bound to this
+    ///   [TypecheckerContext] yet.
+    pub fn function_context(&mut self, span: SourceSpan) -> Result<&mut FunctionContext<'a>> {
+        self.function_context
+            .as_mut()
+            .ok_or(TypecheckerError::expected_function_context(span))
+    }
+
+    /// Adds a [Function] to this [TypecheckerContext].
+    ///
+    /// Errors:
+    /// - [TypecheckerError::DuplicateFunctionDeclaration] If a function has already been declared with the provided
+    ///   name.
+    pub fn add_function(&mut self, name: &StringReference, function: Function) -> Result<()> {
+        if self.functions.get(name).is_some() {
+            let function_name = self.string_intern_pool.resolve_reference_or_err(name, function.span)?;
+            return TypecheckerError::duplicate_function_declaration(function_name, function.span).into();
+        }
+
+        self.functions.insert(*name, function);
+        Ok(())
+    }
+
+    /// Finds a [Function] within this [TypecheckerContext].
+    ///
+    /// Errors:
+    /// - [TypecheckerError::UndeclaredFunction] If a function with the provided name has not yet been defined.
+    pub fn get_function(&mut self, name: &StringReference, span: SourceSpan) -> Result<&Function> {
+        self.functions.get(name).ok_or_else(|| {
+            let function_name = match self.string_intern_pool.resolve_reference_or_err(name, span) {
+                Ok(value) => value,
+                Err(error) => return error,
+            };
+
+            TypecheckerError::undeclared_function(function_name, span).into()
+        })
+    }
+}
+
+/// A function that has been declared during typechecking.
+pub struct Function {
+    /// The expected return type of the function.
+    pub return_type: Type,
+
+    /// The span within the source code that this function was declared at.
+    pub span: SourceSpan,
+}
+
+impl Function {
+    /// Creates a new [Function].
+    pub fn new(return_type: Type, span: SourceSpan) -> Self {
+        Function { return_type, span }
+    }
+}
+
+/// A variable that has been declared within a function during typechecking.
+pub struct Variable {
+    /// The value type of the variable.
+    pub r#type: Type,
+
+    /// The span within the source code that this variable was declared at.
+    pub span: SourceSpan,
+}
+
+impl Variable {
+    pub fn new(r#type: Type, span: SourceSpan) -> Self {
+        Variable { r#type, span }
+    }
+}
+
+/// The context information associated with a function during its typechecking.
+/// This is not the same as a [Function], consider a [Function] the product of a [FunctionContext].
+pub struct FunctionContext<'a> {
+    /// The return type of the current function.
+    pub return_type: Type,
+
+    /// The [StringInternPool] to read strings from.
+    string_intern_pool: &'a dyn StringInternPool,
+
+    /// A map of [StringReference]s for variable names to their [Variable]s.
+    variables: HashMap<StringReference, Variable>,
+}
+
+impl<'a> FunctionContext<'a> {
+    /// Creates a new [FunctionContext].
+    pub fn new(return_type: Type, string_intern_pool: &'a dyn StringInternPool) -> Self {
+        FunctionContext {
+            return_type,
+            string_intern_pool,
+            variables: HashMap::new(),
+        }
+    }
+
+    /// Adds a variable to this [FunctionContext].
+    ///
+    /// Errors:
+    /// - [TypecheckerError::DuplicateVariableDeclaration] If a variable has already been declared with the provided
+    ///   name.
+    pub fn add_variable(&mut self, name: &StringReference, variable: Variable) -> Result<()> {
+        if self.variables.get(name).is_some() {
+            let variable_name = self.string_intern_pool.resolve_reference_or_err(name, variable.span)?;
+            return TypecheckerError::duplicate_variable_declaration(variable_name, variable.span).into();
+        }
+
+        self.variables.insert(*name, variable);
+        Ok(())
+    }
+
+    /// Retrieves a variable by its name from this [FunctionContext].
+    ///
+    /// Errors:
+    /// - [TypecheckerError::UndeclaredVariable] If a variable with the provided name has not yet been declared.
+    pub fn get_variable(&self, name: &StringReference, span: SourceSpan) -> Result<&Variable> {
+        self.variables.get(name).ok_or_else(|| {
+            let function_name = match self.string_intern_pool.resolve_reference_or_err(name, span) {
+                Ok(value) => value,
+                Err(error) => return error,
+            };
+
+            TypecheckerError::undeclared_variable(function_name, span).into()
+        })
     }
 }
