@@ -1,3 +1,5 @@
+use std::mem::ManuallyDrop;
+
 use inkwell::{
     builder::Builder,
     context::Context,
@@ -36,10 +38,10 @@ pub struct LLVMCodegen<'ctx> {
     pub(crate) llvm_context: &'ctx Context,
 
     /// The LLVM module being used.
-    pub(crate) llvm_module: Module<'ctx>,
+    pub(crate) llvm_module: ManuallyDrop<Module<'ctx>>,
 
     /// The builder being used.
-    pub(crate) llvm_builder: Builder<'ctx>,
+    pub(crate) llvm_builder: ManuallyDrop<Builder<'ctx>>,
 }
 
 impl<'ctx> LLVMCodegen<'ctx> {
@@ -100,8 +102,8 @@ impl<'ctx> Driver<'ctx> for LLVMCodegen<'ctx> {
 
         LLVMCodegen {
             llvm_context,
-            llvm_module: llvm_context.create_module(&options.module_name),
-            llvm_builder: llvm_context.create_builder(),
+            llvm_module: ManuallyDrop::new(llvm_context.create_module(&options.module_name)),
+            llvm_builder: ManuallyDrop::new(llvm_context.create_builder()),
             string_intern_pool,
             driver_options: options,
             context: CodegenContext::new(),
@@ -131,9 +133,16 @@ impl<'ctx> ASTVisitor for LLVMCodegen<'ctx> {
 /// The drop implementation ensures that the context that was leaked in the constructor is cleaned up properly.
 impl<'ctx> Drop for LLVMCodegen<'ctx> {
     fn drop(&mut self) {
-        // SAFETY: We know that the `llvm_context` within the codegen was created using [Box::leak] in the `new` factory
-        // function.
-        let context_box = unsafe { Box::from_raw(self.llvm_context as *const Context as *mut Context) };
-        drop(context_box);
+        unsafe {
+            // SAFETY: These values are not dropped anywhere other than in this method. This means that these values are
+            // valid during all execution up until the struct holding them is dropped.
+            ManuallyDrop::drop(&mut self.llvm_builder);
+            ManuallyDrop::drop(&mut self.llvm_module);
+
+            // SAFETY: We know that the `llvm_context` within the codegen was created using [Box::leak] in the `new`
+            // factory function. We have also already dropped the builder and module manually.
+            let context_box = Box::from_raw(self.llvm_context as *const Context as *mut Context);
+            drop(context_box);
+        }
     }
 }
