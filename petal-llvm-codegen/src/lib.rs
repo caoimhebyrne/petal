@@ -23,7 +23,6 @@ use crate::{
 pub mod codegen;
 pub mod context;
 pub mod error;
-pub mod string_intern_pool_ext;
 
 /// An implementation of a code generator which produces a final binary using LLVM.
 pub struct LLVMCodegen<'ctx> {
