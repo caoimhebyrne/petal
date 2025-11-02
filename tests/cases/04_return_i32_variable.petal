@@ -1,4 +1,5 @@
+// exit-code: 123
 func main() -> i32 {
-    i32 my_value = 512;
-    return my_value;
+    i32 value = 123;
+    return value;
 }

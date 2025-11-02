@@ -35,49 +35,79 @@ class TestCase:
     '''Contains information about each test case'''
     name: str
     source_file_path: Path
-    bytecode: str
+    output_executable_path: Path
 
-    def __init__(self, name: str, source_file_path: Path, bytecode: str):
+    def __init__(self, name: str, source_file_path: Path, output_executable_path: Path):
         self.name = name
         self.source_file_path = source_file_path
-        self.bytecode = bytecode.strip()
+        self.output_executable_path = output_executable_path
 
     def execute(self, compiler_path: Path) -> bool:
         print()
-        log_info(f'Running test {self.name}')
+        log_info(f'Running test {self.source_file_path.name}')
 
-        # We know that the compiler exists, we can start a process pointing it to the source file.
-        process = subprocess.Popen([compiler_path, '--dump-bytecode', self.source_file_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        process.wait()
+        source_file_contents: str = self.source_file_path.read_text()
+        expected_exit_code: int
 
-        stdout: str = ''
-        if process.stdout:
-            stdout = self.prepare_stdout(process.stdout)
-        
-        stderr: str = ''
-        if process.stderr:
-            stderr = process.stderr.read().strip()
-
-        # If the process has exited with a non-zero exit code, then the test has failed.
-        if not process.returncode == 0:
-            log_fail(f'{self.name} has failed, process exited with code {process.returncode}, see output below.')
-
-            if not len(stdout) == 0:
-                print(f'\nStandard Output:\n{stdout}')
-
-            if not len(stderr) == 0:
-                print(f'\nStandard Error:\n{stderr}')
-
+        # If the first line of the file is `// exit-code: <number>`, then that is the expected exit code for the test.
+        first_line = source_file_contents.splitlines()[0]
+        if first_line.startswith("// exit-code: "):
+            expected_exit_code = int(first_line.removeprefix("// exit-code: ").strip())
+        else:
+            log_error(f'{self.name} is invalid, the first line must be an `// exit-code: ` declaration!')
             return False
 
-        # If the standard output does not equal the expected bytecode, then the test has failed.
-        if not stdout == self.bytecode:
-            log_fail(f'{self.name} has failed, compiler did not produce matching bytecode, see output below.')
-            print(f'\nExpected:\n{self.bytecode}') 
-            print(f'\nStandard Output:\n{stdout}')
-            
-            if not len(stderr) == 0:
-                print(f'Standard Error:\n{stderr}')
+        # We know that the compiler exists, we can start a process pointing it to the source file.
+        compile_process = subprocess.Popen([compiler_path, '--dump-bytecode', '-o', self.output_executable_path, self.source_file_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        compile_process.wait()
+
+        compiler_stdout: str = ''
+        if compile_process.stdout:
+            compiler_stdout = self.prepare_stdout(compile_process.stdout)
+        
+        compiler_stderr: str = ''
+        if compile_process.stderr:
+            compiler_stderr = compile_process.stderr.read().strip()
+
+        # If the compiler has exited with a non-zero exit code, then the test has failed.
+        if not compile_process.returncode == 0:
+            log_fail(f'{self.name} has failed, compiler exited with code {compile_process.returncode}, see output below.')
+
+            if not len(compiler_stdout) == 0:
+                print(f'\nStandard Output:\n{compiler_stdout}')
+
+            if not len(compiler_stderr) == 0:
+                print(f'\nStandard Error:\n{compiler_stderr}')
+
+            return False
+        
+        # We should now have a valid binary at the executable path.
+        process = subprocess.Popen([self.output_executable_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process.wait()
+
+        process_stdout: str = ''
+        if process.stdout:
+            process_stdout = self.prepare_stdout(process.stdout)
+        
+        process_stderr: str = ''
+        if process.stderr:
+            process_stderr = process.stderr.read().strip()
+
+        # If the compiler has exited with a non-zero exit code, then the test has failed.
+        if not process.returncode == expected_exit_code:
+            log_fail(f'{self.name} has failed, process exited with code {process.returncode} (expected {expected_exit_code}).')
+
+            if not len(process_stdout) == 0:
+                print(f'\nProcess Standard Output:\n{process_stdout}')
+
+            if not len(process_stderr) == 0:
+                print(f'\nProcess Standard Error:\n{process_stderr}')
+
+            if not len(compiler_stdout) == 0:
+                print(f'\nCompiler Standard Output:\n{compiler_stdout}')
+
+            if not len(compiler_stderr) == 0:
+                print(f'\nCompiler Standard Error:\n{compiler_stderr}')
 
             return False
         
@@ -97,15 +127,9 @@ class TestCase:
 
         
 # Each test case must end with the `.petal` extension, and the expected bytecode must end in `.b`.s
-def collect_test_cases() -> list[TestCase]:
-    # The 'cases' directory must exist beside this script.
-    test_cases_directory: Path = tests_directory / 'cases'
-
+def collect_test_cases(test_cases_directory: Path, executables_directory: Path) -> list[TestCase]:
     # All scripts use the `.petal` extension.
     petal_extension: str = '.petal'
-
-    # ALl bytecode files use the `.petal.b` extension.
-    bytecode_extension: str = f'.b'
 
     test_cases: list[TestCase] = []
 
@@ -115,23 +139,12 @@ def collect_test_cases() -> list[TestCase]:
             if not file_name.endswith(petal_extension):
                 continue
 
-            # Each `.petal` file must have a corresponding `.petal.b` file.
-            bytecode_file_name: str = f'{file_name}{bytecode_extension}'
-            bytecode_file_path: Path = test_cases_directory / bytecode_file_name
-
-            if not bytecode_file_path.exists():
-                print(f'FATAL: {file_name} does not have a corresponding bytecode file ({bytecode_file_name})')
-                exit(-1)
-
-            bytecode: str = ''
-            with open(bytecode_file_path, 'r') as bytecode_file:
-                bytecode = bytecode_file.read()
-
             # We can then construct a test case 
             test_case_name = file_name.removesuffix(petal_extension)
             source_file_path: Path = test_cases_directory / file_name
+            output_executable_path = executables_directory / test_case_name
 
-            test_cases.append(TestCase(test_case_name, source_file_path, bytecode))
+            test_cases.append(TestCase(test_case_name, source_file_path, output_executable_path))
     
     test_cases.sort(key=lambda it: it.name)
     return test_cases
@@ -160,7 +173,13 @@ def main():
     compiler_path: Path = find_petal_compiler()
     log_info(f'Using petal compiler located at {compiler_path}')
 
-    test_cases: list[TestCase] = collect_test_cases()
+    # The 'cases' directory must exist beside this script.
+    test_cases_directory: Path = tests_directory / 'cases'
+
+    executables_directory: Path = tests_directory / '.petal-build'
+    executables_directory.mkdir(exist_ok=True)
+
+    test_cases: list[TestCase] = collect_test_cases(test_cases_directory, executables_directory)
     log_info(f'Starting test suite with {len(test_cases)} test{'' if len(test_cases) == 1 else 's'}')
 
     success: bool = True
@@ -170,7 +189,13 @@ def main():
         if not case.execute(compiler_path):
             success = False
 
-    if not success:
+    if success:
+        for root, _, files in executables_directory.walk(top_down=False):
+            for file in files:
+                (root / file).unlink()
+
+        executables_directory.rmdir()
+    else:
         print()
         log_error(f'One or more tests failed, see the above logs for more information.')
         exit(-1)

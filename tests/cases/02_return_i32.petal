@@ -1,3 +1,4 @@
-func test() -> i32 {
+// exit-code: 123
+func main() -> i32 {
     return 123;
 }

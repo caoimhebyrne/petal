@@ -1,5 +1,0 @@
-func main() -> i32 {
-    // This test case doesn't do a whole bunch since LLVM folds constants when performing binary operations, but it
-    // still ensures that the correct bytecode is produced in any case.
-    return 9 + 10;
-}
