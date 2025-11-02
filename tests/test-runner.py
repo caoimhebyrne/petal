@@ -31,31 +31,71 @@ def log_error(message: str):
     print(f'\033[1;31mERROR:\033[0m {message}')
 
 @dataclass
+class TestCaseOptions:
+    '''Contains options provided in the comment header of each test case'''
+    expected_exit_code: int
+    compile_failure: str
+
+    def __init__(self):
+        self.expected_exit_code = 0
+        self.compile_failure = ''
+
+    @staticmethod
+    def parse(source_file_path: Path) -> TestCaseOptions:
+        options: TestCaseOptions = TestCaseOptions()
+        source_file_contents: str = source_file_path.read_text()
+
+        for line in source_file_contents.splitlines():
+            # If the line does not start with a `// #` we can assume that this is the end of the test assertions.
+            if not line.startswith('// #'):
+                break
+            
+            options.parse_option(line)
+        
+        return options
+                
+
+    def parse_option(self, line: str):
+        option_declaration: list[str] = line.removeprefix('// #').strip().split(': ')
+
+        # There must be an option name on the left, and maybe a value on the right.
+        option_name = option_declaration[0]
+
+        option_value: str = ''
+        if len(option_declaration) >= 2:
+            option_value = option_declaration[1]
+
+        if not option_name:
+            log_error(f'{line} is not a valid test option declaration!')
+            exit(-1)
+
+        match option_name:
+            case 'exit-code':
+                self.expected_exit_code = int(option_value)
+
+            case 'compile-failure':
+                self.compile_failure = option_value
+
+            case _:
+                log_info(f'Unrecognized test option declaration: \'{option_declaration}\'')
+
+@dataclass
 class TestCase:
     '''Contains information about each test case'''
     name: str
     source_file_path: Path
     output_executable_path: Path
+    options: TestCaseOptions
 
     def __init__(self, name: str, source_file_path: Path, output_executable_path: Path):
         self.name = name
         self.source_file_path = source_file_path
         self.output_executable_path = output_executable_path
+        self.options = TestCaseOptions.parse(self.source_file_path)
 
     def execute(self, compiler_path: Path) -> bool:
         print()
         log_info(f'Running test {self.source_file_path.name}')
-
-        source_file_contents: str = self.source_file_path.read_text()
-        expected_exit_code: int
-
-        # If the first line of the file is `// exit-code: <number>`, then that is the expected exit code for the test.
-        first_line = source_file_contents.splitlines()[0]
-        if first_line.startswith("// exit-code: "):
-            expected_exit_code = int(first_line.removeprefix("// exit-code: ").strip())
-        else:
-            log_error(f'{self.name} is invalid, the first line must be an `// exit-code: ` declaration!')
-            return False
 
         # We know that the compiler exists, we can start a process pointing it to the source file.
         compile_process = subprocess.Popen([compiler_path, '--dump-bytecode', '-o', self.output_executable_path, self.source_file_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -63,11 +103,32 @@ class TestCase:
 
         compiler_stdout: str = ''
         if compile_process.stdout:
-            compiler_stdout = self.prepare_stdout(compile_process.stdout)
+            compiler_stdout = compile_process.stdout.read().strip()
         
         compiler_stderr: str = ''
         if compile_process.stderr:
             compiler_stderr = compile_process.stderr.read().strip()
+
+        if not len(self.options.compile_failure) == 0:
+            if compile_process.returncode == 0:
+                log_fail(f'{self.name} has failed. A compilation failure was expected, but the compilation completed successfully.')
+                return False
+            
+            if self.options.compile_failure in compiler_stderr:
+                log_pass(f'{self.name} has passed!')
+                return True
+            
+            if not len(self.options.compile_failure) == 0:
+                log_fail(f'{self.name} has failed. The expected compilation failure was not observed.')
+                print(f'\nTest expected the following compilation error, but it was not present: \n{self.options.compile_failure}')
+
+            if not len(compiler_stdout) == 0:
+                print(f'\nStandard Output:\n{compiler_stdout}')
+
+            if not len(compiler_stderr) == 0:
+                print(f'\nStandard Error:\n{compiler_stderr}')
+
+            return False
 
         # If the compiler has exited with a non-zero exit code, then the test has failed.
         if not compile_process.returncode == 0:
@@ -87,15 +148,15 @@ class TestCase:
 
         process_stdout: str = ''
         if process.stdout:
-            process_stdout = self.prepare_stdout(process.stdout)
+            process_stdout = process.stdout.read().strip()
         
         process_stderr: str = ''
         if process.stderr:
             process_stderr = process.stderr.read().strip()
 
         # If the compiler has exited with a non-zero exit code, then the test has failed.
-        if not process.returncode == expected_exit_code:
-            log_fail(f'{self.name} has failed, process exited with code {process.returncode} (expected {expected_exit_code}).')
+        if not process.returncode == self.options.expected_exit_code:
+            log_fail(f'{self.name} has failed, process exited with code {process.returncode} (expected {self.options.expected_exit_code}).')
 
             if not len(process_stdout) == 0:
                 print(f'\nProcess Standard Output:\n{process_stdout}')
@@ -114,18 +175,6 @@ class TestCase:
         log_pass(f'{self.name} has passed!')
         return True
 
-    def prepare_stdout(self, stdout: IO[str]) -> str:
-        final_string: str = ''
-
-        for line in stdout:
-            if line.startswith('; ModuleID = ') or line.startswith('source_filename = '):
-                continue
-
-            final_string += line
-
-        return final_string.strip()
-
-        
 # Each test case must end with the `.petal` extension, and the expected bytecode must end in `.b`.s
 def collect_test_cases(test_cases_directory: Path, executables_directory: Path) -> list[TestCase]:
     # All scripts use the `.petal` extension.

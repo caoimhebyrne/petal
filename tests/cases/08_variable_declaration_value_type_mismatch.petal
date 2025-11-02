@@ -1,0 +1,5 @@
+// #compile-failure: Expected type 'void' but received type 'i32'
+
+func test() {
+    void value = 123;
+}

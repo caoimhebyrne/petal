@@ -1,4 +1,4 @@
-// exit-code: 32
+// #exit-code: 32
 
 func get_value() -> i32 {
     return 32;
