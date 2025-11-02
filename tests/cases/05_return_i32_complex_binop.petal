@@ -1,9 +1,4 @@
 // exit-code: 6
 func main() -> i32 {
-    i32 a = 5 + 10;  // 15
-    i32 b = a - 3;   // 12
-    i32 c = b * 2;   // 24
-    i32 d = c / 4;   // 6
-
-    return d;
+    return (((5 + 10) - 3) * 2) / 4;
 }
