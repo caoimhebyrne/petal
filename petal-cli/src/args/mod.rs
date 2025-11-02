@@ -5,12 +5,15 @@ use crate::args::error::ArgsError;
 pub mod error;
 
 const HELP_MESSAGE: &str = "\
-usage: petal [flags] <input>
+usage: petal [flags] [options] <input>
 
 flags:
     --help           Prints this message.
     --dump-ast       Prints the abstract syntax tree to stdout once parsed.
     --dump-bytecode  Prints the LLVM bytecode to stderr once parsed.
+
+options:
+    --output <path>  The path to write the final binary to.
 
 args:
     <input>     The file to parse.
@@ -29,6 +32,9 @@ pub struct Args {
 
     /// The input file to read from.
     pub input: PathBuf,
+
+    /// The output file to write the binary to.
+    pub output: Option<PathBuf>,
 }
 
 impl Args {
@@ -41,6 +47,10 @@ impl Args {
             dump_ast: arguments.contains("--dump-ast"),
 
             dump_bytecode: arguments.contains("--dump-bytecode"),
+
+            output: arguments
+                .opt_value_from_str(["-o", "--output"])
+                .map_err(|_| ArgsError::cannot_parse_argument("output").into())?,
 
             input: arguments
                 .free_from_str()

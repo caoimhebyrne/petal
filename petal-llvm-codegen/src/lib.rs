@@ -1,9 +1,11 @@
-use std::mem::ManuallyDrop;
+use std::{env, mem::ManuallyDrop, path::PathBuf};
 
 use inkwell::{
+    OptimizationLevel,
     builder::Builder,
     context::Context,
     module::Module,
+    targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
     types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType},
 };
 use petal_ast::{
@@ -127,7 +129,7 @@ impl<'ctx> Driver<'ctx> for LLVMCodegen<'ctx> {
         }
     }
 
-    fn compile_to_object(&self) -> std::result::Result<std::path::PathBuf, String> {
+    fn compile_to_object(&self) -> std::result::Result<PathBuf, String> {
         if let Err(error) = self.llvm_module.verify() {
             return Err(error.to_string());
         }
@@ -136,8 +138,32 @@ impl<'ctx> Driver<'ctx> for LLVMCodegen<'ctx> {
             println!("{}", self.llvm_module.print_to_string().to_string());
         }
 
-        // TODO: Create the target machine, write the object file to a temporary path and return that path.
-        Err("Compiling to an object file has not been implemented yet.".to_owned())
+        // We will write the object file to a temporary path, the caller is responsible for linking the object file into
+        // an executable.
+        let mut object_file_path = env::temp_dir();
+        object_file_path.push(format!("petal-{}.o", self.driver_options.module_name));
+
+        // We can then compile the LLVM module into that file path.
+        Target::initialize_all(&InitializationConfig::default());
+
+        let triple = TargetMachine::get_default_triple();
+        let target = Target::from_triple(&triple).map_err(|it| it.to_string())?;
+        let target_machine = target
+            .create_target_machine(
+                &triple,
+                "",
+                "",
+                OptimizationLevel::None,
+                RelocMode::Default,
+                CodeModel::Default,
+            )
+            .ok_or("Failed to create LLVM target machine".to_string())?;
+
+        target_machine
+            .write_to_file(&self.llvm_module, FileType::Object, &object_file_path)
+            .map_err(|it| it.to_string())?;
+
+        Ok(object_file_path)
     }
 }
 

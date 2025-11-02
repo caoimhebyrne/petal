@@ -1,4 +1,7 @@
-use std::process;
+use std::{
+    fs,
+    process::{self, Command},
+};
 
 use colored::Colorize;
 use petal_ast::{ASTParser, visitor::dump_visitor::DumpASTVisitor};
@@ -82,17 +85,68 @@ fn main() {
         process::exit(1);
     }
 
-    if let Err(error) = codegen.compile_to_object() {
-        eprintln!(
-            "{}: {}",
-            String::from("error").red().bold(),
-            format!("{}", error).bold(),
-        );
+    let object_file_path = match codegen.compile_to_object() {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!(
+                "{}: {}",
+                String::from("error").red().bold(),
+                format!("{}", error).bold(),
+            );
 
-        // TODO: Re-instate when the test runner is either more lenient with errors at the end, or the LLVM codegen
-        //       supports emitting an object file.
-        // process::exit(1);
+            process::exit(1);
+        }
+    };
+
+    if let Some(output) = args.output {
+        let output_parent_directory = match output.parent() {
+            Some(value) => value,
+            None => {
+                eprintln!("error: could not get parent of {}", output.display());
+                process::exit(-1);
+            }
+        };
+
+        // If the parent directory does not exist yet, we must try to create it.
+        if !fs::exists(output_parent_directory).unwrap_or(false) {
+            if let Err(error) = fs::create_dir(output_parent_directory) {
+                eprintln!(
+                    "error: failed to create directory '{}': {}",
+                    output_parent_directory.display(),
+                    error
+                )
+            }
+        }
+
+        let result = Command::new("cc")
+            .arg("-o")
+            .arg(&output)
+            .arg(&object_file_path)
+            .status()
+            .expect("Failed to invoke `cc` to link the final executable!");
+
+        if result.success() {
+            println!(
+                "{}: executable written to {}",
+                format!("success").bright_green().bold(),
+                output.display()
+            )
+        } else {
+            eprintln!(
+                "{}: {}",
+                String::from("error").red().bold(),
+                format!("linking failed, result: {:?}", result).bold(),
+            );
+        }
+    } else if !args.dump_ast && !args.dump_bytecode {
+        println!(
+            "{}: not emitting anything as no `output`, `dump-ast` or `dump-bytecode` options were passed",
+            format!("warn").bright_yellow().bold()
+        )
     }
+
+    // The OS should clean it up eventually as it should be a temporary file.
+    let _ = fs::remove_file(&object_file_path);
 }
 
 fn print_error(module: &Module, error: Error) {
