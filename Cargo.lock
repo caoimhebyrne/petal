@@ -102,6 +102,7 @@ version = "0.1.0"
 dependencies = [
  "colored",
  "petal-ast",
+ "petal-codegen-driver",
  "petal-core",
  "petal-lexer",
  "petal-llvm-codegen",
@@ -115,6 +116,14 @@ version = "0.1.0"
 dependencies = [
  "petal-core",
  "petal-lexer",
+]
+
+[[package]]
+name = "petal-codegen-driver"
+version = "0.1.0"
+dependencies = [
+ "petal-ast",
+ "petal-core",
 ]
 
 [[package]]
@@ -134,6 +143,7 @@ version = "0.1.0"
 dependencies = [
  "inkwell",
  "petal-ast",
+ "petal-codegen-driver",
  "petal-core",
 ]
 

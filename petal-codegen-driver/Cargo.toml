@@ -1,0 +1,8 @@
+[package]
+name = "petal-codegen-driver"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+petal-ast = { path = "../petal-ast" }
+petal-core = { path = "../petal-core" }

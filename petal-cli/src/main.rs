@@ -2,9 +2,10 @@ use std::process;
 
 use colored::Colorize;
 use petal_ast::{ASTParser, visitor::dump_visitor::DumpASTVisitor};
+use petal_codegen_driver::{Driver, options::DriverOptions};
 use petal_core::{error::Error, module::Module};
 use petal_lexer::Lexer;
-use petal_llvm_codegen::{LLVMCodegen, LLVMCodegenContext};
+use petal_llvm_codegen::LLVMCodegen;
 use petal_typechecker::Typechecker;
 
 use crate::args::Args;
@@ -68,15 +69,20 @@ fn main() {
         }
     }
 
-    let codegen_context = LLVMCodegenContext::new(args.dump_bytecode, module.name());
-    let mut codegen = LLVMCodegen::new(&codegen_context, module.string_intern_pool.as_ref());
+    let mut codegen = LLVMCodegen::new(
+        DriverOptions {
+            module_name: module.name(),
+            dump_bytecode: args.dump_bytecode,
+        },
+        module.string_intern_pool.as_ref(),
+    );
 
     if let Err(error) = statement_stream.visit(&mut codegen) {
         print_error(&module, error);
         process::exit(1);
     }
 
-    if let Err(error) = codegen.compile() {
+    if let Err(error) = codegen.compile_to_object() {
         eprintln!(
             "{}: {}",
             String::from("error").red().bold(),

@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 petal-ast = { path = "../petal-ast" }
 petal-core = { path = "../petal-core" }
+petal-codegen-driver = { path = "../petal-codegen-driver" }
 petal-lexer = { path = "../petal-lexer" }
 petal-llvm-codegen = { path = "../petal-llvm-codegen" }
 petal-typechecker = { path = "../petal-typechecker" }

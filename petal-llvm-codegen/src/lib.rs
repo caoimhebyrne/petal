@@ -9,6 +9,7 @@ use petal_ast::{
     r#type::{ResolvedTypeKind, Type, TypeKind},
     visitor::ASTVisitor,
 };
+use petal_codegen_driver::{Driver, options::DriverOptions};
 use petal_core::{error::Result, source_span::SourceSpan, string_intern::StringInternPool};
 
 use crate::{codegen::Codegen, error::LLVMCodegenErrorKind, string_intern_pool_ext::StringInternPoolExt};
@@ -17,37 +18,16 @@ pub mod codegen;
 pub mod error;
 pub mod string_intern_pool_ext;
 
-/// The context passed to an [LLVMCodegen] during initialization.
-pub struct LLVMCodegenContext {
-    /// The LLVM context that contains all of the entities within the LLVM API (like the module).
-    /// This MUST outlive the [LLVMCodegen] struct that contains the module and builder, hence why it's in here.
-    pub(crate) llvm_context: Context,
-
-    /// The name of the module being compiled.
-    pub(crate) module_name: String,
-
-    /// Whether the module's bytecode should be dumped to stderr before compilation.
-    pub(crate) dump_bytecode: bool,
-}
-
-impl LLVMCodegenContext {
-    /// Creates a new [LLVMCodegenContext].
-    pub fn new(dump_bytecode: bool, module_name: String) -> Self {
-        LLVMCodegenContext {
-            llvm_context: Context::create(),
-            module_name: module_name,
-            dump_bytecode,
-        }
-    }
-}
-
 /// An implementation of a code generator which produces a final binary using LLVM.
-pub struct LLVMCodegen<'ctx> {
-    /// The context for this codegen, this includes the LLVM context used to create the module and builder.
-    pub(crate) codegen_context: &'ctx LLVMCodegenContext,
+pub struct LLVMCodegen<'s, 'ctx> {
+    /// The [DriverOptions] passed to this LLVM codegen driver.
+    pub(crate) driver_options: DriverOptions,
 
     /// The StringInternPool implementation to use when reading identifiers.
-    pub(crate) string_intern_pool: &'ctx dyn StringInternPool,
+    pub(crate) string_intern_pool: &'s dyn StringInternPool,
+
+    /// The [LLVMContextHolder] which contains the LLVM [Context] to be used by this codegen.
+    pub(crate) llvm_context: &'ctx Context,
 
     /// The LLVM module being used.
     pub(crate) llvm_module: Module<'ctx>,
@@ -56,45 +36,15 @@ pub struct LLVMCodegen<'ctx> {
     pub(crate) llvm_builder: Builder<'ctx>,
 }
 
-impl<'ctx> LLVMCodegen<'ctx> {
-    /// Creates a new [LLVMCodegen] instance given a [LLVMCodegenContext].
-    pub fn new(codegen_context: &'ctx LLVMCodegenContext, string_intern_pool: &'ctx dyn StringInternPool) -> Self {
-        LLVMCodegen {
-            codegen_context,
-            string_intern_pool,
-            llvm_module: codegen_context.llvm_context.create_module(&codegen_context.module_name),
-            llvm_builder: codegen_context.llvm_context.create_builder(),
-        }
-    }
-
-    /// Attempts to compile the generated LLVM module into an object file that can be linked.
-    /// This returns a plain [core::result::Result] as no source code information can be provided at this stage.
-    pub fn compile(&self) -> core::result::Result<(), String> {
-        if let Err(error) = self.llvm_module.verify() {
-            return Err(error.to_string());
-        }
-
-        if self.codegen_context.dump_bytecode {
-            println!("{}", self.llvm_module.print_to_string().to_string());
-        }
-
-        // TODO: Create the target machine, write the object file to a temporary path and return that path.
-        Ok(())
-    }
-
+impl<'s, 'ctx> LLVMCodegen<'s, 'ctx> {
     /// Converts the provided type to a function type.
     /// TODO: Include parameters.
     pub fn create_function_type(&self, r#type: Type) -> Result<FunctionType<'ctx>> {
         let (type_kind, _) = self.ensure_resolved(Some(r#type), r#type.span)?;
 
         let llvm_type = match type_kind {
-            ResolvedTypeKind::Integer(size) => self
-                .codegen_context
-                .llvm_context
-                .custom_width_int_type(size)
-                .fn_type(&[], false),
-
-            ResolvedTypeKind::Void => self.codegen_context.llvm_context.void_type().fn_type(&[], false),
+            ResolvedTypeKind::Integer(size) => self.llvm_context.custom_width_int_type(size).fn_type(&[], false),
+            ResolvedTypeKind::Void => self.llvm_context.void_type().fn_type(&[], false),
         };
 
         Ok(llvm_type)
@@ -105,11 +55,7 @@ impl<'ctx> LLVMCodegen<'ctx> {
         let (type_kind, type_span) = self.ensure_resolved(maybe_type, span)?;
 
         let llvm_type = match type_kind {
-            ResolvedTypeKind::Integer(size) => self
-                .codegen_context
-                .llvm_context
-                .custom_width_int_type(size)
-                .as_basic_type_enum(),
+            ResolvedTypeKind::Integer(size) => self.llvm_context.custom_width_int_type(size).as_basic_type_enum(),
 
             _ => return LLVMCodegenErrorKind::bad_value_type(type_kind, type_span).into(),
         };
@@ -140,8 +86,47 @@ impl<'ctx> LLVMCodegen<'ctx> {
     }
 }
 
-impl<'ctx> ASTVisitor for LLVMCodegen<'ctx> {
+impl<'s, 'ctx> Driver<'s> for LLVMCodegen<'s, 'ctx> {
+    fn new(options: DriverOptions, string_intern_pool: &'s dyn StringInternPool) -> Self {
+        // We're creating and leaking the LLVM context here. The `Drop` implementation of this struct will ensure that
+        // this is cleaned up successfully.
+        let llvm_context: &'ctx Context = Box::leak(Box::new(Context::create()));
+
+        LLVMCodegen {
+            string_intern_pool,
+            llvm_context,
+            llvm_module: llvm_context.create_module(&options.module_name),
+            llvm_builder: llvm_context.create_builder(),
+            driver_options: options,
+        }
+    }
+
+    fn compile_to_object(&self) -> std::result::Result<std::path::PathBuf, String> {
+        if let Err(error) = self.llvm_module.verify() {
+            return Err(error.to_string());
+        }
+
+        if self.driver_options.dump_bytecode {
+            println!("{}", self.llvm_module.print_to_string().to_string());
+        }
+
+        // TODO: Create the target machine, write the object file to a temporary path and return that path.
+        Err("Compiling to an object file has not been implemented yet.".to_owned())
+    }
+}
+
+impl<'s, 'ctx> ASTVisitor for LLVMCodegen<'s, 'ctx> {
     fn visit(&mut self, statement: &mut Statement) -> Result<()> {
         statement.codegen(self, statement.span).map(|_| ())
+    }
+}
+
+/// The drop implementation ensures that the context that was leaked in the constructor is cleaned up properly.
+impl<'s, 'ctx> Drop for LLVMCodegen<'s, 'ctx> {
+    fn drop(&mut self) {
+        // SAFETY: We know that the `llvm_context` within the codegen was created using [Box::leak] in the `new` factory
+        // function.
+        let context_box = unsafe { Box::from_raw(self.llvm_context as *const Context as *mut Context) };
+        drop(context_box);
     }
 }

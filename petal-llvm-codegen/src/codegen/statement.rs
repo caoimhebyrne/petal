@@ -26,11 +26,7 @@ impl<'ctx> Codegen<'ctx> for FunctionDeclaration {
         let function_type = codegen.create_function_type(self.return_type)?;
         let function = codegen.llvm_module.add_function(function_name, function_type, None);
 
-        let block = codegen
-            .codegen_context
-            .llvm_context
-            .append_basic_block(function, "entry");
-
+        let block = codegen.llvm_context.append_basic_block(function, "entry");
         codegen.llvm_builder.position_at_end(block);
 
         for statement in &self.body {
@@ -51,6 +47,6 @@ impl<'ctx> Codegen<'ctx> for ReturnStatement {
         .map_err(|err| LLVMCodegenErrorKind::builder_error(err, span))?;
 
         // This is the 'unit' type. I would prefer not to have to do this, but we need to return a BasicValueEnum.
-        Ok(codegen.codegen_context.llvm_context.bool_type().const_zero().into())
+        Ok(codegen.llvm_context.bool_type().const_zero().into())
     }
 }

@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 petal-ast = { path = "../petal-ast" }
+petal-codegen-driver = { path = "../petal-codegen-driver" }
 petal-core = { path = "../petal-core" }
 
 inkwell = { version = "0.6.0", default-features = false, features = [
