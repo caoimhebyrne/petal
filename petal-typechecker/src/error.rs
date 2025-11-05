@@ -27,6 +27,10 @@ pub enum TypecheckerError {
     #[display("Expected type '{expected}' but received type '{received}'")]
     ExpectedType { expected: TypeKind, received: TypeKind },
 
+    /// An incorrect number of arguments was passed to a function.
+    #[display("Incorrect number of arguments passed. Expected {expected} arguments, but got {received}")]
+    IncorrectNumberOfArguments { expected: usize, received: usize },
+
     /// A return statement was missing in a function block without a void return type.
     #[display("The function's return type is non-void, and no return statement was found within its body")]
     MissingReturnStatement,
@@ -71,6 +75,14 @@ impl TypecheckerError {
     /// Creates a new [Error] with the kind as a [TypecheckerError::ExpectedType] kind.
     pub fn expected_type(expected: TypeKind, received: TypeKind, span: SourceSpan) -> Error {
         Error::new(TypecheckerError::ExpectedType { expected, received }, span)
+    }
+
+    /// Creates a new [Error] with the kind as a [TypecheckerError::IncorrectNumberOfArguments] kind.
+    pub fn incorrect_number_of_arguments(expected: usize, received: usize, span: SourceSpan) -> Error {
+        Error::new(
+            TypecheckerError::IncorrectNumberOfArguments { expected, received },
+            span,
+        )
     }
 
     /// Creates a new [Error] with the kind as a [TypecheckerError::MissingReturnStatement] kind.

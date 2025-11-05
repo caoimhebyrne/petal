@@ -1,0 +1,8 @@
+// #compile-failure: Expected type 'void' but received type 'i32'
+
+func test(a: i32, b: void) {
+}
+
+func main() {
+    test(1, 1);
+}

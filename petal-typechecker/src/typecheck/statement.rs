@@ -9,7 +9,7 @@ use petal_core::{error::Result, source_span::SourceSpan};
 
 use crate::{
     Typechecker,
-    context::{Function, Variable},
+    context::{Function, Variable, VariableKind},
     error::TypecheckerError,
     typecheck::Typecheck,
 };
@@ -20,19 +20,18 @@ impl<'a> Typecheck<'a> for FunctionDeclaration {
         // parameters, etc.) is valid.
         self.return_type = typechecker.resolve_type(&self.return_type)?;
 
-        for parameter in &mut self.parameters {
-            parameter.value_type = typechecker.resolve_type(&self.return_type)?;
-        }
-
-        // Declaring the function will also check if another function exists with the same name. If one does, then an
-        // error will be returned.
-        typechecker
-            .context
-            .add_function(&self.name_reference, Function::new(self.return_type, span))?;
-
         // Now that we've type-checked the function's information, we can create a function context and typecheck any
         // statements within the function body.
         typechecker.context.start_function_context(self.return_type, span)?;
+
+        for parameter in &mut self.parameters {
+            parameter.value_type = typechecker.resolve_type(&parameter.value_type)?;
+
+            typechecker.context.function_context(span)?.add_variable(
+                &parameter.name_reference,
+                Variable::new(parameter.value_type, VariableKind::Parameter, parameter.span),
+            )?;
+        }
 
         // If we do not encounter a return statement in a void method, then we can insert one implicitly.
         let mut found_return_statement = false;
@@ -57,6 +56,17 @@ impl<'a> Typecheck<'a> for FunctionDeclaration {
         }
 
         typechecker.context.end_function_context(span)?;
+
+        // Declaring the function will also check if another function exists with the same name. If one does, then an
+        // error will be returned.
+        typechecker.context.add_function(
+            &self.name_reference,
+            Function::new(
+                self.return_type,
+                self.parameters.iter().map(|it| it.value_type).collect(),
+                span,
+            ),
+        )?;
 
         // This statement does not have a return value, so we return void instead.
         Ok(Type::void(span))
@@ -97,7 +107,11 @@ impl<'a> Typecheck<'a> for VariableDeclaration {
 
         // We can then insert the variable into the current function context.
         let function_context = typechecker.context.function_context(span)?;
-        function_context.add_variable(&self.identifier_reference, Variable::new(self.r#type, span))?;
+
+        function_context.add_variable(
+            &self.identifier_reference,
+            Variable::new(self.r#type, VariableKind::Normal, span),
+        )?;
 
         // This statement does not have a return value, so we return void instead.
         Ok(Type::void(span))

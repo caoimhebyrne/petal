@@ -1,0 +1,10 @@
+// If a function is defined with parameters in its signature, values can be passed for those parameters ("arguments") 
+// when calling the function.
+func adder(a: i32, b: i32) -> i32 {
+    return a + b;
+}
+
+func main() -> i32 {
+    // Passing the value `4` for `a` and `5` for `b` should give a result of 9.
+    return adder(4, 5);
+}

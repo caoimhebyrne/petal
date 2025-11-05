@@ -1,4 +1,4 @@
-use inkwell::values::BasicValueEnum;
+use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum};
 use petal_ast::statement::function_call::FunctionCall;
 use petal_core::{error::Result, source_span::SourceSpan};
 
@@ -25,9 +25,14 @@ impl<'ctx> Codegen<'ctx> for FunctionCall {
             .get_function(function_name)
             .ok_or(LLVMCodegenErrorKind::undeclared_function(function_name, span))?;
 
+        let mut arguments: Vec<BasicMetadataValueEnum<'_>> = vec![];
+        for argument in &self.arguments {
+            arguments.push(argument.codegen(codegen, argument.span)?.into());
+        }
+
         let function_call = codegen
             .llvm_builder
-            .build_call(function, &[], function_name)
+            .build_call(function, &arguments, function_name)
             .map_err(|err| LLVMCodegenErrorKind::builder_error(err, span))?;
 
         // If we cannot get a basic value from the function call, we can assume it is a void function and therefore

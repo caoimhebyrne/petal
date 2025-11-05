@@ -313,11 +313,24 @@ impl ASTParser {
         // The next token must be an opening parenthesis.
         self.expect_token(TokenKind::LeftParenthesis)?;
 
+        // Then, we can attempt to parse the arguments.
+        let mut arguments = vec![];
+
+        while !self.token_stream.next_is(TokenKind::RightParenthesis) {
+            arguments.push(self.parse_expression()?);
+
+            // If the next token is a comma, we can consume it and continue the loop.
+            if self.token_stream.next_is(TokenKind::Comma) {
+                self.expect_token(TokenKind::Comma)?;
+                continue;
+            }
+        }
+
         // The next token must be a closing parenthesis.
         let closing_parenthesis = self.expect_token(TokenKind::RightParenthesis)?;
 
         Ok((
-            FunctionCall::new(identifier_reference),
+            FunctionCall::new(identifier_reference, arguments),
             SourceSpan::between(&identifier_token.span, &closing_parenthesis.span),
         ))
     }

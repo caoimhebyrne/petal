@@ -97,9 +97,13 @@ impl<'a> TypecheckerContext<'a> {
 }
 
 /// A function that has been declared during typechecking.
+#[derive(Debug, Clone)]
 pub struct Function {
     /// The expected return type of the function.
     pub return_type: Type,
+
+    /// The types of the parameters to the function.
+    pub parameters: Vec<Type>,
 
     /// The span within the source code that this function was declared at.
     pub span: SourceSpan,
@@ -107,23 +111,41 @@ pub struct Function {
 
 impl Function {
     /// Creates a new [Function].
-    pub fn new(return_type: Type, span: SourceSpan) -> Self {
-        Function { return_type, span }
+    pub fn new(return_type: Type, parameters: Vec<Type>, span: SourceSpan) -> Self {
+        Function {
+            return_type,
+            parameters,
+            span,
+        }
     }
 }
 
 /// A variable that has been declared within a function during typechecking.
+#[derive(Debug, Clone)]
 pub struct Variable {
     /// The value type of the variable.
     pub r#type: Type,
+
+    /// The kind of variable that this is.
+    #[allow(dead_code)]
+    pub kind: VariableKind,
 
     /// The span within the source code that this variable was declared at.
     pub span: SourceSpan,
 }
 
+#[derive(Debug, Clone)]
+pub enum VariableKind {
+    /// A variable defined by the user in the block.
+    Normal,
+
+    /// A variable defined as a parameter to the block.
+    Parameter,
+}
+
 impl Variable {
-    pub fn new(r#type: Type, span: SourceSpan) -> Self {
-        Variable { r#type, span }
+    pub fn new(r#type: Type, kind: VariableKind, span: SourceSpan) -> Self {
+        Variable { r#type, kind, span }
     }
 }
 

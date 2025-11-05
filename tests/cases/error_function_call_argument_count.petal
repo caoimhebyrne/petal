@@ -1,0 +1,8 @@
+// #compile-failure: Incorrect number of arguments passed. Expected 2 arguments, but got 1
+
+func test(a: i32, b: i32) {
+}
+
+func main() {
+    test(1);
+}
