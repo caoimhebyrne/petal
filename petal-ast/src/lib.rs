@@ -53,6 +53,8 @@ impl ASTParser {
 
     /// Parses a [Statement] at the current position of the [TokenStream].
     fn parse_statement(&mut self) -> Result<Statement> {
+        self.token_stream.consume_all_whitespace();
+
         let token = self.token_stream.peek_non_whitespace_or_err()?;
 
         let (statement_result, expect_semicolon) = match token.kind {
@@ -103,7 +105,7 @@ impl ASTParser {
         };
 
         // We can consume the token now that we know it is operator token.
-        self.token_stream.consume();
+        self.token_stream.consume_non_whitespace();
 
         // We can then get the value on the right-hand side of the expression.
         let right_value = self.parse_expression()?;
@@ -132,7 +134,7 @@ impl ASTParser {
         };
 
         // We can consume the token now that we are interested in it.
-        self.token_stream.consume();
+        self.token_stream.consume_non_whitespace();
 
         // We can then get the value on the right-hand side of the expression.
         let right_value = self.parse_expression()?;

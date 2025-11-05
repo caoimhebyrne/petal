@@ -63,6 +63,15 @@ impl TokenStream {
         None
     }
 
+    /// Consumes any whitespace tokens.
+    pub fn consume_all_whitespace(&mut self) {
+        while let Some(token) = self.tokens.get(self.index)
+            && token.is_considered_whitespace()
+        {
+            self.index += 1;
+        }
+    }
+
     /// Returns whether the token at the current index of the stream is of a certain type.
     pub fn next_is(&self, kind: TokenKind) -> bool {
         self.peek_non_whitespace().map(|it| it.kind == kind).unwrap_or(false)
