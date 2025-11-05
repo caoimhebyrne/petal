@@ -14,6 +14,14 @@ Petal is a hobby programming language with a compiler written in Rust.
 
 Some examples of Petal can be found in the [examples](./examples) directory.
 
+## Tests
+
+A Python test runner exists which ensures that certain Petal files execute and produce the correct output. Some of the
+test cases also ensure that the compiler provides accurate errors when the code is incorrect (e.g. mismatched types,
+etc.).
+
+This test suite (and its runner) is run on each commit push, can be found in the [tests](./tests) directory.
+
 ## License
 
 This project is licensed under the [MIT license](./LICENSE).
