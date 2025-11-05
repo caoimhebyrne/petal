@@ -1,0 +1,1 @@
+*.petal linguist -linguist-detectable linguist-language=go
