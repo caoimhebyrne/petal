@@ -171,7 +171,7 @@ impl ASTParser {
         let token = *self.token_stream.peek_non_whitespace_or_err()?;
 
         let expression_kind = match token.kind {
-            TokenKind::Identifier(reference) if self.token_stream.after_next_is(TokenKind::LeftParenthesis) => {
+            TokenKind::Identifier(_) if self.token_stream.after_next_is(TokenKind::LeftParenthesis) => {
                 return self.parse_function_call_expression();
             }
 
