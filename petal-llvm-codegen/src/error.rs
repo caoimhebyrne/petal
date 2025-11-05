@@ -29,6 +29,9 @@ pub enum LLVMCodegenErrorKind {
     /// An expression could not be converted into code.
     UnableToCodegenExpression(ExpressionKind),
 
+    /// The variable assignment is illega.
+    IllegalVariableAssignment,
+
     /// An error occurred while building the LLVM bytecode.
     BuilderError(BuilderError),
 
@@ -84,6 +87,10 @@ impl LLVMCodegenErrorKind {
     pub fn undeclared_variable(identifier: StringReference, span: SourceSpan) -> Error {
         Error::new(LLVMCodegenErrorKind::UndeclaredVariable(identifier), span)
     }
+
+    pub fn illegal_variable_assignment(span: SourceSpan) -> Error {
+        Error::new(LLVMCodegenErrorKind::IllegalVariableAssignment, span)
+    }
 }
 
 impl Display for LLVMCodegenErrorKind {
@@ -134,6 +141,13 @@ impl Display for LLVMCodegenErrorKind {
                     f,
                     "A variable ({:?}) was referenced, but it has not been declared yet, this is a bug",
                     identifier
+                )
+            }
+
+            LLVMCodegenErrorKind::IllegalVariableAssignment => {
+                write!(
+                    f,
+                    "This variable assignment is illegal (are you trying to assign a value to a parameter?)"
                 )
             }
         }

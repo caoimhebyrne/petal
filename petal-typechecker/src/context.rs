@@ -121,7 +121,7 @@ impl Function {
 }
 
 /// A variable that has been declared within a function during typechecking.
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Variable {
     /// The value type of the variable.
     pub r#type: Type,
@@ -134,7 +134,7 @@ pub struct Variable {
     pub span: SourceSpan,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum VariableKind {
     /// A variable defined by the user in the block.
     Normal,

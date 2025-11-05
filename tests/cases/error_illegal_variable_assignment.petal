@@ -1,0 +1,5 @@
+// #compile-failure: This variable assignment is illegal (are you trying to assign a value to a parameter?)
+
+func test(input: i32) {
+    input = 5;
+}

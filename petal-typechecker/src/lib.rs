@@ -44,6 +44,7 @@ impl<'a> Typechecker<'a> {
             StatementKind::ReturnStatement(r#return) => r#return.typecheck(self, statement.span),
             StatementKind::FunctionCall(function_call) => function_call.typecheck(self, statement.span),
             StatementKind::VariableDeclaration(declaration) => declaration.typecheck(self, statement.span),
+            StatementKind::VariableAssignment(assignment) => assignment.typecheck(self, statement.span),
 
             #[allow(unreachable_patterns)]
             _ => TypecheckerError::unsupported_statement(statement.clone()).into(),

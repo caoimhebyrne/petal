@@ -1,0 +1,9 @@
+func main() -> i32 {
+    i32 my_value = 10;
+
+    // If a variable has been declared, you can still change its value afterwards.
+    my_value = 5;
+
+    // `my_value` should now have a value of 5 after the assignment.
+    return my_value;
+}

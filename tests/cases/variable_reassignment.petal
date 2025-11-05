@@ -1,0 +1,9 @@
+// #exit-code: 5
+
+func main() -> i32 {
+    i32 value = 10;
+
+    value = 5;
+
+    return value;
+}

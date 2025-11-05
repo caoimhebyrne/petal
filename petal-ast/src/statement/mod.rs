@@ -2,12 +2,13 @@ use petal_core::source_span::SourceSpan;
 
 use crate::statement::{
     function_call::FunctionCall, function_declaration::FunctionDeclaration, r#return::ReturnStatement,
-    variable_declaration::VariableDeclaration,
+    variable_assignment::VariableAssignment, variable_declaration::VariableDeclaration,
 };
 
 pub mod function_call;
 pub mod function_declaration;
 pub mod r#return;
+pub mod variable_assignment;
 pub mod variable_declaration;
 
 /// A statement can be seen as an action that does not return a value.
@@ -35,6 +36,9 @@ impl Statement {
 pub enum StatementKind {
     /// A variable declaration statement, e.g: `let <identifier> = <expression>;`
     VariableDeclaration(VariableDeclaration),
+
+    /// A variable assignment statement, e.g: `<identifier> = <expression>`;
+    VariableAssignment(VariableAssignment),
 
     /// A function declaration statement, e.g: `func <name>() { <body> }`
     FunctionDeclaration(FunctionDeclaration),

@@ -1,7 +1,7 @@
 use petal_ast::{
     statement::{
         StatementKind, function_declaration::FunctionDeclaration, r#return::ReturnStatement,
-        variable_declaration::VariableDeclaration,
+        variable_assignment::VariableAssignment, variable_declaration::VariableDeclaration,
     },
     r#type::{ResolvedTypeKind, Type, TypeKind},
 };
@@ -112,6 +112,25 @@ impl<'a> Typecheck<'a> for VariableDeclaration {
             &self.identifier_reference,
             Variable::new(self.r#type, VariableKind::Normal, span),
         )?;
+
+        // This statement does not have a return value, so we return void instead.
+        Ok(Type::void(span))
+    }
+}
+
+impl<'a> Typecheck<'a> for VariableAssignment {
+    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<Type> {
+        // A variable must have been declared already.
+        let variable = *typechecker
+            .context
+            .function_context(span)?
+            .get_variable(&self.identifier_reference, span)?;
+
+        // If the type of the variable does not match the value type, then this is not possible.
+        let value_type = typechecker.check_expression(&mut self.value)?;
+        if value_type.kind != variable.r#type.kind {
+            return TypecheckerError::expected_type(variable.r#type.kind, value_type.kind, span).into();
+        }
 
         // This statement does not have a return value, so we return void instead.
         Ok(Type::void(span))

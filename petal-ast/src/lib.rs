@@ -12,6 +12,7 @@ use crate::{
         function_call::FunctionCall,
         function_declaration::{FunctionDeclaration, FunctionParameter},
         r#return::ReturnStatement,
+        variable_assignment::VariableAssignment,
         variable_declaration::VariableDeclaration,
     },
     stream::StatementStream,
@@ -64,6 +65,11 @@ impl ASTParser {
             // <name>(
             TokenKind::Identifier(_) if self.token_stream.after_next_is(TokenKind::LeftParenthesis) => {
                 (self.parse_function_call_statement(), true)
+            }
+
+            // <name> =
+            TokenKind::Identifier(_) if self.token_stream.after_next_is(TokenKind::Equals) => {
+                (self.parse_variable_assignment_node(), true)
             }
 
             // <type> <identifier> =
@@ -180,6 +186,24 @@ impl ASTParser {
         self.token_stream.consume_non_whitespace_or_err()?;
 
         Ok(Expression::new(expression_kind, token.span))
+    }
+
+    /// Attempts to prase a variable assignment node at the current position.
+    fn parse_variable_assignment_node(&mut self) -> Result<Statement> {
+        // The start of an assignment must always start with the variable's identifier.
+        let (identifier_reference, identifier_token) = self.expect_identifier()?;
+
+        // The next token must be an equals.
+        self.expect_token(TokenKind::Equals)?;
+
+        // And finally, an expression must be provided for the new value.
+        let value = self.parse_expression()?;
+        let span = SourceSpan::between(&identifier_token.span, &value.span);
+
+        Ok(Statement::new(
+            VariableAssignment::new(identifier_reference, value),
+            span,
+        ))
     }
 
     /// Attempts to parse a variable declaration node at the current position.
