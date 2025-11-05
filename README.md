@@ -22,6 +22,14 @@ etc.).
 
 This test suite (and its runner) is run on each commit push, can be found in the [tests](./tests) directory.
 
+If you wish to run the test suite manually, you can do so by running the following command:
+
+```shell
+$ cargo build && python3 ./tests/test-runner.py
+```
+
+Ensure that you have a recent-ish version of Python 3 installed (the one that comes wth macOS is too old for example).
+
 ## License
 
 This project is licensed under the [MIT license](./LICENSE).
