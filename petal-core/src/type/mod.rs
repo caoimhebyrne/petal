@@ -11,6 +11,13 @@ pub struct Type {
     pub span: SourceSpan,
 }
 
+impl Type {
+    /// Creates a new [Type] instance.
+    pub fn new(kind: TypeKind, span: SourceSpan) -> Type {
+        Self { kind, span }
+    }
+}
+
 /// Represents the different kinds of types that exist.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum TypeKind {

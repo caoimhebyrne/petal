@@ -8,7 +8,7 @@ use crate::{
 
 /// A reference to a type.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct TypeId(usize);
+pub struct TypeId(pub usize);
 
 /// A type pool stores references to [Type]s that can later be resolved.
 ///

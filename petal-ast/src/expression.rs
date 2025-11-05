@@ -1,6 +1,6 @@
-use petal_core::{source_span::SourceSpan, string_intern::StringReference};
+use petal_core::{source_span::SourceSpan, string_intern::StringReference, r#type::pool::TypeId};
 
-use crate::{statement::function_call::FunctionCall, r#type::Type};
+use crate::statement::function_call::FunctionCall;
 
 /// An expression can be seen as an action that can return a value.
 #[derive(Debug, Clone, PartialEq)]
@@ -9,7 +9,7 @@ pub struct Expression {
     pub kind: ExpressionKind,
 
     /// The type of the value that this expression produces.
-    pub r#type: Option<Type>,
+    pub r#type: Option<TypeId>,
 
     /// The span within the source code that this expression was defined at.
     pub span: SourceSpan,

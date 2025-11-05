@@ -1,4 +1,9 @@
-use petal_core::{error::Result, source_span::SourceSpan, string_intern::StringReference};
+use petal_core::{
+    error::Result,
+    source_span::SourceSpan,
+    string_intern::StringReference,
+    r#type::{ResolvedTypeKind, Type, TypeKind, pool::TypePool},
+};
 use petal_lexer::{
     stream::TokenStream,
     token::{Keyword, Token, TokenKind},
@@ -17,7 +22,6 @@ use crate::{
     },
     stream::StatementStream,
     token_stream_ext::TokenStreamExt,
-    r#type::Type,
 };
 
 pub mod error;
@@ -25,19 +29,24 @@ pub mod expression;
 pub mod statement;
 pub mod stream;
 pub mod token_stream_ext;
-pub mod r#type;
 pub mod visitor;
 
 /// Converts tokens from a [Lexer] into an Abstract Syntax Tree.
-pub struct ASTParser {
+pub struct ASTParser<'a> {
     /// The token stream to read tokens from.
     token_stream: TokenStream,
+
+    /// The [TypePool] to allocate types into.
+    pub type_pool: &'a mut TypePool,
 }
 
-impl ASTParser {
+impl<'a> ASTParser<'a> {
     /// Creates a new [ASTParser] which reads from the provided [Lexer].
-    pub fn new(token_stream: TokenStream) -> Self {
-        return ASTParser { token_stream };
+    pub fn new(token_stream: TokenStream, type_pool: &'a mut TypePool) -> Self {
+        return ASTParser {
+            token_stream,
+            type_pool,
+        };
     }
 
     /// Parses the token stream that this parser was created with into a [StatementStream].
@@ -225,7 +234,8 @@ impl ASTParser {
         Ok(Statement::new(
             VariableDeclaration::new(
                 identifier_reference,
-                Type::unresolved(type_reference, type_token.span),
+                self.type_pool
+                    .allocate(Type::new(TypeKind::Unresolved(type_reference), type_token.span)),
                 value,
             ),
             span,
@@ -257,11 +267,11 @@ impl ASTParser {
 
                 // The next token must be the type of the parameter.
                 let (type_identifier, type_token) = self.expect_identifier()?;
-                let value_type = Type::unresolved(type_identifier, type_token.span);
 
                 parameters.push(FunctionParameter::new(
                     identifier_reference,
-                    value_type,
+                    self.type_pool
+                        .allocate(Type::new(TypeKind::Unresolved(type_identifier), type_token.span)),
                     SourceSpan::between(&identifier_token.span, &type_token.span),
                 ));
 
@@ -280,9 +290,7 @@ impl ASTParser {
         let right_parenthesis_token = self.expect_token(TokenKind::RightParenthesis)?;
 
         // There might be a hyphen, and if there is, we can attempt to parse the return type.
-        let mut return_type = Type::void(right_parenthesis_token.span);
-
-        if self.token_stream.next_is(TokenKind::Hyphen) {
+        let return_type = if self.token_stream.next_is(TokenKind::Hyphen) {
             // We can consume the hyphen token.
             self.expect_token(TokenKind::Hyphen)?;
 
@@ -291,8 +299,17 @@ impl ASTParser {
 
             // And finally, there must be an identifier for the function's return type.
             let (return_type_identifier, return_type_token) = self.expect_identifier()?;
-            return_type = Type::unresolved(return_type_identifier, return_type_token.span);
-        }
+
+            self.type_pool.allocate(Type::new(
+                TypeKind::Unresolved(return_type_identifier),
+                return_type_token.span,
+            ))
+        } else {
+            self.type_pool.allocate(Type::new(
+                TypeKind::Resolved(ResolvedTypeKind::Void),
+                right_parenthesis_token.span,
+            ))
+        };
 
         // We can then consume statements until we find a closing brace.
         let left_brace_token = self.expect_token(TokenKind::LeftBrace)?;
@@ -402,30 +419,34 @@ impl ASTParser {
 
 #[cfg(test)]
 mod tests {
-    use petal_core::string_intern::{StringInternPool, StringInternPoolImpl};
+    use petal_core::{
+        string_intern::{StringInternPool, StringInternPoolImpl},
+        r#type::pool::TypeId,
+    };
     use petal_lexer::Lexer;
 
     // Note this useful idiom: importing names from outer (for mod tests) scope.\
     use super::*;
-    use crate::r#type::Type;
 
     #[test]
     fn test_variable_declaration() {
         let mut string_intern_pool = StringInternPoolImpl::new();
+        let mut type_pool = TypePool::new();
+
         let type_reference = StringReference(0);
         let identifier_reference = StringReference(1);
 
         let mut lexer = Lexer::new(&mut string_intern_pool, "i32 identifier = 123456;");
         let token_stream = lexer.get_stream().expect("get_stream should not fail");
 
-        let mut ast_parser = ASTParser::new(token_stream);
+        let mut ast_parser = ASTParser::new(token_stream, &mut type_pool);
 
         assert_eq!(
             ast_parser.parse_statement().expect("next_statement should not fail!"),
             Statement {
                 kind: VariableDeclaration::new(
                     identifier_reference,
-                    Type::unresolved(type_reference, SourceSpan { start: 0, end: 3 }),
+                    TypeId(0),
                     Expression {
                         kind: ExpressionKind::IntegerLiteral(123456),
                         r#type: None,
@@ -448,23 +469,19 @@ mod tests {
     #[test]
     fn test_empty_function_declaration() {
         let mut string_intern_pool = StringInternPoolImpl::new();
+        let mut type_pool = TypePool::new();
+
         let function_name_reference = StringReference(0);
 
         let mut lexer = Lexer::new(&mut string_intern_pool, "func test() {}");
         let token_stream = lexer.get_stream().expect("get_stream should not fail");
 
-        let mut ast_parser = ASTParser::new(token_stream);
+        let mut ast_parser = ASTParser::new(token_stream, &mut type_pool);
 
         assert_eq!(
             ast_parser.parse_statement().expect("next_statement should not fail!"),
             Statement {
-                kind: FunctionDeclaration::new(
-                    function_name_reference,
-                    vec![],
-                    Type::void(SourceSpan { start: 10, end: 11 }),
-                    vec![]
-                )
-                .into(),
+                kind: FunctionDeclaration::new(function_name_reference, vec![], TypeId(0), vec![]).into(),
                 span: SourceSpan { start: 0, end: 13 }
             }
         );
@@ -478,6 +495,8 @@ mod tests {
     #[test]
     fn test_function_declaration() {
         let mut string_intern_pool = StringInternPoolImpl::new();
+        let mut type_pool = TypePool::new();
+
         let function_name_reference = StringReference(0);
         let type_reference = StringReference(1);
         let identifier_reference = StringReference(2);
@@ -485,7 +504,7 @@ mod tests {
         let mut lexer = Lexer::new(&mut string_intern_pool, "func test() { i32 i = 4; }");
         let token_stream = lexer.get_stream().expect("get_stream should not fail");
 
-        let mut ast_parser = ASTParser::new(token_stream);
+        let mut ast_parser = ASTParser::new(token_stream, &mut type_pool);
 
         assert_eq!(
             ast_parser.parse_statement().expect("next_statement should not fail!"),
@@ -493,11 +512,11 @@ mod tests {
                 kind: FunctionDeclaration::new(
                     function_name_reference,
                     vec![],
-                    Type::void(SourceSpan { start: 10, end: 11 }),
+                    TypeId(0),
                     vec![Statement {
                         kind: VariableDeclaration::new(
                             identifier_reference,
-                            Type::unresolved(type_reference, SourceSpan { start: 14, end: 17 }),
+                            TypeId(1),
                             Expression {
                                 kind: ExpressionKind::IntegerLiteral(4).into(),
                                 r#type: None,
@@ -524,6 +543,8 @@ mod tests {
     #[test]
     fn test_empty_function_declaration_with_parameter() {
         let mut string_intern_pool = StringInternPoolImpl::new();
+        let mut type_pool = TypePool::new();
+
         let function_name_reference = StringReference(0);
         let p0_name_reference = StringReference(1);
         let p0_type_reference = StringReference(2);
@@ -531,7 +552,7 @@ mod tests {
         let mut lexer = Lexer::new(&mut string_intern_pool, "func test(name: i32) {}");
         let token_stream = lexer.get_stream().expect("get_stream should not fail");
 
-        let mut ast_parser = ASTParser::new(token_stream);
+        let mut ast_parser = ASTParser::new(token_stream, &mut type_pool);
 
         assert_eq!(
             ast_parser.parse_statement().expect("next_statement should not fail!"),
@@ -540,13 +561,10 @@ mod tests {
                     function_name_reference,
                     vec![FunctionParameter::new(
                         p0_name_reference,
-                        Type {
-                            kind: r#type::TypeKind::Unresolved(p0_type_reference),
-                            span: SourceSpan { start: 16, end: 19 }
-                        },
+                        TypeId(0),
                         SourceSpan { start: 10, end: 19 }
                     )],
-                    Type::void(SourceSpan { start: 19, end: 20 }),
+                    TypeId(1),
                     vec![]
                 )
                 .into(),
@@ -567,6 +585,8 @@ mod tests {
     #[test]
     fn test_empty_function_declaration_with_parameters() {
         let mut string_intern_pool = StringInternPoolImpl::new();
+        let mut type_pool = TypePool::new();
+
         let function_name_reference = StringReference(0);
 
         let p0_name_reference = StringReference(1);
@@ -578,7 +598,7 @@ mod tests {
         let mut lexer = Lexer::new(&mut string_intern_pool, "func test(name: i32, other: i32) {}");
         let token_stream = lexer.get_stream().expect("get_stream should not fail");
 
-        let mut ast_parser = ASTParser::new(token_stream);
+        let mut ast_parser = ASTParser::new(token_stream, &mut type_pool);
 
         assert_eq!(
             ast_parser.parse_statement().expect("next_statement should not fail!"),
@@ -586,24 +606,10 @@ mod tests {
                 kind: FunctionDeclaration::new(
                     function_name_reference,
                     vec![
-                        FunctionParameter::new(
-                            p0_name_reference,
-                            Type {
-                                kind: r#type::TypeKind::Unresolved(p0_type_reference),
-                                span: SourceSpan { start: 16, end: 19 }
-                            },
-                            SourceSpan { start: 10, end: 19 }
-                        ),
-                        FunctionParameter::new(
-                            p1_name_reference,
-                            Type {
-                                kind: r#type::TypeKind::Unresolved(p1_type_reference),
-                                span: SourceSpan { start: 28, end: 31 }
-                            },
-                            SourceSpan { start: 21, end: 31 }
-                        )
+                        FunctionParameter::new(p0_name_reference, TypeId(0), SourceSpan { start: 10, end: 19 }),
+                        FunctionParameter::new(p1_name_reference, TypeId(1), SourceSpan { start: 21, end: 31 })
                     ],
-                    Type::void(SourceSpan { start: 31, end: 32 }),
+                    TypeId(2),
                     vec![]
                 )
                 .into(),
@@ -626,24 +632,20 @@ mod tests {
     #[test]
     fn test_function_declaration_with_return_type() {
         let mut string_intern_pool = StringInternPoolImpl::new();
+        let mut type_pool = TypePool::new();
+
         let function_name_reference = StringReference(0);
         let function_return_type_reference = StringReference(1);
 
         let mut lexer = Lexer::new(&mut string_intern_pool, "func test() -> i32 {}");
         let token_stream = lexer.get_stream().expect("get_stream should not fail");
 
-        let mut ast_parser = ASTParser::new(token_stream);
+        let mut ast_parser = ASTParser::new(token_stream, &mut type_pool);
 
         assert_eq!(
             ast_parser.parse_statement().expect("next_statement should not fail!"),
             Statement {
-                kind: FunctionDeclaration::new(
-                    function_name_reference,
-                    vec![],
-                    Type::unresolved(function_return_type_reference, SourceSpan { start: 15, end: 18 }),
-                    vec![]
-                )
-                .into(),
+                kind: FunctionDeclaration::new(function_name_reference, vec![], TypeId(0), vec![]).into(),
                 span: SourceSpan { start: 0, end: 20 }
             }
         );
@@ -662,11 +664,12 @@ mod tests {
     #[test]
     fn test_return_void() {
         let mut string_intern_pool = StringInternPoolImpl::new();
+        let mut type_pool = TypePool::new();
 
         let mut lexer = Lexer::new(&mut string_intern_pool, "return;");
         let token_stream = lexer.get_stream().expect("get_stream should not fail");
 
-        let mut ast_parser = ASTParser::new(token_stream);
+        let mut ast_parser = ASTParser::new(token_stream, &mut type_pool);
 
         assert_eq!(
             ast_parser.parse_statement().expect("next_statement should not fail!"),
@@ -680,11 +683,12 @@ mod tests {
     #[test]
     fn test_return_with_value() {
         let mut string_intern_pool = StringInternPoolImpl::new();
+        let mut type_pool = TypePool::new();
 
         let mut lexer = Lexer::new(&mut string_intern_pool, "return 123;");
         let token_stream = lexer.get_stream().expect("get_stream should not fail");
 
-        let mut ast_parser = ASTParser::new(token_stream);
+        let mut ast_parser = ASTParser::new(token_stream, &mut type_pool);
 
         assert_eq!(
             ast_parser.parse_statement().expect("next_statement should not fail!"),

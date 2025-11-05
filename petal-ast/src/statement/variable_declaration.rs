@@ -1,6 +1,6 @@
-use petal_core::string_intern::StringReference;
+use petal_core::{string_intern::StringReference, r#type::pool::TypeId};
 
-use crate::{expression::Expression, statement::StatementKind, r#type::Type};
+use crate::{expression::Expression, statement::StatementKind};
 
 /// A variable declaration statement, e.g: `<type> <identifier> = <expression>;`
 #[derive(Debug, Clone, PartialEq)]
@@ -9,7 +9,7 @@ pub struct VariableDeclaration {
     pub identifier_reference: StringReference,
 
     /// The type of the variable being declared.
-    pub r#type: Type,
+    pub r#type: TypeId,
 
     /// The value being assigned to the variable.
     pub value: Expression,
@@ -17,7 +17,7 @@ pub struct VariableDeclaration {
 
 impl VariableDeclaration {
     /// Creates a new [VariableDeclaration] with a [name] and [value].
-    pub fn new(identifier_reference: StringReference, r#type: Type, value: Expression) -> Self {
+    pub fn new(identifier_reference: StringReference, r#type: TypeId, value: Expression) -> Self {
         VariableDeclaration {
             identifier_reference,
             r#type,
