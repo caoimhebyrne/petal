@@ -175,6 +175,9 @@ dependencies = [
 [[package]]
 name = "petal-core"
 version = "0.1.0"
+dependencies = [
+ "enum-display",
+]
 
 [[package]]
 name = "petal-lexer"

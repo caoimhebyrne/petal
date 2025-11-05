@@ -1,6 +1,9 @@
 use std::{fs, io, path::PathBuf};
 
-use crate::string_intern::{StringInternPool, StringInternPoolImpl};
+use crate::{
+    string_intern::{StringInternPool, StringInternPoolImpl},
+    r#type::pool::TypePool,
+};
 
 /// A module is a single compilation unit, i.e. a single file being processed by the compiler.
 pub struct Module {
@@ -12,6 +15,9 @@ pub struct Module {
 
     /// The string intern pool implementation used by this module.
     pub string_intern_pool: Box<dyn StringInternPool>,
+
+    /// The [TypePool] used by this module.
+    pub type_pool: TypePool,
 }
 
 impl Module {
@@ -23,6 +29,7 @@ impl Module {
             input,
             contents,
             string_intern_pool: Box::new(StringInternPoolImpl::new()),
+            type_pool: TypePool::new(),
         })
     }
 
