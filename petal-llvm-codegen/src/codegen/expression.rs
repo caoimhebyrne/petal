@@ -2,7 +2,7 @@ use inkwell::values::{BasicValue, BasicValueEnum};
 use petal_ast::expression::{BinaryOperation, Expression, ExpressionKind, Operation};
 use petal_core::{error::Result, source_span::SourceSpan};
 
-use crate::{LLVMCodegen, codegen::Codegen, error::LLVMCodegenErrorKind};
+use crate::{LLVMCodegen, codegen::Codegen, context::VariableKind, error::LLVMCodegenErrorKind};
 
 impl<'ctx> Codegen<'ctx> for Expression {
     fn codegen(&self, codegen: &mut LLVMCodegen<'ctx>, span: SourceSpan) -> Result<BasicValueEnum<'ctx>> {
@@ -20,10 +20,14 @@ impl<'ctx> Codegen<'ctx> for Expression {
                 let variable_name = codegen.string_intern_pool.resolve_reference_or_err(reference, span)?;
 
                 // We have the pointer to the variable, we need to dereference that pointer to get the value.
-                let value = codegen
-                    .llvm_builder
-                    .build_load(variable.value_type, variable.pointer, variable_name)
-                    .map_err(|err| LLVMCodegenErrorKind::builder_error(err, span))?;
+                let value = match variable.kind {
+                    VariableKind::Local(pointer) => codegen
+                        .llvm_builder
+                        .build_load(variable.value_type, pointer, variable_name)
+                        .map_err(|err| LLVMCodegenErrorKind::builder_error(err, span))?,
+
+                    VariableKind::Parameter(value) => value,
+                };
 
                 Ok(value.as_basic_value_enum())
             }

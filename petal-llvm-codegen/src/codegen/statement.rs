@@ -47,19 +47,9 @@ impl<'ctx> Codegen<'ctx> for FunctionDeclaration {
 
             parameter_value.set_name(parameter_name);
 
-            let pointer = codegen
-                .llvm_builder
-                .build_alloca(parameter_value.get_type(), parameter_name)
-                .map_err(|err| LLVMCodegenErrorKind::builder_error(err, span))?;
-
-            codegen
-                .llvm_builder
-                .build_store(pointer, *parameter_value)
-                .map_err(|err| LLVMCodegenErrorKind::builder_error(err, span))?;
-
             codegen.context.scope_context(parameter.span)?.declare_variable(
                 parameter.name_reference,
-                Variable::new(parameter_value.get_type(), pointer),
+                Variable::parameter(parameter_value.get_type(), *parameter_value),
             );
         }
 
@@ -112,7 +102,7 @@ impl<'ctx> Codegen<'ctx> for VariableDeclaration {
         codegen
             .context
             .scope_context(span)?
-            .declare_variable(self.identifier_reference, Variable::new(value_type, pointer));
+            .declare_variable(self.identifier_reference, Variable::local(value_type, pointer));
 
         Ok(pointer.as_basic_value_enum())
     }
