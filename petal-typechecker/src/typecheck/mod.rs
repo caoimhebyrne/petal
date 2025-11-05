@@ -43,8 +43,6 @@ impl<'a> Typecheck<'a> for FunctionCall {
             let parameter_type = function.parameters.get(index).unwrap();
             let argument_type = typechecker.check_expression(argument)?;
 
-            println!("{:?} -> {:?}", parameter_type, argument_type);
-
             if parameter_type.kind != argument_type.kind {
                 return TypecheckerError::expected_type(parameter_type.kind, argument_type.kind, argument.span).into();
             }
