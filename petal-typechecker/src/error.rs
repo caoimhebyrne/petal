@@ -2,11 +2,11 @@ use enum_display::EnumDisplay;
 use petal_ast::{
     expression::{Expression, ExpressionKind},
     statement::{Statement, StatementKind},
-    r#type::{Type, TypeKind},
 };
 use petal_core::{
     error::{Error, ErrorKind},
     source_span::SourceSpan,
+    r#type::Type,
 };
 
 #[derive(Debug, PartialEq, EnumDisplay)]
@@ -25,7 +25,7 @@ pub enum TypecheckerError {
 
     /// A type was expected, but a different type was received.
     #[display("Expected type '{expected}' but received type '{received}'")]
-    ExpectedType { expected: TypeKind, received: TypeKind },
+    ExpectedType { expected: Type, received: Type },
 
     /// An incorrect number of arguments was passed to a function.
     #[display("Incorrect number of arguments passed. Expected {expected} arguments, but got {received}")]
@@ -36,8 +36,8 @@ pub enum TypecheckerError {
     MissingReturnStatement,
 
     /// A type could not be resolved by the typechecker.
-    #[display("Unable to resolve type: '{0:?}")]
-    UnableToResolveType(TypeKind),
+    #[display("Unable to resolve type: '{0}")]
+    UnableToResolveType(String),
 
     /// A function was referenced, but it has not been defined yet.
     #[display("Unknown function: '{0}'")]
@@ -73,7 +73,7 @@ impl TypecheckerError {
     }
 
     /// Creates a new [Error] with the kind as a [TypecheckerError::ExpectedType] kind.
-    pub fn expected_type(expected: TypeKind, received: TypeKind, span: SourceSpan) -> Error {
+    pub fn expected_type(expected: Type, received: Type, span: SourceSpan) -> Error {
         Error::new(TypecheckerError::ExpectedType { expected, received }, span)
     }
 
@@ -91,8 +91,8 @@ impl TypecheckerError {
     }
 
     /// Creates a new [Error] with the kind as a [TypecheckerError::UnableToResolveType] kind.
-    pub fn unable_to_resolve_type(r#type: &Type) -> Error {
-        Error::new(TypecheckerError::UnableToResolveType(r#type.kind), r#type.span)
+    pub fn unable_to_resolve_type(name: &str, span: SourceSpan) -> Error {
+        Error::new(TypecheckerError::UnableToResolveType(name.to_owned()), span)
     }
 
     /// Creates a new [Error] with the kind as a [TypecheckerError::UndeclaredFunction] kind.

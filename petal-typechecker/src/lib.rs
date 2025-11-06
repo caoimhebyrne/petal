@@ -87,19 +87,21 @@ impl<'a> Typechecker<'a> {
         };
 
         // All expressions have an associated 'type' field which should always be present after typechecking.
-        expression.r#type = Some(r#type);
+        let type_id = self.type_pool.allocate(r#type);
+        expression.r#type = Some(TypeReference::new(type_id, expression.span));
+
         Ok(r#type)
     }
 
     /// Attempts to resolve the provided [Type] if it has not been resolved already.
-    pub fn resolve_type(&self, reference: TypeReference) -> Result<Type> {
+    pub fn resolve_type(&mut self, reference: &TypeReference) -> Result<Type> {
         let r#type = self.type_pool.get_type_mut_or_err(&reference.id, reference.span)?;
 
         // If the provided type has been resolved already, then we don't need to do anything else.
         let type_name_reference = match r#type {
             Type::Unresolved(reference) => reference,
             Type::Resolved(_) => return Ok(*r#type),
-            _ => panic!(),
+            _ => todo!(),
         };
 
         // Otherwise, we can attempt to resolve the type from its name.
@@ -111,7 +113,7 @@ impl<'a> Typechecker<'a> {
             "i32" => ResolvedType::Integer(32),
             "void" => ResolvedType::Void,
 
-            _ => return TypecheckerError::unable_to_resolve_type(r#type).into(),
+            _ => return TypecheckerError::unable_to_resolve_type(type_name, reference.span).into(),
         };
 
         // We can then set the type to the resolved type.

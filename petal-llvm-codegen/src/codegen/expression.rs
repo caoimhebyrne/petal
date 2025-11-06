@@ -9,6 +9,7 @@ impl<'ctx> Codegen<'ctx> for Expression {
         match &self.kind {
             ExpressionKind::IntegerLiteral(value) => {
                 let value_type = codegen.create_value_type(self.r#type, self.span)?;
+
                 Ok(value_type
                     .into_int_type()
                     .const_int(*value, false)

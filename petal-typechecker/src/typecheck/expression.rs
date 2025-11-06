@@ -1,5 +1,5 @@
-use petal_ast::{expression::BinaryOperation, r#type::Type};
-use petal_core::{error::Result, source_span::SourceSpan};
+use petal_ast::expression::BinaryOperation;
+use petal_core::{error::Result, source_span::SourceSpan, r#type::Type};
 
 use crate::{Typechecker, error::TypecheckerError, typecheck::Typecheck};
 
@@ -12,8 +12,8 @@ impl<'a> Typecheck<'a> for BinaryOperation {
         let left_type = typechecker.check_expression(&mut self.left)?;
         let right_type = typechecker.check_expression(&mut self.right)?;
 
-        if left_type.kind != right_type.kind {
-            return TypecheckerError::expected_type(left_type.kind, right_type.kind, span).into();
+        if left_type != right_type {
+            return TypecheckerError::expected_type(left_type, right_type, span).into();
         }
 
         Ok(left_type)

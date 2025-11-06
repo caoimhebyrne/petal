@@ -1,5 +1,5 @@
-use petal_ast::{statement::function_call::FunctionCall, r#type::Type};
-use petal_core::{error::Result, source_span::SourceSpan};
+use petal_ast::statement::function_call::FunctionCall;
+use petal_core::{error::Result, source_span::SourceSpan, r#type::Type};
 
 /// This module contains implementations of [Typecheck] for various expression kinds.
 pub(crate) mod expression;
@@ -43,8 +43,8 @@ impl<'a> Typecheck<'a> for FunctionCall {
             let parameter_type = function.parameters.get(index).unwrap();
             let argument_type = typechecker.check_expression(argument)?;
 
-            if parameter_type.kind != argument_type.kind {
-                return TypecheckerError::expected_type(parameter_type.kind, argument_type.kind, argument.span).into();
+            if *parameter_type != argument_type {
+                return TypecheckerError::expected_type(*parameter_type, argument_type, argument.span).into();
             }
         }
 

@@ -33,7 +33,7 @@ impl<'ctx> Codegen<'ctx> for FunctionDeclaration {
             .string_intern_pool
             .resolve_reference_or_err(&self.name_reference, span)?;
 
-        let function_type = codegen.create_function_type(self.return_type, &self.parameters)?;
+        let function_type = codegen.create_function_type(&self.return_type, &self.parameters)?;
         let function = codegen.llvm_module.add_function(function_name, function_type, None);
 
         let block = codegen.llvm_context.append_basic_block(function, "entry");

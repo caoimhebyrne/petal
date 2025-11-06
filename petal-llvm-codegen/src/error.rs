@@ -4,12 +4,12 @@ use inkwell::builder::BuilderError;
 use petal_ast::{
     expression::{Expression, ExpressionKind},
     statement::{Statement, StatementKind},
-    r#type::ResolvedTypeKind,
 };
 use petal_core::{
     error::{Error, ErrorKind},
     source_span::SourceSpan,
     string_intern::StringReference,
+    r#type::ResolvedType,
 };
 
 #[derive(Debug, PartialEq)]
@@ -18,7 +18,7 @@ pub enum LLVMCodegenErrorKind {
     UnresolvedType(String),
 
     /// A type was encountered that cannot be used for a value.
-    BadValueType(ResolvedTypeKind),
+    BadValueType(ResolvedType),
 
     /// A string reference was encountered that could not be resolved.
     UnresolvedStringReference(StringReference),
@@ -50,7 +50,7 @@ impl LLVMCodegenErrorKind {
         Error::new(LLVMCodegenErrorKind::UnresolvedType(name.to_owned()), span)
     }
 
-    pub fn bad_value_type(kind: ResolvedTypeKind, span: SourceSpan) -> Error {
+    pub fn bad_value_type(kind: ResolvedType, span: SourceSpan) -> Error {
         Error::new(LLVMCodegenErrorKind::BadValueType(kind), span)
     }
 
@@ -101,7 +101,7 @@ impl Display for LLVMCodegenErrorKind {
             }
 
             LLVMCodegenErrorKind::BadValueType(kind) => {
-                write!(f, "Unable to convert type '{}' to an LLVM value type", kind)
+                write!(f, "Unable to convert type '{:?}' to an LLVM value type", kind)
             }
 
             LLVMCodegenErrorKind::UnresolvedStringReference(reference) => {

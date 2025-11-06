@@ -1,3 +1,5 @@
+use enum_display::EnumDisplay;
+
 use crate::{source_span::SourceSpan, string_intern::StringReference};
 
 pub mod pool;
@@ -21,24 +23,29 @@ impl TypeReference {
 }
 
 /// Represents the different kinds of types that exist.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, EnumDisplay)]
 pub enum Type {
     /// A type that has not yet been resolved by the type checker.
+    #[display("unresolved")]
     Unresolved(StringReference),
 
     /// A type that has been resolved.
+    #[display("{0}")]
     Resolved(ResolvedType),
 
     /// A type which is a reference of another type (e.g. `&i32`).
+    #[display("reference({0:?})")]
     Reference(TypeId),
 }
 
 /// Represents the different kinds of fully-resolved types that exist.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, EnumDisplay)]
 pub enum ResolvedType {
     /// An integer of a certain width.
-    Integer(u8),
+    #[display("i{0}")]
+    Integer(u32),
 
     /// The `void` type (empty).
+    #[display("void")]
     Void,
 }

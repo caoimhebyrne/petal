@@ -80,6 +80,7 @@ fn main() {
             module_name: module.name(),
             dump_bytecode: args.dump_bytecode,
         },
+        &module.type_pool,
         module.string_intern_pool.as_ref(),
     );
 

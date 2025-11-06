@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use petal_ast::r#type::Type;
 use petal_core::{
     error::Result,
     source_span::SourceSpan,
     string_intern::{StringInternPool, StringReference},
+    r#type::Type,
 };
 
 use crate::error::TypecheckerError;

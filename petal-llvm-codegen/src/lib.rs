@@ -10,11 +10,15 @@ use inkwell::{
 };
 use petal_ast::{
     statement::{Statement, function_declaration::FunctionParameter},
-    r#type::{ResolvedTypeKind, Type, TypeKind},
     visitor::ASTVisitor,
 };
 use petal_codegen_driver::{Driver, options::DriverOptions};
-use petal_core::{error::Result, source_span::SourceSpan, string_intern::StringInternPool};
+use petal_core::{
+    error::Result,
+    source_span::SourceSpan,
+    string_intern::StringInternPool,
+    r#type::{ResolvedType, Type, TypeReference, pool::TypePool},
+};
 
 use crate::{codegen::Codegen, context::CodegenContext, error::LLVMCodegenErrorKind};
 
@@ -26,6 +30,9 @@ pub mod error;
 pub struct LLVMCodegen<'ctx> {
     /// The [DriverOptions] passed to this LLVM codegen driver.
     pub(crate) driver_options: DriverOptions,
+
+    /// The [TypePool] to read types from.
+    pub(crate) type_pool: &'ctx TypePool,
 
     /// The StringInternPool implementation to use when reading identifiers.
     pub(crate) string_intern_pool: &'ctx dyn StringInternPool,
@@ -47,41 +54,45 @@ impl<'ctx> LLVMCodegen<'ctx> {
     /// Converts the provided type to a function type.
     pub fn create_function_type(
         &self,
-        r#type: Type,
+        type_reference: &TypeReference,
         parameters: &Vec<FunctionParameter>,
     ) -> Result<FunctionType<'ctx>> {
-        let (type_kind, _) = self.ensure_resolved(Some(r#type), r#type.span)?;
+        let type_kind = self.ensure_resolved(Some(*type_reference), type_reference.span)?;
 
         let mut parameter_types: Vec<BasicMetadataTypeEnum<'ctx>> = Vec::new();
 
         for parameter in parameters {
-            let value_type: BasicMetadataTypeEnum = self
+            let parameter_type = self
                 .create_value_type(Some(parameter.value_type), parameter.span)?
                 .into();
 
-            parameter_types.push(value_type);
+            parameter_types.push(parameter_type);
         }
 
         let llvm_type = match type_kind {
-            ResolvedTypeKind::Integer(size) => self
+            ResolvedType::Integer(size) => self
                 .llvm_context
                 .custom_width_int_type(size)
                 .fn_type(&parameter_types, false),
 
-            ResolvedTypeKind::Void => self.llvm_context.void_type().fn_type(&parameter_types, false),
+            ResolvedType::Void => self.llvm_context.void_type().fn_type(&parameter_types, false),
         };
 
         Ok(llvm_type)
     }
 
     /// Converts the provided type to a value type.
-    pub fn create_value_type(&self, maybe_type: Option<Type>, span: SourceSpan) -> Result<BasicTypeEnum<'ctx>> {
-        let (type_kind, type_span) = self.ensure_resolved(maybe_type, span)?;
+    pub fn create_value_type(
+        &self,
+        maybe_type_reference: Option<TypeReference>,
+        span: SourceSpan,
+    ) -> Result<BasicTypeEnum<'ctx>> {
+        let type_kind = self.ensure_resolved(maybe_type_reference, span)?;
 
         let llvm_type = match type_kind {
-            ResolvedTypeKind::Integer(size) => self.llvm_context.custom_width_int_type(size).as_basic_type_enum(),
+            ResolvedType::Integer(size) => self.llvm_context.custom_width_int_type(size).as_basic_type_enum(),
 
-            _ => return LLVMCodegenErrorKind::bad_value_type(type_kind, type_span).into(),
+            _ => return LLVMCodegenErrorKind::bad_value_type(type_kind, span).into(),
         };
 
         Ok(llvm_type)
@@ -90,28 +101,29 @@ impl<'ctx> LLVMCodegen<'ctx> {
     /// Asserts that the provided type is resolved, returning an error if it is not.
     pub fn ensure_resolved(
         &self,
-        maybe_type: Option<Type>,
+        maybe_type_reference: Option<TypeReference>,
         span: SourceSpan,
-    ) -> Result<(ResolvedTypeKind, SourceSpan)> {
-        let r#type = maybe_type.ok_or(LLVMCodegenErrorKind::unresolved_type("missing", span))?;
+    ) -> Result<ResolvedType> {
+        let reference = maybe_type_reference.ok_or(LLVMCodegenErrorKind::unresolved_type("missing", span))?;
+        let r#type = self.type_pool.get_type_or_err(&reference.id, span)?;
 
-        let kind = match r#type.kind {
-            TypeKind::Resolved(kind) => kind,
-            TypeKind::Unresolved(reference) => {
-                let type_name = self
-                    .string_intern_pool
-                    .resolve_reference_or_err(&reference, r#type.span)?;
+        let kind = match r#type {
+            Type::Resolved(kind) => kind,
 
-                return LLVMCodegenErrorKind::unresolved_type(type_name, r#type.span).into();
+            Type::Unresolved(reference) => {
+                let type_name = self.string_intern_pool.resolve_reference_or_err(&reference, span)?;
+                return LLVMCodegenErrorKind::unresolved_type(type_name, span).into();
             }
+
+            _ => panic!(),
         };
 
-        Ok((kind, r#type.span))
+        Ok(*kind)
     }
 }
 
 impl<'ctx> Driver<'ctx> for LLVMCodegen<'ctx> {
-    fn new(options: DriverOptions, string_intern_pool: &'ctx dyn StringInternPool) -> Self {
+    fn new(options: DriverOptions, type_pool: &'ctx TypePool, string_intern_pool: &'ctx dyn StringInternPool) -> Self {
         // We're creating and leaking the LLVM context here. The `Drop` implementation of this struct will ensure that
         // this is cleaned up successfully.
         let llvm_context: &'ctx Context = Box::leak(Box::new(Context::create()));
@@ -120,6 +132,7 @@ impl<'ctx> Driver<'ctx> for LLVMCodegen<'ctx> {
             llvm_context,
             llvm_module: ManuallyDrop::new(llvm_context.create_module(&options.module_name)),
             llvm_builder: ManuallyDrop::new(llvm_context.create_builder()),
+            type_pool,
             string_intern_pool,
             driver_options: options,
             context: CodegenContext::new(),
