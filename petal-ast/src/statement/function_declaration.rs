@@ -1,4 +1,4 @@
-use petal_core::{source_span::SourceSpan, string_intern::StringReference, r#type::pool::TypeId};
+use petal_core::{source_span::SourceSpan, string_intern::StringReference, r#type::TypeReference};
 
 use crate::statement::{Statement, StatementKind, r#return::ReturnStatement};
 
@@ -9,14 +9,14 @@ pub struct FunctionParameter {
     pub name_reference: StringReference,
 
     /// The type of the parameter's expected value.
-    pub value_type: TypeId,
+    pub value_type: TypeReference,
 
     /// The span within the source code that the paramter was defined at.
     pub span: SourceSpan,
 }
 
 impl FunctionParameter {
-    pub fn new(name_reference: StringReference, value_type: TypeId, span: SourceSpan) -> Self {
+    pub fn new(name_reference: StringReference, value_type: TypeReference, span: SourceSpan) -> Self {
         FunctionParameter {
             name_reference,
             value_type,
@@ -35,7 +35,7 @@ pub struct FunctionDeclaration {
     pub parameters: Vec<FunctionParameter>,
 
     /// The return type of the function.
-    pub return_type: TypeId,
+    pub return_type: TypeReference,
 
     /// The body of the function.
     pub body: Vec<Statement>,
@@ -46,7 +46,7 @@ impl FunctionDeclaration {
     pub fn new(
         name_reference: StringReference,
         parameters: Vec<FunctionParameter>,
-        return_type: TypeId,
+        return_type: TypeReference,
         body: Vec<Statement>,
     ) -> Self {
         FunctionDeclaration {

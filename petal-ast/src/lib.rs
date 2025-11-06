@@ -2,7 +2,7 @@ use petal_core::{
     error::Result,
     source_span::SourceSpan,
     string_intern::StringReference,
-    r#type::{ResolvedTypeKind, Type, TypeKind, pool::TypePool},
+    r#type::{ResolvedType, Type, TypeReference, pool::TypePool},
 };
 use petal_lexer::{
     stream::TokenStream,
@@ -218,7 +218,7 @@ impl<'a> ASTParser<'a> {
     /// Attempts to parse a variable declaration node at the current position.
     fn parse_variable_declaration_node(&mut self) -> Result<Statement> {
         // The start of a variable declaration must always start with the type identifier.
-        let (type_reference, type_token) = self.expect_identifier()?;
+        let type_reference = self.parse_type()?;
 
         // The next token must be an identifier.
         let (identifier_reference, _) = self.expect_identifier()?;
@@ -229,15 +229,10 @@ impl<'a> ASTParser<'a> {
         // And finally, an expression must be provided for the initial value.
         let value = self.parse_expression()?;
 
-        let span = SourceSpan::between(&type_token.span, &value.span);
+        let span = SourceSpan::between(&type_reference.span, &value.span);
 
         Ok(Statement::new(
-            VariableDeclaration::new(
-                identifier_reference,
-                self.type_pool
-                    .allocate(Type::new(TypeKind::Unresolved(type_reference), type_token.span)),
-                value,
-            ),
+            VariableDeclaration::new(identifier_reference, type_reference, value),
             span,
         ))
     }
@@ -266,13 +261,12 @@ impl<'a> ASTParser<'a> {
                 self.expect_token(TokenKind::Colon)?;
 
                 // The next token must be the type of the parameter.
-                let (type_identifier, type_token) = self.expect_identifier()?;
+                let type_reference = self.parse_type()?;
 
                 parameters.push(FunctionParameter::new(
                     identifier_reference,
-                    self.type_pool
-                        .allocate(Type::new(TypeKind::Unresolved(type_identifier), type_token.span)),
-                    SourceSpan::between(&identifier_token.span, &type_token.span),
+                    type_reference,
+                    SourceSpan::between(&identifier_token.span, &type_reference.span),
                 ));
 
                 // If the next token is a comma, we can consume it and continue the loop.
@@ -298,17 +292,10 @@ impl<'a> ASTParser<'a> {
             self.expect_token(TokenKind::RightAngleBracket)?;
 
             // And finally, there must be an identifier for the function's return type.
-            let (return_type_identifier, return_type_token) = self.expect_identifier()?;
-
-            self.type_pool.allocate(Type::new(
-                TypeKind::Unresolved(return_type_identifier),
-                return_type_token.span,
-            ))
+            self.parse_type()?
         } else {
-            self.type_pool.allocate(Type::new(
-                TypeKind::Resolved(ResolvedTypeKind::Void),
-                right_parenthesis_token.span,
-            ))
+            let type_id = self.type_pool.allocate(Type::Resolved(ResolvedType::Void));
+            TypeReference::new(type_id, right_parenthesis_token.span)
         };
 
         // We can then consume statements until we find a closing brace.
@@ -395,6 +382,15 @@ impl<'a> ASTParser<'a> {
         ))
     }
 
+    /// Attempts to parse a type expression at the current position.
+    fn parse_type(&mut self) -> Result<TypeReference> {
+        let (type_identifier, type_token) = self.expect_identifier()?;
+
+        let type_id = self.type_pool.allocate(Type::Unresolved(type_identifier));
+
+        Ok(TypeReference::new(type_id, type_token.span))
+    }
+
     /// Expects a certain [TokenKind] to be produced by the lexer, returning an [Err] if a different token was returned.
     fn expect_token(&mut self, kind: TokenKind) -> Result<Token> {
         // If the token's kind does not match, we can return an error.
@@ -421,7 +417,7 @@ impl<'a> ASTParser<'a> {
 mod tests {
     use petal_core::{
         string_intern::{StringInternPool, StringInternPoolImpl},
-        r#type::pool::TypeId,
+        r#type::TypeId,
     };
     use petal_lexer::Lexer;
 
@@ -446,7 +442,7 @@ mod tests {
             Statement {
                 kind: VariableDeclaration::new(
                     identifier_reference,
-                    TypeId(0),
+                    TypeReference::new(TypeId(0), SourceSpan { start: 0, end: 3 }),
                     Expression {
                         kind: ExpressionKind::IntegerLiteral(123456),
                         r#type: None,
@@ -481,7 +477,13 @@ mod tests {
         assert_eq!(
             ast_parser.parse_statement().expect("next_statement should not fail!"),
             Statement {
-                kind: FunctionDeclaration::new(function_name_reference, vec![], TypeId(0), vec![]).into(),
+                kind: FunctionDeclaration::new(
+                    function_name_reference,
+                    vec![],
+                    TypeReference::new(TypeId(0), SourceSpan { start: 10, end: 11 }),
+                    vec![]
+                )
+                .into(),
                 span: SourceSpan { start: 0, end: 13 }
             }
         );
@@ -512,11 +514,11 @@ mod tests {
                 kind: FunctionDeclaration::new(
                     function_name_reference,
                     vec![],
-                    TypeId(0),
+                    TypeReference::new(TypeId(0), SourceSpan { start: 10, end: 11 }),
                     vec![Statement {
                         kind: VariableDeclaration::new(
                             identifier_reference,
-                            TypeId(1),
+                            TypeReference::new(TypeId(1), SourceSpan { start: 14, end: 17 }),
                             Expression {
                                 kind: ExpressionKind::IntegerLiteral(4).into(),
                                 r#type: None,
@@ -561,10 +563,10 @@ mod tests {
                     function_name_reference,
                     vec![FunctionParameter::new(
                         p0_name_reference,
-                        TypeId(0),
+                        TypeReference::new(TypeId(0), SourceSpan { start: 16, end: 19 }),
                         SourceSpan { start: 10, end: 19 }
                     )],
-                    TypeId(1),
+                    TypeReference::new(TypeId(1), SourceSpan { start: 19, end: 20 }),
                     vec![]
                 )
                 .into(),
@@ -606,10 +608,18 @@ mod tests {
                 kind: FunctionDeclaration::new(
                     function_name_reference,
                     vec![
-                        FunctionParameter::new(p0_name_reference, TypeId(0), SourceSpan { start: 10, end: 19 }),
-                        FunctionParameter::new(p1_name_reference, TypeId(1), SourceSpan { start: 21, end: 31 })
+                        FunctionParameter::new(
+                            p0_name_reference,
+                            TypeReference::new(TypeId(0), SourceSpan { start: 16, end: 19 }),
+                            SourceSpan { start: 10, end: 19 }
+                        ),
+                        FunctionParameter::new(
+                            p1_name_reference,
+                            TypeReference::new(TypeId(0), SourceSpan { start: 28, end: 31 }),
+                            SourceSpan { start: 21, end: 31 }
+                        )
                     ],
-                    TypeId(2),
+                    TypeReference::new(TypeId(1), SourceSpan { start: 31, end: 32 }),
                     vec![]
                 )
                 .into(),
@@ -645,7 +655,13 @@ mod tests {
         assert_eq!(
             ast_parser.parse_statement().expect("next_statement should not fail!"),
             Statement {
-                kind: FunctionDeclaration::new(function_name_reference, vec![], TypeId(0), vec![]).into(),
+                kind: FunctionDeclaration::new(
+                    function_name_reference,
+                    vec![],
+                    TypeReference::new(TypeId(0), SourceSpan { start: 15, end: 18 }),
+                    vec![]
+                )
+                .into(),
                 span: SourceSpan { start: 0, end: 20 }
             }
         );

@@ -1,4 +1,4 @@
-use petal_core::{string_intern::StringReference, r#type::pool::TypeId};
+use petal_core::{string_intern::StringReference, r#type::TypeReference};
 
 use crate::{expression::Expression, statement::StatementKind};
 
@@ -9,7 +9,7 @@ pub struct VariableDeclaration {
     pub identifier_reference: StringReference,
 
     /// The type of the variable being declared.
-    pub r#type: TypeId,
+    pub r#type: TypeReference,
 
     /// The value being assigned to the variable.
     pub value: Expression,
@@ -17,7 +17,7 @@ pub struct VariableDeclaration {
 
 impl VariableDeclaration {
     /// Creates a new [VariableDeclaration] with a [name] and [value].
-    pub fn new(identifier_reference: StringReference, r#type: TypeId, value: Expression) -> Self {
+    pub fn new(identifier_reference: StringReference, r#type: TypeReference, value: Expression) -> Self {
         VariableDeclaration {
             identifier_reference,
             r#type,

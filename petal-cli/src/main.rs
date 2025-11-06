@@ -50,7 +50,7 @@ fn main() {
         }
     };
 
-    let mut ast_parser = ASTParser::new(token_stream);
+    let mut ast_parser = ASTParser::new(token_stream, &mut module.type_pool);
 
     let mut statement_stream = match ast_parser.parse() {
         Ok(value) => value,
@@ -60,7 +60,10 @@ fn main() {
         }
     };
 
-    if let Err(error) = statement_stream.visit(&mut Typechecker::new(module.string_intern_pool.as_ref())) {
+    if let Err(error) = statement_stream.visit(&mut Typechecker::new(
+        &mut module.type_pool,
+        module.string_intern_pool.as_ref(),
+    )) {
         print_error(&module, error);
         process::exit(1);
     }

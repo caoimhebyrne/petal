@@ -1,39 +1,41 @@
-use crate::{source_span::SourceSpan, string_intern::StringReference, r#type::pool::TypeId};
+use crate::{source_span::SourceSpan, string_intern::StringReference};
 
 pub mod pool;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub struct Type {
-    /// The kind of type that this is.
-    pub kind: TypeKind,
+/// A reference to a type.
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub struct TypeId(pub usize);
 
-    /// The span within the source code that this type occurred at.
+/// A reference to a type with a [SourceSpan].
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct TypeReference {
+    pub id: TypeId,
     pub span: SourceSpan,
 }
 
-impl Type {
-    /// Creates a new [Type] instance.
-    pub fn new(kind: TypeKind, span: SourceSpan) -> Type {
-        Self { kind, span }
+impl TypeReference {
+    /// Creates a new [TypeReference].
+    pub fn new(id: TypeId, span: SourceSpan) -> Self {
+        TypeReference { id, span }
     }
 }
 
 /// Represents the different kinds of types that exist.
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum TypeKind {
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum Type {
     /// A type that has not yet been resolved by the type checker.
     Unresolved(StringReference),
 
     /// A type that has been resolved.
-    Resolved(ResolvedTypeKind),
+    Resolved(ResolvedType),
 
     /// A type which is a reference of another type (e.g. `&i32`).
     Reference(TypeId),
 }
 
 /// Represents the different kinds of fully-resolved types that exist.
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum ResolvedTypeKind {
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum ResolvedType {
     /// An integer of a certain width.
     Integer(u8),
 

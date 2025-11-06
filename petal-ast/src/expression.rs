@@ -1,4 +1,4 @@
-use petal_core::{source_span::SourceSpan, string_intern::StringReference, r#type::pool::TypeId};
+use petal_core::{source_span::SourceSpan, string_intern::StringReference, r#type::TypeReference};
 
 use crate::statement::function_call::FunctionCall;
 
@@ -9,7 +9,7 @@ pub struct Expression {
     pub kind: ExpressionKind,
 
     /// The type of the value that this expression produces.
-    pub r#type: Option<TypeId>,
+    pub r#type: Option<TypeReference>,
 
     /// The span within the source code that this expression was defined at.
     pub span: SourceSpan,
