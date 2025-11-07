@@ -32,13 +32,30 @@ pub enum ExpressionKind {
     IntegerLiteral(u64),
 
     /// A reference to an identifier.
-    IdentifierReference(StringReference),
+    IdentifierReference(IdentifierReference),
 
     /// A binary operation between two other expressions.
     BinaryOperation(BinaryOperation),
 
     /// A function call, e.g. `<name>()`.
     FunctionCall(FunctionCall),
+}
+
+/// A reference to an identifier.
+#[derive(Debug, Clone, PartialEq)]
+pub struct IdentifierReference {
+    /// The identifier.
+    pub name: StringReference,
+
+    /// Whether it is being caputured as a reference or not.
+    pub is_reference: bool,
+}
+
+impl IdentifierReference {
+    /// Creates a new [IdentifierReference].
+    pub fn new(name: StringReference, is_reference: bool) -> Self {
+        IdentifierReference { name, is_reference }
+    }
 }
 
 /// A binary operation between two [Expression]s.

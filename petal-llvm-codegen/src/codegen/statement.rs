@@ -123,6 +123,11 @@ impl<'ctx> Codegen<'ctx> for VariableAssignment {
 
         let pointer = match variable.kind {
             VariableKind::Local(pointer) => pointer,
+
+            VariableKind::Parameter(parameter) if variable.value_type.is_pointer_type() => {
+                parameter.into_pointer_value()
+            }
+
             _ => return LLVMCodegenErrorKind::illegal_variable_assignment(span).into(),
         };
 

@@ -45,7 +45,7 @@ impl<'a> Typechecker<'a> {
     /// Returns:
     /// The [Type] that this statement produces. If the statement does not result in a type, then [Type::void] will be
     /// returned.
-    pub fn check_statement(&mut self, statement: &mut Statement) -> Result<Type> {
+    pub fn check_statement(&mut self, statement: &mut Statement) -> Result<ResolvedType> {
         match &mut statement.kind {
             StatementKind::FunctionDeclaration(declaration) => declaration.typecheck(self, statement.span),
             StatementKind::ReturnStatement(r#return) => r#return.typecheck(self, statement.span),
@@ -63,8 +63,8 @@ impl<'a> Typechecker<'a> {
     ///
     /// Returns:
     /// The [Type] that this expression produces.
-    pub fn check_expression(&mut self, expression: &mut Expression) -> Result<Type> {
-        let r#type = match &mut expression.kind {
+    pub fn check_expression(&mut self, expression: &mut Expression) -> Result<ResolvedType> {
+        let resolved_type = match &mut expression.kind {
             ExpressionKind::FunctionCall(function_call) => function_call.typecheck(self, expression.span)?,
             ExpressionKind::BinaryOperation(operation) => operation.typecheck(self, expression.span)?,
 
@@ -73,35 +73,48 @@ impl<'a> Typechecker<'a> {
                 let variable = self
                     .context
                     .function_context(expression.span)?
-                    .get_variable(reference, expression.span)?;
+                    .get_variable(&reference.name, expression.span)?;
 
-                variable.r#type
+                if reference.is_reference {
+                    let type_id = self.type_pool.allocate(Type::Resolved(variable.r#type));
+                    ResolvedType::Reference(type_id)
+                } else {
+                    variable.r#type
+                }
             }
 
             // TODO: When multiple integer widths are supported, we will need to add inference by passing an "expected"
             // type to `check_expression`.
-            ExpressionKind::IntegerLiteral(_) => Type::Resolved(ResolvedType::Integer(32)),
+            ExpressionKind::IntegerLiteral(_) => ResolvedType::Integer(32),
 
             #[allow(unreachable_patterns)]
             _ => return TypecheckerError::unsupported_expression(expression.clone()).into(),
         };
 
         // All expressions have an associated 'type' field which should always be present after typechecking.
-        let type_id = self.type_pool.allocate(r#type);
+        let type_id = self.type_pool.allocate(Type::Resolved(resolved_type));
         expression.r#type = Some(TypeReference::new(type_id, expression.span));
 
-        Ok(r#type)
+        Ok(resolved_type)
     }
 
     /// Attempts to resolve the provided [Type] if it has not been resolved already.
-    pub fn resolve_type(&mut self, reference: &TypeReference) -> Result<Type> {
+    pub fn resolve_type(&mut self, reference: &TypeReference) -> Result<ResolvedType> {
         let r#type = self.type_pool.get_type_mut_or_err(&reference.id, reference.span)?;
 
         // If the provided type has been resolved already, then we don't need to do anything else.
         let type_name_reference = match r#type {
             Type::Unresolved(reference) => reference,
-            Type::Resolved(_) => return Ok(*r#type),
-            _ => todo!(),
+
+            Type::Resolved(r#type) => {
+                let resolved_type = *r#type;
+
+                if let ResolvedType::Reference(referenced_type_id) = resolved_type {
+                    self.resolve_type(&TypeReference::new(referenced_type_id, reference.span))?;
+                }
+
+                return Ok(resolved_type);
+            }
         };
 
         // Otherwise, we can attempt to resolve the type from its name.
@@ -118,7 +131,7 @@ impl<'a> Typechecker<'a> {
 
         // We can then set the type to the resolved type.
         *r#type = Type::Resolved(resolved_kind);
-        Ok(*r#type)
+        Ok(resolved_kind)
     }
 }
 

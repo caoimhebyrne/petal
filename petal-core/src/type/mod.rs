@@ -1,6 +1,6 @@
 use enum_display::EnumDisplay;
 
-use crate::{source_span::SourceSpan, string_intern::StringReference};
+use crate::{error::Result, source_span::SourceSpan, string_intern::StringReference, r#type::pool::TypePool};
 
 pub mod pool;
 
@@ -32,10 +32,6 @@ pub enum Type {
     /// A type that has been resolved.
     #[display("{0}")]
     Resolved(ResolvedType),
-
-    /// A type which is a reference of another type (e.g. `&i32`).
-    #[display("reference({0:?})")]
-    Reference(TypeId),
 }
 
 /// Represents the different kinds of fully-resolved types that exist.
@@ -48,4 +44,25 @@ pub enum ResolvedType {
     /// The `void` type (empty).
     #[display("void")]
     Void,
+
+    /// A reference of another type. This other type may not be resolved.
+    #[display("reference({0:?})")]
+    Reference(TypeId),
+}
+
+impl ResolvedType {
+    /// Returns whether this type can be assigned to another type.
+    pub fn is_assignable_to(&self, type_pool: &TypePool, other: &ResolvedType, span: SourceSpan) -> Result<bool> {
+        // If the other type is a reference type, the other type must be what I am referencing.
+        if let ResolvedType::Reference(referenced_type_id) = other {
+            let referenced_type = match type_pool.get_type_or_err(referenced_type_id, span)? {
+                Type::Resolved(resolved) => resolved,
+                _ => panic!(),
+            };
+
+            return Ok(self == referenced_type);
+        }
+
+        Ok(self == other)
+    }
 }

@@ -1,0 +1,11 @@
+// #exit-code: 28
+
+func modifier(value: &i32) {
+    value = 28;
+}
+
+func main() -> i32 {
+    i32 my_value = 10;
+    modifier(&my_value);
+    return my_value;
+}

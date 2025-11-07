@@ -99,6 +99,7 @@ impl<'a> Lexer<'a> {
                 ',' => TokenKind::Comma,
                 '+' => TokenKind::Plus,
                 '*' => TokenKind::Asterisk,
+                '&' => TokenKind::Ampersand,
 
                 '/' => return self.parse_forward_slash_or_comment(),
 

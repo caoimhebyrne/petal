@@ -6,7 +6,7 @@ use petal_ast::{
 use petal_core::{
     error::{Error, ErrorKind},
     source_span::SourceSpan,
-    r#type::Type,
+    r#type::ResolvedType,
 };
 
 #[derive(Debug, PartialEq, EnumDisplay)]
@@ -25,7 +25,10 @@ pub enum TypecheckerError {
 
     /// A type was expected, but a different type was received.
     #[display("Expected type '{expected}' but received type '{received}'")]
-    ExpectedType { expected: Type, received: Type },
+    ExpectedType {
+        expected: ResolvedType,
+        received: ResolvedType,
+    },
 
     /// An incorrect number of arguments was passed to a function.
     #[display("Incorrect number of arguments passed. Expected {expected} arguments, but got {received}")]
@@ -73,7 +76,7 @@ impl TypecheckerError {
     }
 
     /// Creates a new [Error] with the kind as a [TypecheckerError::ExpectedType] kind.
-    pub fn expected_type(expected: Type, received: Type, span: SourceSpan) -> Error {
+    pub fn expected_type(expected: ResolvedType, received: ResolvedType, span: SourceSpan) -> Error {
         Error::new(TypecheckerError::ExpectedType { expected, received }, span)
     }
 

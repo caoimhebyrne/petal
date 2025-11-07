@@ -1,0 +1,13 @@
+func modifier(value: &i32) {
+    value = 5;
+}
+
+func main() -> i32 {
+    i32 my_value = 10;
+    
+    // A value can be passed by reference to another function using the ampersand.
+    modifier(&my_value);
+
+    // The process should have an exit code of 5.
+    return my_value;
+}

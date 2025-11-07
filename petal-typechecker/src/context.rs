@@ -4,7 +4,7 @@ use petal_core::{
     error::Result,
     source_span::SourceSpan,
     string_intern::{StringInternPool, StringReference},
-    r#type::Type,
+    r#type::ResolvedType,
 };
 
 use crate::error::TypecheckerError;
@@ -32,7 +32,7 @@ impl<'a> TypecheckerContext<'a> {
     }
 
     /// Creates a [FunctionContext] instance and binds it to this [TypecheckerContext].
-    pub fn start_function_context(&mut self, return_type: Type, _span: SourceSpan) -> Result<()> {
+    pub fn start_function_context(&mut self, return_type: ResolvedType, _span: SourceSpan) -> Result<()> {
         // TODO: Do we need to throw an error if a function context is already bound?
 
         self.function_context = Some(FunctionContext::new(return_type, self.string_intern_pool));
@@ -100,10 +100,10 @@ impl<'a> TypecheckerContext<'a> {
 #[derive(Debug, Clone)]
 pub struct Function {
     /// The expected return type of the function.
-    pub return_type: Type,
+    pub return_type: ResolvedType,
 
     /// The types of the parameters to the function.
-    pub parameters: Vec<Type>,
+    pub parameters: Vec<ResolvedType>,
 
     /// The span within the source code that this function was declared at.
     pub span: SourceSpan,
@@ -111,7 +111,7 @@ pub struct Function {
 
 impl Function {
     /// Creates a new [Function].
-    pub fn new(return_type: Type, parameters: Vec<Type>, span: SourceSpan) -> Self {
+    pub fn new(return_type: ResolvedType, parameters: Vec<ResolvedType>, span: SourceSpan) -> Self {
         Function {
             return_type,
             parameters,
@@ -124,7 +124,7 @@ impl Function {
 #[derive(Debug, Copy, Clone)]
 pub struct Variable {
     /// The value type of the variable.
-    pub r#type: Type,
+    pub r#type: ResolvedType,
 
     /// The kind of variable that this is.
     #[allow(dead_code)]
@@ -144,7 +144,7 @@ pub enum VariableKind {
 }
 
 impl Variable {
-    pub fn new(r#type: Type, kind: VariableKind, span: SourceSpan) -> Self {
+    pub fn new(r#type: ResolvedType, kind: VariableKind, span: SourceSpan) -> Self {
         Variable { r#type, kind, span }
     }
 }
@@ -153,7 +153,7 @@ impl Variable {
 /// This is not the same as a [Function], consider a [Function] the product of a [FunctionContext].
 pub struct FunctionContext<'a> {
     /// The return type of the current function.
-    pub return_type: Type,
+    pub return_type: ResolvedType,
 
     /// The [StringInternPool] to read strings from.
     string_intern_pool: &'a dyn StringInternPool,
@@ -164,7 +164,7 @@ pub struct FunctionContext<'a> {
 
 impl<'a> FunctionContext<'a> {
     /// Creates a new [FunctionContext].
-    pub fn new(return_type: Type, string_intern_pool: &'a dyn StringInternPool) -> Self {
+    pub fn new(return_type: ResolvedType, string_intern_pool: &'a dyn StringInternPool) -> Self {
         FunctionContext {
             return_type,
             string_intern_pool,

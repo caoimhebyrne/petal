@@ -17,15 +17,27 @@ impl<'ctx> Codegen<'ctx> for Expression {
             }
 
             ExpressionKind::IdentifierReference(reference) => {
-                let variable = codegen.context.scope_context(span)?.get_variable(reference, span)?;
-                let variable_name = codegen.string_intern_pool.resolve_reference_or_err(reference, span)?;
+                let variable = codegen
+                    .context
+                    .scope_context(span)?
+                    .get_variable(&reference.name, span)?;
+
+                let variable_name = codegen
+                    .string_intern_pool
+                    .resolve_reference_or_err(&reference.name, span)?;
 
                 // We have the pointer to the variable, we need to dereference that pointer to get the value.
                 let value = match variable.kind {
-                    VariableKind::Local(pointer) => codegen
-                        .llvm_builder
-                        .build_load(variable.value_type, pointer, variable_name)
-                        .map_err(|err| LLVMCodegenErrorKind::builder_error(err, span))?,
+                    VariableKind::Local(pointer) => {
+                        if reference.is_reference {
+                            pointer.as_basic_value_enum()
+                        } else {
+                            codegen
+                                .llvm_builder
+                                .build_load(variable.value_type, pointer, variable_name)
+                                .map_err(|err| LLVMCodegenErrorKind::builder_error(err, span))?
+                        }
+                    }
 
                     VariableKind::Parameter(value) => value,
                 };

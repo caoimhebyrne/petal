@@ -1,5 +1,5 @@
 use petal_ast::statement::function_call::FunctionCall;
-use petal_core::{error::Result, source_span::SourceSpan, r#type::Type};
+use petal_core::{error::Result, source_span::SourceSpan, r#type::ResolvedType};
 
 /// This module contains implementations of [Typecheck] for various expression kinds.
 pub(crate) mod expression;
@@ -18,12 +18,12 @@ pub trait Typecheck<'a> {
     ///
     /// Returns:
     /// The [Type] that this node produces. If the node does not result in a type, then [Type::void] should be returned.
-    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<Type>;
+    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<ResolvedType>;
 }
 
 /// A function call is both a statement and expression, so it doesn't belong in either of the submodules.
 impl<'a> Typecheck<'a> for FunctionCall {
-    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<Type> {
+    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<ResolvedType> {
         // FIXME: I don't like this clone, but we need to do it because of the borrow checker.
         let function = typechecker.context.get_function(&self.name_reference, span).cloned()?;
 

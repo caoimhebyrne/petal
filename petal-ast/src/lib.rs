@@ -11,7 +11,7 @@ use petal_lexer::{
 
 use crate::{
     error::ASTErrorKind,
-    expression::{BinaryOperation, Expression, ExpressionKind, Operation},
+    expression::{BinaryOperation, Expression, ExpressionKind, IdentifierReference, Operation},
     statement::{
         Statement,
         function_call::FunctionCall,
@@ -185,7 +185,9 @@ impl<'a> ASTParser<'a> {
             }
 
             TokenKind::IntegerLiteral(literal) => ExpressionKind::IntegerLiteral(literal),
-            TokenKind::Identifier(reference) => ExpressionKind::IdentifierReference(reference),
+
+            TokenKind::Ampersand => return self.parse_identifier_reference(),
+            TokenKind::Identifier(_) => return self.parse_identifier_reference(),
 
             _ => return ASTErrorKind::expected_expression(&token).into(),
         };
@@ -195,6 +197,24 @@ impl<'a> ASTParser<'a> {
         self.token_stream.consume_non_whitespace_or_err()?;
 
         Ok(Expression::new(expression_kind, token.span))
+    }
+
+    /// Attempts to parse an identifier reference expression at the current position.
+    fn parse_identifier_reference(&mut self) -> Result<Expression> {
+        // If the identifier starts with an ampersand, this is a reference to the identifier.
+        let is_reference = if self.token_stream.peek_non_whitespace().map(|it| it.kind) == Some(TokenKind::Ampersand) {
+            self.token_stream.consume_non_whitespace_or_err()?;
+            true
+        } else {
+            false
+        };
+
+        let (identifier_reference, identifier_token) = self.expect_identifier()?;
+
+        Ok(Expression::new(
+            ExpressionKind::IdentifierReference(IdentifierReference::new(identifier_reference, is_reference)),
+            identifier_token.span,
+        ))
     }
 
     /// Attempts to prase a variable assignment node at the current position.
@@ -384,6 +404,21 @@ impl<'a> ASTParser<'a> {
 
     /// Attempts to parse a type expression at the current position.
     fn parse_type(&mut self) -> Result<TypeReference> {
+        // An ampersand may be present at the start of the type, this means that this is a reference.
+        if self.token_stream.next_is(TokenKind::Ampersand) {
+            let ampersand_token = *self.token_stream.consume_non_whitespace_or_err()?;
+            let type_reference = self.parse_type()?;
+
+            let type_id = self
+                .type_pool
+                .allocate(Type::Resolved(ResolvedType::Reference(type_reference.id)));
+
+            return Ok(TypeReference::new(
+                type_id,
+                SourceSpan::between(&ampersand_token.span, &type_reference.span),
+            ));
+        }
+
         let (type_identifier, type_token) = self.expect_identifier()?;
 
         let type_id = self.type_pool.allocate(Type::Unresolved(type_identifier));

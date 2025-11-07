@@ -2,11 +2,7 @@ use petal_ast::statement::{
     StatementKind, function_declaration::FunctionDeclaration, r#return::ReturnStatement,
     variable_assignment::VariableAssignment, variable_declaration::VariableDeclaration,
 };
-use petal_core::{
-    error::Result,
-    source_span::SourceSpan,
-    r#type::{ResolvedType, Type},
-};
+use petal_core::{error::Result, source_span::SourceSpan, r#type::ResolvedType};
 
 use crate::{
     Typechecker,
@@ -16,7 +12,7 @@ use crate::{
 };
 
 impl<'a> Typecheck<'a> for FunctionDeclaration {
-    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<Type> {
+    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<ResolvedType> {
         // Before we can type-check anything else, we need to ensure that the function's information (return type,
         // parameters, etc.) is valid.
         let return_type = typechecker.resolve_type(&self.return_type)?;
@@ -52,7 +48,7 @@ impl<'a> Typecheck<'a> for FunctionDeclaration {
             // If a return statement was not present, and this was a void function, we can insert one implicitly.
             // Otherwise, we must return an error. All blocks must have a terminator and we cannot provide one
             // implicitly for a non-void return type.
-            if return_type == Type::Resolved(ResolvedType::Void) {
+            if return_type == ResolvedType::Void {
                 self.insert_implicit_return_void(span);
             } else {
                 return TypecheckerError::missing_return_statement(span).into();
@@ -68,12 +64,12 @@ impl<'a> Typecheck<'a> for FunctionDeclaration {
             .add_function(&self.name_reference, Function::new(return_type, parameter_types, span))?;
 
         // This statement does not have a return value, so we return void instead.
-        Ok(Type::Resolved(ResolvedType::Void))
+        Ok(ResolvedType::Void)
     }
 }
 
 impl<'a> Typecheck<'a> for ReturnStatement {
-    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<Type> {
+    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<ResolvedType> {
         // A return statement may not have a value. If no value is present, then the "expected type" of the return
         // statement is void.
         let value_type = self
@@ -81,7 +77,7 @@ impl<'a> Typecheck<'a> for ReturnStatement {
             .as_mut()
             .map(|it| typechecker.check_expression(it))
             .transpose()?
-            .unwrap_or(Type::Resolved(ResolvedType::Void));
+            .unwrap_or(ResolvedType::Void);
 
         // If the value's type is not equal to the function's return type, then we must throw an error.
         let function_context = typechecker.context.function_context(span)?;
@@ -90,12 +86,12 @@ impl<'a> Typecheck<'a> for ReturnStatement {
         }
 
         // This statement does not have a return value, so we return void instead.
-        Ok(Type::Resolved(ResolvedType::Void))
+        Ok(ResolvedType::Void)
     }
 }
 
 impl<'a> Typecheck<'a> for VariableDeclaration {
-    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<Type> {
+    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<ResolvedType> {
         let r#type = typechecker.resolve_type(&self.r#type)?;
 
         // The initial value's type must be the same as the variable's type.
@@ -113,12 +109,12 @@ impl<'a> Typecheck<'a> for VariableDeclaration {
         )?;
 
         // This statement does not have a return value, so we return void instead.
-        Ok(Type::Resolved(ResolvedType::Void))
+        Ok(ResolvedType::Void)
     }
 }
 
 impl<'a> Typecheck<'a> for VariableAssignment {
-    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<Type> {
+    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<ResolvedType> {
         // A variable must have been declared already.
         let variable = *typechecker
             .context
@@ -127,11 +123,11 @@ impl<'a> Typecheck<'a> for VariableAssignment {
 
         // If the type of the variable does not match the value type, then this is not possible.
         let value_type = typechecker.check_expression(&mut self.value)?;
-        if value_type != variable.r#type {
+        if !value_type.is_assignable_to(&typechecker.type_pool, &variable.r#type, span)? {
             return TypecheckerError::expected_type(variable.r#type, value_type, span).into();
         }
 
         // This statement does not have a return value, so we return void instead.
-        Ok(Type::Resolved(ResolvedType::Void))
+        Ok(ResolvedType::Void)
     }
 }

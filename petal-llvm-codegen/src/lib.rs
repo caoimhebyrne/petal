@@ -1,7 +1,7 @@
 use std::{env, mem::ManuallyDrop, path::PathBuf};
 
 use inkwell::{
-    OptimizationLevel,
+    AddressSpace, OptimizationLevel,
     builder::Builder,
     context::Context,
     module::Module,
@@ -76,6 +76,11 @@ impl<'ctx> LLVMCodegen<'ctx> {
                 .fn_type(&parameter_types, false),
 
             ResolvedType::Void => self.llvm_context.void_type().fn_type(&parameter_types, false),
+
+            ResolvedType::Reference(_) => self
+                .llvm_context
+                .ptr_type(AddressSpace::default())
+                .fn_type(&parameter_types, false),
         };
 
         Ok(llvm_type)
@@ -91,6 +96,8 @@ impl<'ctx> LLVMCodegen<'ctx> {
 
         let llvm_type = match type_kind {
             ResolvedType::Integer(size) => self.llvm_context.custom_width_int_type(size).as_basic_type_enum(),
+
+            ResolvedType::Reference(_) => self.llvm_context.ptr_type(AddressSpace::default()).as_basic_type_enum(),
 
             _ => return LLVMCodegenErrorKind::bad_value_type(type_kind, span).into(),
         };
@@ -114,8 +121,6 @@ impl<'ctx> LLVMCodegen<'ctx> {
                 let type_name = self.string_intern_pool.resolve_reference_or_err(&reference, span)?;
                 return LLVMCodegenErrorKind::unresolved_type(type_name, span).into();
             }
-
-            _ => panic!(),
         };
 
         Ok(*kind)

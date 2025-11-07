@@ -1,10 +1,10 @@
 use petal_ast::expression::BinaryOperation;
-use petal_core::{error::Result, source_span::SourceSpan, r#type::Type};
+use petal_core::{error::Result, source_span::SourceSpan, r#type::ResolvedType};
 
 use crate::{Typechecker, error::TypecheckerError, typecheck::Typecheck};
 
 impl<'a> Typecheck<'a> for BinaryOperation {
-    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<Type> {
+    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<ResolvedType> {
         // The types on the left and right of the operation must both be of the same kind. If that is not the case,
         // then the operation is invalid.
         //
