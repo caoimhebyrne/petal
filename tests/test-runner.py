@@ -35,10 +35,12 @@ class TestCaseOptions:
     '''Contains options provided in the comment header of each test case'''
     expected_exit_code: int
     compile_failure: str
+    standard_output: str
 
     def __init__(self):
         self.expected_exit_code = 0
         self.compile_failure = ''
+        self.standard_output = ''
 
     @staticmethod
     def parse(source_file_path: Path):
@@ -75,6 +77,9 @@ class TestCaseOptions:
 
             case 'compile-failure':
                 self.compile_failure = option_value
+
+            case 'standard-output':
+                self.standard_output = option_value
 
             case _:
                 log_info(f'Unrecognized test option declaration: \'{option_declaration}\'')
@@ -169,6 +174,15 @@ class TestCase:
 
             if not len(compiler_stderr) == 0:
                 print(f'\nCompiler Standard Error:\n{compiler_stderr}')
+
+            return False
+        
+        if not process_stdout == self.options.standard_output:
+            log_fail(f'{self.name} has failed. The expected standard output was not observed')
+
+            print(f'\nTest expected the following standard output, but it was not present: \n{self.options.standard_output}')
+
+            print(f'\nStandard Output:\n{process_stdout}')
 
             return False
         

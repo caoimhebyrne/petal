@@ -1,0 +1,11 @@
+// Functions from libc can be used by declaring them with the `extern` keyword.
+//
+// In this example, we are using `printf` from libc without any parameters.
+extern func printf(format: &u8);
+
+func main() -> i32 {
+    // External functions can be called the exact same way as normal functions.
+    printf("Hello from Petal!\n");
+
+    return 0;
+}

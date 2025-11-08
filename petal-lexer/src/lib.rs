@@ -280,6 +280,7 @@ impl<'a> Lexer<'a> {
     fn match_keyword(string: &str) -> Option<Keyword> {
         let keyword = match string {
             "func" => Keyword::Func,
+            "extern" => Keyword::Extern,
             "return" => Keyword::Return,
             _ => return None,
         };

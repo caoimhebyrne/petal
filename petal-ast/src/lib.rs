@@ -71,6 +71,12 @@ impl<'a> ASTParser<'a> {
             TokenKind::Keyword(Keyword::Func) => (self.parse_function_declaration_node(), false),
             TokenKind::Keyword(Keyword::Return) => (self.parse_return_statement_node(), true),
 
+            TokenKind::Keyword(Keyword::Extern)
+                if self.token_stream.after_next_is(TokenKind::Keyword(Keyword::Func)) =>
+            {
+                (self.parse_function_declaration_node(), false)
+            }
+
             // <name>(
             TokenKind::Identifier(_) if self.token_stream.after_next_is(TokenKind::LeftParenthesis) => {
                 (self.parse_function_call_statement(), true)
@@ -262,6 +268,14 @@ impl<'a> ASTParser<'a> {
 
     /// Attempts to parse a function declaration node at the current position.
     fn parse_function_declaration_node(&mut self) -> Result<Statement> {
+        // The start of the function declaration may be an `extern` keyword.
+        let is_extern = if self.token_stream.next_is(TokenKind::Keyword(Keyword::Extern)) {
+            self.token_stream.consume_non_whitespace_or_err()?;
+            true
+        } else {
+            false
+        };
+
         // The start of a function declaration must always start with the `func` keyword.
         let func_token = self.expect_token(TokenKind::Keyword(Keyword::Func))?;
 
@@ -321,20 +335,27 @@ impl<'a> ASTParser<'a> {
             TypeReference::new(type_id, right_parenthesis_token.span)
         };
 
-        // We can then consume statements until we find a closing brace.
-        let left_brace_token = self.expect_token(TokenKind::LeftBrace)?;
-
         let mut body: Vec<Statement> = Vec::new();
 
-        while !self.token_stream.next_is(TokenKind::RightBrace) {
-            body.push(self.parse_statement()?);
-        }
+        // If this is an extern function, we must have a semicolon.
+        let final_token = if is_extern {
+            self.expect_token(TokenKind::Semicolon)?
+        } else {
+            // Otherwise, we must have a function body.
+            // We can then consume statements until we find a closing brace.
+            let left_brace_token = self.expect_token(TokenKind::LeftBrace)?;
 
-        self.expect_token(TokenKind::RightBrace)?;
+            while !self.token_stream.next_is(TokenKind::RightBrace) {
+                body.push(self.parse_statement()?);
+            }
+
+            self.expect_token(TokenKind::RightBrace)?;
+            left_brace_token
+        };
 
         Ok(Statement::new(
-            FunctionDeclaration::new(identifier_reference, parameters, return_type, body),
-            SourceSpan::between(&func_token.span, &left_brace_token.span),
+            FunctionDeclaration::new(identifier_reference, parameters, return_type, body, is_extern),
+            SourceSpan::between(&func_token.span, &final_token.span),
         ))
     }
 
@@ -519,7 +540,8 @@ mod tests {
                     function_name_reference,
                     vec![],
                     TypeReference::new(TypeId(0), SourceSpan { start: 10, end: 11 }),
-                    vec![]
+                    vec![],
+                    false
                 )
                 .into(),
                 span: SourceSpan { start: 0, end: 13 }
@@ -565,7 +587,8 @@ mod tests {
                         )
                         .into(),
                         span: SourceSpan { start: 14, end: 23 }
-                    }]
+                    }],
+                    false
                 )
                 .into(),
                 span: SourceSpan { start: 0, end: 13 }
@@ -605,7 +628,8 @@ mod tests {
                         SourceSpan { start: 10, end: 19 }
                     )],
                     TypeReference::new(TypeId(1), SourceSpan { start: 19, end: 20 }),
-                    vec![]
+                    vec![],
+                    false
                 )
                 .into(),
                 span: SourceSpan { start: 0, end: 22 }
@@ -658,7 +682,8 @@ mod tests {
                         )
                     ],
                     TypeReference::new(TypeId(1), SourceSpan { start: 31, end: 32 }),
-                    vec![]
+                    vec![],
+                    false
                 )
                 .into(),
                 span: SourceSpan { start: 0, end: 34 }
@@ -697,7 +722,8 @@ mod tests {
                     function_name_reference,
                     vec![],
                     TypeReference::new(TypeId(0), SourceSpan { start: 15, end: 18 }),
-                    vec![]
+                    vec![],
+                    false
                 )
                 .into(),
                 span: SourceSpan { start: 0, end: 20 }

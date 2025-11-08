@@ -39,6 +39,9 @@ pub struct FunctionDeclaration {
 
     /// The body of the function.
     pub body: Vec<Statement>,
+
+    /// Whether the function is an external function.
+    pub is_extern: bool,
 }
 
 impl FunctionDeclaration {
@@ -48,12 +51,14 @@ impl FunctionDeclaration {
         parameters: Vec<FunctionParameter>,
         return_type: TypeReference,
         body: Vec<Statement>,
+        is_extern: bool,
     ) -> Self {
         FunctionDeclaration {
             name_reference,
             parameters,
             return_type,
             body,
+            is_extern,
         }
     }
 

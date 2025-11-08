@@ -91,6 +91,9 @@ pub enum Keyword {
     /// Function definition.
     Func,
 
+    /// An external modifier.
+    Extern,
+
     /// A return statement.
     Return,
 }
