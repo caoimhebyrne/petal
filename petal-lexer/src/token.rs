@@ -29,6 +29,9 @@ pub enum TokenKind {
     /// An integer literal.
     IntegerLiteral(u64),
 
+    /// A string literal.
+    StringLiteral(StringReference),
+
     /// An identifier.
     Identifier(StringReference),
 

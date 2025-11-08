@@ -1,0 +1,5 @@
+// #compile-failure: Unterminated string literal
+
+func test() -> &u8 {
+    return ";
+}

@@ -87,6 +87,15 @@ impl<'a> Typechecker<'a> {
             // type to `check_expression`.
             ExpressionKind::IntegerLiteral(_) => ResolvedType::SignedInteger(32),
 
+            // A string literal is always a reference to a u8.
+            ExpressionKind::StringLiteral(_) => {
+                let type_id = self
+                    .type_pool
+                    .allocate(Type::Resolved(ResolvedType::UnsignedInteger(8)));
+
+                ResolvedType::Reference(type_id)
+            }
+
             #[allow(unreachable_patterns)]
             _ => return TypecheckerError::unsupported_expression(expression.clone()).into(),
         };

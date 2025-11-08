@@ -16,6 +16,17 @@ impl<'ctx> Codegen<'ctx> for Expression {
                     .as_basic_value_enum())
             }
 
+            ExpressionKind::StringLiteral(reference) => {
+                let string_value = codegen.string_intern_pool.resolve_reference_or_err(reference, span)?;
+
+                let string = codegen
+                    .llvm_builder
+                    .build_global_string_ptr(string_value, "string")
+                    .map_err(|err| LLVMCodegenErrorKind::builder_error(err, span))?;
+
+                Ok(string.as_basic_value_enum())
+            }
+
             ExpressionKind::IdentifierReference(reference) => {
                 let variable = codegen
                     .context

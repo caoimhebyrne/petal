@@ -102,6 +102,7 @@ impl<'a> Lexer<'a> {
                 '&' => TokenKind::Ampersand,
 
                 '/' => return self.parse_forward_slash_or_comment(),
+                '"' => return self.parse_string_literal(),
 
                 _ => {
                     // If the character is considered to be whitespace, then continue.
@@ -221,6 +222,58 @@ impl<'a> Lexer<'a> {
         let reference = self.string_intern_pool.intern(&comment);
 
         Ok(TokenKind::Comment(reference))
+    }
+
+    /// Attempts to parse a forward slash token or a commenet token from the current position in the source text.
+    fn parse_string_literal(&mut self) -> LexerResult<TokenKind> {
+        // Now, we can read all of the comment until a new-line occurs (or the end-of-file).
+        let mut characters = vec![];
+        let mut reached_closing_quote = false;
+
+        while let Some(character) = self.peek() {
+            // If the character is a closing quote, then the comment is over.
+            if character == '"' {
+                reached_closing_quote = true;
+                self.chars.next();
+
+                break;
+            }
+
+            self.chars.next();
+
+            // If this character is a `\`, we can attempt to insert a newline, etc. depending on the character after.
+            if character == '\\' {
+                let next_character = match self.peek() {
+                    Some(value) => value,
+                    _ => continue,
+                };
+
+                match next_character {
+                    'n' => characters.push('\n'),
+                    't' => characters.push('\t'),
+
+                    _ => {
+                        characters.push(character);
+                        continue;
+                    }
+                }
+
+                self.chars.next();
+            } else {
+                characters.push(character);
+            }
+        }
+
+        if !reached_closing_quote {
+            return Err(LexerErrorKind::UnterminatedStringLiteral);
+        }
+
+        // The last character was a closing
+
+        let literal = characters.iter().collect::<String>();
+        let reference = self.string_intern_pool.intern(&literal);
+
+        Ok(TokenKind::StringLiteral(reference))
     }
 
     /// Attempts to match a keyword from the input string, returning [Option::None] if a matching keyword was not found.

@@ -10,6 +10,9 @@ pub enum LexerErrorKind {
 
     /// An invalid integer literal was found in the source code.
     InvalidIntegerLiteral,
+
+    /// A string literal was unterminated.
+    UnterminatedStringLiteral,
 }
 
 impl Display for LexerErrorKind {
@@ -21,6 +24,10 @@ impl Display for LexerErrorKind {
 
             LexerErrorKind::InvalidIntegerLiteral => {
                 write!(f, "Invalid integer literal")
+            }
+
+            LexerErrorKind::UnterminatedStringLiteral => {
+                write!(f, "Unterminated string literal")
             }
         }
     }

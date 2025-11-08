@@ -31,6 +31,9 @@ pub enum ExpressionKind {
     // An integer literal, e.g: `12345`.
     IntegerLiteral(u64),
 
+    /// A string literal.
+    StringLiteral(StringReference),
+
     /// A reference to an identifier.
     IdentifierReference(IdentifierReference),
 

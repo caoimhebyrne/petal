@@ -81,6 +81,9 @@ impl<'a> ASTParser<'a> {
                 (self.parse_variable_assignment_node(), true)
             }
 
+            // &<type> identifier = ...
+            TokenKind::Ampersand => (self.parse_variable_declaration_node(), true),
+
             // <type> <identifier> =
             //   0         1       2
             TokenKind::Identifier(_) if self.token_stream.nth_is(2, TokenKind::Equals) => {
@@ -185,6 +188,7 @@ impl<'a> ASTParser<'a> {
             }
 
             TokenKind::IntegerLiteral(literal) => ExpressionKind::IntegerLiteral(literal),
+            TokenKind::StringLiteral(literal) => ExpressionKind::StringLiteral(literal),
 
             TokenKind::Ampersand => return self.parse_identifier_reference(),
             TokenKind::Identifier(_) => return self.parse_identifier_reference(),
@@ -248,7 +252,6 @@ impl<'a> ASTParser<'a> {
 
         // And finally, an expression must be provided for the initial value.
         let value = self.parse_expression()?;
-
         let span = SourceSpan::between(&type_reference.span, &value.span);
 
         Ok(Statement::new(
