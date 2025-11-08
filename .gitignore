@@ -1,3 +1,4 @@
 **/build
+**/.petal-build
 **/target
 .DS_Store
