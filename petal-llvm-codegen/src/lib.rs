@@ -70,7 +70,7 @@ impl<'ctx> LLVMCodegen<'ctx> {
         }
 
         let llvm_type = match type_kind {
-            ResolvedType::Integer(size) => self
+            ResolvedType::SignedInteger(size) | ResolvedType::UnsignedInteger(size) => self
                 .llvm_context
                 .custom_width_int_type(size)
                 .fn_type(&parameter_types, false),
@@ -95,7 +95,10 @@ impl<'ctx> LLVMCodegen<'ctx> {
         let type_kind = self.ensure_resolved(maybe_type_reference, span)?;
 
         let llvm_type = match type_kind {
-            ResolvedType::Integer(size) => self.llvm_context.custom_width_int_type(size).as_basic_type_enum(),
+            // LLVM does not differentiate between signed and unsigned integers.
+            ResolvedType::UnsignedInteger(size) | ResolvedType::SignedInteger(size) => {
+                self.llvm_context.custom_width_int_type(size).as_basic_type_enum()
+            }
 
             ResolvedType::Reference(_) => self.llvm_context.ptr_type(AddressSpace::default()).as_basic_type_enum(),
 

@@ -37,9 +37,13 @@ pub enum Type {
 /// Represents the different kinds of fully-resolved types that exist.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, EnumDisplay)]
 pub enum ResolvedType {
-    /// An integer of a certain width.
+    /// An unsigned integer of a certain width.
     #[display("i{0}")]
-    Integer(u32),
+    UnsignedInteger(u32),
+
+    /// A signed integer of a certain width.
+    #[display("i{0}")]
+    SignedInteger(u32),
 
     /// The `void` type (empty).
     #[display("void")]

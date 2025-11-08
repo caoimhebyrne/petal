@@ -85,7 +85,7 @@ impl<'a> Typechecker<'a> {
 
             // TODO: When multiple integer widths are supported, we will need to add inference by passing an "expected"
             // type to `check_expression`.
-            ExpressionKind::IntegerLiteral(_) => ResolvedType::Integer(32),
+            ExpressionKind::IntegerLiteral(_) => ResolvedType::SignedInteger(32),
 
             #[allow(unreachable_patterns)]
             _ => return TypecheckerError::unsupported_expression(expression.clone()).into(),
@@ -123,7 +123,14 @@ impl<'a> Typechecker<'a> {
             .resolve_reference_or_err(&type_name_reference, reference.span)?;
 
         let resolved_kind = match type_name {
-            "i32" => ResolvedType::Integer(32),
+            "i8" => ResolvedType::SignedInteger(8),
+            "i16" => ResolvedType::SignedInteger(16),
+            "i32" => ResolvedType::SignedInteger(32),
+
+            "u8" => ResolvedType::UnsignedInteger(8),
+            "u16" => ResolvedType::UnsignedInteger(16),
+            "u32" => ResolvedType::UnsignedInteger(32),
+
             "void" => ResolvedType::Void,
 
             _ => return TypecheckerError::unable_to_resolve_type(type_name, reference.span).into(),
