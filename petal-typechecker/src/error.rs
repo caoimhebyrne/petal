@@ -12,11 +12,11 @@ use petal_core::{
 #[derive(Debug, PartialEq, EnumDisplay)]
 pub enum TypecheckerError {
     /// An attempt was made to declare a function, but one already exists with the same name.
-    #[display("A function already exists with the name: '{0}")]
+    #[display("A function already exists with the name: '{0}'")]
     DuplicateFunctionDeclaration(String),
 
     /// An attempt was made to declare a varaible, but one already exists with the provided name.
-    #[display("A variable already exists with the name: '{0}")]
+    #[display("A variable already exists with the name: '{0}'")]
     DuplicateVariableDeclaration(String),
 
     /// A function context was expected, but one was not available.
