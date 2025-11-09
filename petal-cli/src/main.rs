@@ -70,7 +70,13 @@ fn main() {
 
     let mut codegen = LLVMCodegen::new(
         DriverOptions {
-            module_name: "module".to_string(),
+            module_name: args
+                .input
+                .with_extension("")
+                .file_name()
+                .map(|it| it.to_string_lossy().to_string())
+                .unwrap_or("unnamed module".to_owned()),
+
             dump_bytecode: args.dump_bytecode,
         },
         &compiler_state.type_pool,
