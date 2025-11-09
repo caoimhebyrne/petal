@@ -36,11 +36,13 @@ class TestCaseOptions:
     expected_exit_code: int
     compile_failure: str
     standard_output: str
+    ignored: bool
 
     def __init__(self):
         self.expected_exit_code = 0
         self.compile_failure = ''
         self.standard_output = ''
+        self.ignored = False
 
     @staticmethod
     def parse(source_file_path: Path):
@@ -81,6 +83,9 @@ class TestCaseOptions:
             case 'standard-output':
                 self.standard_output = option_value
 
+            case 'ignored':
+                self.ignored = True    
+
             case _:
                 log_info(f'Unrecognized test option declaration: \'{option_declaration}\'')
 
@@ -99,6 +104,9 @@ class TestCase:
         self.options = TestCaseOptions.parse(self.source_file_path)
 
     def execute(self, compiler_path: Path) -> bool:
+        if self.options.ignored:
+            return True
+
         print()
         log_info(f'Running test {self.source_file_path.name}')
 

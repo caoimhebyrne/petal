@@ -1,0 +1,5 @@
+// #ignored
+
+func get_return_value() -> i32 {
+    return 32;
+}

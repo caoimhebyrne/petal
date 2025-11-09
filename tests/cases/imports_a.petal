@@ -1,0 +1,7 @@
+// #exit-code: 32
+
+import imports_b;
+
+func main() -> i32 {
+    return get_return_value();
+}
