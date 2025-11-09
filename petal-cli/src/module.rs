@@ -58,25 +58,40 @@ impl Module {
         })
     }
 
-    /// Resolves this module and any modules referenced by it.
     pub fn resolve(&self, compiler_state: &mut CompilerState) -> Result<Vec<ResolvedModule>> {
+        // There will always be at least one module.
+
+        // FIXME: It would be nice to use something like a `HashMap` here, but it does not preserve insertion order...
+        let mut resolved_module_paths = Vec::with_capacity(1);
+        let mut resolved_modules = Vec::with_capacity(1);
+
+        self.resolve_into(compiler_state, &mut resolved_module_paths, &mut resolved_modules)?;
+
+        Ok(resolved_modules)
+    }
+
+    /// Resolves this module and any modules referenced by it.
+    fn resolve_into(
+        &self,
+        compiler_state: &mut CompilerState,
+        resolved_module_paths: &mut Vec<PathBuf>,
+        resolved_modules: &mut Vec<ResolvedModule>,
+    ) -> Result<()> {
         let mut lexer = Lexer::new(compiler_state.string_intern_pool.as_mut(), &self.source_contents);
         let token_stream = lexer.get_stream()?;
 
         let mut ast_parser = ASTParser::new(token_stream, &mut compiler_state.type_pool);
         let statement_stream = ast_parser.parse()?;
 
-        // There will always be at least 1 module.
-        let mut resolved_modules: Vec<ResolvedModule> = Vec::with_capacity(1);
-
         for statement in &statement_stream.statements {
             match &statement.kind {
-                StatementKind::ImportStatement(import) => {
-                    let mut referenced_modules =
-                        self.resolve_referenced_module(compiler_state, import.module_name, statement.span)?;
-
-                    resolved_modules.append(&mut referenced_modules);
-                }
+                StatementKind::ImportStatement(import) => self.resolve_referenced_module(
+                    compiler_state,
+                    resolved_module_paths,
+                    resolved_modules,
+                    import.module_name,
+                    statement.span,
+                )?,
 
                 _ => {}
             }
@@ -84,17 +99,20 @@ impl Module {
 
         // Now that we have resolved all children, we can insert this module.
         resolved_modules.push(ResolvedModule::from_module(self, statement_stream.statements));
+        resolved_module_paths.push(self.source_path.clone());
 
-        Ok(resolved_modules)
+        Ok(())
     }
 
     /// Attempts to resolve a module referenced by this module.
     fn resolve_referenced_module(
         &self,
         compiler_state: &mut CompilerState,
+        resolved_module_paths: &mut Vec<PathBuf>,
+        resolved_modules: &mut Vec<ResolvedModule>,
         module_name: StringReference,
         span: SourceSpan,
-    ) -> Result<Vec<ResolvedModule>> {
+    ) -> Result<()> {
         // A module name must exist in the string intern pool.
         let module_name = compiler_state
             .string_intern_pool
@@ -102,11 +120,19 @@ impl Module {
             .to_owned();
 
         if module_name == "stdlib" {
-            return self.resolve_standard_library_module(compiler_state, span);
+            return self.resolve_standard_library_module(compiler_state, resolved_module_paths, resolved_modules, span);
         }
 
         // A corresponding .petal file must exist in the parent directory for the module.
         let module_path = self.parent_directory.join(&module_name).with_added_extension("petal");
+        if resolved_module_paths.contains(&module_path) {
+            println!(
+                "debug: not resolving module '{}' as it has already been resolved",
+                module_name
+            );
+
+            return Ok(());
+        }
 
         println!(
             "debug: attempting to resolve module at path '{}'",
@@ -114,21 +140,28 @@ impl Module {
         );
 
         let module = Module::new(module_path).map_err(|_| ModuleError::module_not_found(&module_name, span))?;
-        module.resolve(compiler_state)
+        module.resolve_into(compiler_state, resolved_module_paths, resolved_modules)
     }
 
     /// Attempts to resolve the standard library module, as referenced by this module.
     fn resolve_standard_library_module(
         &self,
         compiler_state: &mut CompilerState,
+        resolved_module_paths: &mut Vec<PathBuf>,
+        resolved_modules: &mut Vec<ResolvedModule>,
         span: SourceSpan,
-    ) -> Result<Vec<ResolvedModule>> {
+    ) -> Result<()> {
         // FIXME: The standard library path should be somewhere global.
         let standard_library_module_path = current_dir()
             .map_err(|_| ModuleError::module_not_found("stdlib", span))?
             .join("stdlib")
             .join("main")
             .with_added_extension("petal");
+
+        if resolved_module_paths.contains(&standard_library_module_path) {
+            println!("debug: not resolving standard library module as it has already been resolved",);
+            return Ok(());
+        }
 
         println!(
             "debug: attempting to resolve standard library module at path '{}'",
@@ -137,7 +170,7 @@ impl Module {
 
         let module =
             Module::new(standard_library_module_path).map_err(|_| ModuleError::module_not_found("stdlib", span))?;
-        module.resolve(compiler_state)
+        module.resolve_into(compiler_state, resolved_module_paths, resolved_modules)
     }
 }
 

@@ -1,0 +1,13 @@
+// #exit-code: 32
+
+import imports_base;
+import imports_base;
+import imports_base;
+import imports_base;
+import imports_base;
+import imports_base;
+import imports_base;
+
+func main() -> i32 {
+    return get_return_value();
+}
