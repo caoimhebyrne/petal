@@ -1,0 +1,13 @@
+// The imports example states:
+// > A file named <module_name>.petal must exist as a sibling to the current source file when using an import statement.
+// This is not always the case, however. The primary exception to that is the standard library module.
+//
+// The standard library module can be imported by importing the `stdlib` module, like so:
+import stdlib;
+
+// Now, you have access to Petal's standard library. It does not contain much at the moment, but it does re-export
+// printf from libc.
+func main() -> i32 {
+    printf("Hello from printf, exported by Petal's standard library!\n");
+    return 0;
+}

@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf};
+use std::{env::current_dir, fs, path::PathBuf};
 
 use enum_display::EnumDisplay;
 use petal_ast::{
@@ -8,6 +8,7 @@ use petal_ast::{
 use petal_core::{
     error::{Error, ErrorKind, Result},
     source_span::SourceSpan,
+    string_intern::StringReference,
 };
 use petal_lexer::Lexer;
 use petal_typechecker::temp_resolved_module::ResolvedModule;
@@ -71,24 +72,10 @@ impl Module {
         for statement in &statement_stream.statements {
             match &statement.kind {
                 StatementKind::ImportStatement(import) => {
-                    // A module name must exist in the string intern pool.
-                    let module_name = compiler_state
-                        .string_intern_pool
-                        .resolve_reference_or_err(&import.module_name, statement.span)?
-                        .to_owned();
+                    let mut referenced_modules =
+                        self.resolve_referenced_module(compiler_state, import.module_name, statement.span)?;
 
-                    // A corresponding .petal file must exist in the parent directory for the module.
-                    let module_path = self.parent_directory.join(&module_name).with_added_extension("petal");
-
-                    println!(
-                        "debug: attempting to resolve module at path '{}'",
-                        module_path.display()
-                    );
-
-                    let module = Module::new(module_path)
-                        .map_err(|_| ModuleError::module_not_found(&module_name, statement.span))?;
-
-                    resolved_modules.append(&mut module.resolve(compiler_state)?);
+                    resolved_modules.append(&mut referenced_modules);
                 }
 
                 _ => {}
@@ -99,6 +86,58 @@ impl Module {
         resolved_modules.push(ResolvedModule::from_module(self, statement_stream.statements));
 
         Ok(resolved_modules)
+    }
+
+    /// Attempts to resolve a module referenced by this module.
+    fn resolve_referenced_module(
+        &self,
+        compiler_state: &mut CompilerState,
+        module_name: StringReference,
+        span: SourceSpan,
+    ) -> Result<Vec<ResolvedModule>> {
+        // A module name must exist in the string intern pool.
+        let module_name = compiler_state
+            .string_intern_pool
+            .resolve_reference_or_err(&module_name, span)?
+            .to_owned();
+
+        if module_name == "stdlib" {
+            return self.resolve_standard_library_module(compiler_state, span);
+        }
+
+        // A corresponding .petal file must exist in the parent directory for the module.
+        let module_path = self.parent_directory.join(&module_name).with_added_extension("petal");
+
+        println!(
+            "debug: attempting to resolve module at path '{}'",
+            module_path.display()
+        );
+
+        let module = Module::new(module_path).map_err(|_| ModuleError::module_not_found(&module_name, span))?;
+        module.resolve(compiler_state)
+    }
+
+    /// Attempts to resolve the standard library module, as referenced by this module.
+    fn resolve_standard_library_module(
+        &self,
+        compiler_state: &mut CompilerState,
+        span: SourceSpan,
+    ) -> Result<Vec<ResolvedModule>> {
+        // FIXME: The standard library path should be somewhere global.
+        let standard_library_module_path = current_dir()
+            .map_err(|_| ModuleError::module_not_found("stdlib", span))?
+            .join("stdlib")
+            .join("main")
+            .with_added_extension("petal");
+
+        println!(
+            "debug: attempting to resolve standard library module at path '{}'",
+            standard_library_module_path.display()
+        );
+
+        let module =
+            Module::new(standard_library_module_path).map_err(|_| ModuleError::module_not_found("stdlib", span))?;
+        module.resolve(compiler_state)
     }
 }
 
