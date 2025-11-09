@@ -1,0 +1,22 @@
+// All of the examples thus far have used a single source file, that is not very scalable however.
+//
+// You can import other petal files (modules) using an `import` statement. Importing another module allows you to use
+// anything declared within the module.
+//
+// ```
+// import module_name;
+// ```
+//
+// A file named <module_name>.petal must exist as a sibling to the current source file when using an import statement.
+import other;
+
+// NOTE: This is not relevant to the example, we're just declaring a `printf` function.
+extern func printf(format: &u8);
+
+func main() -> i32 {
+    // We can now use anything defined in the other module.
+    &u8 message = get_message();
+    printf(message);
+
+    return 0;
+}

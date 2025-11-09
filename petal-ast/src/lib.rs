@@ -16,6 +16,7 @@ use crate::{
         Statement,
         function_call::FunctionCall,
         function_declaration::{FunctionDeclaration, FunctionParameter},
+        import::ImportStatement,
         r#return::ReturnStatement,
         variable_assignment::VariableAssignment,
         variable_declaration::VariableDeclaration,
@@ -70,6 +71,7 @@ impl<'a> ASTParser<'a> {
         let (statement_result, expect_semicolon) = match token.kind {
             TokenKind::Keyword(Keyword::Func) => (self.parse_function_declaration_node(), false),
             TokenKind::Keyword(Keyword::Return) => (self.parse_return_statement_node(), true),
+            TokenKind::Keyword(Keyword::Import) => (self.parse_import_statement_node(), true),
 
             TokenKind::Keyword(Keyword::Extern)
                 if self.token_stream.after_next_is(TokenKind::Keyword(Keyword::Func)) =>
@@ -376,6 +378,20 @@ impl<'a> ASTParser<'a> {
         Ok(Statement::new(
             ReturnStatement::new(value),
             SourceSpan::between(&return_token.span, &end_span),
+        ))
+    }
+
+    /// Attempts to parse an import statement node at the current position.
+    fn parse_import_statement_node(&mut self) -> Result<Statement> {
+        // The first token must be the import keyword.
+        let import_token = self.expect_token(TokenKind::Keyword(Keyword::Import))?;
+
+        // The next token must be the name of the module being imported.
+        let (identifier_reference, identifier_token) = self.expect_identifier()?;
+
+        Ok(Statement::new(
+            ImportStatement::new(identifier_reference),
+            SourceSpan::between(&import_token.span, &identifier_token.span),
         ))
     }
 

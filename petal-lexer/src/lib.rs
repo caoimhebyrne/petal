@@ -282,6 +282,7 @@ impl<'a> Lexer<'a> {
             "func" => Keyword::Func,
             "extern" => Keyword::Extern,
             "return" => Keyword::Return,
+            "import" => Keyword::Import,
             _ => return None,
         };
 

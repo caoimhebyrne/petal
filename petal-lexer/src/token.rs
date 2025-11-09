@@ -96,4 +96,7 @@ pub enum Keyword {
 
     /// A return statement.
     Return,
+
+    /// An import statement.
+    Import,
 }

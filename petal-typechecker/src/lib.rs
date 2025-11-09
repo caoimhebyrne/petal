@@ -53,6 +53,9 @@ impl<'a> Typechecker<'a> {
             StatementKind::VariableDeclaration(declaration) => declaration.typecheck(self, statement.span),
             StatementKind::VariableAssignment(assignment) => assignment.typecheck(self, statement.span),
 
+            // An import statement cannot be type checked.
+            StatementKind::ImportStatement(_) => Ok(ResolvedType::Void),
+
             #[allow(unreachable_patterns)]
             _ => TypecheckerError::unsupported_statement(statement.clone()).into(),
         }
