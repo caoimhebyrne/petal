@@ -3,9 +3,10 @@ use petal_core::error::Result;
 use crate::{statement::Statement, visitor::ASTVisitor};
 
 /// Wraps a [Vec] of AST [Statement]s, allowing the caller to pass a ASTVisitor to consume the [Vec] of [Statement]s.
+#[derive(Debug, Clone)]
 pub struct StatementStream {
     /// The [Vec] containing the [Statement]s that this stream wraps.
-    statements: Vec<Statement>,
+    pub statements: Vec<Statement>,
 }
 
 impl StatementStream {

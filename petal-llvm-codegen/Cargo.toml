@@ -7,6 +7,7 @@ edition = "2024"
 petal-ast = { path = "../petal-ast" }
 petal-codegen-driver = { path = "../petal-codegen-driver" }
 petal-core = { path = "../petal-core" }
+petal-typechecker = { path = "../petal-typechecker" }
 
 inkwell = { version = "0.6.0", default-features = false, features = [
     "llvm18-1",

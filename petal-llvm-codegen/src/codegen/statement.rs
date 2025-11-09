@@ -24,6 +24,9 @@ impl<'ctx> Codegen<'ctx> for Statement {
             StatementKind::FunctionCall(call) => call.codegen(codegen, self.span),
             StatementKind::VariableAssignment(assignment) => assignment.codegen(codegen, self.span),
 
+            // Code generation does not apply to import statements.
+            StatementKind::ImportStatement(_) => Ok(codegen.llvm_context.bool_type().const_zero().into()),
+
             #[allow(unreachable_patterns)]
             _ => return LLVMCodegenErrorKind::unable_to_codegen_statement(self).into(),
         }

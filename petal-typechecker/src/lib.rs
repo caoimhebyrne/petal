@@ -1,7 +1,6 @@
 use petal_ast::{
     expression::{Expression, ExpressionKind},
     statement::{Statement, StatementKind},
-    visitor::ASTVisitor,
 };
 use petal_core::{
     error::Result,
@@ -9,10 +8,13 @@ use petal_core::{
     r#type::{ResolvedType, Type, TypeReference, pool::TypePool},
 };
 
-use crate::{context::TypecheckerContext, error::TypecheckerError, typecheck::Typecheck};
+use crate::{
+    context::TypecheckerContext, error::TypecheckerError, temp_resolved_module::ResolvedModule, typecheck::Typecheck,
+};
 
 pub(crate) mod context;
 pub(crate) mod error;
+pub mod temp_resolved_module;
 pub(crate) mod typecheck;
 
 /// The Petal typechecker is not only a typechecker, it also ensures that all types are resolvable and are understood
@@ -38,6 +40,17 @@ impl<'a> Typechecker<'a> {
             type_pool,
             string_intern_pool,
         }
+    }
+
+    /// Checks and resolves all types in the provided [ResolvedModule]s.
+    pub fn check_modules(&mut self, modules: &mut Vec<ResolvedModule>) -> Result<()> {
+        for module in modules {
+            for statement in &mut module.statements {
+                self.check_statement(statement)?;
+            }
+        }
+
+        Ok(())
     }
 
     /// Checks and resolves all types involved in a [Statement].
@@ -151,11 +164,5 @@ impl<'a> Typechecker<'a> {
         // We can then set the type to the resolved type.
         *r#type = Type::Resolved(resolved_kind);
         Ok(resolved_kind)
-    }
-}
-
-impl<'a> ASTVisitor for Typechecker<'a> {
-    fn visit(&mut self, statement: &mut Statement) -> Result<()> {
-        self.check_statement(statement).map(|_| ())
     }
 }

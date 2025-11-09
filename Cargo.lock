@@ -147,6 +147,7 @@ name = "petal"
 version = "0.1.0"
 dependencies = [
  "colored",
+ "enum-display",
  "petal-ast",
  "petal-codegen-driver",
  "petal-core",
@@ -194,6 +195,7 @@ dependencies = [
  "petal-ast",
  "petal-codegen-driver",
  "petal-core",
+ "petal-typechecker",
 ]
 
 [[package]]

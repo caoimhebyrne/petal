@@ -3,17 +3,15 @@ use std::{
     process::{self, Command},
 };
 
-use colored::Colorize;
-use petal_ast::{ASTParser, visitor::dump_visitor::DumpASTVisitor};
 use petal_codegen_driver::{Driver, options::DriverOptions};
-use petal_core::{error::Error, module::Module};
-use petal_lexer::Lexer;
 use petal_llvm_codegen::LLVMCodegen;
 use petal_typechecker::Typechecker;
 
-use crate::args::Args;
+use crate::{args::Args, compiler_state::CompilerState, module::Module};
 
 pub mod args;
+pub mod compiler_state;
+pub mod module;
 
 /// This is the entrypoint for the Petal compiler.
 fn main() {
@@ -32,7 +30,19 @@ fn main() {
         return;
     }
 
-    let mut module = match Module::new(args.input) {
+    let mut compiler_state = CompilerState::new();
+
+    // The first module we compile is the main module. This module can then import other modules.
+    let main_module = match Module::new(args.input.clone()) {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("error: failed to initialize main module: {}", error);
+            process::exit(-1);
+        }
+    };
+
+    // We can then resolve all modules involved with the main module.
+    let mut resolved_modules = match main_module.resolve(&mut compiler_state) {
         Ok(value) => value,
         Err(error) => {
             eprintln!("error: {}", error);
@@ -40,151 +50,71 @@ fn main() {
         }
     };
 
-    let mut lexer = Lexer::new(module.string_intern_pool.as_mut(), &module.contents);
+    println!(
+        "info: resolved {} modules from {}",
+        resolved_modules.len(),
+        args.input.display()
+    );
 
-    let token_stream = match lexer.get_stream() {
-        Ok(value) => value,
-        Err(error) => {
-            print_error(&module, error);
-            process::exit(1);
-        }
-    };
+    let mut typechecker = Typechecker::new(
+        &mut compiler_state.type_pool,
+        compiler_state.string_intern_pool.as_mut(),
+    );
 
-    let mut ast_parser = ASTParser::new(token_stream, &mut module.type_pool);
-
-    let mut statement_stream = match ast_parser.parse() {
-        Ok(value) => value,
-        Err(error) => {
-            print_error(&module, error);
-            process::exit(1);
-        }
-    };
-
-    if let Err(error) = statement_stream.visit(&mut Typechecker::new(
-        &mut module.type_pool,
-        module.string_intern_pool.as_ref(),
-    )) {
-        print_error(&module, error);
-        process::exit(1);
+    if let Err(error) = typechecker.check_modules(&mut resolved_modules) {
+        eprintln!("error: {}", error);
+        process::exit(-1);
     }
 
-    if args.dump_ast {
-        if let Err(error) = statement_stream.visit(&mut DumpASTVisitor::new()) {
-            print_error(&module, error);
-            process::exit(1);
-        }
-    }
+    println!("info: all modules passed type checking successfully");
 
     let mut codegen = LLVMCodegen::new(
         DriverOptions {
-            module_name: module.name(),
+            module_name: "module".to_string(),
             dump_bytecode: args.dump_bytecode,
         },
-        &module.type_pool,
-        module.string_intern_pool.as_ref(),
+        &compiler_state.type_pool,
+        compiler_state.string_intern_pool.as_ref(),
     );
 
-    if let Err(error) = statement_stream.visit(&mut codegen) {
-        print_error(&module, error);
-        process::exit(1);
+    if let Err(error) = codegen.visit_modules(&resolved_modules) {
+        eprintln!("error: {}", error);
+        process::exit(-1);
     }
 
-    let object_file_path = match codegen.compile_to_object() {
+    let object_path = match codegen.compile_to_object() {
         Ok(value) => value,
         Err(error) => {
-            eprintln!(
-                "{}: {}",
-                String::from("error").red().bold(),
-                format!("{}", error).bold(),
-            );
-
-            process::exit(1);
+            eprintln!("error: {}", error);
+            process::exit(-1);
         }
     };
 
-    if let Some(output) = args.output {
-        let output_parent_directory = match output.parent() {
-            Some(value) => value,
-            None => {
-                eprintln!("error: could not get parent of {}", output.display());
+    if let Some(output_path) = args.output {
+        let command = Command::new("cc")
+            .arg("-o")
+            .arg(&output_path)
+            .arg(&object_path)
+            .status();
+
+        let status = match command {
+            Ok(value) => value,
+            Err(error) => {
+                eprintln!("error: failed to link final executable: {}", error);
                 process::exit(-1);
             }
         };
 
-        // If the parent directory does not exist yet, we must try to create it.
-        if !fs::exists(output_parent_directory).unwrap_or(false) {
-            if let Err(error) = fs::create_dir(output_parent_directory) {
-                eprintln!(
-                    "error: failed to create directory '{}': {}",
-                    output_parent_directory.display(),
-                    error
-                )
-            }
-        }
-
-        let result = Command::new("cc")
-            .arg("-o")
-            .arg(&output)
-            .arg(&object_file_path)
-            .status()
-            .expect("Failed to invoke `cc` to link the final executable!");
-
-        if result.success() {
-            println!(
-                "{}: executable written to {}",
-                format!("success").bright_green().bold(),
-                output.display()
-            )
+        if status.success() {
+            println!("success: executable written to {}", output_path.display());
         } else {
-            eprintln!(
-                "{}: {}",
-                String::from("error").red().bold(),
-                format!("linking failed, result: {:?}", result).bold(),
-            );
+            eprintln!("error: linker exited with non-zero status code: {}", status)
         }
     } else if !args.dump_ast && !args.dump_bytecode {
         println!(
-            "{}: not emitting anything as no `output`, `dump-ast` or `dump-bytecode` options were passed",
-            format!("warn").bright_yellow().bold()
+            "warn: compilation was successful, but no output was produced as no output-emitting arguments were passed"
         )
     }
 
-    // The OS should clean it up eventually as it should be a temporary file.
-    let _ = fs::remove_file(&object_file_path);
-}
-
-fn print_error(module: &Module, error: Error) {
-    let (error_line_number, error_column_number) = error.span.get_line_and_column(&module.contents);
-
-    eprintln!(
-        "{}: {}",
-        format!(
-            "{}({}:{}:{})",
-            String::from("error").red().bold(),
-            module.input.display(),
-            error_line_number,
-            error_column_number
-        )
-        .white(),
-        format!("{}", error).bold(),
-    );
-
-    // In order to print some more context, we can attempt to print the line before the one that the error occurred on.
-    if error_line_number > 2
-        && let Some(line) = module.contents.lines().nth(error_line_number - 2)
-    {
-        eprintln!("{} {}", format!("{} |", error_line_number - 1).white(), line.white());
-    }
-
-    // We can then print the line that the error was found on, with some carets underneath to indicate the token that
-    // caused the error.
-    if let Some(line) = module.contents.lines().nth(error_line_number - 1) {
-        eprintln!("{} {}", format!("{} |", error_line_number).white(), line.bright_white());
-
-        eprintln!(
-            "    {}{}",
-            " ".repeat(error_column_number - 1),
-            "^".repeat(error.span.length()).red().bold()
-        );
-    }
+    let _ = fs::remove_file(object_path);
 }

@@ -1,3 +1,0 @@
-func get_message() -> &u8 {
-    return "Hello from the other module!";
-}

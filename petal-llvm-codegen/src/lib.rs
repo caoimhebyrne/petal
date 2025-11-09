@@ -8,10 +8,7 @@ use inkwell::{
     targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
     types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType},
 };
-use petal_ast::{
-    statement::{Statement, function_declaration::FunctionParameter},
-    visitor::ASTVisitor,
-};
+use petal_ast::statement::function_declaration::FunctionParameter;
 use petal_codegen_driver::{Driver, options::DriverOptions};
 use petal_core::{
     error::Result,
@@ -19,6 +16,7 @@ use petal_core::{
     string_intern::StringInternPool,
     r#type::{ResolvedType, Type, TypeReference, pool::TypePool},
 };
+use petal_typechecker::temp_resolved_module::ResolvedModule;
 
 use crate::{codegen::Codegen, context::CodegenContext, error::LLVMCodegenErrorKind};
 
@@ -51,6 +49,17 @@ pub struct LLVMCodegen<'ctx> {
 }
 
 impl<'ctx> LLVMCodegen<'ctx> {
+    /// Visits the provided [ResolvedModule]s.
+    pub fn visit_modules(&mut self, modules: &Vec<ResolvedModule>) -> Result<()> {
+        for module in modules {
+            for statement in &module.statements {
+                statement.codegen(self, statement.span)?;
+            }
+        }
+
+        Ok(())
+    }
+
     /// Converts the provided type to a function type.
     pub fn create_function_type(
         &self,
@@ -182,12 +191,6 @@ impl<'ctx> Driver<'ctx> for LLVMCodegen<'ctx> {
             .map_err(|it| it.to_string())?;
 
         Ok(object_file_path)
-    }
-}
-
-impl<'ctx> ASTVisitor for LLVMCodegen<'ctx> {
-    fn visit(&mut self, statement: &mut Statement) -> Result<()> {
-        statement.codegen(self, statement.span).map(|_| ())
     }
 }
 
