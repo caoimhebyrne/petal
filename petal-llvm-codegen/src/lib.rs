@@ -69,8 +69,20 @@ impl<'ctx> LLVMCodegen<'ctx> {
         let type_kind = self.ensure_resolved(Some(*type_reference), type_reference.span)?;
 
         let mut parameter_types: Vec<BasicMetadataTypeEnum<'ctx>> = Vec::new();
+        let mut is_variadic = false;
 
         for parameter in parameters {
+            let r#type = self
+                .type_pool
+                .get_type_or_err(&parameter.value_type.id, parameter.span)?;
+
+            if let Type::Resolved(resolved) = r#type
+                && *resolved == ResolvedType::Variadic
+            {
+                is_variadic = true;
+                break;
+            }
+
             let parameter_type = self
                 .create_value_type(Some(parameter.value_type), parameter.span)?
                 .into();
@@ -82,14 +94,16 @@ impl<'ctx> LLVMCodegen<'ctx> {
             ResolvedType::SignedInteger(size) | ResolvedType::UnsignedInteger(size) => self
                 .llvm_context
                 .custom_width_int_type(size)
-                .fn_type(&parameter_types, false),
+                .fn_type(&parameter_types, is_variadic),
 
-            ResolvedType::Void => self.llvm_context.void_type().fn_type(&parameter_types, false),
+            ResolvedType::Void => self.llvm_context.void_type().fn_type(&parameter_types, is_variadic),
 
             ResolvedType::Reference(_) => self
                 .llvm_context
                 .ptr_type(AddressSpace::default())
-                .fn_type(&parameter_types, false),
+                .fn_type(&parameter_types, is_variadic),
+
+            ResolvedType::Variadic => panic!("Function return type must never be variadic..."),
         };
 
         Ok(llvm_type)

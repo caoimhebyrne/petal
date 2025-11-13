@@ -1,0 +1,8 @@
+// Petal does not have great support for varargs yet. But, you can make an external function take a varadic argument as
+// its final parameter.
+extern func printf(format: &u8, ...args);
+
+func main() -> i32 {
+    printf("Hello, world! First: %d, second: %d, third: '%s'\n", 12, 24, "Hello again!!");
+    return 0;
+}

@@ -293,14 +293,31 @@ impl<'a> ASTParser<'a> {
         // parameter.
         if !self.token_stream.next_is(TokenKind::RightParenthesis) {
             loop {
+                // If the first token of the parameter is a `.`, then there must be two other dots, this indicates that
+                // the function is variadic.
+                let is_variadic = if self.token_stream.next_is(TokenKind::Period) {
+                    self.expect_token(TokenKind::Period)?;
+                    self.expect_token(TokenKind::Period)?;
+                    self.expect_token(TokenKind::Period)?;
+
+                    true
+                } else {
+                    false
+                };
+
                 // The first token in a parameter must be an identifier which holds its name.
                 let (identifier_reference, identifier_token) = self.expect_identifier()?;
 
-                // The next token must be a colon.
-                self.expect_token(TokenKind::Colon)?;
+                let type_reference = if is_variadic {
+                    let type_id = self.type_pool.allocate(Type::Resolved(ResolvedType::Variadic));
+                    TypeReference::new(type_id, identifier_token.span)
+                } else {
+                    // The next token must be a colon.
+                    self.expect_token(TokenKind::Colon)?;
 
-                // The next token must be the type of the parameter.
-                let type_reference = self.parse_type()?;
+                    // The next token must be the type of the parameter.
+                    self.parse_type()?
+                };
 
                 parameters.push(FunctionParameter::new(
                     identifier_reference,

@@ -49,6 +49,10 @@ pub enum ResolvedType {
     #[display("void")]
     Void,
 
+    /// The type used for a variadic argument receiver.
+    #[display("variadic")]
+    Variadic,
+
     /// A reference of another type. This other type may not be resolved.
     #[display("reference({0:?})")]
     Reference(TypeId),

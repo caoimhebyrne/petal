@@ -28,7 +28,17 @@ impl<'a> Typecheck<'a> for FunctionCall {
         let function = typechecker.context.get_function(&self.name_reference, span).cloned()?;
 
         // The number of arguments must be equal to the number of parameters in the function.
-        if function.parameters.len() != self.arguments.len() {
+        let is_variadic = function.parameters.last() == Some(&ResolvedType::Variadic);
+        if is_variadic {
+            if self.arguments.len() < function.parameters.len() {
+                return TypecheckerError::incorrect_number_of_arguments(
+                    function.parameters.len(),
+                    self.arguments.len(),
+                    span,
+                )
+                .into();
+            }
+        } else if function.parameters.len() != self.arguments.len() {
             return TypecheckerError::incorrect_number_of_arguments(
                 function.parameters.len(),
                 self.arguments.len(),
@@ -40,10 +50,14 @@ impl<'a> Typecheck<'a> for FunctionCall {
         for (index, argument) in self.arguments.iter_mut().enumerate() {
             // NOTE: The `unwrap` is safe here, we just verified that the function call had the correct amount of
             // arguments.
-            let parameter_type = function.parameters.get(index).unwrap();
+            let parameter_type = function
+                .parameters
+                .get(index.clamp(0, function.parameters.len() - 1))
+                .unwrap();
+
             let argument_type = typechecker.check_expression(argument)?;
 
-            if *parameter_type != argument_type {
+            if *parameter_type != ResolvedType::Variadic && *parameter_type != argument_type {
                 return TypecheckerError::expected_type(*parameter_type, argument_type, argument.span).into();
             }
         }
