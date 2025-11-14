@@ -95,12 +95,14 @@ class TestCase:
     name: str
     source_file_path: Path
     output_executable_path: Path
+    standard_library_directory: Path
     options: TestCaseOptions
 
-    def __init__(self, name: str, source_file_path: Path, output_executable_path: Path):
+    def __init__(self, name: str, source_file_path: Path, output_executable_path: Path, standard_library_directory: Path):
         self.name = name
         self.source_file_path = source_file_path
         self.output_executable_path = output_executable_path
+        self.standard_library_directory = standard_library_directory
         self.options = TestCaseOptions.parse(self.source_file_path)
 
     def execute(self, compiler_path: Path) -> bool:
@@ -111,7 +113,14 @@ class TestCase:
         log_info(f'Running test {self.source_file_path.name}')
 
         # We know that the compiler exists, we can start a process pointing it to the source file.
-        compile_process = subprocess.Popen([compiler_path, '--dump-bytecode', '-o', self.output_executable_path, self.source_file_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        compile_process = subprocess.Popen(
+            [compiler_path, '--dump-bytecode', '-o', self.output_executable_path, self.source_file_path], 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE,
+            text=True,
+            env={'PETAL_STANDARD_LIBRARY_PATH': self.standard_library_directory},
+        )
+
         compile_process.wait()
 
         compiler_stdout: str = ''
@@ -198,7 +207,7 @@ class TestCase:
         return True
 
 # Each test case must end with the `.petal` extension, and the expected bytecode must end in `.b`.s
-def collect_test_cases(test_cases_directory: Path, executables_directory: Path) -> list[TestCase]:
+def collect_test_cases(test_cases_directory: Path, executables_directory: Path, standard_library_directory: Path) -> list[TestCase]:
     # All scripts use the `.petal` extension.
     petal_extension: str = '.petal'
 
@@ -215,7 +224,7 @@ def collect_test_cases(test_cases_directory: Path, executables_directory: Path) 
             source_file_path: Path = test_cases_directory / file_name
             output_executable_path = executables_directory / test_case_name
 
-            test_cases.append(TestCase(test_case_name, source_file_path, output_executable_path))
+            test_cases.append(TestCase(test_case_name, source_file_path, output_executable_path, standard_library_directory))
     
     test_cases.sort(key=lambda it: it.name)
     return test_cases
@@ -250,7 +259,9 @@ def main():
     executables_directory: Path = tests_directory / '.petal-build'
     executables_directory.mkdir(exist_ok=True)
 
-    test_cases: list[TestCase] = collect_test_cases(test_cases_directory, executables_directory)
+    standard_library_directory: Path = tests_directory.parent / 'stdlib'
+
+    test_cases: list[TestCase] = collect_test_cases(test_cases_directory, executables_directory, standard_library_directory)
     log_info(f'Starting test suite with {len(test_cases)} test{'' if len(test_cases) == 1 else 's'}')
 
     success: bool = True
@@ -260,14 +271,17 @@ def main():
         if not case.execute(compiler_path):
             success = False
 
+    print()
+
     if success:
         for root, _, files in executables_directory.walk(top_down=False):
             for file in files:
                 (root / file).unlink()
 
         executables_directory.rmdir()
+
+        log_info(f'All {len(test_cases)} test case{'' if len(test_cases) == 1 else 's'} passed!')
     else:
-        print()
         log_error(f'One or more tests failed, see the above logs for more information.')
         exit(-1)
 

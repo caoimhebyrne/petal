@@ -1,0 +1,8 @@
+// #exit-code: 0
+
+import stdlib;
+
+func main() -> i32 {
+    // No need to use the standard library, if it does not import, then the compilation will fail.
+    return 0;
+}
