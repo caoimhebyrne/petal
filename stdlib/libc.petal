@@ -1,3 +1,0 @@
-// These are just some definitions for common libc functions which may be useful.
-
-extern func printf(format: &u8);

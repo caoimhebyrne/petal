@@ -1,3 +1,3 @@
 // This is the module that will be imported by anyone who uses the `import stdlib;` statement. It is just a barrel
 // import for all other stdlib modules.
-import libc;
+import io;

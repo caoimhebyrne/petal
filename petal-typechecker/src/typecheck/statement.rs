@@ -34,7 +34,7 @@ impl<'a> Typecheck<'a> for FunctionDeclaration {
         }
 
         // If we do not encounter a return statement in a void method, then we can insert one implicitly.
-        let mut found_return_statement = false;
+        let mut found_return_statement = self.is_extern;
 
         for statement in &mut self.body {
             typechecker.check_statement(statement)?;

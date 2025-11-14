@@ -1,0 +1,10 @@
+// TODO: it would be nice if we could make these private to this module in the future.
+extern func puts(s: &u8) -> i32; // libc
+
+// Prints a raw string followed by a new line to standard output.
+//
+// If the entire string could not be written to standard output, this function will not do anything to indicate that
+// the operation was un-successful.
+func print(value: &u8) {
+    puts(value);
+}

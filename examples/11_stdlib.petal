@@ -5,9 +5,9 @@
 // The standard library module can be imported by importing the `stdlib` module, like so:
 import stdlib;
 
-// Now, you have access to Petal's standard library. It does not contain much at the moment, but it does re-export
-// printf from libc.
+// Now, you have access to Petal's standard library. It does not contain much at the moment, but it does export a print
+// function that allows you to print strings to the console.
 func main() -> i32 {
-    printf("Hello from printf, exported by Petal's standard library!\n");
+    print("Hello! I am using the standard library!");
     return 0;
 }
