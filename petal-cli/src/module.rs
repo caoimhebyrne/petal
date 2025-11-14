@@ -1,4 +1,8 @@
-use std::{env::current_dir, fs, path::PathBuf};
+use std::{
+    env::{self, current_dir},
+    fs,
+    path::{Path, PathBuf},
+};
 
 use enum_display::EnumDisplay;
 use petal_ast::{
@@ -151,10 +155,13 @@ impl Module {
         resolved_modules: &mut Vec<ResolvedModule>,
         span: SourceSpan,
     ) -> Result<()> {
-        // FIXME: The standard library path should be somewhere global.
-        let standard_library_module_path = current_dir()
-            .map_err(|_| ModuleError::module_not_found("stdlib", span))?
-            .join("stdlib")
+        let standard_library_module_path = env::var("PETAL_STANDARD_LIBRARY_PATH")
+            .map(|it| Path::new(&it).to_path_buf())
+            .or_else(|_| {
+                return Ok(current_dir()
+                    .map_err(|_| ModuleError::module_not_found("stdlib", span))?
+                    .join("stdlib"));
+            })?
             .join("main")
             .with_added_extension("petal");
 
