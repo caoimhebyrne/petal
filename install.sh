@@ -9,8 +9,8 @@ echo "Installing to $PETAL_INSTALL_DIR, with $PETAL_INSTALL_TEMP as the temporar
 
 pushd $PETAL_INSTALL_TEMP > /dev/null
 
-if rustup toolchain list | grep -q nightly; then
-    echo "Rust nightly toolchain is installed, assuming that it is OK...\n"
+if rustc --version > /dev/null; then
+    echo "\`rustc\` is available, assuming that its version is OK (the build will fail later if not)...\n"
 else
     echo "ERROR: Could not find rust nightly toolchain, run \`rustup toolchain install nightly\` before continuing."
     exit -1
