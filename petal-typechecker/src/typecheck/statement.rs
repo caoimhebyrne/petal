@@ -33,25 +33,27 @@ impl<'a> Typecheck<'a> for FunctionDeclaration {
             )?;
         }
 
-        // If we do not encounter a return statement in a void method, then we can insert one implicitly.
-        let mut found_return_statement = self.is_extern;
+        if !self.is_extern {
+            // If we do not encounter a return statement in a void method, then we can insert one implicitly.
+            let mut found_return_statement = false;
 
-        for statement in &mut self.body {
-            typechecker.check_statement(statement)?;
+            for statement in &mut self.body {
+                typechecker.check_statement(statement)?;
 
-            if let StatementKind::ReturnStatement(_) = statement.kind {
-                found_return_statement = true;
+                if let StatementKind::ReturnStatement(_) = statement.kind {
+                    found_return_statement = true;
+                }
             }
-        }
 
-        if !found_return_statement {
-            // If a return statement was not present, and this was a void function, we can insert one implicitly.
-            // Otherwise, we must return an error. All blocks must have a terminator and we cannot provide one
-            // implicitly for a non-void return type.
-            if return_type == ResolvedType::Void {
-                self.insert_implicit_return_void(span);
-            } else {
-                return TypecheckerError::missing_return_statement(span).into();
+            if !found_return_statement {
+                // If a return statement was not present, and this was a void function, we can insert one implicitly.
+                // Otherwise, we must return an error. All blocks must have a terminator and we cannot provide one
+                // implicitly for a non-void return type.
+                if return_type == ResolvedType::Void {
+                    self.insert_implicit_return_void(span);
+                } else {
+                    return TypecheckerError::missing_return_statement(span).into();
+                }
             }
         }
 
