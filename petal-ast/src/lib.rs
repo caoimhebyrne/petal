@@ -325,6 +325,20 @@ impl<'a> ASTParser<'a> {
                     SourceSpan::between(&identifier_token.span, &type_reference.span),
                 ));
 
+                // If this is a variadic parameter, there must be no parameters defined after it.
+                if is_variadic {
+                    if !self.token_stream.next_is(TokenKind::RightParenthesis) {
+                        let span = self
+                            .token_stream
+                            .peek_non_whitespace()
+                            .map(|it| it.span)
+                            .unwrap_or(type_reference.span);
+
+                        return Err(ASTErrorKind::parameter_after_varargs(span));
+                    }
+                    break;
+                }
+
                 // If the next token is a comma, we can consume it and continue the loop.
                 if self.token_stream.next_is(TokenKind::Comma) {
                     self.expect_token(TokenKind::Comma)?;
