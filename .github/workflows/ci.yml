@@ -11,12 +11,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Debug
-      run: |
-        readlink -f /usr/bin/cc
-        ls -l /usr/bin/cc
-        echo "int main() { return 0; }" >> main.c
-        cc --verbose main.c -o main
     # https://github.com/TheDan64/inkwell/issues/490
     - name: Install dependencies
       run: |
