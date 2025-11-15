@@ -15,10 +15,8 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt install libpolly-18-dev
-    - name: cc --verbose
-      run: cc --verbose
-    - name: gcc --verbose
-      run: gcc --verbose
+    - name: Debug
+      run: ls -l /usr/libexec/gcc/x86_64-linux-gnu/13
     - name: Setup Rust
       uses: actions-rust-lang/setup-rust-toolchain@v1
     - name: Build
