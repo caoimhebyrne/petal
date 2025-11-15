@@ -9,7 +9,7 @@
 # If a release build of the compiler is avaialble, that will be used over a debug build.
 #
 
-from os import walk
+from os import walk, environ
 from dataclasses import dataclass
 from pathlib import Path
 from typing import IO
@@ -112,13 +112,16 @@ class TestCase:
         print()
         log_info(f'Running test {self.source_file_path.name}')
 
+        compiler_environment = environ.copy()
+        compiler_environment['PETAL_STANDARD_LIBRARY_PATH'] = self.standard_library_directory.absolute().as_posix()
+
         # We know that the compiler exists, we can start a process pointing it to the source file.
         compile_process = subprocess.Popen(
             [compiler_path, '-o', self.output_executable_path, self.source_file_path], 
             stdout=subprocess.PIPE, 
             stderr=subprocess.PIPE,
             text=True,
-            env={'PETAL_STANDARD_LIBRARY_PATH': self.standard_library_directory},
+            env=compiler_environment,
         )
 
         compile_process.wait()
