@@ -11,18 +11,18 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Debug
-      run: |
-        readlink -f /usr/bin/cc
-        ls -l /usr/bin/cc
-        echo "int main() { return 0; }" >> main.c
-        gcc --verbose main.c -o main
     # https://github.com/TheDan64/inkwell/issues/490
     - name: Install dependencies
       run: |
         sudo apt install libpolly-18-dev
     - name: Setup Rust
       uses: actions-rust-lang/setup-rust-toolchain@v1
+    - name: Debug
+      run: |
+        readlink -f /usr/bin/cc
+        ls -l /usr/bin/cc
+        echo "int main() { return 0; }" >> main.c
+        gcc --verbose main.c -o main
     - name: Build
       run: cargo build --verbose
     - name: Run Rust tests
