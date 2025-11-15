@@ -1,6 +1,6 @@
 use std::{
     fs,
-    process::{self, Command},
+    process::{self, Command, exit},
 };
 
 use petal_codegen_driver::{Driver, options::DriverOptions};
@@ -114,7 +114,8 @@ fn main() {
         if status.success() {
             println!("success: executable written to {}", output_path.display());
         } else {
-            eprintln!("error: linker exited with non-zero status code: {}", status)
+            eprintln!("error: linker exited with non-zero status code: {}", status);
+            exit(-1);
         }
     } else if !args.dump_ast && !args.dump_bytecode {
         println!(
