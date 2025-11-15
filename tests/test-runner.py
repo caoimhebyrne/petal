@@ -114,7 +114,7 @@ class TestCase:
 
         # We know that the compiler exists, we can start a process pointing it to the source file.
         compile_process = subprocess.Popen(
-            [compiler_path, '--dump-bytecode', '-o', self.output_executable_path, self.source_file_path], 
+            [compiler_path, '-o', self.output_executable_path, self.source_file_path], 
             stdout=subprocess.PIPE, 
             stderr=subprocess.PIPE,
             text=True,
@@ -155,6 +155,17 @@ class TestCase:
         # If the compiler has exited with a non-zero exit code, then the test has failed.
         if not compile_process.returncode == 0:
             log_fail(f'{self.name} has failed, compiler exited with code {compile_process.returncode}, see output below.')
+
+            if not len(compiler_stdout) == 0:
+                print(f'\nStandard Output:\n{compiler_stdout}')
+
+            if not len(compiler_stderr) == 0:
+                print(f'\nStandard Error:\n{compiler_stderr}')
+
+            return False
+        
+        if not self.output_executable_path.exists():
+            log_fail(f'{self.name} has failed, compiler did not create an executable at the expected path.')
 
             if not len(compiler_stdout) == 0:
                 print(f'\nStandard Output:\n{compiler_stdout}')
