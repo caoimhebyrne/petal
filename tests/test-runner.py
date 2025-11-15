@@ -60,7 +60,7 @@ class TestCaseOptions:
                 
 
     def parse_option(self, line: str):
-        option_declaration: list[str] = line.removeprefix('// #').strip().split(': ')
+        option_declaration: list[str] = line.removeprefix('// #').strip().split(': ', 1)
 
         # There must be an option name on the left, and maybe a value on the right.
         option_name = option_declaration[0]
