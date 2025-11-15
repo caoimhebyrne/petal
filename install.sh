@@ -47,6 +47,6 @@ echo "  1. Set PETAL_STANDARD_LIBRARY_PATH to $PETAL_INSTALL_DIR/stdlib"
 echo "  2. Add $PETAL_INSTALL_DIR/bin to your PATH"
 echo "\nFor ZSH or Bash shells, you can add the following lines to your .zshrc or .bashrc:\n"
 echo "export PETAL_STANDARD_LIBRARY_PATH=\$HOME/.local/petal/stdlib"
-echo "export PATH=\$PATH:\$HOME/.local/petal/bin"
+echo "export PATH=\$HOME/.local/petal/bin:\$PATH"
 
 popd > /dev/null
