@@ -98,6 +98,7 @@ fn main() {
 
     if let Some(output_path) = args.output {
         let command = Command::new("cc")
+            .arg("--verbose")
             .arg("-o")
             .arg(&output_path)
             .arg(&object_path)
