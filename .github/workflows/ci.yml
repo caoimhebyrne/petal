@@ -18,7 +18,7 @@ jobs:
     - name: Debug
       run: |
         ls -l /usr/bin/cc
-        echo "void test() {}" >> main.c
+        echo "int main() { return 0; }" >> main.c
         gcc --verbose main.c -o main
     - name: Setup Rust
       uses: actions-rust-lang/setup-rust-toolchain@v1
