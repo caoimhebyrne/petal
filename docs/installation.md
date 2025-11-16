@@ -1,7 +1,19 @@
-## Installing the Petal Compiler
+# Installation
 
-At the moment, there is no script to install the compiler automatically. You must build it from source and set-up the
-standard library yourself.
+## Automatic Installation
+
+If you are on a unix-based operating system (e.g. Linux, macOS), you can use the dedicated [install.sh](../install.sh)
+script to install Petal. This will:
+1. Verify that Rust is installed.
+2. Download the latest Petal source code.
+3. Build the Petal compiler.
+4. Copy the compiler & the standard library to `~/.local/petal`.
+
+```
+curl -s https://raw.githubusercontent.com/caoimhebyrne/petal/refs/heads/main/install.sh | sh
+```
+
+## Manual Installation
 
 ### Building the compiler
 
