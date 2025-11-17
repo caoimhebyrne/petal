@@ -2,13 +2,15 @@ use petal_core::source_span::SourceSpan;
 
 use crate::statement::{
     function_call::FunctionCall, function_declaration::FunctionDeclaration, import::ImportStatement,
-    r#return::ReturnStatement, variable_assignment::VariableAssignment, variable_declaration::VariableDeclaration,
+    r#return::ReturnStatement, type_declaration::TypeDeclaration, variable_assignment::VariableAssignment,
+    variable_declaration::VariableDeclaration,
 };
 
 pub mod function_call;
 pub mod function_declaration;
 pub mod import;
 pub mod r#return;
+pub mod type_declaration;
 pub mod variable_assignment;
 pub mod variable_declaration;
 
@@ -52,4 +54,7 @@ pub enum StatementKind {
 
     /// A function call, e.g. `<name>();`
     FunctionCall(FunctionCall),
+
+    /// A type declaration, e.g. `<type> identifier = <declaration>;`
+    TypeDeclaration(TypeDeclaration),
 }

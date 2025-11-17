@@ -18,6 +18,7 @@ use crate::{
         function_declaration::{FunctionDeclaration, FunctionParameter},
         import::ImportStatement,
         r#return::ReturnStatement,
+        type_declaration::TypeDeclaration,
         variable_assignment::VariableAssignment,
         variable_declaration::VariableDeclaration,
     },
@@ -72,6 +73,7 @@ impl<'a> ASTParser<'a> {
             TokenKind::Keyword(Keyword::Func) => (self.parse_function_declaration_node(), false),
             TokenKind::Keyword(Keyword::Return) => (self.parse_return_statement_node(), true),
             TokenKind::Keyword(Keyword::Import) => (self.parse_import_statement_node(), true),
+            TokenKind::Keyword(Keyword::Type) => (self.parse_type_declaration(), true),
 
             TokenKind::Keyword(Keyword::Extern)
                 if self.token_stream.after_next_is(TokenKind::Keyword(Keyword::Func)) =>
@@ -424,6 +426,42 @@ impl<'a> ASTParser<'a> {
             ImportStatement::new(identifier_reference),
             SourceSpan::between(&import_token.span, &identifier_token.span),
         ))
+    }
+
+    /// Attempts to parse a type declaration at the current position.
+    fn parse_type_declaration(&mut self) -> Result<Statement> {
+        // The first token must be the type keyword.
+        let type_token = self.expect_token(TokenKind::Keyword(Keyword::Type))?;
+
+        // The next token must be the name of the type.
+        let (identifier_reference, identifier_token) = self.expect_identifier()?;
+
+        // The next token must be an equals.
+        self.expect_token(TokenKind::Equals)?;
+
+        // The next token must be the type being declared.
+        // TODO: Check the next token and ensure that it is a struct keyword.
+        // TODO: Create a type for a structure definition.
+        self.parse_struct_type()?;
+
+        Ok(Statement::new(
+            TypeDeclaration::new(identifier_reference),
+            SourceSpan::between(&type_token.span, &identifier_token.span),
+        ))
+    }
+
+    /// Attempts to parse a structure declaration.
+    fn parse_struct_type(&mut self) -> Result<()> {
+        // The first token must be the struct keyword.
+        self.expect_token(TokenKind::Keyword(Keyword::Struct))?;
+
+        self.expect_token(TokenKind::LeftBrace)?;
+
+        // TODO: Parse a structure's members.
+
+        self.expect_token(TokenKind::RightBrace)?;
+
+        Ok(())
     }
 
     /// Attempts to parse a function call at the current position.

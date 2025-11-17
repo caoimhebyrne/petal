@@ -102,4 +102,10 @@ pub enum Keyword {
 
     /// An import statement.
     Import,
+
+    /// A type declaration.
+    Type,
+
+    /// A structure.
+    Struct,
 }

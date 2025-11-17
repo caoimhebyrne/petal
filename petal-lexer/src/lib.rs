@@ -284,6 +284,8 @@ impl<'a> Lexer<'a> {
             "extern" => Keyword::Extern,
             "return" => Keyword::Return,
             "import" => Keyword::Import,
+            "type" => Keyword::Type,
+            "struct" => Keyword::Struct,
             _ => return None,
         };
 
