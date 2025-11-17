@@ -5,6 +5,6 @@ extern func puts(s: &u8) -> i32; // libc
 //
 // If the entire string could not be written to standard output, this function will not do anything to indicate that
 // the operation was un-successful.
-func print(value: &u8) {
+func println(value: &u8) {
     puts(value);
 }

@@ -8,6 +8,6 @@ import stdlib;
 // Now, you have access to Petal's standard library. It does not contain much at the moment, but it does export a print
 // function that allows you to print strings to the console.
 func main() -> i32 {
-    print("Hello! I am using the standard library!");
+    println("Hello! I am using the standard library!");
     return 0;
 }
