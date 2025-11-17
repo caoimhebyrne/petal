@@ -18,7 +18,7 @@ use crate::{
         function_declaration::{FunctionDeclaration, FunctionParameter},
         import::ImportStatement,
         r#return::ReturnStatement,
-        type_declaration::TypeDeclaration,
+        type_declaration::{StructureDeclaration, TypeDeclaration, TypeDeclarationKind},
         variable_assignment::VariableAssignment,
         variable_declaration::VariableDeclaration,
     },
@@ -69,35 +69,35 @@ impl<'a> ASTParser<'a> {
 
         let token = self.token_stream.peek_non_whitespace_or_err()?;
 
-        let (statement_result, expect_semicolon) = match token.kind {
-            TokenKind::Keyword(Keyword::Func) => (self.parse_function_declaration_node(), false),
-            TokenKind::Keyword(Keyword::Return) => (self.parse_return_statement_node(), true),
-            TokenKind::Keyword(Keyword::Import) => (self.parse_import_statement_node(), true),
-            TokenKind::Keyword(Keyword::Type) => (self.parse_type_declaration(), true),
+        let (statement, expect_semicolon) = match token.kind {
+            TokenKind::Keyword(Keyword::Func) => (self.parse_function_declaration_node()?, false),
+            TokenKind::Keyword(Keyword::Return) => (self.parse_return_statement_node()?, true),
+            TokenKind::Keyword(Keyword::Import) => (self.parse_import_statement_node()?, true),
+            TokenKind::Keyword(Keyword::Type) => (self.parse_type_declaration()?, true),
 
             TokenKind::Keyword(Keyword::Extern)
                 if self.token_stream.after_next_is(TokenKind::Keyword(Keyword::Func)) =>
             {
-                (self.parse_function_declaration_node(), false)
+                (self.parse_function_declaration_node()?, false)
             }
 
             // <name>(
             TokenKind::Identifier(_) if self.token_stream.after_next_is(TokenKind::LeftParenthesis) => {
-                (self.parse_function_call_statement(), true)
+                (self.parse_function_call_statement()?, true)
             }
 
             // <name> =
             TokenKind::Identifier(_) if self.token_stream.after_next_is(TokenKind::Equals) => {
-                (self.parse_variable_assignment_node(), true)
+                (self.parse_variable_assignment_node()?, true)
             }
 
             // &<type> identifier = ...
-            TokenKind::Ampersand => (self.parse_variable_declaration_node(), true),
+            TokenKind::Ampersand => (self.parse_variable_declaration_node()?, true),
 
             // <type> <identifier> =
             //   0         1       2
             TokenKind::Identifier(_) if self.token_stream.nth_is(2, TokenKind::Equals) => {
-                (self.parse_variable_declaration_node(), true)
+                (self.parse_variable_declaration_node()?, true)
             }
 
             _ => return ASTErrorKind::expected_statement(token).into(),
@@ -108,7 +108,7 @@ impl<'a> ASTParser<'a> {
             self.expect_token(TokenKind::Semicolon)?;
         }
 
-        statement_result
+        Ok(statement)
     }
 
     /// Parses an [Expression] at the current position of the [TokenStream].
@@ -434,34 +434,35 @@ impl<'a> ASTParser<'a> {
         let type_token = self.expect_token(TokenKind::Keyword(Keyword::Type))?;
 
         // The next token must be the name of the type.
-        let (identifier_reference, identifier_token) = self.expect_identifier()?;
+        let (identifier_reference, _) = self.expect_identifier()?;
 
         // The next token must be an equals.
         self.expect_token(TokenKind::Equals)?;
 
         // The next token must be the type being declared.
-        // TODO: Check the next token and ensure that it is a struct keyword.
-        // TODO: Create a type for a structure definition.
-        self.parse_struct_type()?;
+        let next_token = *self.token_stream.peek_non_whitespace_or_err()?;
+        let (kind, span) = match next_token.kind {
+            TokenKind::Keyword(Keyword::Struct) => self.parse_struct_type()?,
+            _ => return ASTErrorKind::expected_type_declaration(&next_token).into(),
+        };
 
         Ok(Statement::new(
-            TypeDeclaration::new(identifier_reference),
-            SourceSpan::between(&type_token.span, &identifier_token.span),
+            TypeDeclaration::new(identifier_reference, kind),
+            SourceSpan::between(&type_token.span, &span),
         ))
     }
 
     /// Attempts to parse a structure declaration.
-    fn parse_struct_type(&mut self) -> Result<()> {
+    fn parse_struct_type(&mut self) -> Result<(TypeDeclarationKind, SourceSpan)> {
         // The first token must be the struct keyword.
         self.expect_token(TokenKind::Keyword(Keyword::Struct))?;
-
         self.expect_token(TokenKind::LeftBrace)?;
 
         // TODO: Parse a structure's members.
 
-        self.expect_token(TokenKind::RightBrace)?;
+        let right_brace_token = self.expect_token(TokenKind::RightBrace)?;
 
-        Ok(())
+        Ok((StructureDeclaration::new().into(), right_brace_token.span))
     }
 
     /// Attempts to parse a function call at the current position.

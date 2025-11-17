@@ -26,6 +26,9 @@ pub enum ASTErrorKind {
 
     /// An expression was expected, but a different token kind was received.
     ExpectedExpression { received: TokenKind },
+
+    /// A type declaration was expected, but a different token was received.
+    ExpectedTypeDeclaration { received: TokenKind },
 }
 
 impl ASTErrorKind {
@@ -73,6 +76,15 @@ impl ASTErrorKind {
             received.span,
         )
     }
+
+    pub fn expected_type_declaration(received: &Token) -> Error {
+        Error::new(
+            ASTErrorKind::ExpectedTypeDeclaration {
+                received: received.kind,
+            },
+            received.span,
+        )
+    }
 }
 
 impl ErrorKind for ASTErrorKind {}
@@ -105,6 +117,14 @@ impl Display for ASTErrorKind {
 
             ASTErrorKind::ExpectedExpression { received } => {
                 write!(f, "Expected an expression, but received token '{:?}'", received)
+            }
+
+            ASTErrorKind::ExpectedTypeDeclaration { received } => {
+                write!(
+                    f,
+                    "Expected any type declaration (e.g. struct) but recieved token '{:?}'",
+                    received
+                )
             }
         }
     }
