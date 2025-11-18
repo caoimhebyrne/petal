@@ -103,6 +103,11 @@ impl<'ctx> LLVMCodegen<'ctx> {
                 .ptr_type(AddressSpace::default())
                 .fn_type(&parameter_types, is_variadic),
 
+            ResolvedType::Structure(_) => self
+                .llvm_context
+                .struct_type(&[], false)
+                .fn_type(&parameter_types, is_variadic),
+
             ResolvedType::Variadic => panic!("Function return type must never be variadic..."),
         };
 
@@ -124,6 +129,8 @@ impl<'ctx> LLVMCodegen<'ctx> {
             }
 
             ResolvedType::Reference(_) => self.llvm_context.ptr_type(AddressSpace::default()).as_basic_type_enum(),
+
+            ResolvedType::Structure(_) => self.llvm_context.struct_type(&[], false).as_basic_type_enum(),
 
             _ => return LLVMCodegenErrorKind::bad_value_type(type_kind, span).into(),
         };

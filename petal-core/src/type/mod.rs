@@ -53,9 +53,23 @@ pub enum ResolvedType {
     #[display("variadic")]
     Variadic,
 
+    /// A structure type.
+    #[display("structure")]
+    Structure(StructureType),
+
     /// A reference of another type. This other type may not be resolved.
     #[display("reference({0:?})")]
     Reference(TypeId),
+}
+
+/// A structure type.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct StructureType {}
+
+impl StructureType {
+    pub fn new() -> Self {
+        StructureType {}
+    }
 }
 
 impl ResolvedType {

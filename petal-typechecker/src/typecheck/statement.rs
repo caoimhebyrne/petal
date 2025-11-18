@@ -1,8 +1,16 @@
 use petal_ast::statement::{
-    StatementKind, function_declaration::FunctionDeclaration, r#return::ReturnStatement,
-    variable_assignment::VariableAssignment, variable_declaration::VariableDeclaration,
+    StatementKind,
+    function_declaration::FunctionDeclaration,
+    r#return::ReturnStatement,
+    type_declaration::{StructureDeclaration, TypeDeclaration, TypeDeclarationKind},
+    variable_assignment::VariableAssignment,
+    variable_declaration::VariableDeclaration,
 };
-use petal_core::{error::Result, source_span::SourceSpan, r#type::ResolvedType};
+use petal_core::{
+    error::Result,
+    source_span::SourceSpan,
+    r#type::{ResolvedType, StructureType, Type, TypeReference},
+};
 
 use crate::{
     Typechecker,
@@ -131,5 +139,27 @@ impl<'a> Typecheck<'a> for VariableAssignment {
 
         // This statement does not have a return value, so we return void instead.
         Ok(ResolvedType::Void)
+    }
+}
+
+impl<'a> Typecheck<'a> for TypeDeclaration {
+    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<ResolvedType> {
+        let type_kind = match &mut self.kind {
+            TypeDeclarationKind::Structure(structure) => structure.typecheck(typechecker, span),
+        }?;
+
+        let type_id = typechecker.type_pool.allocate(Type::Resolved(type_kind));
+
+        typechecker
+            .context
+            .add_type_declaration(&self.identifier_reference, TypeReference::new(type_id, span))?;
+
+        Ok(type_kind)
+    }
+}
+
+impl<'a> Typecheck<'a> for StructureDeclaration {
+    fn typecheck(&mut self, _typechecker: &mut Typechecker<'a>, _span: SourceSpan) -> Result<ResolvedType> {
+        Ok(ResolvedType::Structure(StructureType::new()))
     }
 }
