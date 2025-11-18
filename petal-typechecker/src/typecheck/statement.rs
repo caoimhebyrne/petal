@@ -20,7 +20,12 @@ use crate::{
 };
 
 impl<'a> Typecheck<'a> for FunctionDeclaration {
-    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<ResolvedType> {
+    fn typecheck(
+        &mut self,
+        typechecker: &mut Typechecker<'a>,
+        _expected_type: Option<&ResolvedType>,
+        span: SourceSpan,
+    ) -> Result<ResolvedType> {
         // Before we can type-check anything else, we need to ensure that the function's information (return type,
         // parameters, etc.) is valid.
         let return_type = typechecker.resolve_type(&self.return_type)?;
@@ -79,13 +84,21 @@ impl<'a> Typecheck<'a> for FunctionDeclaration {
 }
 
 impl<'a> Typecheck<'a> for ReturnStatement {
-    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<ResolvedType> {
+    fn typecheck(
+        &mut self,
+        typechecker: &mut Typechecker<'a>,
+        _expected_type: Option<&ResolvedType>,
+        span: SourceSpan,
+    ) -> Result<ResolvedType> {
         // A return statement may not have a value. If no value is present, then the "expected type" of the return
         // statement is void.
         let value_type = self
             .value
             .as_mut()
-            .map(|it| typechecker.check_expression(it))
+            .map(|it| {
+                let return_type = typechecker.context.function_context(span)?.return_type;
+                typechecker.check_expression(it, Some(&return_type))
+            })
             .transpose()?
             .unwrap_or(ResolvedType::Void);
 
@@ -101,11 +114,16 @@ impl<'a> Typecheck<'a> for ReturnStatement {
 }
 
 impl<'a> Typecheck<'a> for VariableDeclaration {
-    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<ResolvedType> {
+    fn typecheck(
+        &mut self,
+        typechecker: &mut Typechecker<'a>,
+        _expected_type: Option<&ResolvedType>,
+        span: SourceSpan,
+    ) -> Result<ResolvedType> {
         let r#type = typechecker.resolve_type(&self.r#type)?;
 
         // The initial value's type must be the same as the variable's type.
-        let value_type = typechecker.check_expression(&mut self.value)?;
+        let value_type = typechecker.check_expression(&mut self.value, Some(&r#type))?;
         if value_type != r#type {
             return TypecheckerError::expected_type(r#type, value_type, span).into();
         }
@@ -124,7 +142,12 @@ impl<'a> Typecheck<'a> for VariableDeclaration {
 }
 
 impl<'a> Typecheck<'a> for VariableAssignment {
-    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<ResolvedType> {
+    fn typecheck(
+        &mut self,
+        typechecker: &mut Typechecker<'a>,
+        _expected_type: Option<&ResolvedType>,
+        span: SourceSpan,
+    ) -> Result<ResolvedType> {
         // A variable must have been declared already.
         let variable = *typechecker
             .context
@@ -132,7 +155,7 @@ impl<'a> Typecheck<'a> for VariableAssignment {
             .get_variable(&self.identifier_reference, span)?;
 
         // If the type of the variable does not match the value type, then this is not possible.
-        let value_type = typechecker.check_expression(&mut self.value)?;
+        let value_type = typechecker.check_expression(&mut self.value, Some(&variable.r#type))?;
         if !value_type.is_assignable_to(&typechecker.type_pool, &variable.r#type, span)? {
             return TypecheckerError::expected_type(variable.r#type, value_type, span).into();
         }
@@ -143,9 +166,14 @@ impl<'a> Typecheck<'a> for VariableAssignment {
 }
 
 impl<'a> Typecheck<'a> for TypeDeclaration {
-    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<ResolvedType> {
+    fn typecheck(
+        &mut self,
+        typechecker: &mut Typechecker<'a>,
+        _expected_type: Option<&ResolvedType>,
+        span: SourceSpan,
+    ) -> Result<ResolvedType> {
         let type_kind = match &mut self.kind {
-            TypeDeclarationKind::Structure(structure) => structure.typecheck(typechecker, span),
+            TypeDeclarationKind::Structure(structure) => structure.typecheck(typechecker, None, span),
         }?;
 
         typechecker
@@ -157,7 +185,12 @@ impl<'a> Typecheck<'a> for TypeDeclaration {
 }
 
 impl<'a> Typecheck<'a> for StructureDeclaration {
-    fn typecheck(&mut self, _typechecker: &mut Typechecker<'a>, _span: SourceSpan) -> Result<ResolvedType> {
+    fn typecheck(
+        &mut self,
+        _typechecker: &mut Typechecker<'a>,
+        _expected_type: Option<&ResolvedType>,
+        _span: SourceSpan,
+    ) -> Result<ResolvedType> {
         Ok(ResolvedType::Structure(StructureType::new()))
     }
 }

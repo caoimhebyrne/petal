@@ -60,12 +60,12 @@ impl<'a> Typechecker<'a> {
     /// returned.
     pub fn check_statement(&mut self, statement: &mut Statement) -> Result<ResolvedType> {
         match &mut statement.kind {
-            StatementKind::FunctionDeclaration(declaration) => declaration.typecheck(self, statement.span),
-            StatementKind::ReturnStatement(r#return) => r#return.typecheck(self, statement.span),
-            StatementKind::FunctionCall(function_call) => function_call.typecheck(self, statement.span),
-            StatementKind::VariableDeclaration(declaration) => declaration.typecheck(self, statement.span),
-            StatementKind::VariableAssignment(assignment) => assignment.typecheck(self, statement.span),
-            StatementKind::TypeDeclaration(declaration) => declaration.typecheck(self, statement.span),
+            StatementKind::FunctionDeclaration(declaration) => declaration.typecheck(self, None, statement.span),
+            StatementKind::ReturnStatement(r#return) => r#return.typecheck(self, None, statement.span),
+            StatementKind::FunctionCall(function_call) => function_call.typecheck(self, None, statement.span),
+            StatementKind::VariableDeclaration(declaration) => declaration.typecheck(self, None, statement.span),
+            StatementKind::VariableAssignment(assignment) => assignment.typecheck(self, None, statement.span),
+            StatementKind::TypeDeclaration(declaration) => declaration.typecheck(self, None, statement.span),
 
             // An import statement cannot be type checked.
             StatementKind::ImportStatement(_) => Ok(ResolvedType::Void),
@@ -80,10 +80,17 @@ impl<'a> Typechecker<'a> {
     ///
     /// Returns:
     /// The [Type] that this expression produces.
-    pub fn check_expression(&mut self, expression: &mut Expression) -> Result<ResolvedType> {
+    pub fn check_expression(
+        &mut self,
+        expression: &mut Expression,
+        expected_type: Option<&ResolvedType>,
+    ) -> Result<ResolvedType> {
         let resolved_type = match &mut expression.kind {
-            ExpressionKind::FunctionCall(function_call) => function_call.typecheck(self, expression.span)?,
-            ExpressionKind::BinaryOperation(operation) => operation.typecheck(self, expression.span)?,
+            ExpressionKind::FunctionCall(function_call) => {
+                function_call.typecheck(self, expected_type, expression.span)?
+            }
+
+            ExpressionKind::BinaryOperation(operation) => operation.typecheck(self, expected_type, expression.span)?,
 
             ExpressionKind::IdentifierReference(reference) => {
                 // A variable must've been declared with the provided name already.
@@ -100,9 +107,18 @@ impl<'a> Typechecker<'a> {
                 }
             }
 
-            // TODO: When multiple integer widths are supported, we will need to add inference by passing an "expected"
-            // type to `check_expression`.
-            ExpressionKind::IntegerLiteral(_) => ResolvedType::SignedInteger(32),
+            ExpressionKind::IntegerLiteral(_) => {
+                // If the expected type is an integer literal, we can use that.
+                match expected_type {
+                    // TODO: Ensure that the literal is supported in the width.
+                    Some(ResolvedType::SignedInteger(size)) => ResolvedType::SignedInteger(*size),
+                    Some(ResolvedType::UnsignedInteger(size)) => ResolvedType::UnsignedInteger(*size),
+
+                    // TODO: We could pick a better type depending on whether it is a negative literal, and the size
+                    // of the literal.
+                    _ => ResolvedType::SignedInteger(32),
+                }
+            }
 
             // A string literal is always a reference to a u8.
             ExpressionKind::StringLiteral(_) => {

@@ -16,14 +16,27 @@ pub trait Typecheck<'a> {
     /// Resolves any and all types referenced by the node and ensures that they are valid. The caller is responsible for
     /// mutating the node to contain fully-resolved type information.
     ///
+    /// An [expected_type] is provided, this may be used as a hint by the caller for type inference (primarily used by
+    /// integer literals).
+    ///
     /// Returns:
     /// The [Type] that this node produces. If the node does not result in a type, then [Type::void] should be returned.
-    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<ResolvedType>;
+    fn typecheck(
+        &mut self,
+        typechecker: &mut Typechecker<'a>,
+        expected_type: Option<&ResolvedType>,
+        span: SourceSpan,
+    ) -> Result<ResolvedType>;
 }
 
 /// A function call is both a statement and expression, so it doesn't belong in either of the submodules.
 impl<'a> Typecheck<'a> for FunctionCall {
-    fn typecheck(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<ResolvedType> {
+    fn typecheck(
+        &mut self,
+        typechecker: &mut Typechecker<'a>,
+        _expected_type: Option<&ResolvedType>,
+        span: SourceSpan,
+    ) -> Result<ResolvedType> {
         // FIXME: I don't like this clone, but we need to do it because of the borrow checker.
         let function = typechecker.context.get_function(&self.name_reference, span).cloned()?;
 
@@ -55,7 +68,7 @@ impl<'a> Typecheck<'a> for FunctionCall {
                 .get(index.clamp(0, function.parameters.len() - 1))
                 .unwrap();
 
-            let argument_type = typechecker.check_expression(argument)?;
+            let argument_type = typechecker.check_expression(argument, Some(parameter_type))?;
 
             if *parameter_type != ResolvedType::Variadic && *parameter_type != argument_type {
                 return TypecheckerError::expected_type(*parameter_type, argument_type, argument.span).into();

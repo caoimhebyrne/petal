@@ -1,0 +1,5 @@
+// #exit-code: 5
+
+func main() -> i8 {
+    return 5;
+}
