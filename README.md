@@ -12,8 +12,8 @@ program in Petal very easily!
    import stdlib;
 
    func main() -> i32 {
-      println("Hello, world!");
-      return 0;
+       println("Hello, world!");
+       return 0;
    }
    ```
 2. Compile a binary using the Petal compiler.
