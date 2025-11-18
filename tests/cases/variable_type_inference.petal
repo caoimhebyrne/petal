@@ -1,5 +1,9 @@
 // #exit-code: 5
 
+func test() -> u32 {
+    return 0;
+}
+
 func main() -> i8 {
     return 5;
 }
