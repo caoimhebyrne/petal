@@ -8,7 +8,7 @@ Provided that you have a [Petal compiler installed](./docs/installation.md), you
 program in Petal very easily!
 
 1. Create a file called `hello.petal`.
-   ```
+   ```go
    import stdlib;
 
    func main() -> i32 {
