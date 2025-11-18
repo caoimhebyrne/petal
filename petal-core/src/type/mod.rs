@@ -38,7 +38,7 @@ pub enum Type {
 #[derive(Debug, Copy, Clone, Eq, PartialEq, EnumDisplay)]
 pub enum ResolvedType {
     /// An unsigned integer of a certain width.
-    #[display("i{0}")]
+    #[display("u{0}")]
     UnsignedInteger(u32),
 
     /// A signed integer of a certain width.
