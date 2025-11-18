@@ -8,6 +8,7 @@ Provided that you have a [Petal compiler installed](./docs/installation.md), you
 program in Petal very easily!
 
 1. Create a file called `hello.petal`.
+
    ```go
    import stdlib;
 
@@ -17,10 +18,13 @@ program in Petal very easily!
    }
    ```
 2. Compile a binary using the Petal compiler.
+
    ```
    $ petal -o ./hello ./hello.petal
    ```
+
 3. Run the output binary!
+
    ```
    $ ./hello
    Hello, world!
