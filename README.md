@@ -2,12 +2,28 @@
 
 Petal is a hobby programming language with a compiler written in Rust.
 
-## Usage
+## Quick Start
 
-1. The compiler itself can be built by cloning this repository and running `cargo build --release`.
-2. A petal file can be compiled using the created `petal` binary.
-   ```shell
-   $ ./target/release/petal ./examples/00_init.petal
+Provided that you have a [Petal compiler installed](./docs/installation.md), you can write and compile a Hello World
+program in Petal very easily!
+
+1. Create a file called `hello.petal`.
+   ```
+   import stdlib;
+
+   func main() -> i32 {
+      println("Hello, world!");
+      return 0;
+   }
+   ```
+2. Compile a binary using the Petal compiler.
+   ```
+   $ petal -o ./hello ./hello.petal
+   ```
+3. Run the output binary!
+   ```
+   $ ./hello
+   Hello, world!
    ```
 
 ## Examples
