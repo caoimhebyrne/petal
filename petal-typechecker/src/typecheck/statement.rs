@@ -9,7 +9,7 @@ use petal_ast::statement::{
 use petal_core::{
     error::Result,
     source_span::SourceSpan,
-    r#type::{ResolvedType, StructureType, Type, TypeReference},
+    r#type::{ResolvedType, StructureType},
 };
 
 use crate::{
@@ -148,11 +148,9 @@ impl<'a> Typecheck<'a> for TypeDeclaration {
             TypeDeclarationKind::Structure(structure) => structure.typecheck(typechecker, span),
         }?;
 
-        let type_id = typechecker.type_pool.allocate(Type::Resolved(type_kind));
-
         typechecker
             .context
-            .add_type_declaration(&self.identifier_reference, TypeReference::new(type_id, span))?;
+            .add_type_declaration(&self.identifier_reference, type_kind, span)?;
 
         Ok(type_kind)
     }

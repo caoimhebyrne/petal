@@ -126,7 +126,7 @@ impl<'a> Typechecker<'a> {
 
     /// Attempts to resolve the provided [Type] if it has not been resolved already.
     pub fn resolve_type(&mut self, reference: &TypeReference) -> Result<ResolvedType> {
-        let r#type = self.type_pool.get_type_or_err(&reference.id, reference.span)?;
+        let r#type = self.type_pool.get_type_mut_or_err(&reference.id, reference.span)?;
 
         // If the provided type has been resolved already, then we don't need to do anything else.
         let type_name_reference = match r#type {
@@ -161,25 +161,14 @@ impl<'a> Typechecker<'a> {
 
             _ => {
                 // Otherwise, we can attempt to look it up in the current context.
-                let type_reference = self
+                *self
                     .context
-                    .get_type_declaration(&type_name_reference, reference.span)?;
-
-                if let Type::Resolved(resolved_kind) = self
-                    .type_pool
-                    .get_type_or_err(&type_reference.id, type_reference.span)?
-                {
-                    *resolved_kind
-                } else {
-                    return TypecheckerError::unable_to_resolve_type(type_name, reference.span).into();
-                }
+                    .get_type_declaration(&type_name_reference, reference.span)?
             }
         };
 
         // We can then set the type to the resolved type.
-        let mutable_type = self.type_pool.get_type_mut_or_err(&reference.id, reference.span)?;
-        *mutable_type = Type::Resolved(resolved_kind);
-
+        *r#type = Type::Resolved(resolved_kind);
         Ok(resolved_kind)
     }
 }

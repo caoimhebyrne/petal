@@ -4,7 +4,7 @@ use petal_core::{
     error::Result,
     source_span::SourceSpan,
     string_intern::{StringInternPool, StringReference},
-    r#type::{ResolvedType, TypeReference},
+    r#type::ResolvedType,
 };
 
 use crate::error::TypecheckerError;
@@ -17,8 +17,8 @@ pub struct TypecheckerContext<'a> {
     /// A map of [StringReference]s for function names to their [Function]s.
     functions: HashMap<StringReference, Function>,
 
-    /// A map of [StringReference]s to their [TypeReference]s for declared types.
-    type_declarations: HashMap<StringReference, TypeReference>,
+    /// A map of [StringReference]s to their [ResolvedType]s for declared types.
+    type_declarations: HashMap<StringReference, ResolvedType>,
 
     /// The [StringInternPool] to read strings from.
     string_intern_pool: &'a dyn StringInternPool,
@@ -99,17 +99,22 @@ impl<'a> TypecheckerContext<'a> {
         })
     }
 
-    /// Adds a [TypeReference] to this [TypecheckerContext].
+    /// Adds a [ResolvedType] to this [TypecheckerContext].
     ///
     /// Errors:
     /// - [TypecheckerError::DuplicateTypeDeclaration] If a type has already been declared with the provided name.
-    pub fn add_type_declaration(&mut self, name: &StringReference, reference: TypeReference) -> Result<()> {
+    pub fn add_type_declaration(
+        &mut self,
+        name: &StringReference,
+        r#type: ResolvedType,
+        span: SourceSpan,
+    ) -> Result<()> {
         if self.type_declarations.get(name).is_some() {
-            let type_name = self.string_intern_pool.resolve_reference_or_err(name, reference.span)?;
-            return TypecheckerError::duplicate_type_declaration(type_name, reference.span).into();
+            let type_name = self.string_intern_pool.resolve_reference_or_err(name, span)?;
+            return TypecheckerError::duplicate_type_declaration(type_name, span).into();
         }
 
-        self.type_declarations.insert(*name, reference);
+        self.type_declarations.insert(*name, r#type);
         Ok(())
     }
 
@@ -117,7 +122,7 @@ impl<'a> TypecheckerContext<'a> {
     ///
     /// Errors:
     /// - [TypecheckerError::UnableToResolveType] If a type with the provided name has not yet been declared.
-    pub fn get_type_declaration(&mut self, name: &StringReference, span: SourceSpan) -> Result<&TypeReference> {
+    pub fn get_type_declaration(&mut self, name: &StringReference, span: SourceSpan) -> Result<&ResolvedType> {
         self.type_declarations.get(name).ok_or_else(|| {
             let type_name = match self.string_intern_pool.resolve_reference_or_err(name, span) {
                 Ok(value) => value,
