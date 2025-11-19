@@ -1,10 +1,6 @@
 use inkwell::values::{BasicValue, BasicValueEnum};
 use petal_ast::expression::{BinaryOperation, Expression, ExpressionKind, Operation, StructureInitialization};
-use petal_core::{
-    error::Result,
-    source_span::SourceSpan,
-    r#type::{TypeId, TypeReference},
-};
+use petal_core::{error::Result, source_span::SourceSpan, r#type::TypeReference};
 
 use crate::{LLVMCodegen, codegen::Codegen, context::VariableKind, error::LLVMCodegenErrorKind};
 
