@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use petal_core::{
     error::Result,
     source_span::SourceSpan,
@@ -11,7 +13,9 @@ use petal_lexer::{
 
 use crate::{
     error::ASTErrorKind,
-    expression::{BinaryOperation, Expression, ExpressionKind, IdentifierReference, Operation},
+    expression::{
+        BinaryOperation, Expression, ExpressionKind, IdentifierReference, Operation, StructureInitialization,
+    },
     statement::{
         Statement,
         function_call::FunctionCall,
@@ -201,6 +205,8 @@ impl<'a> ASTParser<'a> {
             TokenKind::StringLiteral(literal) => ExpressionKind::StringLiteral(literal),
 
             TokenKind::Ampersand => return self.parse_identifier_reference(),
+            TokenKind::LeftBrace => return self.parse_structure_initialization(),
+
             TokenKind::Identifier(_) => return self.parse_identifier_reference(),
 
             _ => return ASTErrorKind::expected_expression(&token).into(),
@@ -509,6 +515,42 @@ impl<'a> ASTParser<'a> {
         Ok(Expression::new(
             ExpressionKind::FunctionCall(function_call),
             source_span,
+        ))
+    }
+
+    fn parse_structure_initialization(&mut self) -> Result<Expression> {
+        // The first token must be an opening brace.
+        let open_brace_token = self.expect_token(TokenKind::LeftBrace)?;
+
+        // Then, there may be a list of fields to initialize.
+        let mut fields: HashMap<StringReference, Expression> = HashMap::new();
+
+        while !self.token_stream.next_is(TokenKind::RightBrace) {
+            // The first token must be the name of the field.
+            let (identifier_reference, _) = self.expect_identifier()?;
+
+            // The next token must be an equals.
+            self.expect_token(TokenKind::Equals)?;
+
+            // Then, there must be a value.
+            let value = self.parse_expression()?;
+
+            fields.insert(identifier_reference, value);
+
+            // If there's a comma, then we can continue, otherwise we assume that this is the end of the initializer.
+            if self.token_stream.next_is(TokenKind::Comma) {
+                self.expect_token(TokenKind::Comma)?;
+            } else {
+                break;
+            }
+        }
+
+        // Finally, there must be a closing brace.
+        let closing_brace_token = self.expect_token(TokenKind::RightBrace)?;
+
+        Ok(Expression::new(
+            ExpressionKind::StructureInitialization(StructureInitialization::new(fields)),
+            SourceSpan::between(&open_brace_token.span, &closing_brace_token.span),
         ))
     }
 

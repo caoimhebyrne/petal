@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use petal_core::{source_span::SourceSpan, string_intern::StringReference, r#type::TypeReference};
 
 use crate::statement::function_call::FunctionCall;
@@ -42,6 +44,9 @@ pub enum ExpressionKind {
 
     /// A function call, e.g. `<name>()`.
     FunctionCall(FunctionCall),
+
+    /// A structure initialization. e.g. `{ field = value }`
+    StructureInitialization(StructureInitialization),
 }
 
 /// A reference to an identifier.
@@ -93,4 +98,18 @@ pub enum Operation {
     Subtract,
     Multiply,
     Divide,
+}
+
+/// A structure initialization.
+#[derive(Debug, Clone, PartialEq)]
+pub struct StructureInitialization {
+    /// The names of the structure fields mapped to their values.
+    pub fields: HashMap<StringReference, Expression>,
+}
+
+impl StructureInitialization {
+    /// Creates a new [StructureInitialization].
+    pub fn new(fields: HashMap<StringReference, Expression>) -> Self {
+        StructureInitialization { fields }
+    }
 }

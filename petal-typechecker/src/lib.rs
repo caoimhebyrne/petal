@@ -91,6 +91,9 @@ impl<'a> Typechecker<'a> {
             }
 
             ExpressionKind::BinaryOperation(operation) => operation.typecheck(self, expected_type, expression.span)?,
+            ExpressionKind::StructureInitialization(initialization) => {
+                initialization.typecheck(self, expected_type, expression.span)?
+            }
 
             ExpressionKind::IdentifierReference(reference) => {
                 // A variable must've been declared with the provided name already.

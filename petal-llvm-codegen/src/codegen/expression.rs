@@ -1,6 +1,10 @@
 use inkwell::values::{BasicValue, BasicValueEnum};
-use petal_ast::expression::{BinaryOperation, Expression, ExpressionKind, Operation};
-use petal_core::{error::Result, source_span::SourceSpan};
+use petal_ast::expression::{BinaryOperation, Expression, ExpressionKind, Operation, StructureInitialization};
+use petal_core::{
+    error::Result,
+    source_span::SourceSpan,
+    r#type::{TypeId, TypeReference},
+};
 
 use crate::{LLVMCodegen, codegen::Codegen, context::VariableKind, error::LLVMCodegenErrorKind};
 
@@ -58,6 +62,9 @@ impl<'ctx> Codegen<'ctx> for Expression {
 
             ExpressionKind::BinaryOperation(binary_operation) => binary_operation.codegen(codegen, span),
             ExpressionKind::FunctionCall(call) => call.codegen(codegen, span),
+            ExpressionKind::StructureInitialization(initialization) => {
+                initialization.codegen(codegen, self.r#type, span)
+            }
 
             #[allow(unreachable_patterns)]
             _ => return LLVMCodegenErrorKind::unable_to_codegen_expression(&self).into(),
@@ -82,5 +89,26 @@ impl<'ctx> Codegen<'ctx> for BinaryOperation {
         .map_err(|err| LLVMCodegenErrorKind::builder_error(err, span))?;
 
         Ok(result.as_basic_value_enum())
+    }
+}
+
+trait StructureInitializationCodegen<'ctx> {
+    fn codegen(
+        &self,
+        codegen: &mut LLVMCodegen<'ctx>,
+        r#type: Option<TypeReference>,
+        span: SourceSpan,
+    ) -> Result<BasicValueEnum<'ctx>>;
+}
+
+impl<'ctx> StructureInitializationCodegen<'ctx> for StructureInitialization {
+    fn codegen(
+        &self,
+        codegen: &mut LLVMCodegen<'ctx>,
+        r#type: Option<TypeReference>,
+        span: SourceSpan,
+    ) -> Result<BasicValueEnum<'ctx>> {
+        let struct_type = codegen.create_value_type(r#type, span)?.into_struct_type();
+        Ok(struct_type.const_named_struct(&[]).as_basic_value_enum())
     }
 }
