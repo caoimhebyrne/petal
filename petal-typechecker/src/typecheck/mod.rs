@@ -71,7 +71,7 @@ impl<'a> Typecheck<'a> for FunctionCall {
             let argument_type = typechecker.check_expression(argument, Some(parameter_type))?;
 
             if *parameter_type != ResolvedType::Variadic && *parameter_type != argument_type {
-                return TypecheckerError::expected_type(*parameter_type, argument_type, argument.span).into();
+                return TypecheckerError::expected_type(parameter_type.clone(), argument_type, argument.span).into();
             }
         }
 

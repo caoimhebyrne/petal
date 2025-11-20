@@ -1,4 +1,6 @@
-use petal_core::string_intern::StringReference;
+use std::collections::HashMap;
+
+use petal_core::{string_intern::StringReference, r#type::TypeReference};
 
 use crate::statement::StatementKind;
 
@@ -36,11 +38,13 @@ pub enum TypeDeclarationKind {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct StructureDeclaration {}
+pub struct StructureDeclaration {
+    pub fields: HashMap<StringReference, TypeReference>,
+}
 
 impl StructureDeclaration {
-    pub fn new() -> Self {
-        StructureDeclaration {}
+    pub fn new(fields: HashMap<StringReference, TypeReference>) -> Self {
+        StructureDeclaration { fields }
     }
 }
 

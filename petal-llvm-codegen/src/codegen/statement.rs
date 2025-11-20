@@ -96,7 +96,7 @@ impl<'ctx> Codegen<'ctx> for ReturnStatement {
 impl<'ctx> Codegen<'ctx> for VariableDeclaration {
     fn codegen(&self, codegen: &mut LLVMCodegen<'ctx>, span: SourceSpan) -> Result<BasicValueEnum<'ctx>> {
         // We first need to get the value type of the variable, and then allocate some space on the stack for it.
-        let value_type = codegen.create_value_type(Some(self.r#type), span)?;
+        let value_type = codegen.resolve_and_create_value_type(Some(self.r#type), span)?;
 
         let variable_name = codegen
             .string_intern_pool

@@ -464,11 +464,29 @@ impl<'a> ASTParser<'a> {
         self.expect_token(TokenKind::Keyword(Keyword::Struct))?;
         self.expect_token(TokenKind::LeftBrace)?;
 
-        // TODO: Parse a structure's members.
+        let mut fields: HashMap<StringReference, TypeReference> = HashMap::new();
+
+        while !self.token_stream.next_is(TokenKind::RightBrace) {
+            let member_token = self.token_stream.peek_non_whitespace_or_err()?;
+
+            match member_token.kind {
+                TokenKind::Identifier(identifier) if self.token_stream.after_next_is(TokenKind::Colon) => {
+                    self.expect_identifier()?;
+                    self.expect_token(TokenKind::Colon)?;
+
+                    let field_type = self.parse_type()?;
+                    fields.insert(identifier, field_type);
+
+                    self.expect_token(TokenKind::Semicolon)?;
+                }
+
+                _ => return ASTErrorKind::expected_identifier(member_token).into(),
+            }
+        }
 
         let right_brace_token = self.expect_token(TokenKind::RightBrace)?;
 
-        Ok((StructureDeclaration::new().into(), right_brace_token.span))
+        Ok((StructureDeclaration::new(fields).into(), right_brace_token.span))
     }
 
     /// Attempts to parse a function call at the current position.

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use petal_ast::statement::{
     StatementKind,
     function_declaration::FunctionDeclaration,
@@ -9,6 +11,7 @@ use petal_ast::statement::{
 use petal_core::{
     error::Result,
     source_span::SourceSpan,
+    string_intern::StringReference,
     r#type::{ResolvedType, StructureType},
 };
 
@@ -32,13 +35,13 @@ impl<'a> Typecheck<'a> for FunctionDeclaration {
 
         // Now that we've type-checked the function's information, we can create a function context and typecheck any
         // statements within the function body.
-        typechecker.context.start_function_context(return_type, span)?;
+        typechecker.context.start_function_context(return_type.clone(), span)?;
 
         let mut parameter_types = Vec::new();
 
         for parameter in &mut self.parameters {
             let parameter_type = typechecker.resolve_type(&parameter.value_type)?;
-            parameter_types.push(parameter_type);
+            parameter_types.push(parameter_type.clone());
 
             typechecker.context.function_context(span)?.add_variable(
                 &parameter.name_reference,
@@ -96,7 +99,7 @@ impl<'a> Typecheck<'a> for ReturnStatement {
             .value
             .as_mut()
             .map(|it| {
-                let return_type = typechecker.context.function_context(span)?.return_type;
+                let return_type = typechecker.context.function_context(span)?.return_type.clone();
                 typechecker.check_expression(it, Some(&return_type))
             })
             .transpose()?
@@ -105,7 +108,7 @@ impl<'a> Typecheck<'a> for ReturnStatement {
         // If the value's type is not equal to the function's return type, then we must throw an error.
         let function_context = typechecker.context.function_context(span)?;
         if value_type != function_context.return_type {
-            return TypecheckerError::expected_type(function_context.return_type, value_type, span).into();
+            return TypecheckerError::expected_type(function_context.return_type.clone(), value_type, span).into();
         }
 
         // This statement does not have a return value, so we return void instead.
@@ -149,10 +152,11 @@ impl<'a> Typecheck<'a> for VariableAssignment {
         span: SourceSpan,
     ) -> Result<ResolvedType> {
         // A variable must have been declared already.
-        let variable = *typechecker
+        let variable = typechecker
             .context
             .function_context(span)?
-            .get_variable(&self.identifier_reference, span)?;
+            .get_variable(&self.identifier_reference, span)?
+            .clone();
 
         // If the type of the variable does not match the value type, then this is not possible.
         let value_type = typechecker.check_expression(&mut self.value, Some(&variable.r#type))?;
@@ -178,7 +182,7 @@ impl<'a> Typecheck<'a> for TypeDeclaration {
 
         typechecker
             .context
-            .add_type_declaration(&self.identifier_reference, type_kind, span)?;
+            .add_type_declaration(&self.identifier_reference, type_kind.clone(), span)?;
 
         Ok(type_kind)
     }
@@ -187,10 +191,16 @@ impl<'a> Typecheck<'a> for TypeDeclaration {
 impl<'a> Typecheck<'a> for StructureDeclaration {
     fn typecheck(
         &mut self,
-        _typechecker: &mut Typechecker<'a>,
+        typechecker: &mut Typechecker<'a>,
         _expected_type: Option<&ResolvedType>,
         _span: SourceSpan,
     ) -> Result<ResolvedType> {
-        Ok(ResolvedType::Structure(StructureType::new()))
+        let mut fields: HashMap<StringReference, ResolvedType> = HashMap::new();
+
+        for (field_name, field_type_reference) in &self.fields {
+            fields.insert(*field_name, typechecker.resolve_type(field_type_reference)?);
+        }
+
+        Ok(ResolvedType::Structure(StructureType::new(fields)))
     }
 }

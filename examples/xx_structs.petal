@@ -1,8 +1,7 @@
-type MyStruct = struct {};
-
-func test(value: MyStruct) {}
+type Person = struct {
+    age: i32;
+};
 
 func main() {
-    MyStruct a = {};
-    test(a);
+    Person me = { age = 19 };
 }

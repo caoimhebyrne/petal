@@ -159,7 +159,7 @@ impl Function {
 }
 
 /// A variable that has been declared within a function during typechecking.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct Variable {
     /// The value type of the variable.
     pub r#type: ResolvedType,

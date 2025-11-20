@@ -100,7 +100,8 @@ impl<'a> Typechecker<'a> {
                 let variable = self
                     .context
                     .function_context(expression.span)?
-                    .get_variable(&reference.name, expression.span)?;
+                    .get_variable(&reference.name, expression.span)?
+                    .clone();
 
                 if reference.is_reference {
                     let type_id = self.type_pool.allocate(Type::Resolved(variable.r#type));
@@ -137,7 +138,7 @@ impl<'a> Typechecker<'a> {
         };
 
         // All expressions have an associated 'type' field which should always be present after typechecking.
-        let type_id = self.type_pool.allocate(Type::Resolved(resolved_type));
+        let type_id = self.type_pool.allocate(Type::Resolved(resolved_type.clone()));
         expression.r#type = Some(TypeReference::new(type_id, expression.span));
 
         Ok(resolved_type)
@@ -152,7 +153,7 @@ impl<'a> Typechecker<'a> {
             Type::Unresolved(reference) => reference,
 
             Type::Resolved(r#type) => {
-                let resolved_type = *r#type;
+                let resolved_type = r#type.clone();
 
                 if let ResolvedType::Reference(referenced_type_id) = resolved_type {
                     self.resolve_type(&TypeReference::new(referenced_type_id, reference.span))?;
@@ -180,14 +181,14 @@ impl<'a> Typechecker<'a> {
 
             _ => {
                 // Otherwise, we can attempt to look it up in the current context.
-                *self
-                    .context
+                self.context
                     .get_type_declaration(&type_name_reference, reference.span)?
+                    .clone()
             }
         };
 
         // We can then set the type to the resolved type.
-        *r#type = Type::Resolved(resolved_kind);
+        *r#type = Type::Resolved(resolved_kind.clone());
         Ok(resolved_kind)
     }
 }

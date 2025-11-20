@@ -84,7 +84,7 @@ impl<'ctx> LLVMCodegen<'ctx> {
             }
 
             let parameter_type = self
-                .create_value_type(Some(parameter.value_type), parameter.span)?
+                .resolve_and_create_value_type(Some(parameter.value_type), parameter.span)?
                 .into();
 
             parameter_types.push(parameter_type);
@@ -115,13 +115,16 @@ impl<'ctx> LLVMCodegen<'ctx> {
     }
 
     /// Converts the provided type to a value type.
-    pub fn create_value_type(
+    pub fn resolve_and_create_value_type(
         &self,
         maybe_type_reference: Option<TypeReference>,
         span: SourceSpan,
     ) -> Result<BasicTypeEnum<'ctx>> {
         let type_kind = self.ensure_resolved(maybe_type_reference, span)?;
+        self.create_value_type(type_kind, span)
+    }
 
+    pub fn create_value_type(&self, type_kind: ResolvedType, span: SourceSpan) -> Result<BasicTypeEnum<'ctx>> {
         let llvm_type = match type_kind {
             // LLVM does not differentiate between signed and unsigned integers.
             ResolvedType::UnsignedInteger(size) | ResolvedType::SignedInteger(size) => {
@@ -130,7 +133,15 @@ impl<'ctx> LLVMCodegen<'ctx> {
 
             ResolvedType::Reference(_) => self.llvm_context.ptr_type(AddressSpace::default()).as_basic_type_enum(),
 
-            ResolvedType::Structure(_) => self.llvm_context.struct_type(&[], false).as_basic_type_enum(),
+            ResolvedType::Structure(structure) => {
+                let field_types = structure
+                    .fields
+                    .values()
+                    .map(|it| self.create_value_type(it.clone(), span))
+                    .collect::<Result<Vec<BasicTypeEnum<'ctx>>>>()?;
+
+                self.llvm_context.struct_type(&field_types, false).as_basic_type_enum()
+            }
 
             _ => return LLVMCodegenErrorKind::bad_value_type(type_kind, span).into(),
         };
@@ -148,7 +159,7 @@ impl<'ctx> LLVMCodegen<'ctx> {
         let r#type = self.type_pool.get_type_or_err(&reference.id, span)?;
 
         let kind = match r#type {
-            Type::Resolved(kind) => kind,
+            Type::Resolved(kind) => kind.clone(),
 
             Type::Unresolved(reference) => {
                 let type_name = self.string_intern_pool.resolve_reference_or_err(&reference, span)?;
@@ -156,7 +167,7 @@ impl<'ctx> LLVMCodegen<'ctx> {
             }
         };
 
-        Ok(*kind)
+        Ok(kind)
     }
 }
 

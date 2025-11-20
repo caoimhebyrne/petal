@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use enum_display::EnumDisplay;
 
 use crate::{error::Result, source_span::SourceSpan, string_intern::StringReference, r#type::pool::TypePool};
@@ -23,7 +25,7 @@ impl TypeReference {
 }
 
 /// Represents the different kinds of types that exist.
-#[derive(Debug, Copy, Clone, Eq, PartialEq, EnumDisplay)]
+#[derive(Debug, Clone, Eq, PartialEq, EnumDisplay)]
 pub enum Type {
     /// A type that has not yet been resolved by the type checker.
     #[display("unresolved")]
@@ -35,7 +37,7 @@ pub enum Type {
 }
 
 /// Represents the different kinds of fully-resolved types that exist.
-#[derive(Debug, Copy, Clone, Eq, PartialEq, EnumDisplay)]
+#[derive(Debug, Clone, Eq, PartialEq, EnumDisplay)]
 pub enum ResolvedType {
     /// An unsigned integer of a certain width.
     #[display("u{0}")]
@@ -63,12 +65,14 @@ pub enum ResolvedType {
 }
 
 /// A structure type.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct StructureType {}
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct StructureType {
+    pub fields: HashMap<StringReference, ResolvedType>,
+}
 
 impl StructureType {
-    pub fn new() -> Self {
-        StructureType {}
+    pub fn new(fields: HashMap<StringReference, ResolvedType>) -> Self {
+        StructureType { fields }
     }
 }
 

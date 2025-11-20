@@ -8,7 +8,7 @@ impl<'ctx> Codegen<'ctx> for Expression {
     fn codegen(&self, codegen: &mut LLVMCodegen<'ctx>, span: SourceSpan) -> Result<BasicValueEnum<'ctx>> {
         match &self.kind {
             ExpressionKind::IntegerLiteral(value) => {
-                let value_type = codegen.create_value_type(self.r#type, self.span)?;
+                let value_type = codegen.resolve_and_create_value_type(self.r#type, self.span)?;
 
                 Ok(value_type
                     .into_int_type()
@@ -104,7 +104,14 @@ impl<'ctx> StructureInitializationCodegen<'ctx> for StructureInitialization {
         r#type: Option<TypeReference>,
         span: SourceSpan,
     ) -> Result<BasicValueEnum<'ctx>> {
-        let struct_type = codegen.create_value_type(r#type, span)?.into_struct_type();
-        Ok(struct_type.const_named_struct(&[]).as_basic_value_enum())
+        let struct_type = codegen.resolve_and_create_value_type(r#type, span)?.into_struct_type();
+
+        let values = self
+            .fields
+            .values()
+            .map(|it| it.codegen(codegen, it.span))
+            .collect::<Result<Vec<BasicValueEnum<'ctx>>>>()?;
+
+        Ok(struct_type.const_named_struct(&values).as_basic_value_enum())
     }
 }

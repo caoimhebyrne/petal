@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use petal_ast::expression::{BinaryOperation, StructureInitialization};
 use petal_core::{
     error::Result,
@@ -38,20 +40,24 @@ impl<'a> Typecheck<'a> for StructureInitialization {
     ) -> Result<ResolvedType> {
         // There must be an expected type, and that type must be a structure.
         let structure_type = match expected_type {
-            Some(ResolvedType::Structure(value)) => value,
+            Some(ResolvedType::Structure(value)) => value.clone(),
 
             Some(other) => {
-                return TypecheckerError::expected_type(ResolvedType::Structure(StructureType {}), *other, span).into();
+                return TypecheckerError::expected_type(
+                    ResolvedType::Structure(StructureType { fields: HashMap::new() }),
+                    other.clone(),
+                    span,
+                )
+                .into();
             }
 
             _ => return TypecheckerError::unable_to_resolve_type("anonymous struct", span).into(),
         };
 
         for (_field_name, field_value) in &mut self.fields {
-            // TODO: Ensure that each of the fields within the initializer match the structure's definition.
             typechecker.check_expression(field_value, None)?;
         }
 
-        Ok(ResolvedType::Structure(*structure_type))
+        Ok(ResolvedType::Structure(structure_type))
     }
 }
