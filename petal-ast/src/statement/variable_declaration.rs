@@ -1,34 +1,29 @@
 use petal_core::{string_intern::StringReference, r#type::TypeReference};
 
-use crate::{expression::Expression, statement::StatementKind};
+use crate::{expression::ExpressionNode, statement::StatementNodeKind};
 
-/// A variable declaration statement, e.g: `<type> <identifier> = <expression>;`
-#[derive(Debug, Clone, PartialEq)]
+/// A variable declaration
+#[derive(Debug, PartialEq, Clone)]
 pub struct VariableDeclaration {
     /// The name of the variable being declared.
-    pub identifier_reference: StringReference,
+    pub name: StringReference,
 
-    /// The type of the variable being declared.
+    /// The type of the variable.
     pub r#type: TypeReference,
 
-    /// The value being assigned to the variable.
-    pub value: Expression,
+    /// The value being assigned to the variable upon initialization.
+    pub value: ExpressionNode,
 }
 
 impl VariableDeclaration {
-    /// Creates a new [VariableDeclaration] with a [name] and [value].
-    pub fn new(identifier_reference: StringReference, r#type: TypeReference, value: Expression) -> Self {
-        VariableDeclaration {
-            identifier_reference,
-            r#type,
-            value,
-        }
+    /// Instantiates a new [VariableDeclaration].
+    pub fn new(name: StringReference, r#type: TypeReference, value: ExpressionNode) -> Self {
+        VariableDeclaration { name, r#type, value }
     }
 }
 
-/// Allows `.into()` to be called on a [VariableDeclaration] to turn it into a [StatementKind].
-impl From<VariableDeclaration> for StatementKind {
-    fn from(value: VariableDeclaration) -> Self {
-        StatementKind::VariableDeclaration(value)
+impl Into<StatementNodeKind> for VariableDeclaration {
+    fn into(self) -> StatementNodeKind {
+        StatementNodeKind::VariableDeclaration(self)
     }
 }

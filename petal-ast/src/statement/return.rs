@@ -1,22 +1,26 @@
-use crate::{expression::Expression, statement::StatementKind};
+use crate::{expression::ExpressionNode, statement::StatementNodeKind};
 
-/// A return statement, e.g. `return <value>;`
-#[derive(Debug, Clone, PartialEq)]
-pub struct ReturnStatement {
+/// A return statement.
+#[derive(Debug, PartialEq, Clone)]
+pub struct Return {
     /// The value being returned.
-    pub value: Option<Expression>,
+    pub value: Option<ExpressionNode>,
 }
 
-impl ReturnStatement {
-    /// Creates a new [ReturnStatement] with a [value].
-    pub fn new(value: Option<Expression>) -> Self {
-        ReturnStatement { value }
+impl Return {
+    /// Instantiates an empty [ReturnStatement].
+    pub fn empty() -> Self {
+        Return { value: None }
+    }
+
+    /// Instantiates a new [ReturnStatement] with a certain value.
+    pub fn new(value: ExpressionNode) -> Self {
+        Return { value: Some(value) }
     }
 }
 
-/// Allows `.into()` to be called on a [ReturnStatement] to turn it into a [StatementKind].
-impl From<ReturnStatement> for StatementKind {
-    fn from(value: ReturnStatement) -> Self {
-        StatementKind::ReturnStatement(value)
+impl Into<StatementNodeKind> for Return {
+    fn into(self) -> StatementNodeKind {
+        StatementNodeKind::Return(self)
     }
 }

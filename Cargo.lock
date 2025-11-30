@@ -161,6 +161,7 @@ dependencies = [
 name = "petal-ast"
 version = "0.1.0"
 dependencies = [
+ "enum-display",
  "petal-core",
  "petal-lexer",
 ]

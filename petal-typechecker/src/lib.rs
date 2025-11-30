@@ -1,6 +1,6 @@
 use petal_ast::{
-    expression::{Expression, ExpressionKind},
-    statement::{Statement, StatementKind},
+    expression::{ExpressionNode, ExpressionNodeKind},
+    statement::{StatementNode, StatementNodeKind, TopLevelStatementNode, TopLevelStatementNodeKind},
 };
 use petal_core::{
     error::Result,
@@ -46,33 +46,39 @@ impl<'a> Typechecker<'a> {
     pub fn check_modules(&mut self, modules: &mut Vec<ResolvedModule>) -> Result<()> {
         for module in modules {
             for statement in &mut module.statements {
-                self.check_statement(statement)?;
+                self.check_top_level_statement(statement)?;
             }
         }
 
         Ok(())
     }
 
-    /// Checks and resolves all types involved in a [Statement].
-    ///
-    /// Returns:
-    /// The [Type] that this statement produces. If the statement does not result in a type, then [Type::void] will be
-    /// returned.
-    pub fn check_statement(&mut self, statement: &mut Statement) -> Result<ResolvedType> {
+    /// Checks and resolves all types involved in a [TopLevelStatementNode].
+    pub fn check_top_level_statement(&mut self, statement: &mut TopLevelStatementNode) -> Result<()> {
         match &mut statement.kind {
-            StatementKind::FunctionDeclaration(declaration) => declaration.typecheck(self, None, statement.span),
-            StatementKind::ReturnStatement(r#return) => r#return.typecheck(self, None, statement.span),
-            StatementKind::FunctionCall(function_call) => function_call.typecheck(self, None, statement.span),
-            StatementKind::VariableDeclaration(declaration) => declaration.typecheck(self, None, statement.span),
-            StatementKind::VariableAssignment(assignment) => assignment.typecheck(self, None, statement.span),
-            StatementKind::TypeDeclaration(declaration) => declaration.typecheck(self, None, statement.span),
+            TopLevelStatementNodeKind::FunctionDeclaration(function) => function.typecheck(self, None, statement.span),
+            TopLevelStatementNodeKind::Import(_) => return Ok(()),
 
-            // An import statement cannot be type checked.
-            StatementKind::ImportStatement(_) => Ok(ResolvedType::Void),
+            #[allow(unreachable_patterns)]
+            _ => return TypecheckerError::unsupported_top_level_statement(statement.clone()).into(),
+        }?;
+
+        Ok(())
+    }
+
+    /// Checks and resolves all types involved in a [StatementNode].
+    pub fn check_statement(&mut self, statement: &mut StatementNode) -> Result<()> {
+        match &mut statement.kind {
+            StatementNodeKind::Return(r#return) => r#return.typecheck(self, None, statement.span),
+            StatementNodeKind::VariableDeclaration(variable) => variable.typecheck(self, None, statement.span),
+            StatementNodeKind::FunctionCall(function_call) => function_call.typecheck(self, None, statement.span),
+            StatementNodeKind::VariableAssignment(assignment) => assignment.typecheck(self, None, statement.span),
 
             #[allow(unreachable_patterns)]
             _ => TypecheckerError::unsupported_statement(statement.clone()).into(),
-        }
+        }?;
+
+        Ok(())
     }
 
     /// Checks and resolves all types involved in an [Expression]. This also sets the [Expression::type] to the resolved
@@ -82,66 +88,52 @@ impl<'a> Typechecker<'a> {
     /// The [Type] that this expression produces.
     pub fn check_expression(
         &mut self,
-        expression: &mut Expression,
+        expression: &mut ExpressionNode,
         expected_type: Option<&ResolvedType>,
     ) -> Result<ResolvedType> {
-        let resolved_type = match &mut expression.kind {
-            ExpressionKind::FunctionCall(function_call) => {
-                function_call.typecheck(self, expected_type, expression.span)?
-            }
-
-            ExpressionKind::BinaryOperation(operation) => operation.typecheck(self, expected_type, expression.span)?,
-            ExpressionKind::StructureInitialization(initialization) => {
-                initialization.typecheck(self, expected_type, expression.span)?
-            }
-
-            ExpressionKind::IdentifierReference(reference) => {
-                // A variable must've been declared with the provided name already.
-                let variable = self
-                    .context
-                    .function_context(expression.span)?
-                    .get_variable(&reference.name, expression.span)?
-                    .clone();
-
-                if reference.is_reference {
-                    let type_id = self.type_pool.allocate(Type::Resolved(variable.r#type));
-                    ResolvedType::Reference(type_id)
-                } else {
-                    variable.r#type
-                }
-            }
-
-            ExpressionKind::IntegerLiteral(_) => {
-                // If the expected type is an integer literal, we can use that.
+        let r#type = match &mut expression.kind {
+            ExpressionNodeKind::IntegerLiteral { .. } => {
+                // If the expected type is an integer type, then we can smart-cast this literal to that type. Otherwise,
+                // we can just assume that it is an i32.
                 match expected_type {
-                    // TODO: Ensure that the literal is supported in the width.
                     Some(ResolvedType::SignedInteger(size)) => ResolvedType::SignedInteger(*size),
                     Some(ResolvedType::UnsignedInteger(size)) => ResolvedType::UnsignedInteger(*size),
-
-                    // TODO: We could pick a better type depending on whether it is a negative literal, and the size
-                    // of the literal.
                     _ => ResolvedType::SignedInteger(32),
                 }
             }
 
-            // A string literal is always a reference to a u8.
-            ExpressionKind::StringLiteral(_) => {
-                let type_id = self
-                    .type_pool
-                    .allocate(Type::Resolved(ResolvedType::UnsignedInteger(8)));
+            ExpressionNodeKind::IdentifierReference { identifier } => self
+                .context
+                .function_context(expression.span)?
+                .get_variable(&identifier, expression.span)?
+                .r#type
+                .clone(),
 
-                ResolvedType::Reference(type_id)
+            ExpressionNodeKind::BinaryOperation(binary_operation) => {
+                binary_operation.typecheck(self, expected_type, expression.span)?
             }
+
+            ExpressionNodeKind::FunctionCall(function_call) => function_call.typecheck(self, None, expression.span)?,
+
+            ExpressionNodeKind::Reference(reference) => {
+                // The value of the inner expression must be resolvable.
+                let inner_type = self.check_expression(&mut reference.value, expected_type)?;
+                ResolvedType::Reference(self.type_pool.allocate(Type::Resolved(inner_type)))
+            }
+
+            ExpressionNodeKind::StringLiteral { .. } => ResolvedType::Reference(
+                self.type_pool
+                    .allocate(Type::Resolved(ResolvedType::UnsignedInteger(8))),
+            ),
 
             #[allow(unreachable_patterns)]
             _ => return TypecheckerError::unsupported_expression(expression.clone()).into(),
         };
 
-        // All expressions have an associated 'type' field which should always be present after typechecking.
-        let type_id = self.type_pool.allocate(Type::Resolved(resolved_type.clone()));
+        let type_id = self.type_pool.allocate(Type::Resolved(r#type.clone()));
         expression.r#type = Some(TypeReference::new(type_id, expression.span));
 
-        Ok(resolved_type)
+        Ok(r#type)
     }
 
     /// Attempts to resolve the provided [Type] if it has not been resolved already.

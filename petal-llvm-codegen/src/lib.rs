@@ -53,7 +53,7 @@ impl<'ctx> LLVMCodegen<'ctx> {
     pub fn visit_modules(&mut self, modules: &Vec<ResolvedModule>) -> Result<()> {
         for module in modules {
             for statement in &module.statements {
-                statement.codegen(self, statement.span)?;
+                statement.codegen(self, statement.span, false)?;
             }
         }
 
@@ -72,9 +72,7 @@ impl<'ctx> LLVMCodegen<'ctx> {
         let mut is_variadic = false;
 
         for parameter in parameters {
-            let r#type = self
-                .type_pool
-                .get_type_or_err(&parameter.value_type.id, parameter.span)?;
+            let r#type = self.type_pool.get_type_or_err(&parameter.r#type.id, parameter.span)?;
 
             if let Type::Resolved(resolved) = r#type
                 && *resolved == ResolvedType::Variadic
@@ -84,7 +82,7 @@ impl<'ctx> LLVMCodegen<'ctx> {
             }
 
             let parameter_type = self
-                .resolve_and_create_value_type(Some(parameter.value_type), parameter.span)?
+                .resolve_and_create_value_type(Some(parameter.r#type), parameter.span)?
                 .into();
 
             parameter_types.push(parameter_type);

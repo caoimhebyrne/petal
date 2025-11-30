@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use petal_ast::statement::Statement;
+use petal_ast::statement::TopLevelStatementNode;
 
 // FIXME: This shouldn't be here, but it won't work in core because AST depends on core.
 
@@ -14,12 +14,12 @@ pub struct ResolvedModule {
     pub source_contents: String,
 
     /// The AST nodes involved in this module.
-    pub statements: Vec<Statement>,
+    pub statements: Vec<TopLevelStatementNode>,
 }
 
 impl ResolvedModule {
     /// Creates a new [ResolvedModule].
-    pub fn new(source_path: PathBuf, source_contents: String, statements: Vec<Statement>) -> Self {
+    pub fn new(source_path: PathBuf, source_contents: String, statements: Vec<TopLevelStatementNode>) -> Self {
         ResolvedModule {
             source_path,
             source_contents,

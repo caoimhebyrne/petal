@@ -1,79 +1,79 @@
 use petal_core::{source_span::SourceSpan, string_intern::StringReference, r#type::TypeReference};
 
-use crate::statement::{Statement, StatementKind, r#return::ReturnStatement};
+use crate::statement::{StatementNode, TopLevelStatementNodeKind};
 
-/// A parameter defined in a [FunctionDeclaration].
-#[derive(Debug, Clone, PartialEq)]
+/// A modifier of a function declaration.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FunctionModifier {
+    /// This function is defined externally.
+    External,
+}
+
+/// A parameter within a function declaration.
+#[derive(Debug, PartialEq, Clone)]
 pub struct FunctionParameter {
-    /// The identifier of the parameter.
-    pub name_reference: StringReference,
+    /// The name of the parameter.
+    pub name: StringReference,
 
-    /// The type of the parameter's expected value.
-    pub value_type: TypeReference,
+    /// The expected type of the parameter.
+    pub r#type: TypeReference,
 
-    /// The span within the source code that the paramter was defined at.
+    /// The span within the source code that the parameter was defined at.
     pub span: SourceSpan,
 }
 
 impl FunctionParameter {
-    pub fn new(name_reference: StringReference, value_type: TypeReference, span: SourceSpan) -> Self {
-        FunctionParameter {
-            name_reference,
-            value_type,
-            span,
-        }
+    /// Instantiates a [FunctionParameter].
+    pub fn new(name: StringReference, r#type: TypeReference, span: SourceSpan) -> Self {
+        FunctionParameter { name, r#type, span }
     }
 }
 
-/// A function declaration statement, e.g. `func <name>() { <body> }`
-#[derive(Debug, Clone, PartialEq)]
+/// A function declaration.
+#[derive(Debug, PartialEq, Clone)]
 pub struct FunctionDeclaration {
-    /// The name of the function.
-    pub name_reference: StringReference,
+    /// The name of this function declaration.
+    pub name: StringReference,
 
-    /// The parameters of the function.
+    /// The modifiers applied to this function declaration.
+    pub modifiers: Vec<FunctionModifier>,
+
+    /// The parameters within this function declaration.
     pub parameters: Vec<FunctionParameter>,
 
-    /// The return type of the function.
+    /// The return type of this function.
     pub return_type: TypeReference,
 
-    /// The body of the function.
-    pub body: Vec<Statement>,
-
-    /// Whether the function is an external function.
-    pub is_extern: bool,
+    /// The body of this function.
+    pub body: Vec<StatementNode>,
 }
 
 impl FunctionDeclaration {
-    /// Creates a new [FunctionDeclaration] with a [name_reference] and [body]
+    /// Instantiates a [FunctionDeclaration].
     pub fn new(
-        name_reference: StringReference,
+        name: StringReference,
+        modifiers: Vec<FunctionModifier>,
         parameters: Vec<FunctionParameter>,
         return_type: TypeReference,
-        body: Vec<Statement>,
-        is_extern: bool,
+        body: Vec<StatementNode>,
     ) -> Self {
         FunctionDeclaration {
-            name_reference,
+            name,
+            modifiers,
             parameters,
             return_type,
             body,
-            is_extern,
         }
     }
 
-    /// Inserts an implicit return statement at the end of this [FunctionDeclaration]'s body.
-    pub fn insert_implicit_return_void(&mut self, span: SourceSpan) {
-        self.body.push(Statement {
-            kind: StatementKind::ReturnStatement(ReturnStatement::new(None)),
-            span: self.body.last().map(|it| it.span).unwrap_or(span),
-        });
+    /// Returns whether this function declaration is an external one.
+    pub fn is_external(&self) -> bool {
+        self.modifiers.contains(&FunctionModifier::External)
     }
 }
 
-/// Allows `.into()` to be called on a [FunctionDeclaration] to turn it into a [StatementKind].
-impl From<FunctionDeclaration> for StatementKind {
-    fn from(value: FunctionDeclaration) -> Self {
-        StatementKind::FunctionDeclaration(value)
+impl Into<TopLevelStatementNodeKind> for FunctionDeclaration {
+    fn into(self) -> TopLevelStatementNodeKind {
+        TopLevelStatementNodeKind::FunctionDeclaration(self)
     }
 }

@@ -1,2 +1,0 @@
-// #compile-failure: A parameter was defined after a varargs parameter
-extern func test(value: i32, ...args, illegal: i32);

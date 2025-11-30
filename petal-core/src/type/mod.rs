@@ -79,6 +79,10 @@ impl StructureType {
 impl ResolvedType {
     /// Returns whether this type can be assigned to another type.
     pub fn is_assignable_to(&self, type_pool: &TypePool, other: &ResolvedType, span: SourceSpan) -> Result<bool> {
+        if self == other {
+            return Ok(true);
+        }
+
         // If the other type is a reference type, the other type must be what I am referencing.
         if let ResolvedType::Reference(referenced_type_id) = other {
             let referenced_type = match type_pool.get_type_or_err(referenced_type_id, span)? {
@@ -89,6 +93,6 @@ impl ResolvedType {
             return Ok(self == referenced_type);
         }
 
-        Ok(self == other)
+        Ok(false)
     }
 }

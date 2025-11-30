@@ -1,131 +1,54 @@
-use std::fmt::Display;
-
+use enum_display::EnumDisplay;
 use petal_core::{
     error::{Error, ErrorKind},
     source_span::SourceSpan,
 };
 use petal_lexer::token::{Token, TokenKind};
 
-/// Represents the different kinds of errors that can be returned when parsing an AST.
-#[derive(Debug, Clone, PartialEq)]
-pub enum ASTErrorKind {
-    /// The end of the file was reached when it was not expected.
+#[derive(Debug, PartialEq, EnumDisplay)]
+pub enum ASTError {
+    /// A token was encountered in the stream that was unexpected.
+    #[display("Unexpected token: {0:?}")]
+    UnexpectedToken(TokenKind),
+
+    /// A token was encountered in the stream that was not a certain token.
+    #[display("Expected token: {received:?}, but received a different token: {expected:?}")]
+    ExpectedToken { received: TokenKind, expected: TokenKind },
+
+    /// A token was encountered in the stream that was not an identifier.
+    #[display("Expected an identifier, but received a different token: {0:?}")]
+    ExpectedIdentifier(TokenKind),
+
+    /// The end of the token stream was encountered.
     UnexpectedEndOfFile,
-
-    /// A parameter was declared after a varargs parameter.
-    ParameterAfterVarargs,
-
-    /// A certain token was expected at a point in the source code, but a different token was found.
-    ExpectedToken { expected: TokenKind, received: TokenKind },
-
-    /// An identifier was expected at a point in the source code, but a different token was found.
-    ExpectedIdentifier { received: TokenKind },
-
-    /// A statement was expected, but a different token kind was received.
-    ExpectedStatement { received: TokenKind },
-
-    /// An expression was expected, but a different token kind was received.
-    ExpectedExpression { received: TokenKind },
-
-    /// A type declaration was expected, but a different token was received.
-    ExpectedTypeDeclaration { received: TokenKind },
 }
 
-impl ASTErrorKind {
-    pub fn unexpected_end_of_file() -> Error {
-        Error::new(ASTErrorKind::UnexpectedEndOfFile, SourceSpan { start: 0, end: 0 })
+impl ASTError {
+    /// Creates a new [Error] with the kind as an [ASTError::UnexpectedToken] kind.
+    pub fn unexpected_token(token: Token) -> Error {
+        Error::new(ASTError::UnexpectedToken(token.kind), token.span)
     }
 
-    pub fn parameter_after_varargs(span: SourceSpan) -> Error {
-        Error::new(ASTErrorKind::ParameterAfterVarargs, span)
-    }
-
-    pub fn expected_token(expected: TokenKind, received: &Token) -> Error {
+    /// Creates a new [Error] with the kind as an [ASTError::ExpectedToken] kind.
+    pub fn expected_token(expected: TokenKind, received: Token) -> Error {
         Error::new(
-            ASTErrorKind::ExpectedToken {
+            ASTError::ExpectedToken {
+                received: received.kind,
                 expected,
-                received: received.kind,
             },
             received.span,
         )
     }
 
-    pub fn expected_identifier(received: &Token) -> Error {
-        Error::new(
-            ASTErrorKind::ExpectedIdentifier {
-                received: received.kind,
-            },
-            received.span,
-        )
+    /// Creates a new [Error] with the kind as an [ASTError::ExpectedIdentifier] kind.
+    pub fn expected_identifier(token: Token) -> Error {
+        Error::new(ASTError::ExpectedIdentifier(token.kind), token.span)
     }
 
-    pub fn expected_statement(received: &Token) -> Error {
-        Error::new(
-            ASTErrorKind::ExpectedStatement {
-                received: received.kind,
-            },
-            received.span,
-        )
-    }
-
-    pub fn expected_expression(received: &Token) -> Error {
-        Error::new(
-            ASTErrorKind::ExpectedExpression {
-                received: received.kind,
-            },
-            received.span,
-        )
-    }
-
-    pub fn expected_type_declaration(received: &Token) -> Error {
-        Error::new(
-            ASTErrorKind::ExpectedTypeDeclaration {
-                received: received.kind,
-            },
-            received.span,
-        )
+    /// Creates a new [Error] with the kind as an [ASTError::UnexpectedEndOfFile] kind.
+    pub fn unexpected_end_of_file() -> Error {
+        Error::new(ASTError::UnexpectedEndOfFile, SourceSpan { start: 0, end: 0 })
     }
 }
 
-impl ErrorKind for ASTErrorKind {}
-
-impl Display for ASTErrorKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ASTErrorKind::UnexpectedEndOfFile => write!(f, "Unexpected end-of-file"),
-
-            ASTErrorKind::ParameterAfterVarargs => write!(
-                f,
-                "A parameter was defined after a varargs parameter, this is not allowed. A varargs parameter must be the last parameter in a function declaration"
-            ),
-
-            ASTErrorKind::ExpectedToken { expected, received } => {
-                write!(
-                    f,
-                    "Expected token '{:?}', but received token '{:?}'",
-                    expected, received
-                )
-            }
-
-            ASTErrorKind::ExpectedIdentifier { received } => {
-                write!(f, "Expected an identifier, but received token '{:?}'", received)
-            }
-
-            ASTErrorKind::ExpectedStatement { received } => {
-                write!(f, "Expected any statement, but received token '{:?}'", received)
-            }
-
-            ASTErrorKind::ExpectedExpression { received } => {
-                write!(f, "Expected an expression, but received token '{:?}'", received)
-            }
-
-            ASTErrorKind::ExpectedTypeDeclaration { received } => {
-                write!(
-                    f,
-                    "Expected any type declaration (e.g. struct) but recieved token '{:?}'",
-                    received
-                )
-            }
-        }
-    }
-}
+impl ErrorKind for ASTError {}

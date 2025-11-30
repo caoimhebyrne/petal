@@ -2,8 +2,8 @@ use std::fmt::Display;
 
 use inkwell::builder::BuilderError;
 use petal_ast::{
-    expression::{Expression, ExpressionKind},
-    statement::{Statement, StatementKind},
+    expression::{ExpressionNode, ExpressionNodeKind},
+    statement::{StatementNode, StatementNodeKind},
 };
 use petal_core::{
     error::{Error, ErrorKind},
@@ -24,10 +24,10 @@ pub enum LLVMCodegenErrorKind {
     UnresolvedStringReference(StringReference),
 
     /// A statement could not be converted into code.
-    UnableToCodegenStatement(StatementKind),
+    UnableToCodegenStatement(StatementNodeKind),
 
     /// An expression could not be converted into code.
-    UnableToCodegenExpression(ExpressionKind),
+    UnableToCodegenExpression(ExpressionNodeKind),
 
     /// The variable assignment is illega.
     IllegalVariableAssignment,
@@ -58,14 +58,14 @@ impl LLVMCodegenErrorKind {
         Error::new(LLVMCodegenErrorKind::UnresolvedStringReference(*reference), span)
     }
 
-    pub fn unable_to_codegen_statement(statement: &Statement) -> Error {
+    pub fn unable_to_codegen_statement(statement: &StatementNode) -> Error {
         Error::new(
             LLVMCodegenErrorKind::UnableToCodegenStatement(statement.kind.clone()),
             statement.span,
         )
     }
 
-    pub fn unable_to_codegen_expression(expression: &Expression) -> Error {
+    pub fn unable_to_codegen_expression(expression: &ExpressionNode) -> Error {
         Error::new(
             LLVMCodegenErrorKind::UnableToCodegenExpression(expression.kind.clone()),
             expression.span,
