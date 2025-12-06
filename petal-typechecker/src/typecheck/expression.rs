@@ -1,11 +1,5 @@
-use std::collections::HashMap;
-
-use petal_ast::expression::{BinaryOperation, StructureInitialization};
-use petal_core::{
-    error::Result,
-    source_span::SourceSpan,
-    r#type::{ResolvedType, StructureType},
-};
+use petal_ast::expression::binary_operation::BinaryOperation;
+use petal_core::{error::Result, source_span::SourceSpan, r#type::ResolvedType};
 
 use crate::{Typechecker, error::TypecheckerError, typecheck::Typecheck};
 
@@ -14,50 +8,16 @@ impl<'a> Typecheck<'a> for BinaryOperation {
         &mut self,
         typechecker: &mut Typechecker<'a>,
         expected_type: Option<&ResolvedType>,
-        span: SourceSpan,
+        _span: SourceSpan,
     ) -> Result<ResolvedType> {
-        // The types on the left and right of the operation must both be of the same kind. If that is not the case,
-        // then the operation is invalid.
-        //
-        // FIXME: A user-defined type in the future must be allowed to define what each binary operation does!
+        // The types of both the left and the right expression must be resolvable.
         let left_type = typechecker.check_expression(&mut self.left, expected_type)?;
         let right_type = typechecker.check_expression(&mut self.right, expected_type)?;
 
         if left_type != right_type {
-            return TypecheckerError::expected_type(left_type, right_type, span).into();
+            return TypecheckerError::expected_type(left_type, right_type, self.right.span).into();
         }
 
         Ok(left_type)
-    }
-}
-
-impl<'a> Typecheck<'a> for StructureInitialization {
-    fn typecheck(
-        &mut self,
-        typechecker: &mut Typechecker<'a>,
-        expected_type: Option<&ResolvedType>,
-        span: SourceSpan,
-    ) -> Result<ResolvedType> {
-        // There must be an expected type, and that type must be a structure.
-        let structure_type = match expected_type {
-            Some(ResolvedType::Structure(value)) => value.clone(),
-
-            Some(other) => {
-                return TypecheckerError::expected_type(
-                    ResolvedType::Structure(StructureType { fields: HashMap::new() }),
-                    other.clone(),
-                    span,
-                )
-                .into();
-            }
-
-            _ => return TypecheckerError::unable_to_resolve_type("anonymous struct", span).into(),
-        };
-
-        for (_field_name, field_value) in &mut self.fields {
-            typechecker.check_expression(field_value, None)?;
-        }
-
-        Ok(ResolvedType::Structure(structure_type))
     }
 }

@@ -1,4 +1,4 @@
-use petal_ast::statement::function_call::FunctionCall;
+use petal_ast::node::FunctionCall;
 use petal_core::{error::Result, source_span::SourceSpan, r#type::ResolvedType};
 
 /// This module contains implementations of [Typecheck] for various expression kinds.
@@ -6,6 +6,9 @@ pub(crate) mod expression;
 
 /// This module contains implementations of [Typecheck] for various statement kinds.
 pub(crate) mod statement;
+
+/// This module contains implementations of [Typecheck] for various top-level statement kinds.
+pub(crate) mod top_level_statement;
 
 use crate::{Typechecker, error::TypecheckerError};
 
@@ -29,7 +32,6 @@ pub trait Typecheck<'a> {
     ) -> Result<ResolvedType>;
 }
 
-/// A function call is both a statement and expression, so it doesn't belong in either of the submodules.
 impl<'a> Typecheck<'a> for FunctionCall {
     fn typecheck(
         &mut self,
@@ -37,21 +39,11 @@ impl<'a> Typecheck<'a> for FunctionCall {
         _expected_type: Option<&ResolvedType>,
         span: SourceSpan,
     ) -> Result<ResolvedType> {
-        // FIXME: I don't like this clone, but we need to do it because of the borrow checker.
-        let function = typechecker.context.get_function(&self.name_reference, span).cloned()?;
+        // A function must exist with the same name.
+        let function = typechecker.context.get_function(&self.name, span)?.clone();
 
-        // The number of arguments must be equal to the number of parameters in the function.
-        let is_variadic = function.parameters.last() == Some(&ResolvedType::Variadic);
-        if is_variadic {
-            if self.arguments.len() < function.parameters.len() {
-                return TypecheckerError::incorrect_number_of_arguments(
-                    function.parameters.len(),
-                    self.arguments.len(),
-                    span,
-                )
-                .into();
-            }
-        } else if function.parameters.len() != self.arguments.len() {
+        // The arguments passed must equal the amount of parameters.
+        if function.parameters.len() != self.arguments.len() {
             return TypecheckerError::incorrect_number_of_arguments(
                 function.parameters.len(),
                 self.arguments.len(),
@@ -60,22 +52,16 @@ impl<'a> Typecheck<'a> for FunctionCall {
             .into();
         }
 
+        // The type of each argument must equal the type of its corresponding parameter.
         for (index, argument) in self.arguments.iter_mut().enumerate() {
-            // NOTE: The `unwrap` is safe here, we just verified that the function call had the correct amount of
-            // arguments.
-            let parameter_type = function
-                .parameters
-                .get(index.clamp(0, function.parameters.len() - 1))
-                .unwrap();
-
+            let parameter_type = function.parameters.get(index).expect("Failed to access nth parameter?");
             let argument_type = typechecker.check_expression(argument, Some(parameter_type))?;
 
-            if *parameter_type != ResolvedType::Variadic && *parameter_type != argument_type {
+            if argument_type != *parameter_type {
                 return TypecheckerError::expected_type(parameter_type.clone(), argument_type, argument.span).into();
             }
         }
 
-        // The value type is always going to be the return type of the function that is being called.
-        Ok(function.return_type)
+        Ok(function.return_type.clone())
     }
 }

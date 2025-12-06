@@ -1,23 +1,23 @@
 use petal_core::string_intern::StringReference;
 
-use crate::statement::StatementKind;
+use crate::statement::TopLevelStatementNodeKind;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct ImportStatement {
-    /// The name of the module being imported.
-    pub module_name: StringReference,
+/// A top-level statement that indicates that another module should be imported.
+#[derive(Debug, PartialEq, Clone)]
+pub struct Import {
+    /// The name of the module to import.
+    pub name: StringReference,
 }
 
-impl ImportStatement {
-    /// Creates a new [ImportStatement].
-    pub fn new(module_name: StringReference) -> Self {
-        ImportStatement { module_name }
+impl Import {
+    /// Instantiates a new [Import].
+    pub fn new(name: StringReference) -> Self {
+        Import { name }
     }
 }
 
-/// Allows `.into()` to be called on a [ImportStatement] to turn it into a [StatementKind].
-impl From<ImportStatement> for StatementKind {
-    fn from(value: ImportStatement) -> Self {
-        StatementKind::ImportStatement(value)
+impl Into<TopLevelStatementNodeKind> for Import {
+    fn into(self) -> TopLevelStatementNodeKind {
+        TopLevelStatementNodeKind::Import(self)
     }
 }

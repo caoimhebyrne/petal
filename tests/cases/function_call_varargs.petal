@@ -1,9 +1,0 @@
-// #exit-code: 0
-// #standard-output: Hello, world! First: 12, second: 24, third: 'Hello again!!'
-
-extern func printf(format: &u8, ...args);
-
-func main() -> i32 {
-    printf("Hello, world! First: %d, second: %d, third: '%s'\n", 12, 24, "Hello again!!");
-    return 0;
-}

@@ -1,7 +1,8 @@
 use enum_display::EnumDisplay;
+
 use petal_ast::{
-    expression::{Expression, ExpressionKind},
-    statement::{Statement, StatementKind},
+    expression::{ExpressionNode, ExpressionNodeKind},
+    statement::{StatementNode, StatementNodeKind, TopLevelStatementNode, TopLevelStatementNodeKind},
 };
 use petal_core::{
     error::{Error, ErrorKind},
@@ -14,10 +15,6 @@ pub enum TypecheckerError {
     /// An attempt was made to declare a function, but one already exists with the same name.
     #[display("A function already exists with the name: '{0}'")]
     DuplicateFunctionDeclaration(String),
-
-    /// An attempt was made to declare a type, but one already exists with the same name.
-    #[display("A type already exists with the name: '{0}'")]
-    DuplicateTypeDeclaration(String),
 
     /// An attempt was made to declare a varaible, but one already exists with the provided name.
     #[display("A variable already exists with the name: '{0}'")]
@@ -56,22 +53,21 @@ pub enum TypecheckerError {
 
     /// An expression is not supported by the typechecker yet.
     #[display("Unable to type-check expression: {0:?}")]
-    UnsupportedExpression(ExpressionKind),
+    UnsupportedExpression(ExpressionNodeKind),
 
     /// A statement is not supported by the typechecker yet.
     #[display("Unable to type-check statement: {0:?}")]
-    UnsupportedStatement(StatementKind),
+    UnsupportedStatement(StatementNodeKind),
+
+    /// A top-level statement is not supported by the typechecker yet.
+    #[display("Unable to type-check top-level statement: {0:?}")]
+    UnsupportedTopLevelStatement(TopLevelStatementNodeKind),
 }
 
 impl TypecheckerError {
     /// Creates a new [Error] with the kind as a [TypecheckerError::DuplicateFunctionDeclaration] kind.
     pub fn duplicate_function_declaration(name: &str, span: SourceSpan) -> Error {
         Error::new(TypecheckerError::DuplicateFunctionDeclaration(name.to_owned()), span)
-    }
-
-    /// Creates a new [Error] with the kind as a [TypecheckerError::DuplicateTypeDeclaration] kind.
-    pub fn duplicate_type_declaration(name: &str, span: SourceSpan) -> Error {
-        Error::new(TypecheckerError::DuplicateTypeDeclaration(name.to_owned()), span)
     }
 
     /// Creates a new [Error] with the kind as a [TypecheckerError::DuplicateVariableDeclaration] kind.
@@ -118,7 +114,7 @@ impl TypecheckerError {
     }
 
     /// Creates a new [Error] with the kind as a [TypecheckerError::UnsupportedExpression] kind.
-    pub fn unsupported_expression(expression: Expression) -> Error {
+    pub fn unsupported_expression(expression: ExpressionNode) -> Error {
         Error::new(
             TypecheckerError::UnsupportedExpression(expression.kind),
             expression.span,
@@ -126,8 +122,16 @@ impl TypecheckerError {
     }
 
     /// Creates a new [Error] with the kind as a [TypecheckerError::UnsupportedStatement] kind.
-    pub fn unsupported_statement(statement: Statement) -> Error {
+    pub fn unsupported_statement(statement: StatementNode) -> Error {
         Error::new(TypecheckerError::UnsupportedStatement(statement.kind), statement.span)
+    }
+
+    /// Creates a new [Error] with the kind as a [TypecheckerError::UnsupportedTopLevelStatement] kind.
+    pub fn unsupported_top_level_statement(statement: TopLevelStatementNode) -> Error {
+        Error::new(
+            TypecheckerError::UnsupportedTopLevelStatement(statement.kind),
+            statement.span,
+        )
     }
 }
 

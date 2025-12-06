@@ -99,25 +99,6 @@ impl<'a> TypecheckerContext<'a> {
         })
     }
 
-    /// Adds a [ResolvedType] to this [TypecheckerContext].
-    ///
-    /// Errors:
-    /// - [TypecheckerError::DuplicateTypeDeclaration] If a type has already been declared with the provided name.
-    pub fn add_type_declaration(
-        &mut self,
-        name: &StringReference,
-        r#type: ResolvedType,
-        span: SourceSpan,
-    ) -> Result<()> {
-        if self.type_declarations.get(name).is_some() {
-            let type_name = self.string_intern_pool.resolve_reference_or_err(name, span)?;
-            return TypecheckerError::duplicate_type_declaration(type_name, span).into();
-        }
-
-        self.type_declarations.insert(*name, r#type);
-        Ok(())
-    }
-
     /// Finds a [Function] within this [TypecheckerContext].
     ///
     /// Errors:

@@ -6,8 +6,8 @@ use std::{
 
 use enum_display::EnumDisplay;
 use petal_ast::{
-    ASTParser,
-    statement::{Statement, StatementKind},
+    parser::ASTParser,
+    statement::{TopLevelStatementNode, TopLevelStatementNodeKind},
 };
 use petal_core::{
     error::{Error, ErrorKind, Result},
@@ -21,7 +21,7 @@ use crate::compiler_state::CompilerState;
 
 trait ResolvedModuleExt {
     /// Creates a new [ResolvedModule] from an existing [Module].
-    fn from_module(module: &Module, statements: Vec<Statement>) -> ResolvedModule;
+    fn from_module(module: &Module, statements: Vec<TopLevelStatementNode>) -> ResolvedModule;
 }
 
 /// A module being compiled by the compiler.
@@ -85,24 +85,23 @@ impl Module {
         let token_stream = lexer.get_stream()?;
 
         let mut ast_parser = ASTParser::new(token_stream, &mut compiler_state.type_pool);
-        let statement_stream = ast_parser.parse()?;
+        let statements = ast_parser.parse()?;
 
-        for statement in &statement_stream.statements {
+        for statement in &statements {
             match &statement.kind {
-                StatementKind::ImportStatement(import) => self.resolve_referenced_module(
+                TopLevelStatementNodeKind::Import(import) => self.resolve_referenced_module(
                     compiler_state,
                     resolved_module_paths,
                     resolved_modules,
-                    import.module_name,
+                    import.name,
                     statement.span,
                 )?,
-
                 _ => {}
             }
         }
 
         // Now that we have resolved all children, we can insert this module.
-        resolved_modules.push(ResolvedModule::from_module(self, statement_stream.statements));
+        resolved_modules.push(ResolvedModule::from_module(self, statements));
         resolved_module_paths.push(self.source_path.clone());
 
         Ok(())
@@ -182,7 +181,7 @@ impl Module {
 }
 
 impl ResolvedModuleExt for ResolvedModule {
-    fn from_module(module: &Module, statements: Vec<Statement>) -> Self {
+    fn from_module(module: &Module, statements: Vec<TopLevelStatementNode>) -> Self {
         ResolvedModule::new(module.source_path.clone(), module.source_contents.clone(), statements)
     }
 }
