@@ -149,7 +149,6 @@ dependencies = [
  "colored",
  "enum-display",
  "petal-ast",
- "petal-codegen-driver",
  "petal-core",
  "petal-lexer",
  "petal-llvm-codegen",
@@ -164,14 +163,6 @@ dependencies = [
  "enum-display",
  "petal-core",
  "petal-lexer",
-]
-
-[[package]]
-name = "petal-codegen-driver"
-version = "0.1.0"
-dependencies = [
- "petal-ast",
- "petal-core",
 ]
 
 [[package]]
@@ -192,9 +183,9 @@ dependencies = [
 name = "petal-llvm-codegen"
 version = "0.1.0"
 dependencies = [
+ "enum-display",
  "inkwell",
  "petal-ast",
- "petal-codegen-driver",
  "petal-core",
  "petal-typechecker",
 ]

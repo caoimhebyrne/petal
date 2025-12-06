@@ -1,34 +1,34 @@
-use std::{env, mem::ManuallyDrop, path::PathBuf};
-
+use crate::{
+    codegen::{ExpressionCodegen, StatementCodegen},
+    context::CodegenContext,
+};
 use inkwell::{
-    AddressSpace, OptimizationLevel,
+    OptimizationLevel,
     builder::Builder,
     context::Context,
     module::Module,
     targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
     types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType},
+    values::BasicValueEnum,
 };
-use petal_ast::statement::function_declaration::FunctionParameter;
-use petal_codegen_driver::{Driver, options::DriverOptions};
+use petal_ast::{
+    expression::{ExpressionNode, ExpressionNodeKind},
+    statement::{StatementNode, StatementNodeKind, TopLevelStatementNode, TopLevelStatementNodeKind},
+};
 use petal_core::{
     error::Result,
-    source_span::SourceSpan,
     string_intern::StringInternPool,
     r#type::{ResolvedType, Type, TypeReference, pool::TypePool},
 };
 use petal_typechecker::temp_resolved_module::ResolvedModule;
+use std::{env, mem::ManuallyDrop, path::PathBuf};
 
-use crate::{codegen::Codegen, context::CodegenContext, error::LLVMCodegenErrorKind};
-
-pub mod codegen;
-pub mod context;
-pub mod error;
+pub(crate) mod codegen;
+pub(crate) mod context;
+pub(crate) mod error;
 
 /// An implementation of a code generator which produces a final binary using LLVM.
 pub struct LLVMCodegen<'ctx> {
-    /// The [DriverOptions] passed to this LLVM codegen driver.
-    pub(crate) driver_options: DriverOptions,
-
     /// The [TypePool] to read types from.
     pub(crate) type_pool: &'ctx TypePool,
 
@@ -49,156 +49,48 @@ pub struct LLVMCodegen<'ctx> {
 }
 
 impl<'ctx> LLVMCodegen<'ctx> {
-    /// Visits the provided [ResolvedModule]s.
-    pub fn visit_modules(&mut self, modules: &Vec<ResolvedModule>) -> Result<()> {
-        for module in modules {
-            for statement in &module.statements {
-                statement.codegen(self, statement.span, false)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Converts the provided type to a function type.
-    pub fn create_function_type(
-        &self,
-        type_reference: &TypeReference,
-        parameters: &Vec<FunctionParameter>,
-    ) -> Result<FunctionType<'ctx>> {
-        let type_kind = self.ensure_resolved(Some(*type_reference), type_reference.span)?;
-
-        let mut parameter_types: Vec<BasicMetadataTypeEnum<'ctx>> = Vec::new();
-        let mut is_variadic = false;
-
-        for parameter in parameters {
-            let r#type = self.type_pool.get_type_or_err(&parameter.r#type.id, parameter.span)?;
-
-            if let Type::Resolved(resolved) = r#type
-                && *resolved == ResolvedType::Variadic
-            {
-                is_variadic = true;
-                break;
-            }
-
-            let parameter_type = self
-                .resolve_and_create_value_type(Some(parameter.r#type), parameter.span)?
-                .into();
-
-            parameter_types.push(parameter_type);
-        }
-
-        let llvm_type = match type_kind {
-            ResolvedType::SignedInteger(size) | ResolvedType::UnsignedInteger(size) => self
-                .llvm_context
-                .custom_width_int_type(size)
-                .fn_type(&parameter_types, is_variadic),
-
-            ResolvedType::Void => self.llvm_context.void_type().fn_type(&parameter_types, is_variadic),
-
-            ResolvedType::Reference(_) => self
-                .llvm_context
-                .ptr_type(AddressSpace::default())
-                .fn_type(&parameter_types, is_variadic),
-
-            ResolvedType::Structure(_) => self
-                .llvm_context
-                .struct_type(&[], false)
-                .fn_type(&parameter_types, is_variadic),
-
-            ResolvedType::Variadic => panic!("Function return type must never be variadic..."),
-        };
-
-        Ok(llvm_type)
-    }
-
-    /// Converts the provided type to a value type.
-    pub fn resolve_and_create_value_type(
-        &self,
-        maybe_type_reference: Option<TypeReference>,
-        span: SourceSpan,
-    ) -> Result<BasicTypeEnum<'ctx>> {
-        let type_kind = self.ensure_resolved(maybe_type_reference, span)?;
-        self.create_value_type(type_kind, span)
-    }
-
-    pub fn create_value_type(&self, type_kind: ResolvedType, span: SourceSpan) -> Result<BasicTypeEnum<'ctx>> {
-        let llvm_type = match type_kind {
-            // LLVM does not differentiate between signed and unsigned integers.
-            ResolvedType::UnsignedInteger(size) | ResolvedType::SignedInteger(size) => {
-                self.llvm_context.custom_width_int_type(size).as_basic_type_enum()
-            }
-
-            ResolvedType::Reference(_) => self.llvm_context.ptr_type(AddressSpace::default()).as_basic_type_enum(),
-
-            ResolvedType::Structure(structure) => {
-                let field_types = structure
-                    .fields
-                    .values()
-                    .map(|it| self.create_value_type(it.clone(), span))
-                    .collect::<Result<Vec<BasicTypeEnum<'ctx>>>>()?;
-
-                self.llvm_context.struct_type(&field_types, false).as_basic_type_enum()
-            }
-
-            _ => return LLVMCodegenErrorKind::bad_value_type(type_kind, span).into(),
-        };
-
-        Ok(llvm_type)
-    }
-
-    /// Asserts that the provided type is resolved, returning an error if it is not.
-    pub fn ensure_resolved(
-        &self,
-        maybe_type_reference: Option<TypeReference>,
-        span: SourceSpan,
-    ) -> Result<ResolvedType> {
-        let reference = maybe_type_reference.ok_or(LLVMCodegenErrorKind::unresolved_type("missing", span))?;
-        let r#type = self.type_pool.get_type_or_err(&reference.id, span)?;
-
-        let kind = match r#type {
-            Type::Resolved(kind) => kind.clone(),
-
-            Type::Unresolved(reference) => {
-                let type_name = self.string_intern_pool.resolve_reference_or_err(&reference, span)?;
-                return LLVMCodegenErrorKind::unresolved_type(type_name, span).into();
-            }
-        };
-
-        Ok(kind)
-    }
-}
-
-impl<'ctx> Driver<'ctx> for LLVMCodegen<'ctx> {
-    fn new(options: DriverOptions, type_pool: &'ctx TypePool, string_intern_pool: &'ctx dyn StringInternPool) -> Self {
+    /// Instantiates a new [LLVMCodegen] instance.
+    pub fn new(module_name: &str, type_pool: &'ctx TypePool, string_intern_pool: &'ctx dyn StringInternPool) -> Self {
         // We're creating and leaking the LLVM context here. The `Drop` implementation of this struct will ensure that
         // this is cleaned up successfully.
         let llvm_context: &'ctx Context = Box::leak(Box::new(Context::create()));
 
         LLVMCodegen {
             llvm_context,
-            llvm_module: ManuallyDrop::new(llvm_context.create_module(&options.module_name)),
+            llvm_module: ManuallyDrop::new(llvm_context.create_module(module_name)),
             llvm_builder: ManuallyDrop::new(llvm_context.create_builder()),
             type_pool,
             string_intern_pool,
-            driver_options: options,
-            context: CodegenContext::new(),
+            context: CodegenContext::new(string_intern_pool),
         }
     }
 
-    fn compile_to_object(&self) -> std::result::Result<PathBuf, String> {
+    /// Visits the provided [ResolvedModule]s, generating LLVM IR for their statements.
+    pub fn visit_modules(&mut self, modules: &[ResolvedModule]) -> Result<()> {
+        for module in modules {
+            for statement in &module.statements {
+                self.visit_top_level_statement(statement)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Compiles the generated LLVM module to an object. [LLVMCodegen::visit] must be called to generate code before
+    /// calling this method.
+    pub fn compile_to_object(&self, dump_bytecode: bool) -> std::result::Result<PathBuf, String> {
         if let Err(error) = self.llvm_module.verify() {
             return Err(error.to_string());
         }
 
-        if self.driver_options.dump_bytecode {
+        if dump_bytecode {
             println!("{}", self.llvm_module.print_to_string().to_string());
         }
 
         // We will write the object file to a temporary path, the caller is responsible for linking the object file into
         // an executable.
         let mut object_file_path = env::temp_dir();
-        object_file_path.push(format!("petal-{}.o", self.driver_options.module_name));
+        object_file_path.push(format!("petal-{}.o", self.llvm_module.get_name().to_str().unwrap()));
 
         // We can then compile the LLVM module into that file path.
         Target::initialize_all(&InitializationConfig::default());
@@ -221,6 +113,87 @@ impl<'ctx> Driver<'ctx> for LLVMCodegen<'ctx> {
             .map_err(|it| it.to_string())?;
 
         Ok(object_file_path)
+    }
+}
+
+impl<'ctx> LLVMCodegen<'ctx> {
+    /// Visits the provided [TopLevelStatementNode], generating LLVM IR for it.
+    pub(crate) fn visit_top_level_statement(&mut self, node: &TopLevelStatementNode) -> Result<()> {
+        match &node.kind {
+            TopLevelStatementNodeKind::FunctionDeclaration(declaration) => declaration.generate(self, node.span),
+
+            // Import statements do not need to be code-generated by the LLVM module. They are resolved before typechecking.
+            TopLevelStatementNodeKind::Import(_) => Ok(()),
+        }
+    }
+
+    /// Visits the provided [ExpressionNode], generating LLVM IR for it.
+    pub(crate) fn visit_expression(&mut self, node: &ExpressionNode) -> Result<BasicValueEnum<'ctx>> {
+        let resolved_type = node.r#type.map(|it| self.get_basic_llvm_type(&it)).expect("")?;
+
+        match &node.kind {
+            ExpressionNodeKind::IntegerLiteral(integer_literal) => {
+                integer_literal.generate(self, &resolved_type, node.span)
+            }
+
+            _ => panic!(),
+        }
+    }
+
+    /// Visits the provided [StatementNode], generating LLVM IR for it.
+    pub(crate) fn visit_statement(&mut self, node: &StatementNode) -> Result<()> {
+        match &node.kind {
+            StatementNodeKind::Return(r#return) => r#return.generate(self, node.span),
+
+            _ => panic!(),
+        }
+    }
+
+    /// Attempts to get the resolved type behind the provided [TypeReference].
+    pub(crate) fn get_resolved_type(&self, reference: &TypeReference) -> Result<&ResolvedType> {
+        let resolved_type = match self.type_pool.get_type_or_err(&reference.id, reference.span)? {
+            Type::Resolved(resolved) => resolved,
+            _ => panic!(),
+        };
+
+        Ok(resolved_type)
+    }
+
+    /// Attempts to get the resolved type behind the provided [TypeReference], and converts it to a [BasicTypeEnum].
+    pub(crate) fn get_basic_llvm_type(&self, reference: &TypeReference) -> Result<BasicTypeEnum<'ctx>> {
+        let basic_type = match self.get_resolved_type(reference)? {
+            ResolvedType::UnsignedInteger(size) | ResolvedType::SignedInteger(size) => {
+                self.llvm_context.custom_width_int_type(*size).as_basic_type_enum()
+            }
+
+            _ => panic!(),
+        };
+
+        Ok(basic_type)
+    }
+
+    /// Attempts to create a function type from the provided [TypeReference]s for the return type and parameter types.
+    pub(crate) fn create_function_type(
+        &self,
+        return_type: &TypeReference,
+        parameter_types: &[TypeReference],
+    ) -> Result<FunctionType<'ctx>> {
+        // Each parameter must be resolvable to a basic type.
+        let parameters: Vec<BasicMetadataTypeEnum<'ctx>> = parameter_types
+            .iter()
+            .map(|it| self.get_basic_llvm_type(it).map(|it| it.into()))
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(match self.get_resolved_type(return_type)? {
+            ResolvedType::Void => self.llvm_context.void_type().fn_type(&parameters, false),
+
+            ResolvedType::UnsignedInteger(size) | ResolvedType::SignedInteger(size) => self
+                .llvm_context
+                .custom_width_int_type(*size)
+                .fn_type(&parameters, false),
+
+            _ => panic!(),
+        })
     }
 }
 

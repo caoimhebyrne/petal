@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 petal-ast = { path = "../petal-ast" }
-petal-codegen-driver = { path = "../petal-codegen-driver" }
 petal-core = { path = "../petal-core" }
 petal-typechecker = { path = "../petal-typechecker" }
 
@@ -14,3 +13,4 @@ inkwell = { version = "0.6.0", default-features = false, features = [
     "target-arm",
     "target-x86",
 ] }
+enum-display = "0.2.1"

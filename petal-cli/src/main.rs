@@ -3,7 +3,6 @@ use std::{
     process::{self, Command, exit},
 };
 
-use petal_codegen_driver::{Driver, options::DriverOptions};
 use petal_llvm_codegen::LLVMCodegen;
 use petal_typechecker::Typechecker;
 
@@ -68,17 +67,15 @@ fn main() {
 
     println!("info: all modules passed type checking successfully");
 
-    let mut codegen = LLVMCodegen::new(
-        DriverOptions {
-            module_name: args
-                .input
-                .with_extension("")
-                .file_name()
-                .map(|it| it.to_string_lossy().to_string())
-                .unwrap_or("unnamed module".to_owned()),
+    let module_name = args
+        .input
+        .with_extension("")
+        .file_name()
+        .map(|it| it.to_string_lossy().to_string())
+        .unwrap_or("unnamed module".to_owned());
 
-            dump_bytecode: args.dump_bytecode,
-        },
+    let mut codegen = LLVMCodegen::new(
+        &module_name,
         &compiler_state.type_pool,
         compiler_state.string_intern_pool.as_ref(),
     );
@@ -88,7 +85,7 @@ fn main() {
         process::exit(-1);
     }
 
-    let object_path = match codegen.compile_to_object() {
+    let object_path = match codegen.compile_to_object(args.dump_bytecode) {
         Ok(value) => value,
         Err(error) => {
             eprintln!("error: {}", error);

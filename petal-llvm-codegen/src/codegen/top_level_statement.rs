@@ -1,74 +1,32 @@
-use inkwell::{module::Linkage, values::BasicValueEnum};
-use petal_ast::statement::{
-    TopLevelStatementNode, TopLevelStatementNodeKind, function_declaration::FunctionDeclaration,
-};
-use petal_core::{error::Result, source_span::SourceSpan};
+use petal_ast::statement::function_declaration::FunctionDeclaration;
+use petal_core::{error::Result, source_span::SourceSpan, r#type::TypeReference};
 
-use crate::{LLVMCodegen, codegen::Codegen, context::Variable};
+use crate::{LLVMCodegen, codegen::StatementCodegen};
 
-impl<'ctx> Codegen<'ctx> for TopLevelStatementNode {
-    fn codegen(
-        &self,
-        codegen: &mut LLVMCodegen<'ctx>,
-        _span: SourceSpan,
-        _as_reference: bool,
-    ) -> Result<BasicValueEnum<'ctx>> {
-        match &self.kind {
-            TopLevelStatementNodeKind::FunctionDeclaration(function) => function.codegen(codegen, self.span, false),
-            TopLevelStatementNodeKind::Import(_) => Ok(codegen.llvm_context.bool_type().const_zero().into()),
-        }
-    }
-}
+impl<'ctx> StatementCodegen<'ctx> for FunctionDeclaration {
+    fn generate(&self, codegen: &mut LLVMCodegen, span: SourceSpan) -> Result<()> {
+        // We must be able to create a function type from the statement.
+        let parameter_types: Vec<TypeReference> = self.parameters.iter().map(|it| it.r#type).collect();
 
-impl<'ctx> Codegen<'ctx> for FunctionDeclaration {
-    fn codegen(
-        &self,
-        codegen: &mut LLVMCodegen<'ctx>,
-        span: SourceSpan,
-        _as_reference: bool,
-    ) -> Result<BasicValueEnum<'ctx>> {
+        let function_type = codegen.create_function_type(&self.return_type, &parameter_types)?;
         let function_name = codegen.string_intern_pool.resolve_reference_or_err(&self.name, span)?;
-        let function_type = codegen.create_function_type(&self.return_type, &self.parameters)?;
 
-        let linkage = if self.is_external() {
-            Some(Linkage::External)
-        } else {
-            None
-        };
-
-        let function = codegen.llvm_module.add_function(function_name, function_type, linkage);
+        // We can then create a function and start constructing its body (if it is not external).
+        let function = codegen.llvm_module.add_function(function_name, function_type, None);
 
         if !self.is_external() {
-            let block = codegen.llvm_context.append_basic_block(function, "entry");
-            codegen.llvm_builder.position_at_end(block);
+            let entry_block = codegen.llvm_context.append_basic_block(function, "entry");
+            codegen.llvm_builder.position_at_end(entry_block);
+
             codegen.context.start_scope_context();
 
-            for (index, parameter_value) in function.get_params().iter().enumerate() {
-                let parameter = self
-                    .parameters
-                    .iter()
-                    .nth(index)
-                    .expect("LLVM parameters did not match function params!");
-
-                let parameter_name = codegen
-                    .string_intern_pool
-                    .resolve_reference_or_err(&parameter.name, parameter.span)?;
-
-                parameter_value.set_name(parameter_name);
-
-                codegen.context.scope_context(parameter.span)?.declare_variable(
-                    parameter.name,
-                    Variable::parameter(parameter_value.get_type(), *parameter_value),
-                );
-            }
-
             for statement in &self.body {
-                statement.codegen(codegen, statement.span, false)?;
+                codegen.visit_statement(statement)?;
             }
 
             codegen.context.end_scope_context();
         }
 
-        Ok(function.as_global_value().as_pointer_value().into())
+        Ok(())
     }
 }

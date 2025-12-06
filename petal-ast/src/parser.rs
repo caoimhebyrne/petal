@@ -3,7 +3,10 @@ use crate::{
     expression::{
         ExpressionNode, ExpressionNodeKind,
         binary_operation::{BinaryOperation, BinaryOperationKind},
+        identifier_reference::IdentifierReference,
+        integer_literal::IntegerLiteral,
         reference::Reference,
+        string_literal::StringLiteral,
     },
     node::FunctionCall,
     statement::{
@@ -201,15 +204,9 @@ impl<'ctx> ASTParser<'ctx> {
                 (Reference::new(inner_value).into(), span)
             }
 
-            TokenKind::IntegerLiteral(value) => (
-                ExpressionNodeKind::IntegerLiteral { value },
-                self.stream.consume_or_err()?.span,
-            ),
+            TokenKind::IntegerLiteral(value) => (IntegerLiteral::new(value).into(), self.stream.consume_or_err()?.span),
 
-            TokenKind::StringLiteral(value) => (
-                ExpressionNodeKind::StringLiteral { value },
-                self.stream.consume_or_err()?.span,
-            ),
+            TokenKind::StringLiteral(value) => (StringLiteral::new(value).into(), self.stream.consume_or_err()?.span),
 
             TokenKind::Identifier(_) if self.stream.nth_is(1, TokenKind::LeftParenthesis) => {
                 let (function_call, span) = self.parse_function_call()?;
@@ -217,7 +214,7 @@ impl<'ctx> ASTParser<'ctx> {
             }
 
             TokenKind::Identifier(identifier) => (
-                ExpressionNodeKind::IdentifierReference { identifier },
+                IdentifierReference::new(identifier).into(),
                 self.stream.consume_or_err()?.span,
             ),
 

@@ -3,7 +3,6 @@ resolver = "3"
 members = [
     "petal-ast",
     "petal-cli",
-    "petal-codegen-driver",
     "petal-core",
     "petal-lexer",
     "petal-llvm-codegen",

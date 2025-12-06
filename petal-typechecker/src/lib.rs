@@ -102,10 +102,10 @@ impl<'a> Typechecker<'a> {
                 }
             }
 
-            ExpressionNodeKind::IdentifierReference { identifier } => self
+            ExpressionNodeKind::IdentifierReference(identifier) => self
                 .context
                 .function_context(expression.span)?
-                .get_variable(&identifier, expression.span)?
+                .get_variable(&identifier.identifier, expression.span)?
                 .r#type
                 .clone(),
 

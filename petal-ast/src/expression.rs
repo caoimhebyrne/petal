@@ -3,12 +3,18 @@
 use petal_core::{source_span::SourceSpan, string_intern::StringReference, r#type::TypeReference};
 
 use crate::{
-    expression::{binary_operation::BinaryOperation, reference::Reference},
+    expression::{
+        binary_operation::BinaryOperation, identifier_reference::IdentifierReference, integer_literal::IntegerLiteral,
+        reference::Reference, string_literal::StringLiteral,
+    },
     node::FunctionCall,
 };
 
 pub mod binary_operation;
+pub mod identifier_reference;
+pub mod integer_literal;
 pub mod reference;
+pub mod string_literal;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct ExpressionNode {
@@ -41,13 +47,13 @@ impl ExpressionNode {
 #[derive(Debug, PartialEq, Clone)]
 pub enum ExpressionNodeKind {
     /// An integer literal.
-    IntegerLiteral { value: u64 },
+    IntegerLiteral(IntegerLiteral),
 
     /// A string literal.
-    StringLiteral { value: StringReference },
+    StringLiteral(StringLiteral),
 
     /// An identifier reference.
-    IdentifierReference { identifier: StringReference },
+    IdentifierReference(IdentifierReference),
 
     /// A binary operation between two expression nodes.
     BinaryOperation(BinaryOperation),
