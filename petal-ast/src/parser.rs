@@ -1,7 +1,7 @@
 use crate::{
     error::ASTError,
     expression::{
-        ExpressionNode, ExpressionNodeKind,
+        ExpressionNode,
         binary_operation::{BinaryOperation, BinaryOperationKind},
         identifier_reference::IdentifierReference,
         integer_literal::IntegerLiteral,

@@ -1,6 +1,6 @@
 use petal_core::{error::Result, source_span::SourceSpan, string_intern::StringInternPool};
 
-use crate::{context::scope::ScopeContext, error::LLVMCodegenErrorKind};
+use crate::{context::scope::ScopeContext, error::LLVMCodegenError};
 
 pub mod scope;
 
@@ -33,7 +33,7 @@ impl<'ctx> CodegenContext<'ctx> {
     pub fn scope_context(&mut self, span: SourceSpan) -> Result<&mut ScopeContext<'ctx>> {
         self.scope_context
             .as_mut()
-            .ok_or(LLVMCodegenErrorKind::missing_scope_context(span).into())
+            .ok_or(LLVMCodegenError::missing_scope_context(span).into())
     }
 
     /// Destroys the scope within this context.

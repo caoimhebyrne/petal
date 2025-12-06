@@ -16,7 +16,7 @@ pub trait StatementCodegen<'ctx> {
     ///
     /// Returns:
     /// - A [Result] indicating whether the operation was successful.
-    fn generate(&self, codegen: &mut LLVMCodegen, span: SourceSpan) -> Result<()>;
+    fn generate(&self, codegen: &mut LLVMCodegen<'ctx>, span: SourceSpan) -> Result<()>;
 }
 
 pub trait ExpressionCodegen<'ctx> {
@@ -31,7 +31,7 @@ pub trait ExpressionCodegen<'ctx> {
     /// - A [Result] wrapping a [BasicValueEnum] that this expression produced.
     fn generate(
         &self,
-        codegen: &mut LLVMCodegen,
+        codegen: &mut LLVMCodegen<'ctx>,
         r#type: &BasicTypeEnum<'ctx>,
         span: SourceSpan,
     ) -> Result<BasicValueEnum<'ctx>>;

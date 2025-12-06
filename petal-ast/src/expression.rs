@@ -1,6 +1,6 @@
 ///! An expression node is similar to a statement node. The only difference between them being the fact that an
 ///! expression yields a certain value.
-use petal_core::{source_span::SourceSpan, string_intern::StringReference, r#type::TypeReference};
+use petal_core::{source_span::SourceSpan, r#type::TypeReference};
 
 use crate::{
     expression::{

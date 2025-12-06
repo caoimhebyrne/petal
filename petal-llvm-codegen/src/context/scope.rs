@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::error::LLVMCodegenError;
 use inkwell::{
     types::BasicTypeEnum,
     values::{BasicValueEnum, PointerValue},
@@ -9,8 +10,6 @@ use petal_core::{
     source_span::SourceSpan,
     string_intern::{StringInternPool, StringReference},
 };
-
-use crate::error::LLVMCodegenErrorKind;
 
 pub struct ScopeContext<'ctx> {
     /// A reference to the string intern pool to read string values from.
@@ -42,7 +41,7 @@ impl<'ctx> ScopeContext<'ctx> {
             Some(value) => Ok(value),
             None => {
                 let variable_name = self.string_intern_pool.resolve_reference_or_err(identifier, span)?;
-                LLVMCodegenErrorKind::undeclared_variable(variable_name, span).into()
+                LLVMCodegenError::undeclared_variable(variable_name, span).into()
             }
         }
     }
