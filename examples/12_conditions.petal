@@ -1,0 +1,11 @@
+// Petal also has support for conditional blocks. These are blocks that are only run if the condition before them is 
+// met.
+func main() -> i32 {
+    // The condition here is always true, meaning 5 will always be returned by this example. If you change it to false,
+    // then 10 will be returned.
+    if true {
+        return 5;
+    } else {
+        return 10;
+    }
+}
