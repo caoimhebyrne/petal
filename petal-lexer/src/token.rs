@@ -108,4 +108,10 @@ pub enum Keyword {
 
     /// A structure.
     Struct,
+
+    /// The `true` boolean literal.
+    True,
+
+    /// The `false` boolean literal.
+    False,
 }

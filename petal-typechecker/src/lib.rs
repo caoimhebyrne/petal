@@ -126,6 +126,8 @@ impl<'a> Typechecker<'a> {
                     .allocate(Type::Resolved(ResolvedType::UnsignedInteger(8))),
             ),
 
+            ExpressionNodeKind::BooleanLiteral(literal) => literal.typecheck(self, expected_type, expression.span)?,
+
             #[allow(unreachable_patterns)]
             _ => return TypecheckerError::unsupported_expression(expression.clone()).into(),
         };
@@ -170,6 +172,7 @@ impl<'a> Typechecker<'a> {
             "u32" => ResolvedType::UnsignedInteger(32),
 
             "void" => ResolvedType::Void,
+            "bool" => ResolvedType::Boolean,
 
             _ => {
                 // Otherwise, we can attempt to look it up in the current context.

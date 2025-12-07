@@ -1,0 +1,12 @@
+// #standard-output: Boolean value: 1
+
+extern func printf(format: &u8, arg1: bool);
+
+func get_boolean() -> bool {
+    return true;
+}
+
+func main() -> i32 {
+    printf("Boolean value: %d", get_boolean());
+    return 0;
+}

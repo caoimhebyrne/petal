@@ -4,6 +4,7 @@ use inkwell::{
 };
 use petal_ast::expression::{
     binary_operation::{BinaryOperation, BinaryOperationKind},
+    boolean_literal::BooleanLiteral,
     identifier_reference::IdentifierReference,
     integer_literal::IntegerLiteral,
     string_literal::StringLiteral,
@@ -106,5 +107,23 @@ impl<'ctx> ExpressionCodegen<'ctx> for BinaryOperation {
         }
         .into_codegen_result(span)
         .map(|it| it.as_basic_value_enum())
+    }
+}
+
+impl<'ctx> ExpressionCodegen<'ctx> for BooleanLiteral {
+    fn generate(
+        &self,
+        codegen: &mut LLVMCodegen<'ctx>,
+        _type: &BasicTypeEnum<'ctx>,
+        _options: ExpressionCodegenOptions,
+        _span: SourceSpan,
+    ) -> Result<BasicValueEnum<'ctx>> {
+        let value = if self.value { 1 } else { 0 };
+
+        Ok(codegen
+            .llvm_context
+            .bool_type()
+            .const_int(value, false)
+            .as_basic_value_enum())
     }
 }

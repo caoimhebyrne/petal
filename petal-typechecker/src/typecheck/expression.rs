@@ -1,4 +1,4 @@
-use petal_ast::expression::binary_operation::BinaryOperation;
+use petal_ast::expression::{binary_operation::BinaryOperation, boolean_literal::BooleanLiteral};
 use petal_core::{error::Result, source_span::SourceSpan, r#type::ResolvedType};
 
 use crate::{Typechecker, error::TypecheckerError, typecheck::Typecheck};
@@ -19,5 +19,16 @@ impl<'a> Typecheck<'a> for BinaryOperation {
         }
 
         Ok(left_type)
+    }
+}
+
+impl<'a> Typecheck<'a> for BooleanLiteral {
+    fn typecheck(
+        &mut self,
+        _typechecker: &mut Typechecker<'a>,
+        _expected_type: Option<&ResolvedType>,
+        _span: SourceSpan,
+    ) -> Result<ResolvedType> {
+        Ok(ResolvedType::Boolean)
     }
 }

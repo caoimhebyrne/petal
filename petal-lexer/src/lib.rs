@@ -286,6 +286,8 @@ impl<'a> Lexer<'a> {
             "import" => Keyword::Import,
             "type" => Keyword::Type,
             "struct" => Keyword::Struct,
+            "true" => Keyword::True,
+            "false" => Keyword::False,
             _ => return None,
         };
 

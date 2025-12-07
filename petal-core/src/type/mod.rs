@@ -49,6 +49,9 @@ pub enum ResolvedType {
     #[display("void")]
     Void,
 
+    /// The boolean type.
+    Boolean,
+
     /// The type used for a variadic argument receiver.
     #[display("variadic")]
     Variadic,

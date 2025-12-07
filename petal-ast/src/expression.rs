@@ -4,13 +4,14 @@ use petal_core::{source_span::SourceSpan, r#type::TypeReference};
 
 use crate::{
     expression::{
-        binary_operation::BinaryOperation, identifier_reference::IdentifierReference, integer_literal::IntegerLiteral,
-        reference::Reference, string_literal::StringLiteral,
+        binary_operation::BinaryOperation, boolean_literal::BooleanLiteral, identifier_reference::IdentifierReference,
+        integer_literal::IntegerLiteral, reference::Reference, string_literal::StringLiteral,
     },
     node::FunctionCall,
 };
 
 pub mod binary_operation;
+pub mod boolean_literal;
 pub mod identifier_reference;
 pub mod integer_literal;
 pub mod reference;
@@ -63,4 +64,7 @@ pub enum ExpressionNodeKind {
 
     /// A reference to another value.
     Reference(Reference),
+
+    /// A boolean literal.
+    BooleanLiteral(BooleanLiteral),
 }

@@ -156,6 +156,8 @@ impl<'ctx> LLVMCodegen<'ctx> {
                 )
             }
 
+            ExpressionNodeKind::BooleanLiteral(literal) => literal.generate(self, &r#type, options, node.span),
+
             #[allow(unreachable_patterns)]
             _ => return LLVMCodegenError::unprocessable_expression(node).into(),
         }
@@ -198,6 +200,8 @@ impl<'ctx> LLVMCodegen<'ctx> {
 
             ResolvedType::Reference(_) => self.llvm_context.ptr_type(AddressSpace::default()).as_basic_type_enum(),
 
+            ResolvedType::Boolean => self.llvm_context.bool_type().as_basic_type_enum(),
+
             _ => panic!(),
         };
 
@@ -228,6 +232,8 @@ impl<'ctx> LLVMCodegen<'ctx> {
                 .llvm_context
                 .ptr_type(AddressSpace::default())
                 .fn_type(&parameters, false),
+
+            ResolvedType::Boolean => self.llvm_context.bool_type().fn_type(&parameters, false),
 
             _ => panic!(),
         })

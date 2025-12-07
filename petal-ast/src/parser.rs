@@ -3,6 +3,7 @@ use crate::{
     expression::{
         ExpressionNode,
         binary_operation::{BinaryOperation, BinaryOperationKind},
+        boolean_literal::BooleanLiteral,
         identifier_reference::IdentifierReference,
         integer_literal::IntegerLiteral,
         reference::Reference,
@@ -217,6 +218,11 @@ impl<'ctx> ASTParser<'ctx> {
                 IdentifierReference::new(identifier).into(),
                 self.stream.consume_or_err()?.span,
             ),
+
+            TokenKind::Keyword(Keyword::True) => (BooleanLiteral::new(true).into(), self.stream.consume_or_err()?.span),
+            TokenKind::Keyword(Keyword::False) => {
+                (BooleanLiteral::new(false).into(), self.stream.consume_or_err()?.span)
+            }
 
             _ => return ASTError::unexpected_token(token).into(),
         };
