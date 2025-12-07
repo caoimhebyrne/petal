@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use enum_display::EnumDisplay;
 
 use crate::{error::Result, source_span::SourceSpan, string_intern::StringReference, r#type::pool::TypePool};
@@ -55,25 +53,9 @@ pub enum ResolvedType {
     #[display("variadic")]
     Variadic,
 
-    /// A structure type.
-    #[display("structure")]
-    Structure(StructureType),
-
     /// A reference of another type. This other type may not be resolved.
     #[display("reference({0:?})")]
     Reference(TypeId),
-}
-
-/// A structure type.
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct StructureType {
-    pub fields: HashMap<StringReference, ResolvedType>,
-}
-
-impl StructureType {
-    pub fn new(fields: HashMap<StringReference, ResolvedType>) -> Self {
-        StructureType { fields }
-    }
 }
 
 impl ResolvedType {
