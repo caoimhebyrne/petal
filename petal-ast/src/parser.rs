@@ -158,7 +158,7 @@ impl<'ctx> ASTParser<'ctx> {
 
     /// Attempts to parse a multiplication or division binary operation at the [ASTParser]'s current position.
     fn parse_mul_or_div_binary_operation(&mut self) -> Result<ExpressionNode> {
-        let left = self.parse_value()?;
+        let left = self.parse_equals_binary_operation()?;
 
         let operator_token = match self.stream.peek() {
             Some(token) => *token,
@@ -175,6 +175,38 @@ impl<'ctx> ASTParser<'ctx> {
 
         // We can consume the operation token now.
         self.stream.consume_or_err()?;
+
+        let right = self.parse_expression()?;
+        let span = SourceSpan::between(&left.span, &right.span);
+
+        Ok(ExpressionNode::from(
+            BinaryOperation::new(binary_operation_kind, left, right),
+            span,
+        ))
+    }
+
+    /// Attempts to parse an equals binary operation at the [ASTParser]'s current position.
+    fn parse_equals_binary_operation(&mut self) -> Result<ExpressionNode> {
+        let left = self.parse_value()?;
+
+        let operator_token = match self.stream.peek() {
+            Some(token) => *token,
+            None => return Ok(left),
+        };
+
+        let binary_operation_kind = match operator_token.kind {
+            TokenKind::Equals => {
+                self.stream.consume_or_err()?;
+
+                // The next token must also be an equals.
+                self.stream.expect(TokenKind::Equals)?;
+
+                BinaryOperationKind::Equals
+            }
+
+            // The next token is not compatible with a binary operation.
+            _ => return Ok(left),
+        };
 
         let right = self.parse_expression()?;
         let span = SourceSpan::between(&left.span, &right.span);

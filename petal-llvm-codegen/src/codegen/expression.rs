@@ -1,4 +1,5 @@
 use inkwell::{
+    IntPredicate,
     types::BasicTypeEnum,
     values::{BasicValue, BasicValueEnum},
 };
@@ -104,6 +105,10 @@ impl<'ctx> ExpressionCodegen<'ctx> for BinaryOperation {
             BinaryOperationKind::Subtract => codegen.llvm_builder.build_int_sub(left, right, "sub"),
             BinaryOperationKind::Divide => codegen.llvm_builder.build_int_signed_div(left, right, "div"),
             BinaryOperationKind::Multiply => codegen.llvm_builder.build_int_mul(left, right, "mul"),
+
+            BinaryOperationKind::Equals => codegen
+                .llvm_builder
+                .build_int_compare(IntPredicate::EQ, left, right, "eq"),
         }
         .into_codegen_result(span)
         .map(|it| it.as_basic_value_enum())

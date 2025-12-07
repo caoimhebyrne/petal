@@ -31,6 +31,7 @@ pub enum BinaryOperationKind {
     Subtract,
     Multiply,
     Divide,
+    Equals,
 }
 
 impl Into<ExpressionNodeKind> for BinaryOperation {

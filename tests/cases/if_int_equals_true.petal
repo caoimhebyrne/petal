@@ -1,0 +1,13 @@
+// #standard-output: Value: true
+
+extern func printf(format: &u8);
+
+func main() -> i32 {
+    if 5 == 5 {
+        printf("Value: true");
+    } else {
+        printf("Value: false");
+    }
+
+    return 0;
+}

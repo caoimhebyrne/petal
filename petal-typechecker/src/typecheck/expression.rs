@@ -1,4 +1,7 @@
-use petal_ast::expression::{binary_operation::BinaryOperation, boolean_literal::BooleanLiteral};
+use petal_ast::expression::{
+    binary_operation::{BinaryOperation, BinaryOperationKind},
+    boolean_literal::BooleanLiteral,
+};
 use petal_core::{error::Result, source_span::SourceSpan, r#type::ResolvedType};
 
 use crate::{Typechecker, error::TypecheckerError, typecheck::Typecheck};
@@ -16,6 +19,11 @@ impl<'a> Typecheck<'a> for BinaryOperation {
 
         if left_type != right_type {
             return TypecheckerError::expected_type(left_type, right_type, self.right.span).into();
+        }
+
+        // If this is a comparison, then we will be returning a boolean.
+        if self.kind == BinaryOperationKind::Equals {
+            return Ok(ResolvedType::Boolean);
         }
 
         Ok(left_type)
