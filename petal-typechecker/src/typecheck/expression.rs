@@ -1,7 +1,4 @@
-use petal_ast::expression::{
-    binary_operation::{BinaryOperation, BinaryOperationKind},
-    boolean_literal::BooleanLiteral,
-};
+use petal_ast::expression::{binary_operation::BinaryOperation, boolean_literal::BooleanLiteral};
 use petal_core::{error::Result, source_span::SourceSpan, r#type::ResolvedType};
 
 use crate::{Typechecker, error::TypecheckerError, typecheck::Typecheck};
@@ -22,7 +19,7 @@ impl<'a> Typecheck<'a> for BinaryOperation {
         }
 
         // If this is a comparison, then we will be returning a boolean.
-        if self.kind == BinaryOperationKind::Equals {
+        if self.kind.is_comparison() {
             return Ok(ResolvedType::Boolean);
         }
 

@@ -109,6 +109,12 @@ impl<'ctx> ExpressionCodegen<'ctx> for BinaryOperation {
             BinaryOperationKind::Equals => codegen
                 .llvm_builder
                 .build_int_compare(IntPredicate::EQ, left, right, "eq"),
+
+            BinaryOperationKind::NotEquals => {
+                codegen
+                    .llvm_builder
+                    .build_int_compare(IntPredicate::NE, left, right, "ne")
+            }
         }
         .into_codegen_result(span)
         .map(|it| it.as_basic_value_enum())

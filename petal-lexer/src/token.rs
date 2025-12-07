@@ -83,6 +83,9 @@ pub enum TokenKind {
     // .
     Period,
 
+    // !
+    ExclamationMark,
+
     // This is a token that is ignored by most implementations, but might be useful in the future for some
     // cool tooling.
     Comment(StringReference),
@@ -120,4 +123,7 @@ pub enum Keyword {
 
     /// An else block of an if condition.
     Else,
+
+    /// A while loop.
+    While,
 }

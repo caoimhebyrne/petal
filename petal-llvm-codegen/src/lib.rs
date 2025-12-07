@@ -80,12 +80,12 @@ impl<'ctx> LLVMCodegen<'ctx> {
     /// Compiles the generated LLVM module to an object. [LLVMCodegen::visit] must be called to generate code before
     /// calling this method.
     pub fn compile_to_object(&self, dump_bytecode: bool) -> std::result::Result<PathBuf, String> {
-        if let Err(error) = self.llvm_module.verify() {
-            return Err(error.to_string());
-        }
-
         if dump_bytecode {
             println!("{}", self.llvm_module.print_to_string().to_string());
+        }
+
+        if let Err(error) = self.llvm_module.verify() {
+            return Err(error.to_string());
         }
 
         // We will write the object file to a temporary path, the caller is responsible for linking the object file into
@@ -176,6 +176,7 @@ impl<'ctx> LLVMCodegen<'ctx> {
             StatementNodeKind::VariableAssignment(assignment) => assignment.generate(self, node.span),
             StatementNodeKind::FunctionCall(call) => StatementCodegen::generate(call, self, node.span),
             StatementNodeKind::If(r#if) => r#if.generate(self, node.span),
+            StatementNodeKind::WhileLoop(while_loop) => while_loop.generate(self, node.span),
 
             #[allow(unreachable_patterns)]
             _ => return LLVMCodegenError::unprocessable_statement(node).into(),

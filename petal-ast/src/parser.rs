@@ -18,6 +18,7 @@ use crate::{
         r#return::Return,
         variable_assignment::VariableAssignment,
         variable_declaration::VariableDeclaration,
+        while_loop::WhileLoop,
     },
     token_stream_ext::TokenStreamExt,
 };
@@ -93,6 +94,9 @@ impl<'ctx> ASTParser<'ctx> {
 
             // if <condition> { ... }
             TokenKind::Keyword(Keyword::If) => (StatementNode::from_pair(self.parse_if()?), false),
+
+            // while <condition> { ... }
+            TokenKind::Keyword(Keyword::While) => (StatementNode::from_pair(self.parse_while()?), false),
 
             // &<type> <identifier> = <expression>;
             TokenKind::Ampersand => (StatementNode::from_pair(self.parse_variable_declaration()?), true),
@@ -202,6 +206,15 @@ impl<'ctx> ASTParser<'ctx> {
                 self.stream.expect(TokenKind::Equals)?;
 
                 BinaryOperationKind::Equals
+            }
+
+            TokenKind::ExclamationMark => {
+                self.stream.consume_or_err()?;
+
+                // The next token must also be an equals.
+                self.stream.expect(TokenKind::Equals)?;
+
+                BinaryOperationKind::NotEquals
             }
 
             // The next token is not compatible with a binary operation.
@@ -485,6 +498,32 @@ impl<'ctx> ASTParser<'ctx> {
         Ok((
             If::new(condition, then_block, else_block),
             SourceSpan::between(&if_keyword.span, &left_brace_token.span),
+        ))
+    }
+
+    /// Attempts to parse a while loop from the [ASTParser]'s current position.
+    fn parse_while(&mut self) -> Result<(WhileLoop, SourceSpan)> {
+        // The first token must be the while keyword.
+        let while_keyword = *self.stream.expect(TokenKind::Keyword(Keyword::While))?;
+
+        // The next token(s) must make up an expression for the condition.
+        let condition = self.parse_expression()?;
+
+        // The next token must be an opening brace.
+        let left_brace_token = *self.stream.expect(TokenKind::LeftBrace)?;
+
+        // Then, some statements must make up the body of the loop.
+        let mut block: Vec<StatementNode> = vec![];
+
+        while !self.stream.next_is(TokenKind::RightBrace) {
+            block.push(self.parse_statement()?);
+        }
+
+        self.stream.expect(TokenKind::RightBrace)?;
+
+        Ok((
+            WhileLoop::new(condition, block),
+            SourceSpan::between(&while_keyword.span, &left_brace_token.span),
         ))
     }
 

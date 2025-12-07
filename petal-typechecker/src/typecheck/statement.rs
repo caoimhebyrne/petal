@@ -6,6 +6,7 @@ use crate::{
 };
 use petal_ast::statement::{
     r#if::If, r#return::Return, variable_assignment::VariableAssignment, variable_declaration::VariableDeclaration,
+    while_loop::WhileLoop,
 };
 use petal_core::{error::Result, source_span::SourceSpan, r#type::ResolvedType};
 
@@ -102,6 +103,22 @@ impl<'a> TypecheckStatement<'a> for If {
         }
 
         for statement in &mut self.else_block {
+            typechecker.check_statement(statement)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<'a> TypecheckStatement<'a> for WhileLoop {
+    fn typecheck_statement(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<()> {
+        // The condition must be resolvable, and it must be a boolean.
+        let condition_type = typechecker.check_expression(&mut self.condition, Some(&ResolvedType::Boolean))?;
+        if condition_type != ResolvedType::Boolean {
+            return TypecheckerError::expected_type(ResolvedType::Boolean, condition_type, span).into();
+        }
+
+        for statement in &mut self.block {
             typechecker.check_statement(statement)?;
         }
 

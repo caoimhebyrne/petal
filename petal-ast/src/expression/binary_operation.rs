@@ -32,6 +32,20 @@ pub enum BinaryOperationKind {
     Multiply,
     Divide,
     Equals,
+    NotEquals,
+}
+
+impl BinaryOperationKind {
+    pub fn is_comparison(&self) -> bool {
+        match self {
+            BinaryOperationKind::Add
+            | BinaryOperationKind::Subtract
+            | BinaryOperationKind::Multiply
+            | BinaryOperationKind::Divide => false,
+
+            BinaryOperationKind::Equals | BinaryOperationKind::NotEquals => true,
+        }
+    }
 }
 
 impl Into<ExpressionNodeKind> for BinaryOperation {

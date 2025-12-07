@@ -101,6 +101,7 @@ impl<'a> Lexer<'a> {
                 '*' => TokenKind::Asterisk,
                 '&' => TokenKind::Ampersand,
                 '.' => TokenKind::Period,
+                '!' => TokenKind::ExclamationMark,
 
                 '/' => return self.parse_forward_slash_or_comment(),
                 '"' => return self.parse_string_literal(),
@@ -290,6 +291,7 @@ impl<'a> Lexer<'a> {
             "false" => Keyword::False,
             "if" => Keyword::If,
             "else" => Keyword::Else,
+            "while" => Keyword::While,
             _ => return None,
         };
 

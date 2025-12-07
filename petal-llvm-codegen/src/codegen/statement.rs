@@ -1,6 +1,6 @@
 use petal_ast::statement::{
     StatementNodeKind, r#if::If, r#return::Return, variable_assignment::VariableAssignment,
-    variable_declaration::VariableDeclaration,
+    variable_declaration::VariableDeclaration, while_loop::WhileLoop,
 };
 use petal_core::{error::Result, source_span::SourceSpan};
 
@@ -145,6 +145,49 @@ impl<'ctx> StatementCodegen<'ctx> for If {
             // And finally, we can return to the end.
             codegen.llvm_builder.position_at_end(end_block);
         }
+
+        Ok(())
+    }
+}
+
+impl<'ctx> StatementCodegen<'ctx> for WhileLoop {
+    fn generate(&self, codegen: &mut LLVMCodegen<'ctx>, span: SourceSpan) -> Result<()> {
+        // Before we do any codegen, we must first set up the blocks that we will need.
+        let current_block = codegen.llvm_builder.get_insert_block().expect("");
+
+        let condition_block = codegen.llvm_context.insert_basic_block_after(current_block, "cond");
+        let while_block = codegen.llvm_context.insert_basic_block_after(condition_block, "while");
+        let end_block = codegen.llvm_context.insert_basic_block_after(while_block, "end");
+
+        // 1. Jump to the condition block.
+        codegen
+            .llvm_builder
+            .build_unconditional_branch(condition_block)
+            .into_codegen_result(span)?;
+
+        codegen.llvm_builder.position_at_end(condition_block);
+
+        // 2. Evaluate the condition.
+        let condition = codegen.visit_expression(&self.condition)?;
+
+        codegen
+            .llvm_builder
+            .build_conditional_branch(condition.into_int_value(), while_block, end_block)
+            .into_codegen_result(span)?;
+
+        codegen.llvm_builder.position_at_end(while_block);
+
+        for statement in &self.block {
+            codegen.visit_statement(statement)?;
+        }
+
+        // 3. After the block has been executed, jump back to the condition block.
+        codegen
+            .llvm_builder
+            .build_unconditional_branch(condition_block)
+            .into_codegen_result(span)?;
+
+        codegen.llvm_builder.position_at_end(end_block);
 
         Ok(())
     }
