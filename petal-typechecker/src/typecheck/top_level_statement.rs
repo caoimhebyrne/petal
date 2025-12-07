@@ -42,8 +42,23 @@ impl<'a> TypecheckStatement<'a> for FunctionDeclaration {
 
             for statement in &mut self.body {
                 typechecker.check_statement(statement)?;
+
                 if let StatementNodeKind::Return(_) = statement.kind {
                     found_return_statement = true;
+                } else if let StatementNodeKind::If(r#if) = &statement.kind {
+                    for then_statement in &r#if.then_block {
+                        if let StatementNodeKind::Return(_) = then_statement.kind {
+                            found_return_statement = true;
+                        }
+                    }
+
+                    if found_return_statement {
+                        for else_statement in &r#if.else_block {
+                            if let StatementNodeKind::Return(_) = else_statement.kind {
+                                found_return_statement = true;
+                            }
+                        }
+                    }
                 }
             }
 

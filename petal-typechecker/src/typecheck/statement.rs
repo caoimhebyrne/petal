@@ -97,7 +97,11 @@ impl<'a> TypecheckStatement<'a> for If {
             return TypecheckerError::expected_type(ResolvedType::Boolean, condition_type, span).into();
         }
 
-        for statement in &mut self.block {
+        for statement in &mut self.then_block {
+            typechecker.check_statement(statement)?;
+        }
+
+        for statement in &mut self.else_block {
             typechecker.check_statement(statement)?;
         }
 

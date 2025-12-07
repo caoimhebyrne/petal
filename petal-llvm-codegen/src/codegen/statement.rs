@@ -104,7 +104,7 @@ impl<'ctx> StatementCodegen<'ctx> for If {
 
         let mut found_return_in_if_block = false;
 
-        for statement in &self.block {
+        for statement in &self.then_block {
             codegen.visit_statement(statement)?;
 
             if let StatementNodeKind::Return(_) = statement.kind {
@@ -119,25 +119,32 @@ impl<'ctx> StatementCodegen<'ctx> for If {
                 .into_codegen_result(span)?;
         }
 
-        // TODO: After we generate the true block, we can generate the else block.
-
         codegen.llvm_builder.position_at_end(else_block);
 
-        // let mut found_return_in_if_block = false;
+        let mut found_return_in_else_block = false;
 
-        // ...
+        for statement in &self.else_block {
+            codegen.visit_statement(statement)?;
 
-        // if !found_return_in_else_block {
+            if let StatementNodeKind::Return(_) = statement.kind {
+                found_return_in_else_block = true;
+            }
+        }
 
-        codegen
-            .llvm_builder
-            .build_unconditional_branch(end_block)
-            .into_codegen_result(span)?;
+        if !found_return_in_else_block {
+            codegen
+                .llvm_builder
+                .build_unconditional_branch(end_block)
+                .into_codegen_result(span)?;
+        }
 
-        // }
-
-        // And finally, we can return to the end.
-        codegen.llvm_builder.position_at_end(end_block);
+        if found_return_in_if_block && found_return_in_else_block {
+            // Both blocks had a return, we do not need the final end block.
+            let _ = end_block.remove_from_function();
+        } else {
+            // And finally, we can return to the end.
+            codegen.llvm_builder.position_at_end(end_block);
+        }
 
         Ok(())
     }

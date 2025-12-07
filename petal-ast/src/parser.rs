@@ -427,16 +427,31 @@ impl<'ctx> ASTParser<'ctx> {
         let left_brace_token = *self.stream.expect(TokenKind::LeftBrace)?;
 
         // Then, some statements must make up the body of the if-statement.
-        let mut block: Vec<StatementNode> = vec![];
+        let mut then_block: Vec<StatementNode> = vec![];
 
         while !self.stream.next_is(TokenKind::RightBrace) {
-            block.push(self.parse_statement()?);
+            then_block.push(self.parse_statement()?);
         }
 
         self.stream.expect(TokenKind::RightBrace)?;
 
+        // There may be an else block.
+        let mut else_block: Vec<StatementNode> = vec![];
+
+        if self.stream.next_is(TokenKind::Keyword(Keyword::Else)) {
+            self.stream.consume_or_err()?;
+
+            self.stream.expect(TokenKind::LeftBrace)?;
+
+            while !self.stream.next_is(TokenKind::RightBrace) {
+                else_block.push(self.parse_statement()?);
+            }
+
+            self.stream.expect(TokenKind::RightBrace)?;
+        }
+
         Ok((
-            If::new(condition, block),
+            If::new(condition, then_block, else_block),
             SourceSpan::between(&if_keyword.span, &left_brace_token.span),
         ))
     }

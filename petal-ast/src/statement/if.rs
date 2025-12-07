@@ -10,12 +10,19 @@ pub struct If {
     pub condition: ExpressionNode,
 
     /// The block of code to execute if the [condition] is true.
-    pub block: Vec<StatementNode>,
+    pub then_block: Vec<StatementNode>,
+
+    /// The block of code to execute if the [condition] is false.
+    pub else_block: Vec<StatementNode>,
 }
 
 impl If {
-    pub fn new(condition: ExpressionNode, block: Vec<StatementNode>) -> Self {
-        If { condition, block }
+    pub fn new(condition: ExpressionNode, then_block: Vec<StatementNode>, else_block: Vec<StatementNode>) -> Self {
+        If {
+            condition,
+            then_block,
+            else_block,
+        }
     }
 }
 

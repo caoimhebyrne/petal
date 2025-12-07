@@ -289,6 +289,7 @@ impl<'a> Lexer<'a> {
             "true" => Keyword::True,
             "false" => Keyword::False,
             "if" => Keyword::If,
+            "else" => Keyword::Else,
             _ => return None,
         };
 

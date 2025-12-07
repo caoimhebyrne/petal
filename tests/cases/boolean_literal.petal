@@ -1,12 +1,17 @@
-// #standard-output: Boolean value: 1
+// #standard-output: Value: true
 
-extern func printf(format: &u8, arg1: bool);
+extern func printf(format: &u8);
 
 func get_boolean() -> bool {
     return true;
 }
 
 func main() -> i32 {
-    printf("Boolean value: %d", get_boolean());
+    if get_boolean() {
+        printf("Value: true");
+    } else {
+        printf("Value: false");
+    }
+
     return 0;
 }

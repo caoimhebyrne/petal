@@ -117,4 +117,7 @@ pub enum Keyword {
 
     /// An if-condition.
     If,
+
+    /// An else block of an if condition.
+    Else,
 }
