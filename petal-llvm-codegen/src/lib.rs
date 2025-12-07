@@ -175,6 +175,7 @@ impl<'ctx> LLVMCodegen<'ctx> {
             StatementNodeKind::VariableDeclaration(declaration) => declaration.generate(self, node.span),
             StatementNodeKind::VariableAssignment(assignment) => assignment.generate(self, node.span),
             StatementNodeKind::FunctionCall(call) => StatementCodegen::generate(call, self, node.span),
+            StatementNodeKind::If(r#if) => r#if.generate(self, node.span),
 
             #[allow(unreachable_patterns)]
             _ => return LLVMCodegenError::unprocessable_statement(node).into(),

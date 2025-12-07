@@ -13,6 +13,7 @@ use crate::{
     statement::{
         StatementNode, TopLevelStatementNode,
         function_declaration::{FunctionDeclaration, FunctionModifier, FunctionParameter},
+        r#if::If,
         import::Import,
         r#return::Return,
         variable_assignment::VariableAssignment,
@@ -87,31 +88,36 @@ impl<'ctx> ASTParser<'ctx> {
 
         let token = *self.stream.peek_or_err()?;
 
-        let node = match token.kind {
-            TokenKind::Keyword(Keyword::Return) => StatementNode::from_pair(self.parse_return()?),
+        let (node, expect_semicolon) = match token.kind {
+            TokenKind::Keyword(Keyword::Return) => (StatementNode::from_pair(self.parse_return()?), true),
+
+            // if <condition> { ... }
+            TokenKind::Keyword(Keyword::If) => (StatementNode::from_pair(self.parse_if()?), false),
 
             // &<type> <identifier> = <expression>;
-            TokenKind::Ampersand => StatementNode::from_pair(self.parse_variable_declaration()?),
+            TokenKind::Ampersand => (StatementNode::from_pair(self.parse_variable_declaration()?), true),
 
             // (<type>) <identifier> = <expression>;
             TokenKind::Identifier(_) if self.stream.nth_is(2, TokenKind::Equals) => {
-                StatementNode::from_pair(self.parse_variable_declaration()?)
+                (StatementNode::from_pair(self.parse_variable_declaration()?), true)
             }
 
             // <identifier> = <expression>;
             TokenKind::Identifier(_) if self.stream.nth_is(1, TokenKind::Equals) => {
-                StatementNode::from_pair(self.parse_variable_assignment()?)
+                (StatementNode::from_pair(self.parse_variable_assignment()?), true)
             }
 
             // <name>(...)
             TokenKind::Identifier(_) if self.stream.nth_is(1, TokenKind::LeftParenthesis) => {
-                StatementNode::from_pair(self.parse_function_call()?)
+                (StatementNode::from_pair(self.parse_function_call()?), true)
             }
 
             _ => return ASTError::unexpected_token(token).into(),
         };
 
-        self.stream.expect(TokenKind::Semicolon)?;
+        if expect_semicolon {
+            self.stream.expect(TokenKind::Semicolon)?;
+        }
 
         Ok(node)
     }
@@ -406,6 +412,32 @@ impl<'ctx> ASTParser<'ctx> {
         Ok((
             FunctionCall::new(name_reference, arguments),
             SourceSpan::between(&name_span, &right_parenthesis_token.span),
+        ))
+    }
+
+    /// Attempts to parse an if-statement from the [ASTParser]'s current position.
+    fn parse_if(&mut self) -> Result<(If, SourceSpan)> {
+        // The first token must be the if keyword.
+        let if_keyword = *self.stream.expect(TokenKind::Keyword(Keyword::If))?;
+
+        // The next token(s) must make up an expression for the condition.
+        let condition = self.parse_expression()?;
+
+        // The next token must be an opening brace.
+        let left_brace_token = *self.stream.expect(TokenKind::LeftBrace)?;
+
+        // Then, some statements must make up the body of the if-statement.
+        let mut block: Vec<StatementNode> = vec![];
+
+        while !self.stream.next_is(TokenKind::RightBrace) {
+            block.push(self.parse_statement()?);
+        }
+
+        self.stream.expect(TokenKind::RightBrace)?;
+
+        Ok((
+            If::new(condition, block),
+            SourceSpan::between(&if_keyword.span, &left_brace_token.span),
         ))
     }
 

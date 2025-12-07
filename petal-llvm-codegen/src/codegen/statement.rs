@@ -1,5 +1,6 @@
 use petal_ast::statement::{
-    r#return::Return, variable_assignment::VariableAssignment, variable_declaration::VariableDeclaration,
+    StatementNodeKind, r#if::If, r#return::Return, variable_assignment::VariableAssignment,
+    variable_declaration::VariableDeclaration,
 };
 use petal_core::{error::Result, source_span::SourceSpan};
 
@@ -77,6 +78,66 @@ impl<'ctx> StatementCodegen<'ctx> for VariableAssignment {
             .llvm_builder
             .build_store(pointer, value)
             .into_codegen_result(span)?;
+
+        Ok(())
+    }
+}
+
+impl<'ctx> StatementCodegen<'ctx> for If {
+    fn generate(&self, codegen: &mut LLVMCodegen<'ctx>, span: SourceSpan) -> Result<()> {
+        // Before we do any codegen, we must first set up the blocks that we will need.
+        let current_block = codegen.llvm_builder.get_insert_block().expect("");
+
+        let then_block = codegen.llvm_context.insert_basic_block_after(current_block, "then");
+        let else_block = codegen.llvm_context.insert_basic_block_after(then_block, "else");
+        let end_block = codegen.llvm_context.insert_basic_block_after(else_block, "end");
+
+        let condition = codegen.visit_expression(&self.condition)?;
+
+        codegen
+            .llvm_builder
+            .build_conditional_branch(condition.into_int_value(), then_block, else_block)
+            .into_codegen_result(span)?;
+
+        // Then, we can generate the true block.
+        codegen.llvm_builder.position_at_end(then_block);
+
+        let mut found_return_in_if_block = false;
+
+        for statement in &self.block {
+            codegen.visit_statement(statement)?;
+
+            if let StatementNodeKind::Return(_) = statement.kind {
+                found_return_in_if_block = true;
+            }
+        }
+
+        if !found_return_in_if_block {
+            codegen
+                .llvm_builder
+                .build_unconditional_branch(end_block)
+                .into_codegen_result(span)?;
+        }
+
+        // TODO: After we generate the true block, we can generate the else block.
+
+        codegen.llvm_builder.position_at_end(else_block);
+
+        // let mut found_return_in_if_block = false;
+
+        // ...
+
+        // if !found_return_in_else_block {
+
+        codegen
+            .llvm_builder
+            .build_unconditional_branch(end_block)
+            .into_codegen_result(span)?;
+
+        // }
+
+        // And finally, we can return to the end.
+        codegen.llvm_builder.position_at_end(end_block);
 
         Ok(())
     }

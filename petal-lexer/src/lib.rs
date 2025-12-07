@@ -288,6 +288,7 @@ impl<'a> Lexer<'a> {
             "struct" => Keyword::Struct,
             "true" => Keyword::True,
             "false" => Keyword::False,
+            "if" => Keyword::If,
             _ => return None,
         };
 

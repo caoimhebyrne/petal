@@ -73,6 +73,7 @@ impl<'a> Typechecker<'a> {
             StatementNodeKind::VariableDeclaration(variable) => variable.typecheck(self, None, statement.span),
             StatementNodeKind::FunctionCall(function_call) => function_call.typecheck(self, None, statement.span),
             StatementNodeKind::VariableAssignment(assignment) => assignment.typecheck(self, None, statement.span),
+            StatementNodeKind::If(r#if) => r#if.typecheck(self, None, statement.span),
 
             #[allow(unreachable_patterns)]
             _ => TypecheckerError::unsupported_statement(statement.clone()).into(),

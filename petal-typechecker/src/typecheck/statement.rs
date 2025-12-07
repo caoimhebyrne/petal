@@ -5,7 +5,7 @@ use crate::{
     typecheck::Typecheck,
 };
 use petal_ast::statement::{
-    r#return::Return, variable_assignment::VariableAssignment, variable_declaration::VariableDeclaration,
+    r#if::If, r#return::Return, variable_assignment::VariableAssignment, variable_declaration::VariableDeclaration,
 };
 use petal_core::{error::Result, source_span::SourceSpan, r#type::ResolvedType};
 
@@ -83,6 +83,22 @@ impl<'a> TypecheckStatement<'a> for VariableAssignment {
         let value_type = typechecker.check_expression(&mut self.value, Some(&variable.r#type))?;
         if !value_type.is_assignable_to(&typechecker.type_pool, &variable.r#type, self.value.span)? {
             return TypecheckerError::expected_type(variable.r#type, value_type, self.value.span).into();
+        }
+
+        Ok(())
+    }
+}
+
+impl<'a> TypecheckStatement<'a> for If {
+    fn typecheck_statement(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<()> {
+        // The condition must be resolvable, and it must be a boolean.
+        let condition_type = typechecker.check_expression(&mut self.condition, Some(&ResolvedType::Boolean))?;
+        if condition_type != ResolvedType::Boolean {
+            return TypecheckerError::expected_type(ResolvedType::Boolean, condition_type, span).into();
+        }
+
+        for statement in &mut self.block {
+            typechecker.check_statement(statement)?;
         }
 
         Ok(())

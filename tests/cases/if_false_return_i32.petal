@@ -1,0 +1,9 @@
+// #exit-code: 10
+
+func main() -> i32 {
+    if false {
+        return 5;
+    }
+
+    return 10;
+}

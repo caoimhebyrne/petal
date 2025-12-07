@@ -3,13 +3,14 @@
 use crate::{
     node::FunctionCall,
     statement::{
-        function_declaration::FunctionDeclaration, import::Import, r#return::Return,
+        function_declaration::FunctionDeclaration, r#if::If, import::Import, r#return::Return,
         variable_assignment::VariableAssignment, variable_declaration::VariableDeclaration,
     },
 };
 use petal_core::source_span::SourceSpan;
 
 pub mod function_declaration;
+pub mod r#if;
 pub mod import;
 pub mod r#return;
 pub mod variable_assignment;
@@ -90,4 +91,7 @@ pub enum StatementNodeKind {
 
     /// A function call.
     FunctionCall(FunctionCall),
+
+    /// An if-statement.
+    If(If),
 }

@@ -114,4 +114,7 @@ pub enum Keyword {
 
     /// The `false` boolean literal.
     False,
+
+    /// An if-condition.
+    If,
 }
