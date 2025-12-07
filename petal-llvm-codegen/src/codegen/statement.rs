@@ -1,7 +1,14 @@
-use petal_ast::statement::{r#return::Return, variable_declaration::VariableDeclaration};
+use petal_ast::statement::{
+    r#return::Return, variable_assignment::VariableAssignment, variable_declaration::VariableDeclaration,
+};
 use petal_core::{error::Result, source_span::SourceSpan};
 
-use crate::{LLVMCodegen, codegen::StatementCodegen, context::scope::Variable, error::IntoCodegenResult};
+use crate::{
+    LLVMCodegen,
+    codegen::StatementCodegen,
+    context::scope::{Variable, VariableKind},
+    error::{IntoCodegenResult, LLVMCodegenError},
+};
 
 impl<'ctx> StatementCodegen<'ctx> for Return {
     fn generate(&self, codegen: &mut LLVMCodegen, span: SourceSpan) -> Result<()> {
@@ -48,6 +55,28 @@ impl<'ctx> StatementCodegen<'ctx> for VariableDeclaration {
             .context
             .scope_context(span)?
             .declare_variable(self.name, Variable::local(value_type, local));
+
+        Ok(())
+    }
+}
+
+impl<'ctx> StatementCodegen<'ctx> for VariableAssignment {
+    fn generate(&self, codegen: &mut LLVMCodegen<'ctx>, span: SourceSpan) -> Result<()> {
+        let variable = codegen.context.scope_context(span)?.get_variable(&self.name, span)?;
+
+        // The variable must not be a parameter.
+        let pointer = match variable.kind {
+            VariableKind::Local(pointer) => pointer,
+            VariableKind::Parameter(parameter) if parameter.is_pointer_value() => parameter.into_pointer_value(),
+            _ => return LLVMCodegenError::unable_to_assign_to_parameter(span).into(),
+        };
+
+        let value = codegen.visit_expression(&self.value)?;
+
+        codegen
+            .llvm_builder
+            .build_store(pointer, value)
+            .into_codegen_result(span)?;
 
         Ok(())
     }

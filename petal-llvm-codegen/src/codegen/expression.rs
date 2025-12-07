@@ -2,16 +2,27 @@ use inkwell::{
     types::BasicTypeEnum,
     values::{BasicValue, BasicValueEnum},
 };
-use petal_ast::expression::{identifier_reference::IdentifierReference, integer_literal::IntegerLiteral};
+use petal_ast::expression::{
+    binary_operation::{BinaryOperation, BinaryOperationKind},
+    identifier_reference::IdentifierReference,
+    integer_literal::IntegerLiteral,
+    string_literal::StringLiteral,
+};
 use petal_core::{error::Result, source_span::SourceSpan};
 
-use crate::{LLVMCodegen, codegen::ExpressionCodegen, context::scope::VariableKind, error::IntoCodegenResult};
+use crate::{
+    LLVMCodegen,
+    codegen::{ExpressionCodegen, ExpressionCodegenOptions},
+    context::scope::VariableKind,
+    error::IntoCodegenResult,
+};
 
 impl<'ctx> ExpressionCodegen<'ctx> for IntegerLiteral {
     fn generate(
         &self,
         _codegen: &mut LLVMCodegen<'ctx>,
         r#type: &BasicTypeEnum<'ctx>,
+        _options: ExpressionCodegenOptions,
         _span: SourceSpan,
     ) -> Result<BasicValueEnum<'ctx>> {
         // The provided basic type **must** be an integer type.
@@ -22,11 +33,30 @@ impl<'ctx> ExpressionCodegen<'ctx> for IntegerLiteral {
     }
 }
 
+impl<'ctx> ExpressionCodegen<'ctx> for StringLiteral {
+    fn generate(
+        &self,
+        codegen: &mut LLVMCodegen<'ctx>,
+        _type: &BasicTypeEnum<'ctx>,
+        _options: ExpressionCodegenOptions,
+        span: SourceSpan,
+    ) -> Result<BasicValueEnum<'ctx>> {
+        let string_value = codegen.string_intern_pool.resolve_reference_or_err(&self.value, span)?;
+
+        codegen
+            .llvm_builder
+            .build_global_string_ptr(string_value, &format!("string_{}", self.value.0))
+            .map(|it| it.as_basic_value_enum())
+            .into_codegen_result(span)
+    }
+}
+
 impl<'ctx> ExpressionCodegen<'ctx> for IdentifierReference {
     fn generate(
         &self,
         codegen: &mut LLVMCodegen<'ctx>,
-        r#type: &BasicTypeEnum<'ctx>,
+        _type: &BasicTypeEnum<'ctx>,
+        options: ExpressionCodegenOptions,
         span: SourceSpan,
     ) -> Result<BasicValueEnum<'ctx>> {
         let identifier = codegen
@@ -39,26 +69,42 @@ impl<'ctx> ExpressionCodegen<'ctx> for IdentifierReference {
             .scope_context(span)?
             .get_variable(&self.identifier, span)?;
 
-        let value = match variable.kind {
-            VariableKind::Local(pointer) => pointer.as_basic_value_enum(),
-            VariableKind::Parameter(value) => value,
-        };
+        match variable.kind {
+            VariableKind::Local(pointer) => {
+                if options.as_reference {
+                    Ok(pointer.as_basic_value_enum())
+                } else {
+                    codegen
+                        .llvm_builder
+                        .build_load(variable.value_type, pointer, identifier)
+                        .into_codegen_result(span)
+                }
+            }
 
-        // If the value is a pointer, and the type is also a pointer, we do not need to do anything.
-        if value.is_pointer_value() && r#type.is_pointer_type() {
-            return Ok(value);
+            VariableKind::Parameter(value) => Ok(value),
         }
+    }
+}
 
-        // If the value is a pointer, and the type is not a pointer, then we need to load the value from the pointer
-        if value.is_pointer_value() && !r#type.is_pointer_type() {
-            return codegen
-                .llvm_builder
-                .build_load(*r#type, value.into_pointer_value(), identifier)
-                .map(|it| it.as_basic_value_enum())
-                .into_codegen_result(span);
+impl<'ctx> ExpressionCodegen<'ctx> for BinaryOperation {
+    fn generate(
+        &self,
+        codegen: &mut LLVMCodegen<'ctx>,
+        _type: &BasicTypeEnum<'ctx>,
+        _options: ExpressionCodegenOptions,
+        span: SourceSpan,
+    ) -> Result<BasicValueEnum<'ctx>> {
+        // FIXME: Both values must be an integer.
+        let left = codegen.visit_expression(&self.left)?.into_int_value();
+        let right = codegen.visit_expression(&self.right)?.into_int_value();
+
+        match self.kind {
+            BinaryOperationKind::Add => codegen.llvm_builder.build_int_add(left, right, "add"),
+            BinaryOperationKind::Subtract => codegen.llvm_builder.build_int_sub(left, right, "sub"),
+            BinaryOperationKind::Divide => codegen.llvm_builder.build_int_signed_div(left, right, "div"),
+            BinaryOperationKind::Multiply => codegen.llvm_builder.build_int_mul(left, right, "mul"),
         }
-
-        // NOTE: This will probably caues incorrect codegen in certain cases, but the module verifier should pick it up.
-        Ok(value)
+        .into_codegen_result(span)
+        .map(|it| it.as_basic_value_enum())
     }
 }

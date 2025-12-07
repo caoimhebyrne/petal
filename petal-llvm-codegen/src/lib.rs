@@ -1,10 +1,10 @@
 use crate::{
-    codegen::{ExpressionCodegen, StatementCodegen},
+    codegen::{ExpressionCodegen, ExpressionCodegenOptions, StatementCodegen},
     context::CodegenContext,
     error::LLVMCodegenError,
 };
 use inkwell::{
-    OptimizationLevel,
+    AddressSpace, OptimizationLevel,
     builder::Builder,
     context::Context,
     module::Module,
@@ -132,16 +132,28 @@ impl<'ctx> LLVMCodegen<'ctx> {
     }
 
     /// Visits the provided [ExpressionNode], generating LLVM IR for it.
-    pub(crate) fn visit_expression(&mut self, node: &ExpressionNode) -> Result<BasicValueEnum<'ctx>> {
-        let resolved_type = node.r#type.map(|it| self.get_basic_llvm_type(&it)).expect("")?;
-
+    pub(crate) fn visit_expression_with_options(
+        &mut self,
+        node: &ExpressionNode,
+        r#type: BasicTypeEnum<'ctx>,
+        options: ExpressionCodegenOptions,
+    ) -> Result<BasicValueEnum<'ctx>> {
         match &node.kind {
-            ExpressionNodeKind::IntegerLiteral(integer_literal) => {
-                integer_literal.generate(self, &resolved_type, node.span)
+            ExpressionNodeKind::IntegerLiteral(literal) => literal.generate(self, &r#type, options, node.span),
+            ExpressionNodeKind::IdentifierReference(reference) => reference.generate(self, &r#type, options, node.span),
+            ExpressionNodeKind::BinaryOperation(operation) => operation.generate(self, &r#type, options, node.span),
+            ExpressionNodeKind::FunctionCall(call) => {
+                ExpressionCodegen::generate(call, self, &r#type, options, node.span)
             }
+            ExpressionNodeKind::StringLiteral(literal) => literal.generate(self, &r#type, options, node.span),
 
-            ExpressionNodeKind::IdentifierReference(identifier_reference) => {
-                identifier_reference.generate(self, &resolved_type, node.span)
+            ExpressionNodeKind::Reference(reference) => {
+                // We must visit the inner expression with a reference type.
+                self.visit_expression_with_options(
+                    &reference.value,
+                    self.llvm_context.ptr_type(AddressSpace::default()).as_basic_type_enum(),
+                    ExpressionCodegenOptions::as_reference(),
+                )
             }
 
             #[allow(unreachable_patterns)]
@@ -149,11 +161,18 @@ impl<'ctx> LLVMCodegen<'ctx> {
         }
     }
 
+    pub(crate) fn visit_expression(&mut self, node: &ExpressionNode) -> Result<BasicValueEnum<'ctx>> {
+        let r#type = node.r#type.map(|it| self.get_basic_llvm_type(&it)).expect("")?;
+        self.visit_expression_with_options(node, r#type, ExpressionCodegenOptions::default())
+    }
+
     /// Visits the provided [StatementNode], generating LLVM IR for it.
     pub(crate) fn visit_statement(&mut self, node: &StatementNode) -> Result<()> {
         match &node.kind {
             StatementNodeKind::Return(r#return) => r#return.generate(self, node.span),
             StatementNodeKind::VariableDeclaration(declaration) => declaration.generate(self, node.span),
+            StatementNodeKind::VariableAssignment(assignment) => assignment.generate(self, node.span),
+            StatementNodeKind::FunctionCall(call) => StatementCodegen::generate(call, self, node.span),
 
             #[allow(unreachable_patterns)]
             _ => return LLVMCodegenError::unprocessable_statement(node).into(),
@@ -176,6 +195,8 @@ impl<'ctx> LLVMCodegen<'ctx> {
             ResolvedType::UnsignedInteger(size) | ResolvedType::SignedInteger(size) => {
                 self.llvm_context.custom_width_int_type(*size).as_basic_type_enum()
             }
+
+            ResolvedType::Reference(_) => self.llvm_context.ptr_type(AddressSpace::default()).as_basic_type_enum(),
 
             _ => panic!(),
         };
@@ -201,6 +222,11 @@ impl<'ctx> LLVMCodegen<'ctx> {
             ResolvedType::UnsignedInteger(size) | ResolvedType::SignedInteger(size) => self
                 .llvm_context
                 .custom_width_int_type(*size)
+                .fn_type(&parameters, false),
+
+            ResolvedType::Reference(_) => self
+                .llvm_context
+                .ptr_type(AddressSpace::default())
                 .fn_type(&parameters, false),
 
             _ => panic!(),

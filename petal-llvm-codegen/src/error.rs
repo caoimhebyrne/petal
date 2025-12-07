@@ -17,6 +17,14 @@ pub enum LLVMCodegenError {
     )]
     UndeclaredVariable(String),
 
+    #[display(
+        "A function was referenced that has not yet been declared: '{0}'. This should have been caught by the typechecker!"
+    )]
+    UndeclaredFunction(String),
+
+    #[display("Cannot assign a value to a parameter")]
+    UnableToAssignToParameter,
+
     #[display("Encountered an unresolved type ({0:?}), this should have been handled by the typechecker!")]
     UnresolvedType(TypeId),
 
@@ -40,6 +48,16 @@ impl LLVMCodegenError {
     /// Initializes an [Error] with the [LLVMCodegenError::UndeclaredVariable] kind.
     pub fn undeclared_variable(name: &str, span: SourceSpan) -> Error {
         Error::new(LLVMCodegenError::UndeclaredVariable(name.into()), span)
+    }
+
+    /// Initializes an [Error] with the [LLVMCodegenError::UndeclaredFunction] kind.
+    pub fn undeclared_function(name: &str, span: SourceSpan) -> Error {
+        Error::new(LLVMCodegenError::UndeclaredFunction(name.into()), span)
+    }
+
+    /// Initializes an [Error] with the [LLVMCodegenError::UnableToAssignToParameter] kind.
+    pub fn unable_to_assign_to_parameter(span: SourceSpan) -> Error {
+        Error::new(LLVMCodegenError::UnableToAssignToParameter, span)
     }
 
     /// Initializes an [Error] with the [LLVMCodegenError::UnresolvedType] kind.
