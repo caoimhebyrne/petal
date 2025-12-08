@@ -19,6 +19,7 @@ pub struct TypePool {
 
 impl TypePool {
     /// Constructs a new [TypePool] instance.
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         TypePool { types: HashMap::new() }
     }

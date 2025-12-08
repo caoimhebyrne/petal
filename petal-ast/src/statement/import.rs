@@ -16,8 +16,8 @@ impl Import {
     }
 }
 
-impl Into<TopLevelStatementNodeKind> for Import {
-    fn into(self) -> TopLevelStatementNodeKind {
-        TopLevelStatementNodeKind::Import(self)
+impl From<Import> for TopLevelStatementNodeKind {
+    fn from(val: Import) -> Self {
+        TopLevelStatementNodeKind::Import(val)
     }
 }

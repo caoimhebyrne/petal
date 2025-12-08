@@ -14,8 +14,8 @@ impl BooleanLiteral {
     }
 }
 
-impl Into<ExpressionNodeKind> for BooleanLiteral {
-    fn into(self) -> ExpressionNodeKind {
-        ExpressionNodeKind::BooleanLiteral(self)
+impl From<BooleanLiteral> for ExpressionNodeKind {
+    fn from(val: BooleanLiteral) -> Self {
+        ExpressionNodeKind::BooleanLiteral(val)
     }
 }

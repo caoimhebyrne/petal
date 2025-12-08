@@ -48,8 +48,8 @@ impl BinaryOperationKind {
     }
 }
 
-impl Into<ExpressionNodeKind> for BinaryOperation {
-    fn into(self) -> ExpressionNodeKind {
-        ExpressionNodeKind::BinaryOperation(self)
+impl From<BinaryOperation> for ExpressionNodeKind {
+    fn from(val: BinaryOperation) -> Self {
+        ExpressionNodeKind::BinaryOperation(val)
     }
 }

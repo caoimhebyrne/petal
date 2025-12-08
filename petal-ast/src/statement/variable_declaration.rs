@@ -22,8 +22,8 @@ impl VariableDeclaration {
     }
 }
 
-impl Into<StatementNodeKind> for VariableDeclaration {
-    fn into(self) -> StatementNodeKind {
-        StatementNodeKind::VariableDeclaration(self)
+impl From<VariableDeclaration> for StatementNodeKind {
+    fn from(val: VariableDeclaration) -> Self {
+        StatementNodeKind::VariableDeclaration(val)
     }
 }

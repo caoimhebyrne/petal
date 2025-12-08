@@ -18,7 +18,7 @@ impl SourceSpan {
 
     /// Returns the length of this source span in characters.
     pub fn length(&self) -> usize {
-        return self.end - self.start;
+        self.end - self.start
     }
 
     /// Returns the line and column within the provided source string that corresponds to the start of this source span.

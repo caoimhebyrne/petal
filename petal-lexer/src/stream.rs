@@ -17,10 +17,9 @@ impl TokenStream {
 
     /// Returns the token at the current index advancing the stream.
     pub fn consume(&mut self) -> Option<&Token> {
-        return self.tokens.get(self.index).map(|it| {
+        self.tokens.get(self.index).inspect(|_| {
             self.index += 1;
-            it
-        });
+        })
     }
 
     /// Returns the next token in the stream that is not considered to be whitespace.
@@ -39,7 +38,7 @@ impl TokenStream {
 
     /// Returns the token at the current index without advancing the stream.
     pub fn peek(&self) -> Option<&Token> {
-        return self.tokens.get(self.index);
+        self.tokens.get(self.index)
     }
 
     /// Returns the token at the current index + a certain offset without advancing the stream.

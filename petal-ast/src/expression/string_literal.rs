@@ -16,8 +16,8 @@ impl StringLiteral {
     }
 }
 
-impl Into<ExpressionNodeKind> for StringLiteral {
-    fn into(self) -> ExpressionNodeKind {
-        ExpressionNodeKind::StringLiteral(self)
+impl From<StringLiteral> for ExpressionNodeKind {
+    fn from(val: StringLiteral) -> Self {
+        ExpressionNodeKind::StringLiteral(val)
     }
 }

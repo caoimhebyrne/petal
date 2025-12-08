@@ -92,15 +92,14 @@ impl Module {
         let statements = ast_parser.parse()?;
 
         for statement in &statements {
-            match &statement.kind {
-                TopLevelStatementNodeKind::Import(import) => self.resolve_referenced_module(
+            if let TopLevelStatementNodeKind::Import(import) = &statement.kind {
+                self.resolve_referenced_module(
                     compiler_state,
                     resolved_module_paths,
                     resolved_modules,
                     import.name,
                     statement.span,
-                )?,
-                _ => {}
+                )?
             }
         }
 
@@ -161,9 +160,9 @@ impl Module {
         let standard_library_module_path = env::var("PETAL_STANDARD_LIBRARY_PATH")
             .map(|it| Path::new(&it).to_path_buf())
             .or_else(|_| {
-                return Ok(current_dir()
+                Ok(current_dir()
                     .map_err(|_| ModuleError::module_not_found("stdlib", span))?
-                    .join("stdlib"));
+                    .join("stdlib"))
             })?
             .join("main")
             .with_added_extension("petal");

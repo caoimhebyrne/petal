@@ -42,7 +42,7 @@ impl TokenStreamExt for TokenStream {
 
         match token.kind {
             TokenKind::Identifier(reference) => Ok((reference, token.span)),
-            _ => return ASTError::expected_identifier(*token).into(),
+            _ => ASTError::expected_identifier(*token).into(),
         }
     }
 }

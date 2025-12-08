@@ -19,8 +19,8 @@ impl VariableAssignment {
     }
 }
 
-impl Into<StatementNodeKind> for VariableAssignment {
-    fn into(self) -> StatementNodeKind {
-        StatementNodeKind::VariableAssignment(self)
+impl From<VariableAssignment> for StatementNodeKind {
+    fn from(val: VariableAssignment) -> Self {
+        StatementNodeKind::VariableAssignment(val)
     }
 }

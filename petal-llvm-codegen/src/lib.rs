@@ -127,7 +127,7 @@ impl<'ctx> LLVMCodegen<'ctx> {
             TopLevelStatementNodeKind::Import(_) => Ok(()),
 
             #[allow(unreachable_patterns)]
-            _ => return LLVMCodegenError::unprocessable_top_level_statement(node).into(),
+            _ => LLVMCodegenError::unprocessable_top_level_statement(node).into(),
         }
     }
 
@@ -159,7 +159,7 @@ impl<'ctx> LLVMCodegen<'ctx> {
             ExpressionNodeKind::BooleanLiteral(literal) => literal.generate(self, &r#type, options, node.span),
 
             #[allow(unreachable_patterns)]
-            _ => return LLVMCodegenError::unprocessable_expression(node).into(),
+            _ => LLVMCodegenError::unprocessable_expression(node).into(),
         }
     }
 
@@ -179,7 +179,7 @@ impl<'ctx> LLVMCodegen<'ctx> {
             StatementNodeKind::WhileLoop(while_loop) => while_loop.generate(self, node.span),
 
             #[allow(unreachable_patterns)]
-            _ => return LLVMCodegenError::unprocessable_statement(node).into(),
+            _ => LLVMCodegenError::unprocessable_statement(node).into(),
         }
     }
 

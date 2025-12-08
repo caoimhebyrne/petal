@@ -14,7 +14,7 @@ pub struct CompilerState {
 
 impl CompilerState {
     /// Creates a new [CompilerState].
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         CompilerState {
             string_intern_pool: Box::new(StringInternPoolImpl::new()),
             type_pool: TypePool::new(),

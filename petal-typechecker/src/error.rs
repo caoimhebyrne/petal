@@ -95,7 +95,7 @@ impl TypecheckerError {
 
     /// Creates a new [Error] with the kind as a [TypecheckerError::CrossModuleReference] kind.
     pub fn cross_module_reference(name: &str, span: SourceSpan) -> Error {
-        Error::new(TypecheckerError::CrossModuleReference(name.into()), span).into()
+        Error::new(TypecheckerError::CrossModuleReference(name.into()), span)
     }
 
     /// Creates a new [Error] with the kind as a [TypecheckerError::ExpectedType] kind.

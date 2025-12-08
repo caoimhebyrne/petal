@@ -33,11 +33,11 @@ pub struct Lexer<'a> {
 impl<'a> Lexer<'a> {
     /// Creates a new Lexer instance.
     pub fn new(string_intern_pool: &'a mut dyn StringInternPool, source: &'a str) -> Self {
-        return Lexer {
+        Lexer {
             source,
             string_intern_pool,
             chars: source.chars(),
-        };
+        }
     }
 
     /// Returns a stream of tokens that has been read from the source within the [Lexer].
@@ -301,7 +301,7 @@ impl<'a> Lexer<'a> {
 
     /// Returns whether the provided character can be considered as whitespace.
     fn is_whitespace(character: char) -> bool {
-        return character == '\n' || character == '\t' || character == ' ';
+        character == '\n' || character == '\t' || character == ' '
     }
 
     /// Returns the current length offset from the source text (in UTF-8 bytes).

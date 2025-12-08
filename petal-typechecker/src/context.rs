@@ -97,7 +97,7 @@ impl<'a> TypecheckerContext<'a> {
     /// - [TypecheckerError::DuplicateFunctionDeclaration] If a function has already been declared with the provided
     ///   name.
     pub fn add_function(&mut self, name: &StringReference, function: Function) -> Result<()> {
-        if self.functions.get(name).is_some() {
+        if self.functions.contains_key(name) {
             let function_name = self.string_intern_pool.resolve_reference_or_err(name, function.span)?;
             return TypecheckerError::duplicate_function_declaration(function_name, function.span).into();
         }
@@ -117,7 +117,7 @@ impl<'a> TypecheckerContext<'a> {
                 Err(error) => return error,
             };
 
-            TypecheckerError::undeclared_function(function_name, span).into()
+            TypecheckerError::undeclared_function(function_name, span)
         })
     }
 
@@ -132,7 +132,7 @@ impl<'a> TypecheckerContext<'a> {
                 Err(error) => return error,
             };
 
-            TypecheckerError::unable_to_resolve_type(type_name, span).into()
+            TypecheckerError::unable_to_resolve_type(type_name, span)
         })
     }
 }
@@ -233,7 +233,7 @@ impl<'a> FunctionContext<'a> {
     /// - [TypecheckerError::DuplicateVariableDeclaration] If a variable has already been declared with the provided
     ///   name.
     pub fn add_variable(&mut self, name: &StringReference, variable: Variable) -> Result<()> {
-        if self.variables.get(name).is_some() {
+        if self.variables.contains_key(name) {
             let variable_name = self.string_intern_pool.resolve_reference_or_err(name, variable.span)?;
             return TypecheckerError::duplicate_variable_declaration(variable_name, variable.span).into();
         }
@@ -253,7 +253,7 @@ impl<'a> FunctionContext<'a> {
                 Err(error) => return error,
             };
 
-            TypecheckerError::undeclared_variable(function_name, span).into()
+            TypecheckerError::undeclared_variable(function_name, span)
         })
     }
 }

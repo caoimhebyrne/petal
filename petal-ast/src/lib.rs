@@ -1,4 +1,5 @@
-///! A crate containing the abstract syntax tree definition of a Petal module.
+//! A crate containing the abstract syntax tree definition of a Petal module.
+
 pub mod error;
 pub mod expression;
 pub mod node;

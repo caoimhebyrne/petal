@@ -1,3 +1,5 @@
+//! This module contains definitions of nodes that are compatible as both statements and expressions.
+
 use petal_core::string_intern::StringReference;
 
 use crate::{
@@ -5,7 +7,6 @@ use crate::{
     statement::StatementNodeKind,
 };
 
-///! This module contains definitions of nodes that are compatible as both statements and expressions.
 #[derive(Debug, PartialEq, Clone)]
 pub struct FunctionCall {
     /// The name of the function that is being called.
@@ -22,14 +23,14 @@ impl FunctionCall {
     }
 }
 
-impl Into<StatementNodeKind> for FunctionCall {
-    fn into(self) -> StatementNodeKind {
-        StatementNodeKind::FunctionCall(self)
+impl From<FunctionCall> for StatementNodeKind {
+    fn from(val: FunctionCall) -> Self {
+        StatementNodeKind::FunctionCall(val)
     }
 }
 
-impl Into<ExpressionNodeKind> for FunctionCall {
-    fn into(self) -> ExpressionNodeKind {
-        ExpressionNodeKind::FunctionCall(self)
+impl From<FunctionCall> for ExpressionNodeKind {
+    fn from(val: FunctionCall) -> Self {
+        ExpressionNodeKind::FunctionCall(val)
     }
 }

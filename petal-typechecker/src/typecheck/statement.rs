@@ -58,7 +58,7 @@ impl<'a> TypecheckStatement<'a> for VariableDeclaration {
         // The type of the initial value must equal the type of the variable.
         let value_type = typechecker.check_expression(&mut self.value, Some(&variable_type))?;
 
-        if !value_type.is_assignable_to(&typechecker.type_pool, &variable_type, self.value.span)? {
+        if !value_type.is_assignable_to(typechecker.type_pool, &variable_type, self.value.span)? {
             return TypecheckerError::expected_type(variable_type, value_type, span).into();
         }
 
@@ -82,7 +82,7 @@ impl<'a> TypecheckStatement<'a> for VariableAssignment {
 
         // The type of the value being assigned to it must equal the variable's type.
         let value_type = typechecker.check_expression(&mut self.value, Some(&variable.r#type))?;
-        if !value_type.is_assignable_to(&typechecker.type_pool, &variable.r#type, self.value.span)? {
+        if !value_type.is_assignable_to(typechecker.type_pool, &variable.r#type, self.value.span)? {
             return TypecheckerError::expected_type(variable.r#type, value_type, self.value.span).into();
         }
 

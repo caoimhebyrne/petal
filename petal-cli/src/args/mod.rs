@@ -50,11 +50,11 @@ impl Args {
 
             output: arguments
                 .opt_value_from_str(["-o", "--output"])
-                .map_err(|_| ArgsError::cannot_parse_argument("output").into())?,
+                .map_err(|_| ArgsError::cannot_parse_argument("output"))?,
 
             input: arguments
                 .free_from_str()
-                .map_err(|_| ArgsError::missing_argument("input").into())?,
+                .map_err(|_| ArgsError::missing_argument("input"))?,
         };
 
         let remaining = arguments.finish();

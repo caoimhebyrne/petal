@@ -26,8 +26,8 @@ impl If {
     }
 }
 
-impl Into<StatementNodeKind> for If {
-    fn into(self) -> StatementNodeKind {
-        StatementNodeKind::If(self)
+impl From<If> for StatementNodeKind {
+    fn from(val: If) -> Self {
+        StatementNodeKind::If(val)
     }
 }

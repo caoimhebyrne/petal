@@ -29,8 +29,8 @@ impl Display for ArgsError {
     }
 }
 
-impl<T> Into<Result<T, ArgsError>> for ArgsError {
-    fn into(self) -> Result<T, ArgsError> {
-        Err(self)
+impl<T> From<ArgsError> for Result<T, ArgsError> {
+    fn from(val: ArgsError) -> Self {
+        Err(val)
     }
 }

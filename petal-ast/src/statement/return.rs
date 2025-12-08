@@ -19,8 +19,8 @@ impl Return {
     }
 }
 
-impl Into<StatementNodeKind> for Return {
-    fn into(self) -> StatementNodeKind {
-        StatementNodeKind::Return(self)
+impl From<Return> for StatementNodeKind {
+    fn from(val: Return) -> Self {
+        StatementNodeKind::Return(val)
     }
 }

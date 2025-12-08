@@ -38,6 +38,7 @@ pub struct StringInternPoolImpl {
 
 impl StringInternPoolImpl {
     /// Creates a new [StringInternPool] instance.
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         StringInternPoolImpl {
             string_index_lookup_map: HashMap::new(),

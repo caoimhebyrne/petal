@@ -11,7 +11,7 @@ impl<T: Any + PartialEq> DynCompare for T {
     }
 
     fn dyn_eq(&self, other: &dyn DynCompare) -> bool {
-        other.as_any().downcast_ref::<Self>().map_or(false, |o| self == o)
+        other.as_any().downcast_ref::<Self>() == Some(self)
     }
 }
 

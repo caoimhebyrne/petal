@@ -13,10 +13,7 @@ pub struct Token {
 impl Token {
     /// Returns whether this token is considered to be whitespace. If true, most parsers can ignore it.
     pub fn is_considered_whitespace(&self) -> bool {
-        match self.kind {
-            TokenKind::Comment(_) => true,
-            _ => false,
-        }
+        matches!(self.kind, TokenKind::Comment(_))
     }
 }
 

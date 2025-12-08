@@ -400,7 +400,7 @@ impl<'ctx> ASTParser<'ctx> {
         let value = self.parse_expression()?;
         let span = SourceSpan::between(&return_token.span, &value.span);
 
-        return Ok((Return::new(value), span));
+        Ok((Return::new(value), span))
     }
 
     /// Attempts to parse a variable declaration from the [ASTParser]'s current position.

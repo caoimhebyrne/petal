@@ -48,6 +48,6 @@ impl Display for Error {
 /// Allows .into() to be called on an `Error to convert it into a `Result<T, Error>`.
 impl<T> From<Error> for core::result::Result<T, Error> {
     fn from(value: Error) -> Self {
-        return Err(value);
+        Err(value)
     }
 }

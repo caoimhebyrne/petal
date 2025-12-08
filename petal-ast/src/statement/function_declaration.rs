@@ -80,8 +80,8 @@ impl FunctionDeclaration {
     }
 }
 
-impl Into<TopLevelStatementNodeKind> for FunctionDeclaration {
-    fn into(self) -> TopLevelStatementNodeKind {
-        TopLevelStatementNodeKind::FunctionDeclaration(self)
+impl From<FunctionDeclaration> for TopLevelStatementNodeKind {
+    fn from(val: FunctionDeclaration) -> Self {
+        TopLevelStatementNodeKind::FunctionDeclaration(val)
     }
 }

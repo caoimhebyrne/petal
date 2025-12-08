@@ -14,8 +14,8 @@ impl Reference {
     }
 }
 
-impl Into<ExpressionNodeKind> for Reference {
-    fn into(self) -> ExpressionNodeKind {
-        ExpressionNodeKind::Reference(self)
+impl From<Reference> for ExpressionNodeKind {
+    fn from(val: Reference) -> Self {
+        ExpressionNodeKind::Reference(val)
     }
 }

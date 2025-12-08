@@ -33,7 +33,7 @@ impl<'ctx> CodegenContext<'ctx> {
     pub fn scope_context(&mut self, span: SourceSpan) -> Result<&mut ScopeContext<'ctx>> {
         self.scope_context
             .as_mut()
-            .ok_or(LLVMCodegenError::missing_scope_context(span).into())
+            .ok_or(LLVMCodegenError::missing_scope_context(span))
     }
 
     /// Destroys the scope within this context.

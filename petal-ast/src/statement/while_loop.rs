@@ -18,8 +18,8 @@ impl WhileLoop {
     }
 }
 
-impl Into<StatementNodeKind> for WhileLoop {
-    fn into(self) -> StatementNodeKind {
-        StatementNodeKind::WhileLoop(self)
+impl From<WhileLoop> for StatementNodeKind {
+    fn from(val: WhileLoop) -> Self {
+        StatementNodeKind::WhileLoop(val)
     }
 }

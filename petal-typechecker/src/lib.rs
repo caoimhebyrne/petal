@@ -166,7 +166,7 @@ impl<'a> Typechecker<'a> {
         // Otherwise, we can attempt to resolve the type from its name.
         let type_name = self
             .string_intern_pool
-            .resolve_reference_or_err(&type_name_reference, reference.span)?;
+            .resolve_reference_or_err(type_name_reference, reference.span)?;
 
         let resolved_kind = match type_name {
             "i8" => ResolvedType::SignedInteger(8),
@@ -183,7 +183,7 @@ impl<'a> Typechecker<'a> {
             _ => {
                 // Otherwise, we can attempt to look it up in the current context.
                 self.context
-                    .get_type_declaration(&type_name_reference, reference.span)?
+                    .get_type_declaration(type_name_reference, reference.span)?
                     .clone()
             }
         };

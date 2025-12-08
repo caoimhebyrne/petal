@@ -1,5 +1,6 @@
-///! There are two kinds of statement nodes: regular statement nodes and top level statement nodes.
-///! A statement node does not produce a value, unlike an expression node which does produce a value.
+//! There are two kinds of statement nodes: regular statement nodes and top level statement nodes.
+//! A statement node does not produce a value, unlike an expression node which does produce a value.
+
 use crate::{
     node::FunctionCall,
     statement::{
