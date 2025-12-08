@@ -204,7 +204,7 @@ impl<'ctx> LLVMCodegen<'ctx> {
 
             ResolvedType::Boolean => self.llvm_context.bool_type().as_basic_type_enum(),
 
-            _ => panic!(),
+            r#type => return LLVMCodegenError::unprocessable_type(r#type.clone(), reference.span).into(),
         };
 
         Ok(basic_type)
@@ -237,7 +237,7 @@ impl<'ctx> LLVMCodegen<'ctx> {
 
             ResolvedType::Boolean => self.llvm_context.bool_type().fn_type(&parameters, false),
 
-            _ => panic!(),
+            r#type => return LLVMCodegenError::unprocessable_type(r#type.clone(), return_type.span).into(),
         })
     }
 }

@@ -7,7 +7,7 @@ use petal_ast::{
 use petal_core::{
     error::{Error, ErrorKind, Result},
     source_span::SourceSpan,
-    r#type::{TypeId, TypeReference},
+    r#type::{ResolvedType, TypeId, TypeReference},
 };
 
 #[derive(Debug, PartialEq, EnumDisplay)]
@@ -36,6 +36,9 @@ pub enum LLVMCodegenError {
 
     #[display("Unable to generate code for top-level statement: {0:?}")]
     UnprocessableTopLevelStatement(TopLevelStatementNodeKind),
+
+    #[display("The type {0:?} cannot be used in this context during code-generation")]
+    UnprocessableType(ResolvedType),
 
     #[display("A scope context was created, but none was available. This is most likely a compiler bug.")]
     MissingScopeContext,
@@ -87,6 +90,11 @@ impl LLVMCodegenError {
             LLVMCodegenError::UnprocessableTopLevelStatement(statement.kind.clone()),
             statement.span,
         )
+    }
+
+    /// Initializes an [Error] with the [LLVMCodegenError::UnprocessableType] kind.
+    pub fn unprocessable_type(r#type: ResolvedType, span: SourceSpan) -> Error {
+        Error::new(LLVMCodegenError::UnprocessableType(r#type), span)
     }
 
     /// Initializes an [Error] with the [LLVMCodegenError::MissingScopeContext] kind.
