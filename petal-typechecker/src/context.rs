@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use petal_ast::statement::function_declaration::FunctionModifier;
 use petal_core::{
     error::Result,
     source_span::SourceSpan,
@@ -7,7 +8,7 @@ use petal_core::{
     r#type::ResolvedType,
 };
 
-use crate::error::TypecheckerError;
+use crate::{error::TypecheckerError, temp_resolved_module::ModuleId};
 
 /// The context attached to a [crate::Typechecker].
 pub struct TypecheckerContext<'a> {
@@ -22,6 +23,9 @@ pub struct TypecheckerContext<'a> {
 
     /// The [StringInternPool] to read strings from.
     string_intern_pool: &'a dyn StringInternPool,
+
+    /// The current [ModuleId] that is being checked.
+    module_id: Option<ModuleId>,
 }
 
 impl<'a> TypecheckerContext<'a> {
@@ -32,7 +36,25 @@ impl<'a> TypecheckerContext<'a> {
             functions: HashMap::new(),
             type_declarations: HashMap::new(),
             string_intern_pool,
+            module_id: None,
         }
+    }
+
+    /// Binds a [ModuleId] to this [TypecheckerContext].
+    pub fn bind_module_id(&mut self, module_id: ModuleId) {
+        self.module_id = Some(module_id);
+    }
+
+    /// Unbinds the current [ModuleId] from this [TypecheckerContext].
+    pub fn unbind_module_id(&mut self) {
+        self.module_id = None;
+    }
+
+    /// Returns the current [ModuleId], or an [Err] if one is not bound.
+    pub fn module_id(&self, span: SourceSpan) -> Result<&ModuleId> {
+        self.module_id
+            .as_ref()
+            .ok_or(TypecheckerError::expected_module_id(span))
     }
 
     /// Creates a [FunctionContext] instance and binds it to this [TypecheckerContext].
@@ -118,11 +140,17 @@ impl<'a> TypecheckerContext<'a> {
 /// A function that has been declared during typechecking.
 #[derive(Debug, Clone)]
 pub struct Function {
+    /// The ID of the module that this function was declared in.
+    pub module_id: ModuleId,
+
     /// The expected return type of the function.
     pub return_type: ResolvedType,
 
     /// The types of the parameters to the function.
     pub parameters: Vec<ResolvedType>,
+
+    /// The modifiers applied to this function.
+    pub modifiers: Vec<FunctionModifier>,
 
     /// The span within the source code that this function was declared at.
     pub span: SourceSpan,
@@ -130,10 +158,18 @@ pub struct Function {
 
 impl Function {
     /// Creates a new [Function].
-    pub fn new(return_type: ResolvedType, parameters: Vec<ResolvedType>, span: SourceSpan) -> Self {
+    pub fn new(
+        module_id: ModuleId,
+        return_type: ResolvedType,
+        parameters: Vec<ResolvedType>,
+        modifiers: Vec<FunctionModifier>,
+        span: SourceSpan,
+    ) -> Self {
         Function {
+            module_id,
             return_type,
             parameters,
+            modifiers,
             span,
         }
     }

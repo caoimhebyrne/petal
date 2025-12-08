@@ -1,4 +1,4 @@
-use petal_ast::node::FunctionCall;
+use petal_ast::{node::FunctionCall, statement::function_declaration::FunctionModifier};
 use petal_core::{error::Result, source_span::SourceSpan, r#type::ResolvedType};
 
 /// This module contains implementations of [Typecheck] for various expression kinds.
@@ -41,6 +41,17 @@ impl<'a> Typecheck<'a> for FunctionCall {
     ) -> Result<ResolvedType> {
         // A function must exist with the same name.
         let function = typechecker.context.get_function(&self.name, span)?.clone();
+
+        // If the function was declared in a different module, then we must throw an error.
+        if function.module_id != *typechecker.context.module_id(span)?
+            && !function.modifiers.contains(&FunctionModifier::Public)
+        {
+            let function_name = typechecker
+                .string_intern_pool
+                .resolve_reference_or_err(&self.name, span)?;
+
+            return TypecheckerError::cross_module_reference(function_name, span).into();
+        }
 
         // The arguments passed must equal the amount of parameters.
         if function.parameters.len() != self.arguments.len() {

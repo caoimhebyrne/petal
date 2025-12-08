@@ -15,7 +15,7 @@ use petal_core::{
     string_intern::StringReference,
 };
 use petal_lexer::Lexer;
-use petal_typechecker::temp_resolved_module::ResolvedModule;
+use petal_typechecker::temp_resolved_module::{ModuleId, ResolvedModule};
 
 use crate::compiler_state::CompilerState;
 
@@ -26,6 +26,9 @@ trait ResolvedModuleExt {
 
 /// A module being compiled by the compiler.
 pub struct Module {
+    /// The unique identifier for this module.
+    pub id: ModuleId,
+
     /// The path of the source that is being read.
     pub source_path: PathBuf,
 
@@ -56,6 +59,7 @@ impl Module {
         );
 
         Ok(Module {
+            id: ModuleId::next(),
             source_path,
             parent_directory,
             source_contents,
@@ -182,7 +186,12 @@ impl Module {
 
 impl ResolvedModuleExt for ResolvedModule {
     fn from_module(module: &Module, statements: Vec<TopLevelStatementNode>) -> Self {
-        ResolvedModule::new(module.source_path.clone(), module.source_contents.clone(), statements)
+        ResolvedModule::new(
+            module.id,
+            module.source_path.clone(),
+            module.source_contents.clone(),
+            statements,
+        )
     }
 }
 

@@ -1,0 +1,8 @@
+// #compile-failure: 'private_function' is defined in another module. 'private_function' must be public to access it from this module.
+
+import imports_base;
+
+func main() -> i32 {
+    private_function();
+    return 0;
+}

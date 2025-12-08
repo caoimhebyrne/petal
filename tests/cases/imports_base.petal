@@ -1,5 +1,7 @@
 // #ignored
 
-func get_return_value() -> i32 {
+public func get_return_value() -> i32 {
     return 32;
 }
+
+func private_function() {}

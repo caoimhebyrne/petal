@@ -66,7 +66,9 @@ impl<'ctx> ASTParser<'ctx> {
         let token = self.stream.peek_or_err()?;
 
         let (node, expect_semicolon) = match token.kind {
-            TokenKind::Keyword(Keyword::Func) | TokenKind::Keyword(Keyword::Extern) => (
+            TokenKind::Keyword(Keyword::Func)
+            | TokenKind::Keyword(Keyword::Extern)
+            | TokenKind::Keyword(Keyword::Public) => (
                 TopLevelStatementNode::from_pair(self.parse_function_declaration()?),
                 false,
             ),
@@ -293,6 +295,7 @@ impl<'ctx> ASTParser<'ctx> {
 
             let modifier = match token.kind {
                 TokenKind::Keyword(Keyword::Extern) => FunctionModifier::External,
+                TokenKind::Keyword(Keyword::Public) => FunctionModifier::Public,
 
                 _ => return ASTError::expected_token(TokenKind::Keyword(Keyword::Func), *token).into(),
             };

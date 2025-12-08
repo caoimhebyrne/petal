@@ -32,9 +32,16 @@ impl<'a> TypecheckStatement<'a> for FunctionDeclaration {
             })
             .collect::<Result<Vec<ResolvedType>>>()?;
 
-        typechecker
-            .context
-            .add_function(&self.name, Function::new(return_type.clone(), parameters, span))?;
+        typechecker.context.add_function(
+            &self.name,
+            Function::new(
+                *typechecker.context.module_id(span)?,
+                return_type.clone(),
+                parameters,
+                self.modifiers.clone(),
+                span,
+            ),
+        )?;
 
         if !self.is_external() {
             // We can then check each statement within the function's body, but we must first add each parameter as a declared variable.

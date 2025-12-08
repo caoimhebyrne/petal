@@ -126,4 +126,7 @@ pub enum Keyword {
 
     /// A while loop.
     While,
+
+    /// A public symbol.
+    Public,
 }

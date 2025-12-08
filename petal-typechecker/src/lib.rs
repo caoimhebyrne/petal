@@ -45,9 +45,13 @@ impl<'a> Typechecker<'a> {
     /// Checks and resolves all types in the provided [ResolvedModule]s.
     pub fn check_modules(&mut self, modules: &mut Vec<ResolvedModule>) -> Result<()> {
         for module in modules {
+            self.context.bind_module_id(module.id);
+
             for statement in &mut module.statements {
                 self.check_top_level_statement(statement)?;
             }
+
+            self.context.unbind_module_id();
         }
 
         Ok(())

@@ -24,6 +24,14 @@ pub enum TypecheckerError {
     #[display("Expected a function context, but one was not available -- this may be a compiler bug")]
     ExpectedFunctionContext,
 
+    /// A module iD was expected, but one was not available.
+    #[display("Expected a module ID to be bound, but one was not available -- this may be a compiler bug")]
+    ExpectedModuleId,
+
+    /// A private symbol was accessed from another module.
+    #[display("'{0}' is defined in another module. '{0}' must be public to access it from this module.")]
+    CrossModuleReference(String),
+
     /// A type was expected, but a different type was received.
     #[display("Expected type '{expected}' but received type '{received}'")]
     ExpectedType {
@@ -78,6 +86,16 @@ impl TypecheckerError {
     /// Creates a new [Error] with the kind as a [TypecheckerError::ExpectedFunctionContext] kind.
     pub fn expected_function_context(span: SourceSpan) -> Error {
         Error::new(TypecheckerError::ExpectedFunctionContext, span)
+    }
+
+    /// Creates a new [Error] with the kind as a [TypecheckerError::ExpectedModuleId] kind.
+    pub fn expected_module_id(span: SourceSpan) -> Error {
+        Error::new(TypecheckerError::ExpectedModuleId, span)
+    }
+
+    /// Creates a new [Error] with the kind as a [TypecheckerError::CrossModuleReference] kind.
+    pub fn cross_module_reference(name: &str, span: SourceSpan) -> Error {
+        Error::new(TypecheckerError::CrossModuleReference(name.into()), span).into()
     }
 
     /// Creates a new [Error] with the kind as a [TypecheckerError::ExpectedType] kind.

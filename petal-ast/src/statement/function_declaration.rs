@@ -7,6 +7,9 @@ use crate::statement::{StatementNode, TopLevelStatementNodeKind};
 pub enum FunctionModifier {
     /// This function is defined externally.
     External,
+
+    /// This function is public.
+    Public,
 }
 
 /// A parameter within a function declaration.
@@ -69,6 +72,11 @@ impl FunctionDeclaration {
     /// Returns whether this function declaration is an external one.
     pub fn is_external(&self) -> bool {
         self.modifiers.contains(&FunctionModifier::External)
+    }
+
+    /// REturns whether this function declaration is a public one.
+    pub fn is_public(&self) -> bool {
+        self.modifiers.contains(&FunctionModifier::Public)
     }
 }
 

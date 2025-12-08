@@ -292,6 +292,7 @@ impl<'a> Lexer<'a> {
             "if" => Keyword::If,
             "else" => Keyword::Else,
             "while" => Keyword::While,
+            "public" => Keyword::Public,
             _ => return None,
         };
 
