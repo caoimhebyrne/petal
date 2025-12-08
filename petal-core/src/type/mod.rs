@@ -1,6 +1,11 @@
 use enum_display::EnumDisplay;
 
-use crate::{error::Result, source_span::SourceSpan, string_intern::StringReference, r#type::pool::TypePool};
+use crate::{
+    error::{Error, ErrorKind, Result},
+    source_span::SourceSpan,
+    string_intern::StringReference,
+    r#type::pool::TypePool,
+};
 
 pub mod pool;
 
@@ -70,14 +75,28 @@ impl ResolvedType {
 
         // If the other type is a reference type, the other type must be what I am referencing.
         if let ResolvedType::Reference(referenced_type_id) = other {
-            let referenced_type = match type_pool.get_type_or_err(referenced_type_id, span)? {
-                Type::Resolved(resolved) => resolved,
-                _ => panic!(),
+            return match type_pool.get_type_or_err(referenced_type_id, span)? {
+                Type::Resolved(resolved) => Ok(self == resolved),
+                _ => return ResolvedTypeError::unresolved_type(*referenced_type_id, span).into(),
             };
-
-            return Ok(self == referenced_type);
         }
 
         Ok(false)
     }
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, EnumDisplay)]
+pub enum ResolvedTypeError {
+    /// The provided [TypeId] does not exist.
+    #[display("The type {0:?} was expected to be resolved, but it was not")]
+    UnresolvedType(TypeId),
+}
+
+impl ResolvedTypeError {
+    /// Creates a new [Error] with the [ResolvedTypeError::UndefinedType] kind.
+    pub fn unresolved_type(type_id: TypeId, span: SourceSpan) -> Error {
+        Error::new(ResolvedTypeError::UnresolvedType(type_id), span)
+    }
+}
+
+impl ErrorKind for ResolvedTypeError {}
