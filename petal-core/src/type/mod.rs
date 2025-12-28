@@ -13,6 +13,10 @@ pub mod pool;
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct TypeId(pub usize);
 
+/// A reference to a structure type.
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub struct StructureId(pub usize);
+
 /// A reference to a type with a [SourceSpan].
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct TypeReference {
@@ -64,6 +68,23 @@ pub enum ResolvedType {
     /// A reference of another type. This other type may not be resolved.
     #[display("reference({0:?})")]
     Reference(TypeId),
+
+    /// A structure type.
+    Structure(StructureId),
+}
+
+/// Represents a structure defined by the user.
+#[derive(Debug, Copy, Clone)]
+pub struct Structure {
+    /// The name of this structure.
+    pub name: StringReference,
+}
+
+impl Structure {
+    /// Instantiates a new [Structure].
+    pub fn new(name: StringReference) -> Self {
+        Structure { name }
+    }
 }
 
 impl ResolvedType {

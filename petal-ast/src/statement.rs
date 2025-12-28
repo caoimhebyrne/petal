@@ -5,7 +5,8 @@ use crate::{
     node::FunctionCall,
     statement::{
         function_declaration::FunctionDeclaration, r#if::If, import::Import, r#return::Return,
-        variable_assignment::VariableAssignment, variable_declaration::VariableDeclaration, while_loop::WhileLoop,
+        type_declaration::TypeDeclaration, variable_assignment::VariableAssignment,
+        variable_declaration::VariableDeclaration, while_loop::WhileLoop,
     },
 };
 use petal_core::source_span::SourceSpan;
@@ -14,6 +15,7 @@ pub mod function_declaration;
 pub mod r#if;
 pub mod import;
 pub mod r#return;
+pub mod type_declaration;
 pub mod variable_assignment;
 pub mod variable_declaration;
 pub mod while_loop;
@@ -51,6 +53,9 @@ pub enum TopLevelStatementNodeKind {
 
     /// An import statement.
     Import(Import),
+
+    /// A type declaration.
+    TypeDeclaration(TypeDeclaration),
 }
 
 /// A statement node.

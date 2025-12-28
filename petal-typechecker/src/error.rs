@@ -16,6 +16,10 @@ pub enum TypecheckerError {
     #[display("A function already exists with the name: '{0}'")]
     DuplicateFunctionDeclaration(String),
 
+    /// An attempt was made to declare a type, but one with the same name already exists.
+    #[display("A type already exists with the name '{0}'")]
+    DuplicateTypeDeclaration(String),
+
     /// An attempt was made to declare a varaible, but one already exists with the provided name.
     #[display("A variable already exists with the name: '{0}'")]
     DuplicateVariableDeclaration(String),
@@ -76,6 +80,11 @@ impl TypecheckerError {
     /// Creates a new [Error] with the kind as a [TypecheckerError::DuplicateFunctionDeclaration] kind.
     pub fn duplicate_function_declaration(name: &str, span: SourceSpan) -> Error {
         Error::new(TypecheckerError::DuplicateFunctionDeclaration(name.to_owned()), span)
+    }
+
+    /// Creates a new [Error] with the kind as a [TypecheckerError::DuplicateTypeDeclaration] kind.
+    pub fn duplicate_type_declaration(name: &str, span: SourceSpan) -> Error {
+        Error::new(TypecheckerError::DuplicateTypeDeclaration(name.to_owned()), span)
     }
 
     /// Creates a new [Error] with the kind as a [TypecheckerError::DuplicateVariableDeclaration] kind.

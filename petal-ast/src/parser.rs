@@ -16,6 +16,7 @@ use crate::{
         r#if::If,
         import::Import,
         r#return::Return,
+        type_declaration::{StructureTypeDeclaration, TypeDeclaration, TypeDeclarationKind},
         variable_assignment::VariableAssignment,
         variable_declaration::VariableDeclaration,
         while_loop::WhileLoop,
@@ -74,6 +75,10 @@ impl<'ctx> ASTParser<'ctx> {
             ),
 
             TokenKind::Keyword(Keyword::Import) => (TopLevelStatementNode::from_pair(self.parse_import()?), true),
+
+            TokenKind::Keyword(Keyword::Type) => {
+                (TopLevelStatementNode::from_pair(self.parse_type_declaration()?), true)
+            }
 
             _ => return ASTError::unexpected_token(*token).into(),
         };
@@ -384,6 +389,46 @@ impl<'ctx> ASTParser<'ctx> {
             Import::new(module_name_reference),
             SourceSpan::between(&import_token.span, &module_name_span),
         ))
+    }
+
+    /// Attempts to parse a type declaration statement from the [ASTParser]'s current position.
+    fn parse_type_declaration(&mut self) -> Result<(TypeDeclaration, SourceSpan)> {
+        // The first token must be the type keyword.
+        let type_token = *self.stream.expect(TokenKind::Keyword(Keyword::Type))?;
+
+        // The next token must be the name of the type being declared.
+        let (name_reference, _) = self.stream.expect_identifier()?;
+
+        // The next token must be an equals.
+        let equals_token = *self.stream.expect(TokenKind::Equals)?;
+
+        // The next token(s) must make a type declaration kind.
+        let kind = self.parse_type_declaration_kind()?;
+
+        Ok((
+            TypeDeclaration::new(name_reference, kind),
+            SourceSpan::between(&type_token.span, &equals_token.span),
+        ))
+    }
+
+    /// Attempts to parse a [TypeDeclarationKind] at the lexer's current position.
+    fn parse_type_declaration_kind(&mut self) -> Result<TypeDeclarationKind> {
+        // FIXME: Only structure types are supported at the moment.
+        self.stream.expect(TokenKind::Keyword(Keyword::Struct))?;
+
+        // The next token must be an opening brace.
+        self.stream.expect(TokenKind::LeftBrace)?;
+
+        while !self.stream.next_is(TokenKind::RightBrace) {
+            todo!("parse structure members");
+        }
+
+        // And finally, there must be a closing brace to finish the structure declaration.
+        self.stream.expect(TokenKind::RightBrace)?;
+
+        let structure_declaration = StructureTypeDeclaration::new();
+
+        Ok(structure_declaration.into())
     }
 
     /// Attempts to parse a return statement from the [ASTParser]'s current position.

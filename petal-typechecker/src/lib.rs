@@ -62,6 +62,9 @@ impl<'a> Typechecker<'a> {
         match &mut statement.kind {
             TopLevelStatementNodeKind::FunctionDeclaration(function) => function.typecheck(self, None, statement.span),
             TopLevelStatementNodeKind::Import(_) => return Ok(()),
+            TopLevelStatementNodeKind::TypeDeclaration(type_declaration) => {
+                type_declaration.typecheck(self, None, statement.span)
+            }
 
             #[allow(unreachable_patterns)]
             _ => return TypecheckerError::unsupported_top_level_statement(statement.clone()).into(),

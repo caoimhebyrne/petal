@@ -5,9 +5,16 @@ use crate::{
     typecheck::statement::TypecheckStatement,
 };
 use petal_ast::statement::{
-    StatementNode, StatementNodeKind, function_declaration::FunctionDeclaration, r#return::Return,
+    StatementNode, StatementNodeKind,
+    function_declaration::FunctionDeclaration,
+    r#return::Return,
+    type_declaration::{TypeDeclaration, TypeDeclarationKind},
 };
-use petal_core::{error::Result, source_span::SourceSpan, r#type::ResolvedType};
+use petal_core::{
+    error::Result,
+    source_span::SourceSpan,
+    r#type::{ResolvedType, Structure},
+};
 
 impl<'a> TypecheckStatement<'a> for FunctionDeclaration {
     fn typecheck_statement(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<()> {
@@ -82,5 +89,25 @@ impl<'a> TypecheckStatement<'a> for FunctionDeclaration {
         typechecker.context.end_function_context(span)?;
 
         Ok(())
+    }
+}
+
+impl<'a> TypecheckStatement<'a> for TypeDeclaration {
+    fn typecheck_statement(&mut self, typechecker: &mut Typechecker<'a>, span: SourceSpan) -> Result<()> {
+        match &self.kind {
+            TypeDeclarationKind::Structure(_) => {
+                // We must first create a structure.
+                let structure = Structure::new(self.name);
+
+                // We can then insert it into the type pool.
+                let structure_id = typechecker.type_pool.allocate_structure(structure);
+
+                // Then, we can insert a type declaration in the context for this structure.
+                // FIXME: cross-module type declarations
+                typechecker
+                    .context
+                    .add_type_declaration(&self.name, ResolvedType::Structure(structure_id), span)
+            }
+        }
     }
 }
