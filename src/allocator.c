@@ -85,28 +85,7 @@ void* allocator_alloc(Allocator* allocator, const size_t size) {
 }
 
 void* allocator_realloc(Allocator* allocator, const void* data, const size_t old_size, const size_t new_size) {
-    assert(allocator->first != NULL && "Allocator must be initialized before calling realloc!");
-
-    // If a region exists that has enough capacity remaining, a pointer to that region's cursor should be returned.
-    AllocatorRegion* region = allocator->first;
-    void* new_data = NULL;
-
-    while (region != NULL) {
-        if (allocator_region_get_remaining_bytes(region) >= new_size) {
-            new_data = allocator_region_alloc(region, new_size);
-            break;
-        }
-
-        region = region->next;
-    }
-
-    // A region could not be found that has enough space, we must allocate a new region that can take the data.
-    if (!new_data) {
-        AllocatorRegion* new_region = allocator_create_region(allocator, new_size);
-        new_data = allocator_region_alloc(new_region, new_size);
-    }
-
-    // One last check, if we still don't have a new data pointer, then we are out of luck :(
+    void* new_data = allocator_alloc(allocator, new_size);
     if (!new_data) {
         return NULL;
     }
