@@ -1,4 +1,5 @@
 #include "allocator.h"
+#include "logger.h"
 #include "math.h"
 #include <assert.h>
 #include <stddef.h>
@@ -12,6 +13,8 @@
 // The size of the region will be at least [ALLOCATOR_REGION_DEFAULT_CAPACITY_BYTES], and at most [minimum_size] bytes.
 AllocatorRegion* allocator_region_create(const size_t minimum_size) {
     const size_t region_size = min(minimum_size, ALLOCATOR_REGION_DEFAULT_CAPACITY_BYTES);
+
+    log_debug("allocator creating a new region of size %zu", region_size);
 
     AllocatorRegion* region = malloc(sizeof(AllocatorRegion) + region_size);
     assert(region != NULL && "Failed to create new allocator region");
@@ -123,12 +126,14 @@ void allocator_clean(Allocator* allocator) {
     AllocatorRegion const* region = allocator->first;
     while (region != NULL) {
         assert(region->start != NULL && "Region start was NULL?");
-
         // We must store the next region before we do anything else as we will be free'ing the current one soon.
         const AllocatorRegion* next_region = region->next;
 
+        void* region_address = region->start - sizeof(AllocatorRegion);
+        log_debug("allocator freeing region at %p (capacity = %zu)", region_address, region->capacity);
+
         // Any subsequently allocated regions have a header allocated just before them.
-        free(region->start - sizeof(AllocatorRegion));
+        free(region_address);
 
         region = next_region;
     }

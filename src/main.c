@@ -1,5 +1,6 @@
 #include "allocator.h"
 #include "array.h"
+#include "logger.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,7 +17,7 @@ int main(const int argc, const char** argv, const char** envp) {
     string_buffer_init(&string_buffer, &allocator);
     string_buffer_append_many(&string_buffer, "Hello, world!", 12);
 
-    printf("%*s\n", (int)string_buffer.length, string_buffer.data);
+    log_info("string buffer data: '%*s'", string_buffer.length, string_buffer.data);
 
     allocator_clean(&allocator);
 
