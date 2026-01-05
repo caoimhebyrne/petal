@@ -1,6 +1,6 @@
 # Input options
 # Each source file is assumed to be within the `src` directory
-SOURCES = main.c allocator.c
+SOURCES = allocator.c array.c main.c
 
 # Compiler options
 CC = gcc

@@ -30,10 +30,16 @@ typedef struct {
 void allocator_init(Allocator* allocator);
 
 // Allocates memory of a certain [size] on the next available region.
-// If a region does not exist with [size] bytes available, then a new region will be allocated with enough capacity fo
+// If a region does not exist with [size] bytes available, then a new region will be allocated with enough capacity for
 // the data.
 // This function will return NULL if the allocation did not succeed.
 void* allocator_alloc(Allocator* allocator, const size_t size);
+
+// Allocates a new portion of memory of size [new_size], copying existing data from [data] to the new memory location.
+// If a region does not exist with [new_size] bytes available, then a new region will be allocated with enough capacity
+// for the data.
+// This function will return NULL if the reallocation did not succeed.
+void* allocator_realloc(Allocator* allocator, const void* data, const size_t old_size, const size_t new_size);
 
 // De-allocates all memory controlled by the provided allocator.
 void allocator_clean(Allocator* allocator);
