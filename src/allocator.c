@@ -109,6 +109,11 @@ void* allocator_realloc(Allocator* allocator, const void* data, const size_t old
     }
 
     memcpy(new_data, data, old_size);
+
+    // We should attempt to free the data in the old region to allow it to be re-used.
+    // If the data is at its region's current cursor, then we can easily reclaim the memory by reversing the cursor
+    // by [old_size] bytes.
+
     return new_data;
 }
 
