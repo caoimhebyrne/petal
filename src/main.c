@@ -5,9 +5,18 @@
 #include <stdlib.h>
 
 int main(const int argc, const char **argv, const char **envp) {
-    (void)argc;
-    (void)argv;
     (void)envp;
+
+    if (argc != 2) {
+        log_error("invalid usage, expected exactly one argument (path)");
+        return EXIT_FAILURE;
+    }
+
+    const char* file_path = argv[1];
+    if (!file_path) {
+        log_error("invalid usage, expected exactly one argument (path)");
+        return EXIT_FAILURE;
+    }
 
     Allocator allocator = {0};
     allocator_init(&allocator);
@@ -15,7 +24,7 @@ int main(const int argc, const char **argv, const char **envp) {
     StringBuffer string_buffer = {0};
     string_buffer_init(&string_buffer, &allocator);
 
-    if (!file_read("./src/main.c", &string_buffer)) {
+    if (!file_read(file_path, &string_buffer)) {
         return EXIT_FAILURE;
     }
 
