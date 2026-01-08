@@ -19,7 +19,7 @@ build/%.o: ./src/%.c
 
 # Links all object files together to make a final executable
 .PHONY: petal
-petal: $(OBJECTS) | build
+petal: build $(OBJECTS)
 	$(CC) $(OBJECTS) -o ./build/petal
 
 # Build everything
