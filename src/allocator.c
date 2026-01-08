@@ -95,6 +95,24 @@ void* allocator_realloc(Allocator* allocator, const void* data, const size_t old
     // We should attempt to free the data in the old region to allow it to be re-used.
     // If the data is at its region's current cursor, then we can easily reclaim the memory by reversing the cursor
     // by [old_size] bytes.
+    AllocatorRegion* region = allocator->first;
+    while (region != NULL) {
+        assert(region->cursor != NULL && "Region had a null cursor!");
+
+        // If the pointer was allocated within this region, then we no longer need to search.
+        const void* region_end = region->start + region->capacity;
+        if (region->start <= (char*) data && region_end >= data) {
+            // If the region's last allocated pointer was this pointer, then we can reset it.
+            const void* potential_last_allocated_pointer = region->cursor - old_size;
+            if (potential_last_allocated_pointer == data) {
+                region->cursor -= old_size;
+            }
+
+            break;
+        }
+
+        region = region->next;
+    }
 
     return new_data;
 }
