@@ -1,6 +1,7 @@
 #include "allocator.h"
 #include "array.h"
 #include "file.h"
+#include "lexer.h"
 #include "logger.h"
 #include <stdlib.h>
 
@@ -28,8 +29,15 @@ int main(const int argc, const char **argv, const char **envp) {
         return EXIT_FAILURE;
     }
 
-    log_info("string buffer contents:");
-    printf("%.*s", (int)string_buffer.length, string_buffer.data);
+    Lexer lexer = {0};
+    lexer_init(&lexer, &string_buffer);
+
+    TokenArray tokens = {0};
+    token_array_init(&tokens, &allocator);
+    
+    if (!lexer_parse(&lexer, &tokens)) {
+        return EXIT_FAILURE;
+    }
 
     allocator_clean(&allocator);
 
