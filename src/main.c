@@ -5,7 +5,7 @@
 #include "logger.h"
 #include <stdlib.h>
 
-int main(const int argc, const char **argv, const char **envp) {
+int main(const int argc, const char** argv, const char** envp) {
     (void)envp;
 
     if (argc != 2) {
@@ -30,13 +30,27 @@ int main(const int argc, const char **argv, const char **envp) {
     }
 
     Lexer lexer = {0};
-    lexer_init(&lexer, &string_buffer);
+    lexer_init(&lexer, &allocator, &string_buffer);
 
     TokenArray tokens = {0};
     token_array_init(&tokens, &allocator);
-    
+
     if (!lexer_parse(&lexer, &tokens)) {
         return EXIT_FAILURE;
+    }
+
+    for (size_t i = 0; i < tokens.length; i++) {
+        const Token token = tokens.data[i];
+
+        switch (token.kind) {
+        case TOKEN_KIND_IDENTIFIER:
+            log_info("token %i: '%s'", i + 1, token.string);
+            break;
+
+        case TOKEN_KIND_NUMBER:
+            log_info("token %i: %f", i + 1, token.number);
+            break;
+        }
     }
 
     allocator_clean(&allocator);

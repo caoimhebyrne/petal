@@ -30,14 +30,13 @@
         (lower_name)->capacity = 0;                                                                                    \
     }                                                                                                                  \
     void lower_name##_resize(name *lower_name, const size_t new_capacity) {                                            \
-        (lower_name)->data =                                                                                           \
-            allocator_realloc((lower_name)->allocator, (lower_name)->data, (lower_name)->capacity, new_capacity);      \
+        (lower_name)->data = allocator_realloc((lower_name)->allocator, (lower_name)->data,                            \
+                                               (lower_name)->capacity * sizeof(T), new_capacity * sizeof(T));          \
         (lower_name)->capacity = new_capacity;                                                                         \
     }                                                                                                                  \
     void lower_name##_append(name *lower_name, const T value) {                                                        \
         if ((lower_name)->length + 1 > (lower_name)->capacity) {                                                       \
-            const size_t capacity = (lower_name)->capacity * sizeof(T);                                                \
-            lower_name##_resize((lower_name), min(1, 2 * capacity));                                                   \
+            lower_name##_resize((lower_name), min(1, 2 * (lower_name)->capacity));                                     \
         }                                                                                                              \
         (lower_name)->data[(lower_name)->length++] = (value);                                                          \
     }                                                                                                                  \

@@ -8,6 +8,7 @@
  */
 typedef enum {
     TOKEN_KIND_IDENTIFIER,
+    TOKEN_KIND_NUMBER,
 } TokenKind;
 
 /**
@@ -16,6 +17,14 @@ typedef enum {
 typedef struct {
     // The kind of token that this is.
     TokenKind kind;
+
+    union {
+        // Only available on TOKEN_KIND_IDENTIFIER.
+        const char *string;
+
+        // Only available on TOKEN_KIND_NUMBER.
+        double number;
+    };
 } Token;
 
 /**
@@ -27,6 +36,9 @@ DEFINE_ARRAY_TYPE(TokenArray, token_array, Token)
  * A lexer used to parse source code into an array of tokens.
  */
 typedef struct {
+    // The allocator to use when allocating memory.
+    Allocator *allocator;
+
     // The buffer containing the source code to parse.
     const StringBuffer *buffer;
 
@@ -37,7 +49,7 @@ typedef struct {
 /**
  * Initializes a lexer with the provided [StringBuffer].
  */
-void lexer_init(Lexer *lexer, const StringBuffer *buffer);
+void lexer_init(Lexer *lexer, Allocator *allocator, const StringBuffer *buffer);
 
 /**
  * Attempts to parse all of the tokens available to the lexer, returning false if an error occurs.
