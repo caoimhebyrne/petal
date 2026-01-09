@@ -33,6 +33,12 @@ bool lexer_parse(Lexer* lexer, TokenArray* tokens) {
         const char character = lexer_peek(lexer);
 
         switch (character) {
+        case '=':
+            lexer_consume(lexer);
+            token_array_append(tokens, (Token){.kind = TOKEN_KIND_EQUALS});
+
+            continue;
+
         case ' ':
         case '\n':
             lexer_consume(lexer);

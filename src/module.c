@@ -1,6 +1,8 @@
 #include "module.h"
 #include "array.h"
 #include "file.h"
+#include "lexer.h"
+#include "logger.h"
 #include <string.h>
 
 bool module_init(Module* module, Allocator* allocator, const char* file_path) {
@@ -18,6 +20,38 @@ bool module_init(Module* module, Allocator* allocator, const char* file_path) {
     module->allocator = allocator;
     module->file_path = file_path_buffer;
     module->source = source_buffer;
+
+    return true;
+}
+
+bool module_parse(Module* module) {
+    Lexer lexer = {0};
+    lexer_init(&lexer, module->allocator, &module->source);
+
+    TokenArray tokens = {0};
+    token_array_init(&tokens, module->allocator);
+
+    if (!lexer_parse(&lexer, &tokens)) {
+        return false;
+    }
+
+    for (size_t i = 0; i < tokens.length; i++) {
+        const Token token = tokens.data[i];
+
+        switch (token.kind) {
+        case TOKEN_KIND_EQUALS:
+            log_info("equals (=)");
+            break;
+
+        case TOKEN_KIND_IDENTIFIER:
+            log_info("identifier '%s'", token.string);
+            break;
+
+        case TOKEN_KIND_NUMBER:
+            log_info("number %f", token.number);
+            break;
+        }
+    }
 
     return true;
 }

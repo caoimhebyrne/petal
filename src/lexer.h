@@ -9,6 +9,7 @@
 typedef enum {
     TOKEN_KIND_IDENTIFIER,
     TOKEN_KIND_NUMBER,
+    TOKEN_KIND_EQUALS,
 } TokenKind;
 
 /**

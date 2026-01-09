@@ -17,3 +17,6 @@ typedef struct {
 
 // Initializes a module by reading the source code from a [file_path].
 bool module_init(Module *module, Allocator *allocator, const char *file_path);
+
+// Parses the provided module's source code.
+bool module_parse(Module *module);

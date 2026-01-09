@@ -25,6 +25,10 @@ int main(const int argc, const char** argv, const char** envp) {
         return false;
     }
 
+    if (!module_parse(&main_module)) {
+        return false;
+    }
+
     allocator_clean(&allocator);
 
     return EXIT_SUCCESS;
