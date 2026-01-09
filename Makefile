@@ -1,6 +1,6 @@
 # Input options
 # Each source file is assumed to be within the `src` directory
-SOURCES = allocator.c array.c file.c lexer.c main.c
+SOURCES = allocator.c array.c file.c lexer.c main.c module.c
 
 # Compiler options
 CC = gcc

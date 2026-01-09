@@ -2,6 +2,7 @@
 
 #include "allocator.h"
 #include "math.h"
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 
@@ -48,3 +49,6 @@
 
 // Declare some basic array types that are used throughout the project.
 DEFINE_ARRAY_TYPE(StringBuffer, string_buffer, char)
+
+// Checks whether the contents in two [StringBuffer]s are equal to each other.
+bool string_buffer_equals(const StringBuffer *buffer, const StringBuffer *other);
