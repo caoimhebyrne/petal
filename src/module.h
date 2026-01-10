@@ -5,6 +5,13 @@
 #include <stdbool.h>
 
 typedef struct {
+    size_t unwrap;
+} ModuleId;
+
+typedef struct {
+    // The unique identifier for this module.
+    ModuleId id;
+
     // The allocator used by this module.
     Allocator* allocator;
 

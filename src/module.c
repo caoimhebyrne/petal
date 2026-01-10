@@ -5,6 +5,8 @@
 #include "logger.h"
 #include <string.h>
 
+static size_t global_module_id = 1;
+
 bool module_init(Module* module, Allocator* allocator, const char* file_path) {
     StringBuffer source_buffer = {0};
     string_buffer_init(&source_buffer, allocator);
@@ -23,19 +25,21 @@ bool module_init(Module* module, Allocator* allocator, const char* file_path) {
     string_buffer_trim_before_last(&name_buffer, PATH_SEPARATOR);
     string_buffer_trim_after_first(&name_buffer, '.');
 
+    module->id = (ModuleId){.unwrap = global_module_id++};
     module->allocator = allocator;
     module->file_path = file_path_buffer;
     module->name = name_buffer;
     module->source = source_buffer;
 
-    log_info("initialized module '%.*s' from path '%s'", (int)name_buffer.length, name_buffer.data, file_path);
+    log_info("initialized module '%.*s' (%zu) from path '%s'", (int)name_buffer.length, name_buffer.data,
+             module->id.unwrap, file_path);
 
     return true;
 }
 
 bool module_parse(Module* module) {
     Lexer lexer = {0};
-    lexer_init(&lexer, module->allocator, &module->source);
+    lexer_init(&lexer, module);
 
     TokenArray tokens = {0};
     token_array_init(&tokens, module->allocator);

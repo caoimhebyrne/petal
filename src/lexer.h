@@ -1,6 +1,7 @@
 #pragma once
 
 #include "array.h"
+#include "module.h"
 #include <stdbool.h>
 
 /**
@@ -21,6 +22,23 @@ typedef enum {
     TOKEN_KIND_RIGHT_ANGLE_BRACKET,
     TOKEN_KIND_SLASH,
 } TokenKind;
+
+/**
+ * A position that a token occurred at within a source file.
+ */
+typedef struct {
+    // The module that the token was in.
+    ModuleId module_id;
+
+    // The line that the token started at.
+    size_t line;
+
+    // The column that the token started at.
+    size_t column;
+
+    // The length of the token.
+    size_t length;
+} Position;
 
 /**
  * A token that occurred within a source file.
@@ -50,6 +68,9 @@ typedef struct {
     // The allocator to use when allocating memory.
     Allocator* allocator;
 
+    // The ID of the module that the source code belongs to.
+    ModuleId module_id;
+
     // The buffer containing the source code to parse.
     const StringBuffer* buffer;
 
@@ -58,9 +79,9 @@ typedef struct {
 } Lexer;
 
 /**
- * Initializes a lexer with the provided [StringBuffer].
+ * Initializes a lexer using the data in the provided [Module].
  */
-void lexer_init(Lexer* lexer, Allocator* allocator, const StringBuffer* buffer);
+void lexer_init(Lexer* lexer, const Module* module);
 
 /**
  * Attempts to parse all of the tokens available to the lexer, returning false if an error occurs.

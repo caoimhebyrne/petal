@@ -1,18 +1,19 @@
 #include "lexer.h"
-#include "allocator.h"
 #include "array.h"
 #include "logger.h"
+#include "module.h"
 #include <assert.h>
 #include <ctype.h>
 #include <stdlib.h>
 
 IMPLEMENT_ARRAY_TYPE(TokenArray, token_array, Token)
 
-void lexer_init(Lexer* lexer, Allocator* allocator, const StringBuffer* buffer) {
-    assert(buffer != NULL && "Invalid buffer passed to lexer_init");
+void lexer_init(Lexer* lexer, const Module* module) {
+    assert(module->source.data != NULL && "Invalid buffer passed to lexer_init");
 
-    lexer->allocator = allocator;
-    lexer->buffer = buffer;
+    lexer->allocator = module->allocator;
+    lexer->module_id = module->id;
+    lexer->buffer = &module->source;
     lexer->cursor = 0;
 }
 
