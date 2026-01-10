@@ -95,6 +95,10 @@ bool module_parse(Module* module) {
         case TOKEN_KIND_HYPHEN:
             log_info("hyphen");
             break;
+
+        case TOKEN_KIND_SLASH:
+            log_info("slash");
+            break;
         }
     }
 

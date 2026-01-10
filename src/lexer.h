@@ -19,6 +19,7 @@ typedef enum {
     TOKEN_KIND_COMMA,
     TOKEN_KIND_HYPHEN,
     TOKEN_KIND_RIGHT_ANGLE_BRACKET,
+    TOKEN_KIND_SLASH,
 } TokenKind;
 
 /**

@@ -83,6 +83,22 @@ bool lexer_parse(Lexer* lexer, TokenArray* tokens) {
             token_array_append(tokens, (Token){.kind = TOKEN_KIND_HYPHEN});
             continue;
 
+        case '/':
+            lexer_consume(lexer);
+
+            if (lexer_peek(lexer) == '/') {
+                lexer_consume(lexer);
+
+                while (lexer_peek(lexer) != '\n') {
+                    lexer_consume(lexer);
+                    continue;
+                }
+            } else {
+                token_array_append(tokens, (Token){.kind = TOKEN_KIND_SLASH});
+            }
+
+            continue;
+
         case ' ':
         case '\n':
             lexer_consume(lexer);
