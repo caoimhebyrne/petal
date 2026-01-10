@@ -76,12 +76,24 @@ bool module_parse(Module* module) {
             log_info("close parenthesis");
             break;
 
+        case TOKEN_KIND_COLON:
+            log_info("colon");
+            break;
+
         case TOKEN_KIND_SEMICOLON:
             log_info("semicolon");
             break;
 
         case TOKEN_KIND_COMMA:
             log_info("comma");
+            break;
+
+        case TOKEN_KIND_RIGHT_ANGLE_BRACKET:
+            log_info("right angle bracket");
+            break;
+
+        case TOKEN_KIND_HYPHEN:
+            log_info("hyphen");
             break;
         }
     }
