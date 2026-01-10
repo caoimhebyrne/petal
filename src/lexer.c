@@ -36,7 +36,36 @@ bool lexer_parse(Lexer* lexer, TokenArray* tokens) {
         case '=':
             lexer_consume(lexer);
             token_array_append(tokens, (Token){.kind = TOKEN_KIND_EQUALS});
+            continue;
 
+        case '(':
+            lexer_consume(lexer);
+            token_array_append(tokens, (Token){.kind = TOKEN_KIND_OPEN_PARENTHESIS});
+            continue;
+
+        case ')':
+            lexer_consume(lexer);
+            token_array_append(tokens, (Token){.kind = TOKEN_KIND_CLOSE_PARENTHESIS});
+            continue;
+
+        case '{':
+            lexer_consume(lexer);
+            token_array_append(tokens, (Token){.kind = TOKEN_KIND_OPEN_BRACE});
+            continue;
+
+        case '}':
+            lexer_consume(lexer);
+            token_array_append(tokens, (Token){.kind = TOKEN_KIND_CLOSE_BRACE});
+            continue;
+
+        case ';':
+            lexer_consume(lexer);
+            token_array_append(tokens, (Token){.kind = TOKEN_KIND_SEMICOLON});
+            continue;
+
+        case ',':
+            lexer_consume(lexer);
+            token_array_append(tokens, (Token){.kind = TOKEN_KIND_COMMA});
             continue;
 
         case ' ':

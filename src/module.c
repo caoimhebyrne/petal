@@ -40,7 +40,7 @@ bool module_parse(Module* module) {
 
         switch (token.kind) {
         case TOKEN_KIND_EQUALS:
-            log_info("equals (=)");
+            log_info("equals");
             break;
 
         case TOKEN_KIND_IDENTIFIER:
@@ -49,6 +49,30 @@ bool module_parse(Module* module) {
 
         case TOKEN_KIND_NUMBER:
             log_info("number %f", token.number);
+            break;
+
+        case TOKEN_KIND_CLOSE_BRACE:
+            log_info("close brace");
+            break;
+
+        case TOKEN_KIND_OPEN_BRACE:
+            log_info("open brace");
+            break;
+
+        case TOKEN_KIND_OPEN_PARENTHESIS:
+            log_info("open parenthesis");
+            break;
+
+        case TOKEN_KIND_CLOSE_PARENTHESIS:
+            log_info("close parenthesis");
+            break;
+
+        case TOKEN_KIND_SEMICOLON:
+            log_info("semicolon");
+            break;
+
+        case TOKEN_KIND_COMMA:
+            log_info("comma");
             break;
         }
     }
