@@ -124,7 +124,7 @@ bool lexer_parse_number(Lexer* lexer, TokenArray* tokens) {
     string_buffer_append(&number, '\0');
 
     char* end_pointer = number.data;
-    const float value = strtod(number.data, &end_pointer);
+    const float value = strtof(number.data, &end_pointer);
 
     // The end pointer should be set to the character *before* the null byte.
     if (end_pointer != number.data + number.length - 1) {

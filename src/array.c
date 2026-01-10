@@ -1,6 +1,13 @@
 #include "array.h"
+#include "allocator.h"
+#include <string.h>
 
 IMPLEMENT_ARRAY_TYPE(StringBuffer, string_buffer, char)
+
+void string_buffer_init_from_cstr(StringBuffer* buffer, Allocator* allocator, const char* cstr) {
+    string_buffer_init(buffer, allocator);
+    string_buffer_append_many(buffer, cstr, strlen(cstr));
+}
 
 bool string_buffer_equals(const StringBuffer* buffer, const StringBuffer* other) {
     if (buffer->length != other->length) {
@@ -14,4 +21,44 @@ bool string_buffer_equals(const StringBuffer* buffer, const StringBuffer* other)
     }
 
     return true;
+}
+
+void string_buffer_trim_before_last(StringBuffer* buffer, const char character) {
+    size_t character_index = 0;
+
+    // We need to get the index of the last occurrence of the character.
+    for (size_t i = 0; i < buffer->length; i++) {
+        if (character == buffer->data[i]) {
+            character_index = i;
+        }
+    }
+
+    // If the character index is still 0, then we could not find an occurrence of the provided character.
+    if (character_index == 0) {
+        return;
+    }
+
+    // Then, we can set the StringBuffer's length and data accordingly.
+    buffer->length = buffer->length - character_index + 1;
+    buffer->data = buffer->data + character_index + 1;
+}
+
+void string_buffer_trim_after_first(StringBuffer* buffer, const char character) {
+    size_t character_index = 0;
+
+    // We need to get the index of the last occurrence of the character.
+    for (size_t i = 0; i < buffer->length; i++) {
+        if (character == buffer->data[i]) {
+            character_index = i;
+            break;
+        }
+    }
+
+    // If the character index is still 0, then we could not find an occurrence of the provided character.
+    if (character_index == 0) {
+        return;
+    }
+
+    // Then, we can set the StringBuffer's length.
+    buffer->length = buffer->length - character_index;
 }

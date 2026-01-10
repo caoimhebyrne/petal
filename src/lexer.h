@@ -30,7 +30,7 @@ typedef struct {
         const char* string;
 
         // Only available on TOKEN_KIND_NUMBER.
-        double number;
+        float number;
     };
 } Token;
 
