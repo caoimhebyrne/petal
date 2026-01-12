@@ -1,6 +1,5 @@
 #include "array.h"
 #include "allocator.h"
-#include "logger.h"
 #include <string.h>
 
 IMPLEMENT_ARRAY_TYPE(StringBuffer, string_buffer, char)
