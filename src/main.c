@@ -29,12 +29,14 @@ int main(const int argc, const char** argv, const char** envp) {
         return false;
     }
 
-    if (!module_parse(&main_module)) {
-        for (size_t i = 0; i < diagnostics.length; i++) {
-            const Diagnostic diagnostic = diagnostics.data[i];
-            log_error("%s: '%s'", diagnostic_kind_string(diagnostic.kind), diagnostic.message);
-        }
+    const bool module_parse_result = module_parse(&main_module);
 
+    for (size_t i = 0; i < diagnostics.length; i++) {
+        const Diagnostic diagnostic = diagnostics.data[i];
+        log_error("%s: '%s'", diagnostic_kind_string(diagnostic.kind), diagnostic.message);
+    }
+
+    if (!module_parse_result) {
         return false;
     }
 
