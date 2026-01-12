@@ -57,8 +57,13 @@ typedef struct {
 } ASTParser;
 
 // Initializes an [ASTParser] with the provided [TokenArray].
-void ast_parser_init(ASTParser* ast_parser, Allocator* allocator, DiagnosticArray* diagnostics, ModuleId module_id,
-                     const TokenArray* tokens);
+void ast_parser_init(
+    ASTParser* ast_parser,
+    Allocator* allocator,
+    DiagnosticArray* diagnostics,
+    ModuleId module_id,
+    const TokenArray* tokens
+);
 
 // Attempts to parse an AST from the tokens in this [ASTParser].
 bool ast_parser_parse(ASTParser* ast_parser, NodeArray* nodes);

@@ -5,10 +5,45 @@ ColumnLimit: 120
 ---
 Language: C
 
+# Force pointers to the type (type*).
 DerivePointerAlignment: false
 PointerAlignment: Left
+
+# Ensure that parameters are formatted onto newlines instead of packing
+# them together when they exceed the column limit.
+AlignAfterOpenBracket: BlockIndent
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackArguments: false
+BinPackParameters: false
+
+# Ensure that the return type is always on the same line as the function name.
+AlwaysBreakAfterDefinitionReturnType: None
+PenaltyReturnTypeOnItsOwnLine: 10000000
+PenaltyBreakAssignment: 10000000
+
+# Don't put functions on one line.
+AllowShortFunctionsOnASingleLine: Empty
+
 ---
 Language: Cpp
 
+# Force pointers to the type (type*).
 DerivePointerAlignment: false
 PointerAlignment: Left
+
+# Ensure that parameters are formatted onto newlines instead of packing
+# them together when they exceed the column limit.
+AlignAfterOpenBracket: BlockIndent
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackArguments: false
+BinPackParameters: false
+
+# Ensure that the return type is always on the same line as the function name.
+AlwaysBreakAfterDefinitionReturnType: None
+PenaltyReturnTypeOnItsOwnLine: 10000000
+PenaltyBreakAssignment: 10000000
+
+# Don't put functions on one line.
+AllowShortFunctionsOnASingleLine: Empty

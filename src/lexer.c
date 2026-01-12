@@ -25,7 +25,9 @@ void lexer_init(Lexer* lexer, const Module* module) {
 }
 
 // Returns whether the lexer has reached the end of the source code or not.
-bool lexer_is_eof(const Lexer* lexer) { return lexer->cursor >= lexer->buffer->length; }
+bool lexer_is_eof(const Lexer* lexer) {
+    return lexer->cursor >= lexer->buffer->length;
+}
 
 // Returns the character at the lexer's current position, without advancing the iterator.
 char lexer_peek(const Lexer* lexer) {
@@ -72,22 +74,26 @@ char lexer_consume(Lexer* lexer) {
 // Returns false if the lexer has reached EOF.
 bool lexer_push_single_token(Lexer* lexer, TokenArray* tokens, const TokenKind kind) {
     lexer_consume(lexer);
-    token_array_append(tokens, (Token){
-                                   .kind = kind,
-                                   .position =
-                                       (Position){
-                                           .line = lexer->position.line,
-                                           .column = lexer->position.column,
-                                           .length = 1,
-                                           .module_id = lexer->position.module_id,
-                                       },
-                               });
+    token_array_append(
+        tokens,
+        (Token){
+            .kind = kind,
+            .position = (Position){
+                .line = lexer->position.line,
+                .column = lexer->position.column,
+                .length = 1,
+                .module_id = lexer->position.module_id,
+            },
+        }
+    );
     return true;
 }
 
 // Starts a length group at the lexer's current position. This prevents the column from being advanced until
 // lexer_end_length_group is called.
-void lexer_start_length_group(Lexer* lexer) { lexer->position.length = 1; }
+void lexer_start_length_group(Lexer* lexer) {
+    lexer->position.length = 1;
+}
 
 // Ends an ongoing length group.
 void lexer_end_length_group(Lexer* lexer) {
@@ -220,19 +226,25 @@ bool lexer_parse_identifier(Lexer* lexer, TokenArray* tokens) {
     Keyword keyword = get_keyword_from_identifier(&identifier);
     if (keyword != KEYWORD_UNKNOWN) {
         // TODO: Free the StringBuffer, we don't need it anymore.
-        token_array_append(tokens, (Token){
-                                       .kind = TOKEN_KIND_KEYWORD,
-                                       .keyword = keyword,
-                                       .position = lexer->position,
-                                   });
+        token_array_append(
+            tokens,
+            (Token){
+                .kind = TOKEN_KIND_KEYWORD,
+                .keyword = keyword,
+                .position = lexer->position,
+            }
+        );
         return true;
     }
 
-    token_array_append(tokens, (Token){
-                                   .kind = TOKEN_KIND_IDENTIFIER,
-                                   .string = identifier,
-                                   .position = lexer->position,
-                               });
+    token_array_append(
+        tokens,
+        (Token){
+            .kind = TOKEN_KIND_IDENTIFIER,
+            .string = identifier,
+            .position = lexer->position,
+        }
+    );
     return true;
 }
 

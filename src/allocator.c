@@ -64,7 +64,9 @@ AllocatorRegion* allocator_create_region(Allocator* allocator, const size_t mini
     return new_region;
 }
 
-void allocator_init(Allocator* allocator) { allocator->first = allocator_region_create(0); }
+void allocator_init(Allocator* allocator) {
+    allocator->first = allocator_region_create(0);
+}
 
 void* allocator_alloc(Allocator* allocator, const size_t size) {
     assert(allocator->first != NULL && "Allocator must be initialized before calling alloc!");

@@ -34,8 +34,13 @@ bool module_init(Module* module, Allocator* allocator, DiagnosticArray* diagnost
     module->name = name_buffer;
     module->source = source_buffer;
 
-    log_info("initialized module '%.*s' (%zu) from path '%s'", (int)name_buffer.length, name_buffer.data,
-             module->id.unwrap, file_path);
+    log_info(
+        "initialized module '%.*s' (%zu) from path '%s'",
+        (int)name_buffer.length,
+        name_buffer.data,
+        module->id.unwrap,
+        file_path
+    );
 
     return true;
 }
@@ -68,8 +73,11 @@ bool module_parse(Module* module) {
         case NODE_KIND_FUNCTION_DECLARATION: {
             const FunctionDeclarationNode function_declaration = node->function_declaration;
 
-            log_info("function declaration '%.*s'", (int)function_declaration.name.length,
-                     function_declaration.name.data);
+            log_info(
+                "function declaration '%.*s'",
+                (int)function_declaration.name.length,
+                function_declaration.name.data
+            );
 
             break;
         }

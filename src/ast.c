@@ -20,7 +20,9 @@ Node* function_declaration_node_create(Allocator* allocator, StringBuffer name, 
 }
 
 // Returns whether the end of the token stream has been reached.
-bool ast_parser_is_eof(const ASTParser* ast_parser) { return ast_parser->cursor >= ast_parser->tokens->length; }
+bool ast_parser_is_eof(const ASTParser* ast_parser) {
+    return ast_parser->cursor >= ast_parser->tokens->length;
+}
 
 // Returns the token at the parser's current position without advancing the cursor.
 const Token* ast_parser_peek(const ASTParser* ast_parser) {
@@ -72,8 +74,13 @@ bool ast_parser_expect_keyword(ASTParser* ast_parser, const Keyword keyword) {
     return token->keyword == keyword;
 }
 
-void ast_parser_init(ASTParser* ast_parser, Allocator* allocator, DiagnosticArray* diagnostics, ModuleId module_id,
-                     const TokenArray* tokens) {
+void ast_parser_init(
+    ASTParser* ast_parser,
+    Allocator* allocator,
+    DiagnosticArray* diagnostics,
+    ModuleId module_id,
+    const TokenArray* tokens
+) {
     ast_parser->allocator = allocator;
     ast_parser->diagnostics = diagnostics;
     ast_parser->module_id = module_id;
@@ -99,10 +106,12 @@ bool ast_parser_parse_statement(ASTParser* ast_parser, NodeArray* nodes) {
     (void)ast_parser;
     (void)nodes;
 
-    diagnostic_array_append(ast_parser->diagnostics,
-                            (Diagnostic){.kind = DIAGNOSTIC_KIND_ERROR,
-                                         .message = "ast_parser_parse_statement is not implemented",
-                                         .position = ast_parser_peek(ast_parser)->position});
+    diagnostic_array_append(
+        ast_parser->diagnostics,
+        (Diagnostic){.kind = DIAGNOSTIC_KIND_ERROR,
+                     .message = "ast_parser_parse_statement is not implemented",
+                     .position = ast_parser_peek(ast_parser)->position}
+    );
 
     return false;
 }
