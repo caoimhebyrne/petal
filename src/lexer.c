@@ -97,8 +97,14 @@ void lexer_start_length_group(Lexer* lexer) {
 
 // Ends an ongoing length group.
 void lexer_end_length_group(Lexer* lexer) {
+    // If there is no length group, then we don't need to do anything.
+    if (lexer->position.length == 0) {
+        return;
+    }
+
     // We can advance the column by the length of the current group.
-    lexer->position.column += lexer->position.length;
+    // We subtract 1 as the length is 1-based, whereas the column is 0-based.
+    lexer->position.column += (lexer->position.length - 1);
     lexer->position.length = 0;
 }
 
