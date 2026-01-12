@@ -100,7 +100,7 @@ bool ast_parser_parse_statement(ASTParser* ast_parser, NodeArray* nodes) {
     (void)nodes;
 
     diagnostic_array_append(ast_parser->diagnostics,
-                            (Diagnostic){.kind = DIAGNOSTIC_KIND_ERROR,
+                            (Diagnostic){.kind = DIAGNOSTIC_KIND_INTERNAL_ERROR,
                                          .message = "ast_parser_parse_statement is not implemented",
                                          .module_id = ast_parser->module_id});
 

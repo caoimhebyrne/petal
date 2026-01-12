@@ -7,9 +7,12 @@
  * The different kinds of diagnostics that exist.
  */
 typedef enum {
-    // An error, this will typically prevent the compilation from executing further.
-    DIAGNOSTIC_KIND_ERROR,
+    // An internal compiler error, this will typically prevent the compilation from executing further.
+    DIAGNOSTIC_KIND_INTERNAL_ERROR,
 } DiagnosticKind;
+
+// Returns a human readable string ('internal error', 'error', 'warning', etc.) for a diagnostic kind.
+const char* diagnostic_kind_string(const DiagnosticKind kind);
 
 /**
  * A diagnostic is typically an error or a warning that occurs while parsing or executing source code.

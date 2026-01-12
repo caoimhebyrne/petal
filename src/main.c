@@ -32,7 +32,7 @@ int main(const int argc, const char** argv, const char** envp) {
     if (!module_parse(&main_module)) {
         for (size_t i = 0; i < diagnostics.length; i++) {
             const Diagnostic diagnostic = diagnostics.data[i];
-            log_error("diagnostic %zu: '%s' (module id = %zu)", i + 1, diagnostic.message, diagnostic.module_id);
+            log_error("%s: '%s'", diagnostic_kind_string(diagnostic.kind), diagnostic.message);
         }
 
         return false;
