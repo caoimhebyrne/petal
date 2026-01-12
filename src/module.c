@@ -1,6 +1,7 @@
 #include "module.h"
 #include "array.h"
 #include "ast.h"
+#include "diagnostic.h"
 #include "file.h"
 #include "lexer.h"
 #include "logger.h"
@@ -8,7 +9,7 @@
 
 static size_t global_module_id = 1;
 
-bool module_init(Module* module, Allocator* allocator, const char* file_path) {
+bool module_init(Module* module, Allocator* allocator, DiagnosticArray* diagnostics, const char* file_path) {
     StringBuffer source_buffer = {0};
     string_buffer_init(&source_buffer, allocator);
 
@@ -28,6 +29,7 @@ bool module_init(Module* module, Allocator* allocator, const char* file_path) {
 
     module->id = (ModuleId){.unwrap = global_module_id++};
     module->allocator = allocator;
+    module->diagnostics = diagnostics;
     module->file_path = file_path_buffer;
     module->name = name_buffer;
     module->source = source_buffer;
@@ -50,13 +52,12 @@ bool module_parse(Module* module) {
     }
 
     ASTParser ast_parser = {0};
-    ast_parser_init(&ast_parser, module->allocator, &tokens);
+    ast_parser_init(&ast_parser, module->allocator, module->diagnostics, module->id, &tokens);
 
     NodeArray nodes = {0};
     node_array_init(&nodes, module->allocator);
 
     if (!ast_parser_parse(&ast_parser, &nodes)) {
-        log_error("ast parsing failed, see above for more information!");
         return false;
     }
 

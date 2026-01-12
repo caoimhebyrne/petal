@@ -3,7 +3,9 @@
 // An abstract syntax tree parser. Takes tokens from a [TokenArray] and produces a [NodeArray].
 #include "allocator.h"
 #include "array.h"
+#include "diagnostic.h"
 #include "lexer.h"
+#include "module_id.h"
 
 typedef struct Node Node;
 
@@ -41,6 +43,12 @@ typedef struct {
     // The allocator to use when allocating memory.
     Allocator* allocator;
 
+    // The [DiagnosticArray] to produce diagnostics on to.
+    DiagnosticArray* diagnostics;
+
+    // The ID of the module that is being compiled.
+    ModuleId module_id;
+
     // The tokens to transform into AST nodes.
     const TokenArray* tokens;
 
@@ -49,7 +57,8 @@ typedef struct {
 } ASTParser;
 
 // Initializes an [ASTParser] with the provided [TokenArray].
-void ast_parser_init(ASTParser* ast_parser, Allocator* allocator, const TokenArray* tokens);
+void ast_parser_init(ASTParser* ast_parser, Allocator* allocator, DiagnosticArray* diagnostics, ModuleId module_id,
+                     const TokenArray* tokens);
 
 // Attempts to parse an AST from the tokens in this [ASTParser].
 bool ast_parser_parse(ASTParser* ast_parser, NodeArray* nodes);

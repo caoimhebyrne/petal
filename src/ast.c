@@ -1,8 +1,8 @@
 #include "ast.h"
 #include "allocator.h"
 #include "array.h"
+#include "diagnostic.h"
 #include "lexer.h"
-#include "logger.h"
 #include <assert.h>
 
 IMPLEMENT_ARRAY_TYPE(NodeArray, node_array, Node*)
@@ -72,8 +72,11 @@ bool ast_parser_expect_keyword(ASTParser* ast_parser, const Keyword keyword) {
     return token->keyword == keyword;
 }
 
-void ast_parser_init(ASTParser* ast_parser, Allocator* allocator, const TokenArray* tokens) {
+void ast_parser_init(ASTParser* ast_parser, Allocator* allocator, DiagnosticArray* diagnostics, ModuleId module_id,
+                     const TokenArray* tokens) {
     ast_parser->allocator = allocator;
+    ast_parser->diagnostics = diagnostics;
+    ast_parser->module_id = module_id;
     ast_parser->tokens = tokens;
     ast_parser->cursor = 0;
 }
@@ -96,7 +99,11 @@ bool ast_parser_parse_statement(ASTParser* ast_parser, NodeArray* nodes) {
     (void)ast_parser;
     (void)nodes;
 
-    log_error("todo: ast_parser_parse_statement");
+    diagnostic_array_append(ast_parser->diagnostics,
+                            (Diagnostic){.kind = DIAGNOSTIC_KIND_ERROR,
+                                         .message = "ast_parser_parse_statement is not implemented",
+                                         .module_id = ast_parser->module_id});
+
     return false;
 }
 
