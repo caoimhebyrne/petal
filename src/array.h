@@ -31,8 +31,12 @@
         (lower_name)->capacity = 0;                                                                                    \
     }                                                                                                                  \
     void lower_name##_resize(name* lower_name, const size_t new_capacity) {                                            \
-        (lower_name)->data = allocator_realloc((lower_name)->allocator, (lower_name)->data,                            \
-                                               (lower_name)->capacity * sizeof(T), new_capacity * sizeof(T));          \
+        (lower_name)->data = allocator_realloc(                                                                        \
+            (lower_name)->allocator,                                                                                   \
+            (lower_name)->data,                                                                                        \
+            (lower_name)->capacity * sizeof(T),                                                                        \
+            new_capacity * sizeof(T)                                                                                   \
+        );                                                                                                             \
         (lower_name)->capacity = new_capacity;                                                                         \
     }                                                                                                                  \
     void lower_name##_append(name* lower_name, T value) {                                                              \
@@ -60,7 +64,7 @@ bool string_buffer_equals(const StringBuffer* buffer, const StringBuffer* other)
 bool string_buffer_equals_cstr(const StringBuffer* buffer, const char* cstr);
 
 // Removes all content from the [StringBuffer] before (and including) the last occurence of the provided character.
-void string_buffer_trim_before_last(StringBuffer* buffer, const char character);
+void string_buffer_trim_from(StringBuffer* buffer, const char character);
 
 // Removes all content from the [StringBuffer] after (and including) the first occurence of the provided character.
-void string_buffer_trim_after_first(StringBuffer* buffer, const char character);
+void string_buffer_trim_until(StringBuffer* buffer, const char character);

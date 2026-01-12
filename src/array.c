@@ -1,5 +1,6 @@
 #include "array.h"
 #include "allocator.h"
+#include "logger.h"
 #include <string.h>
 
 IMPLEMENT_ARRAY_TYPE(StringBuffer, string_buffer, char)
@@ -38,7 +39,7 @@ bool string_buffer_equals_cstr(const StringBuffer* buffer, const char* cstr) {
     return true;
 }
 
-void string_buffer_trim_before_last(StringBuffer* buffer, const char character) {
+void string_buffer_trim_from(StringBuffer* buffer, const char character) {
     size_t character_index = 0;
 
     // We need to get the index of the last occurrence of the character.
@@ -54,11 +55,11 @@ void string_buffer_trim_before_last(StringBuffer* buffer, const char character) 
     }
 
     // Then, we can set the StringBuffer's length and data accordingly.
-    buffer->length = buffer->length - character_index + 1;
-    buffer->data = buffer->data + character_index + 1;
+    buffer->length = buffer->length - (character_index + 1);
+    buffer->data = buffer->data + (character_index + 1);
 }
 
-void string_buffer_trim_after_first(StringBuffer* buffer, const char character) {
+void string_buffer_trim_until(StringBuffer* buffer, const char character) {
     size_t character_index = 0;
 
     // We need to get the index of the last occurrence of the character.
@@ -74,6 +75,6 @@ void string_buffer_trim_after_first(StringBuffer* buffer, const char character) 
         return;
     }
 
-    // Then, we can set the StringBuffer's length.
-    buffer->length = buffer->length - character_index;
+    // Then, we can set the StringBuffer's length to the position before the character.
+    buffer->length = character_index;
 }

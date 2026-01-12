@@ -24,8 +24,8 @@ bool module_init(Module* module, Allocator* allocator, DiagnosticArray* diagnost
     string_buffer_init_from_cstr(&name_buffer, allocator, file_path);
 
     // The module name is the name of the file without any parent directory or file extension.
-    string_buffer_trim_before_last(&name_buffer, PATH_SEPARATOR);
-    string_buffer_trim_after_first(&name_buffer, '.');
+    string_buffer_trim_from(&name_buffer, PATH_SEPARATOR);
+    string_buffer_trim_until(&name_buffer, '.');
 
     module->id = (ModuleId){.unwrap = global_module_id++};
     module->allocator = allocator;
