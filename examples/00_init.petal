@@ -1,0 +1,11 @@
+// This is the entrypoint for every Petal application.
+//
+// Each application must have a `main` function that returns an `i32`. This is a 32-bit integer that indicates the
+// process' exit code.
+//
+// In this example, we return `0`. Running the program in the Petal VM should exit with a zero status code.
+// 
+// TIP: In Bash, you can use `echo $?` to print the exit code of the previous command.
+func main() -> i32 {
+    return 0;
+}
