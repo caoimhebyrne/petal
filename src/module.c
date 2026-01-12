@@ -1,5 +1,6 @@
 #include "module.h"
 #include "array.h"
+#include "ast.h"
 #include "file.h"
 #include "lexer.h"
 #include "logger.h"
@@ -48,62 +49,15 @@ bool module_parse(Module* module) {
         return false;
     }
 
-    for (size_t i = 0; i < tokens.length; i++) {
-        const Token token = tokens.data[i];
+    ASTParser ast_parser = {0};
+    ast_parser_init(&ast_parser, module->allocator, &tokens);
 
-        switch (token.kind) {
-        case TOKEN_KIND_EQUALS:
-            log_info("equals");
-            break;
+    NodeArray nodes = {0};
+    node_array_init(&nodes, module->allocator);
 
-        case TOKEN_KIND_IDENTIFIER:
-            log_info("identifier '%s'", token.string);
-            break;
-
-        case TOKEN_KIND_NUMBER:
-            log_info("number %f", token.number);
-            break;
-
-        case TOKEN_KIND_CLOSE_BRACE:
-            log_info("close brace");
-            break;
-
-        case TOKEN_KIND_OPEN_BRACE:
-            log_info("open brace");
-            break;
-
-        case TOKEN_KIND_OPEN_PARENTHESIS:
-            log_info("open parenthesis");
-            break;
-
-        case TOKEN_KIND_CLOSE_PARENTHESIS:
-            log_info("close parenthesis");
-            break;
-
-        case TOKEN_KIND_COLON:
-            log_info("colon");
-            break;
-
-        case TOKEN_KIND_SEMICOLON:
-            log_info("semicolon");
-            break;
-
-        case TOKEN_KIND_COMMA:
-            log_info("comma");
-            break;
-
-        case TOKEN_KIND_RIGHT_ANGLE_BRACKET:
-            log_info("right angle bracket");
-            break;
-
-        case TOKEN_KIND_HYPHEN:
-            log_info("hyphen");
-            break;
-
-        case TOKEN_KIND_SLASH:
-            log_info("slash");
-            break;
-        }
+    if (!ast_parser_parse(&ast_parser, &nodes)) {
+        log_error("ast parsing failed, see above for more information!");
+        return false;
     }
 
     return true;
