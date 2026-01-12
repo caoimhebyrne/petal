@@ -76,7 +76,7 @@ bool ast_parser_expect_keyword(ASTParser* ast_parser, const Keyword keyword) {
 }
 
 // Pushes a diagnostic at the parser's current position.
-void ast_parser_push_diagnostic(const ASTParser* ast_parser, const DiagnosticKind kind, const char* message) {
+void ast_parser_push_current_diagnostic(const ASTParser* ast_parser, const DiagnosticKind kind, const char* message) {
     // If we cannot get a token at the current position, then we will just default to (0, 0).
     Position position = {.module_id = ast_parser->module_id};
 
@@ -88,6 +88,21 @@ void ast_parser_push_diagnostic(const ASTParser* ast_parser, const DiagnosticKin
     diagnostic_array_append(
         ast_parser->diagnostics,
         (Diagnostic){.kind = kind, .message = message, .position = position}
+    );
+}
+
+// Pushes a diagnostic at the provided token's position.
+void ast_parser_push_diagnostic(
+    const ASTParser* ast_parser,
+    const Token* token,
+    const DiagnosticKind kind,
+    const char* message
+) {
+    assert(token != NULL && "ast_parser_push_diagnostic was passed a null token");
+
+    diagnostic_array_append(
+        ast_parser->diagnostics,
+        (Diagnostic){.kind = kind, .message = message, .position = token->position}
     );
 }
 
@@ -123,7 +138,12 @@ bool ast_parser_parse_statement(ASTParser* ast_parser, NodeArray* nodes) {
     (void)ast_parser;
     (void)nodes;
 
-    ast_parser_push_diagnostic(ast_parser, DIAGNOSTIC_KIND_ERROR, "ast_parser_parse_statement is not implemented");
+    ast_parser_push_current_diagnostic(
+        ast_parser,
+        DIAGNOSTIC_KIND_ERROR,
+        "ast_parser_parse_statement is not implemented"
+    );
+
     return false;
 }
 
