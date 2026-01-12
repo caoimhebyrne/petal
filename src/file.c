@@ -3,10 +3,10 @@
 #include "logger.h"
 #include <errno.h>
 #include <stdio.h>
-#include <sys/stat.h>
 #include <string.h>
+#include <sys/stat.h>
 
-bool file_read(const char* path, StringBuffer *output) {
+bool file_read(const char* path, StringBuffer* output) {
     FILE* file = fopen(path, "r");
     if (!file) {
         log_error("could not read file '%s': %s", path, strerror(errno));
@@ -49,10 +49,12 @@ bool file_read(const char* path, StringBuffer *output) {
     output->length = output->capacity;
 
 success:
-    if (file) fclose(file);
+    if (file)
+        fclose(file);
     return true;
 
 fail:
-    if (file) fclose(file);
+    if (file)
+        fclose(file);
     return false;
 }

@@ -101,7 +101,7 @@ void* allocator_realloc(Allocator* allocator, const void* data, const size_t old
 
         // If the pointer was allocated within this region, then we no longer need to search.
         const void* region_end = region->start + region->capacity;
-        if (region->start <= (char*) data && region_end >= data) {
+        if (region->start <= (char*)data && region_end >= data) {
             // If the region's last allocated pointer was this pointer, then we can reset it.
             const void* potential_last_allocated_pointer = region->cursor - old_size;
             if (potential_last_allocated_pointer == data) {

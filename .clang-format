@@ -3,8 +3,12 @@ BasedOnStyle: LLVM
 IndentWidth: 4
 ColumnLimit: 120
 ---
+Language: C
+
+DerivePointerAlignment: false
+PointerAlignment: Left
+---
 Language: Cpp
 
-# Force pointers to the type (type*).
 DerivePointerAlignment: false
 PointerAlignment: Left
