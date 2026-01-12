@@ -3,6 +3,7 @@
 #include "array.h"
 #include "diagnostic.h"
 #include "lexer.h"
+#include "lexer_position.h"
 #include <assert.h>
 
 IMPLEMENT_ARRAY_TYPE(NodeArray, node_array, Node*)
@@ -74,6 +75,22 @@ bool ast_parser_expect_keyword(ASTParser* ast_parser, const Keyword keyword) {
     return token->keyword == keyword;
 }
 
+// Pushes a diagnostic at the parser's current position.
+void ast_parser_push_diagnostic(const ASTParser* ast_parser, const DiagnosticKind kind, const char* message) {
+    // If we cannot get a token at the current position, then we will just default to (0, 0).
+    Position position = {.module_id = ast_parser->module_id};
+
+    const Token* token = ast_parser_peek(ast_parser);
+    if (token) {
+        position = token->position;
+    }
+
+    diagnostic_array_append(
+        ast_parser->diagnostics,
+        (Diagnostic){.kind = kind, .message = message, .position = position}
+    );
+}
+
 void ast_parser_init(
     ASTParser* ast_parser,
     Allocator* allocator,
@@ -106,13 +123,7 @@ bool ast_parser_parse_statement(ASTParser* ast_parser, NodeArray* nodes) {
     (void)ast_parser;
     (void)nodes;
 
-    diagnostic_array_append(
-        ast_parser->diagnostics,
-        (Diagnostic){.kind = DIAGNOSTIC_KIND_ERROR,
-                     .message = "ast_parser_parse_statement is not implemented",
-                     .position = ast_parser_peek(ast_parser)->position}
-    );
-
+    ast_parser_push_diagnostic(ast_parser, DIAGNOSTIC_KIND_ERROR, "ast_parser_parse_statement is not implemented");
     return false;
 }
 
