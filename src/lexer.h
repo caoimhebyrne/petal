@@ -10,6 +10,8 @@
 typedef enum {
     TOKEN_KIND_IDENTIFIER,
     TOKEN_KIND_NUMBER,
+    TOKEN_KIND_KEYWORD,
+
     TOKEN_KIND_EQUALS,
     TOKEN_KIND_OPEN_PARENTHESIS,
     TOKEN_KIND_CLOSE_PARENTHESIS,
@@ -22,6 +24,17 @@ typedef enum {
     TOKEN_KIND_RIGHT_ANGLE_BRACKET,
     TOKEN_KIND_SLASH,
 } TokenKind;
+
+/**
+ * A keyword.
+ */
+typedef enum {
+    // The provided value was not a valid keyword.
+    KEYWORD_UNKNOWN,
+
+    KEYWORD_FUNC,
+    KEYWORD_RETURN,
+} Keyword;
 
 /**
  * A position that a token occurred at within a source file.
@@ -49,10 +62,13 @@ typedef struct {
 
     union {
         // Only available on TOKEN_KIND_IDENTIFIER.
-        const char* string;
+        StringBuffer string;
 
         // Only available on TOKEN_KIND_NUMBER.
         float number;
+
+        // Only available on TOKEN_KIND_KEYWORD.
+        Keyword keyword;
     };
 } Token;
 

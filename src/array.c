@@ -6,7 +6,8 @@ IMPLEMENT_ARRAY_TYPE(StringBuffer, string_buffer, char)
 
 void string_buffer_init_from_cstr(StringBuffer* buffer, Allocator* allocator, const char* cstr) {
     string_buffer_init(buffer, allocator);
-    string_buffer_append_many(buffer, cstr, strlen(cstr));
+    // FIXME: This is a bad cast, but the value being `const` seems to cause issues with pointer types.
+    string_buffer_append_many(buffer, (char*)cstr, strlen(cstr));
 }
 
 bool string_buffer_equals(const StringBuffer* buffer, const StringBuffer* other) {
@@ -16,6 +17,20 @@ bool string_buffer_equals(const StringBuffer* buffer, const StringBuffer* other)
 
     for (size_t i = 0; i < buffer->length; i++) {
         if (buffer->data[i] != other->data[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool string_buffer_equals_cstr(const StringBuffer* buffer, const char* cstr) {
+    if (buffer->length != strlen(cstr)) {
+        return false;
+    }
+
+    for (size_t i = 0; i < buffer->length; i++) {
+        if (buffer->data[i] != cstr[i]) {
             return false;
         }
     }

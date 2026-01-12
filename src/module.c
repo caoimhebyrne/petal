@@ -60,5 +60,20 @@ bool module_parse(Module* module) {
         return false;
     }
 
+    for (size_t i = 0; i < nodes.length; i++) {
+        const Node* node = nodes.data[i];
+
+        switch (node->kind) {
+        case NODE_KIND_FUNCTION_DECLARATION: {
+            const FunctionDeclarationNode function_declaration = node->function_declaration;
+
+            log_info("function declaration '%.*s'", (int)function_declaration.name.length,
+                     function_declaration.name.data);
+
+            break;
+        }
+        }
+    }
+
     return true;
 }

@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <string.h>
 
 IMPLEMENT_ARRAY_TYPE(TokenArray, token_array, Token)
 
@@ -124,6 +125,18 @@ bool lexer_parse(Lexer* lexer, TokenArray* tokens) {
     return true;
 }
 
+Keyword get_keyword_from_identifier(StringBuffer* identifier) {
+    // TODO: This could be O(1) if we implement string interning, we could then allocate some common keywords by
+    //       default and have an instant lookup.
+    if (string_buffer_equals_cstr(identifier, "func")) {
+        return KEYWORD_FUNC;
+    } else if (string_buffer_equals_cstr(identifier, "return")) {
+        return KEYWORD_RETURN;
+    }
+
+    return KEYWORD_UNKNOWN;
+}
+
 bool lexer_parse_identifier(Lexer* lexer, TokenArray* tokens) {
     StringBuffer identifier = {0};
     string_buffer_init(&identifier, lexer->allocator);
@@ -132,10 +145,15 @@ bool lexer_parse_identifier(Lexer* lexer, TokenArray* tokens) {
         string_buffer_append(&identifier, lexer_consume(lexer));
     }
 
-    // C strings are null-terminated.
-    string_buffer_append(&identifier, '\0');
-    token_array_append(tokens, (Token){.kind = TOKEN_KIND_IDENTIFIER, .string = identifier.data});
+    // If the identifier that was parsed is a keyword, then we can emit that token instead.
+    Keyword keyword = get_keyword_from_identifier(&identifier);
+    if (keyword != KEYWORD_UNKNOWN) {
+        // TODO: Free the identifier, we don't need it anymore.
+        token_array_append(tokens, (Token){.kind = TOKEN_KIND_KEYWORD, .keyword = keyword});
+        return true;
+    }
 
+    token_array_append(tokens, (Token){.kind = TOKEN_KIND_IDENTIFIER, .string = identifier});
     return true;
 }
 

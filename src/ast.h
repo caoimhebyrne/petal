@@ -5,6 +5,10 @@
 #include "array.h"
 #include "lexer.h"
 
+typedef struct Node Node;
+
+DEFINE_ARRAY_TYPE(NodeArray, node_array, Node*)
+
 typedef enum {
     // A function declaration node.
     NODE_KIND_FUNCTION_DECLARATION,
@@ -14,10 +18,13 @@ typedef enum {
 typedef struct {
     // The name of the function being declared.
     StringBuffer name;
+
+    // The body of the function.
+    NodeArray body;
 } FunctionDeclarationNode;
 
 // A node in an abstract syntax tree.
-typedef struct {
+struct Node {
     // The kind of node that this is.
     NodeKind kind;
 
@@ -25,12 +32,10 @@ typedef struct {
         // Only available in `NODE_KIND_FUNCTION_DECLARATION`.
         FunctionDeclarationNode function_declaration;
     };
-} Node;
-
-DEFINE_ARRAY_TYPE(NodeArray, node_array, Node*)
+};
 
 // Allocates a new function declaration node with the provided allocator.
-Node* function_declaration_node_create(Allocator* allocator, StringBuffer name);
+Node* function_declaration_node_create(Allocator* allocator, StringBuffer name, NodeArray body);
 
 typedef struct {
     // The allocator to use when allocating memory.

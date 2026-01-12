@@ -56,6 +56,9 @@ void string_buffer_init_from_cstr(StringBuffer* buffer, Allocator* allocator, co
 // Checks whether the contents in two [StringBuffer]s are equal to each other.
 bool string_buffer_equals(const StringBuffer* buffer, const StringBuffer* other);
 
+// Checks whether the contents in a [StringBuffer] is equal to the proivded C-string.
+bool string_buffer_equals_cstr(const StringBuffer* buffer, const char* cstr);
+
 // Removes all content from the [StringBuffer] before (and including) the last occurence of the provided character.
 void string_buffer_trim_before_last(StringBuffer* buffer, const char character);
 
