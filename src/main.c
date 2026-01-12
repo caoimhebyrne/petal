@@ -33,7 +33,9 @@ int main(const int argc, const char** argv, const char** envp) {
 
     for (size_t i = 0; i < diagnostics.length; i++) {
         const Diagnostic diagnostic = diagnostics.data[i];
-        log_error("%s: '%s'", diagnostic_kind_string(diagnostic.kind), diagnostic.message);
+        fprintf(stderr, COLOR_RED "%s" COLOR_RESET COLOR_WHITE "(%.*s:%zu:%zu):" COLOR_RESET " %s\n",
+                diagnostic_kind_string(diagnostic.kind), (int)main_module.file_path.length, main_module.file_path.data,
+                diagnostic.position.line + 1, diagnostic.position.column + 1, diagnostic.message);
     }
 
     if (!module_parse_result) {

@@ -37,28 +37,14 @@ typedef enum {
 } Keyword;
 
 /**
- * A position that a token occurred at within a source file.
- */
-typedef struct {
-    // The module that the token was in.
-    ModuleId module_id;
-
-    // The line that the token started at.
-    size_t line;
-
-    // The column that the token started at.
-    size_t column;
-
-    // The length of the token.
-    size_t length;
-} Position;
-
-/**
  * A token that occurred within a source file.
  */
 typedef struct {
     // The kind of token that this is.
     TokenKind kind;
+
+    // The position that this token occurred at within its source file.
+    Position position;
 
     union {
         // Only available on TOKEN_KIND_IDENTIFIER.
@@ -92,6 +78,9 @@ typedef struct {
 
     // The index that the lexer is currently at in the source code.
     size_t cursor;
+
+    // The position that the lexer is currently at in the source code.
+    Position position;
 } Lexer;
 
 /**

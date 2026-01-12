@@ -5,16 +5,16 @@ IMPLEMENT_ARRAY_TYPE(DiagnosticArray, diagnostic_array, Diagnostic)
 
 const char* diagnostic_kind_string(const DiagnosticKind kind) {
     switch (kind) {
-    case DIAGNOSTIC_KIND_INTERNAL_ERROR:
-        return "internal error";
+    case DIAGNOSTIC_KIND_ERROR:
+        return "error";
 
     default:
         return "unknown";
     }
 }
 
-void diagnostic_init(Diagnostic* diagnostic, const DiagnosticKind kind, const ModuleId module_id, const char* message) {
+void diagnostic_init(Diagnostic* diagnostic, const DiagnosticKind kind, const Position position, const char* message) {
     diagnostic->kind = kind;
-    diagnostic->module_id = module_id;
+    diagnostic->position = position;
     diagnostic->message = message;
 }

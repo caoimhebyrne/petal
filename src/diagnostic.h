@@ -1,6 +1,7 @@
 #pragma once
 
 #include "array.h"
+#include "lexer_position.h"
 #include "module_id.h"
 
 /**
@@ -8,7 +9,7 @@
  */
 typedef enum {
     // An internal compiler error, this will typically prevent the compilation from executing further.
-    DIAGNOSTIC_KIND_INTERNAL_ERROR,
+    DIAGNOSTIC_KIND_ERROR,
 } DiagnosticKind;
 
 // Returns a human readable string ('internal error', 'error', 'warning', etc.) for a diagnostic kind.
@@ -21,8 +22,8 @@ typedef struct {
     // The kind of diagnostic that this is.
     DiagnosticKind kind;
 
-    // The ID of the module that the diagnostic occurred in.
-    ModuleId module_id;
+    // The position that the diagnostic occurred at.
+    Position position;
 
     // The message associated with this diagnostic.
     const char* message;
@@ -31,6 +32,6 @@ typedef struct {
 /**
  * Initializes a new [Diagnostic] with the provided kind, module ID, and message.
  */
-void diagnostic_init(Diagnostic* diagnostic, const DiagnosticKind kind, const ModuleId module_id, const char* message);
+void diagnostic_init(Diagnostic* diagnostic, const DiagnosticKind kind, const Position position, const char* message);
 
 DEFINE_ARRAY_TYPE(DiagnosticArray, diagnostic_array, Diagnostic)
