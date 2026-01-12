@@ -19,8 +19,8 @@
     } name;                                                                                                            \
     void lower_name##_init(name* lower_name, Allocator* allocator);                                                    \
     void lower_name##_resize(name* lower_name, const size_t new_size);                                                 \
-    void lower_name##_append(name* lower_name, const T value);                                                         \
-    void lower_name##_append_many(name* lower_name, const T* values, const size_t size);
+    void lower_name##_append(name* lower_name, T value);                                                               \
+    void lower_name##_append_many(name* lower_name, T* values, const size_t size);
 
 // This should be called within a `.c` file to provide implementations for methods belonging to an array type.
 #define IMPLEMENT_ARRAY_TYPE(name, lower_name, T)                                                                      \
@@ -35,13 +35,13 @@
                                                (lower_name)->capacity * sizeof(T), new_capacity * sizeof(T));          \
         (lower_name)->capacity = new_capacity;                                                                         \
     }                                                                                                                  \
-    void lower_name##_append(name* lower_name, const T value) {                                                        \
+    void lower_name##_append(name* lower_name, T value) {                                                              \
         if ((lower_name)->length + 1 > (lower_name)->capacity) {                                                       \
             lower_name##_resize((lower_name), min(1, 2 * (lower_name)->capacity));                                     \
         }                                                                                                              \
         (lower_name)->data[(lower_name)->length++] = (value);                                                          \
     }                                                                                                                  \
-    void lower_name##_append_many(name* lower_name, const T* values, const size_t size) {                              \
+    void lower_name##_append_many(name* lower_name, T* values, const size_t size) {                                    \
         for (size_t i = 0; i < size; i++) {                                                                            \
             lower_name##_append((lower_name), values[i]);                                                              \
         }                                                                                                              \
