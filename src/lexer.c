@@ -20,7 +20,14 @@ void lexer_init(Lexer* lexer, const Module* module) {
 
 char lexer_peek(const Lexer* lexer) { return lexer->buffer->data[lexer->cursor]; }
 
+char lexer_peek_nth(const Lexer* lexer, const size_t offset) { return lexer->buffer->data[lexer->cursor + offset]; }
+
 char lexer_consume(Lexer* lexer) { return lexer->buffer->data[lexer->cursor++]; }
+
+void lexer_push_single_token(Lexer* lexer, TokenArray* tokens, const TokenKind kind) {
+    lexer_consume(lexer);
+    token_array_append(tokens, (Token){.kind = kind});
+}
 
 bool lexer_is_identifier(const Lexer* lexer) {
     const char character = lexer_peek(lexer);
@@ -36,67 +43,53 @@ bool lexer_parse(Lexer* lexer, TokenArray* tokens) {
 
         switch (character) {
         case '=':
-            lexer_consume(lexer);
-            token_array_append(tokens, (Token){.kind = TOKEN_KIND_EQUALS});
+            lexer_push_single_token(lexer, tokens, TOKEN_KIND_EQUALS);
             continue;
 
         case '(':
-            lexer_consume(lexer);
-            token_array_append(tokens, (Token){.kind = TOKEN_KIND_OPEN_PARENTHESIS});
+            lexer_push_single_token(lexer, tokens, TOKEN_KIND_OPEN_PARENTHESIS);
             continue;
 
         case ')':
-            lexer_consume(lexer);
-            token_array_append(tokens, (Token){.kind = TOKEN_KIND_CLOSE_PARENTHESIS});
+            lexer_push_single_token(lexer, tokens, TOKEN_KIND_CLOSE_PARENTHESIS);
             continue;
 
         case '{':
-            lexer_consume(lexer);
-            token_array_append(tokens, (Token){.kind = TOKEN_KIND_OPEN_BRACE});
+            lexer_push_single_token(lexer, tokens, TOKEN_KIND_OPEN_BRACE);
             continue;
 
         case '}':
-            lexer_consume(lexer);
-            token_array_append(tokens, (Token){.kind = TOKEN_KIND_CLOSE_BRACE});
+            lexer_push_single_token(lexer, tokens, TOKEN_KIND_CLOSE_BRACE);
             continue;
 
         case ':':
-            lexer_consume(lexer);
-            token_array_append(tokens, (Token){.kind = TOKEN_KIND_COLON});
+            lexer_push_single_token(lexer, tokens, TOKEN_KIND_COLON);
             continue;
 
         case ';':
-            lexer_consume(lexer);
-            token_array_append(tokens, (Token){.kind = TOKEN_KIND_SEMICOLON});
+            lexer_push_single_token(lexer, tokens, TOKEN_KIND_SEMICOLON);
             continue;
 
         case ',':
-            lexer_consume(lexer);
-            token_array_append(tokens, (Token){.kind = TOKEN_KIND_COMMA});
+            lexer_push_single_token(lexer, tokens, TOKEN_KIND_COMMA);
             continue;
 
         case '>':
-            lexer_consume(lexer);
-            token_array_append(tokens, (Token){.kind = TOKEN_KIND_RIGHT_ANGLE_BRACKET});
+            lexer_push_single_token(lexer, tokens, TOKEN_KIND_RIGHT_ANGLE_BRACKET);
             continue;
 
         case '-':
-            lexer_consume(lexer);
-            token_array_append(tokens, (Token){.kind = TOKEN_KIND_HYPHEN});
+            lexer_push_single_token(lexer, tokens, TOKEN_KIND_HYPHEN);
             continue;
 
         case '/':
-            lexer_consume(lexer);
-
-            if (lexer_peek(lexer) == '/') {
-                lexer_consume(lexer);
-
+            if (lexer_peek_nth(lexer, 1) == '/') {
                 while (lexer_peek(lexer) != '\n') {
                     lexer_consume(lexer);
                     continue;
                 }
             } else {
-                token_array_append(tokens, (Token){.kind = TOKEN_KIND_SLASH});
+                lexer_push_single_token(lexer, tokens, TOKEN_KIND_SLASH);
             }
 
             continue;
@@ -148,7 +141,7 @@ bool lexer_parse_identifier(Lexer* lexer, TokenArray* tokens) {
     // If the identifier that was parsed is a keyword, then we can emit that token instead.
     Keyword keyword = get_keyword_from_identifier(&identifier);
     if (keyword != KEYWORD_UNKNOWN) {
-        // TODO: Free the identifier, we don't need it anymore.
+        // TODO: Free the StringBuffer, we don't need it anymore.
         token_array_append(tokens, (Token){.kind = TOKEN_KIND_KEYWORD, .keyword = keyword});
         return true;
     }
@@ -182,6 +175,7 @@ bool lexer_parse_number(Lexer* lexer, TokenArray* tokens) {
         return false;
     }
 
+    // TODO: Free the StringBuffer as it is no longer needed.
     token_array_append(tokens, (Token){.kind = TOKEN_KIND_NUMBER, .number = value});
     return true;
 }
