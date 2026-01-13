@@ -20,7 +20,8 @@
     void lower_name##_init(name* lower_name, Allocator* allocator);                                                    \
     void lower_name##_resize(name* lower_name, const size_t new_size);                                                 \
     void lower_name##_append(name* lower_name, T value);                                                               \
-    void lower_name##_append_many(name* lower_name, T* values, const size_t size);
+    void lower_name##_append_many(name* lower_name, T* values, const size_t size);                                     \
+    void lower_name##_free(name* lower_name);
 
 // This should be called within a `.c` file to provide implementations for methods belonging to an array type.
 #define IMPLEMENT_ARRAY_TYPE(name, lower_name, T)                                                                      \
@@ -49,6 +50,9 @@
         for (size_t i = 0; i < size; i++) {                                                                            \
             lower_name##_append((lower_name), values[i]);                                                              \
         }                                                                                                              \
+    }                                                                                                                  \
+    void lower_name##_free(name* lower_name) {                                                                         \
+        allocator_free((lower_name)->allocator, (lower_name)->data, (lower_name)->capacity * sizeof(T));               \
     }
 
 // Declare some basic array types that are used throughout the project.

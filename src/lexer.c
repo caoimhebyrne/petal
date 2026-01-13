@@ -231,7 +231,8 @@ bool lexer_parse_identifier(Lexer* lexer, TokenArray* tokens) {
     // If the identifier that was parsed is a keyword, then we can emit that token instead.
     Keyword keyword = get_keyword_from_identifier(&identifier);
     if (keyword != KEYWORD_UNKNOWN) {
-        // TODO: Free the StringBuffer, we don't need it anymore.
+        string_buffer_free(&identifier);
+
         token_array_append(
             tokens,
             (Token){
@@ -281,7 +282,7 @@ bool lexer_parse_number(Lexer* lexer, TokenArray* tokens) {
         return false;
     }
 
-    // TODO: Free the StringBuffer as it is no longer needed.
+    string_buffer_free(&number);
     token_array_append(tokens, (Token){.kind = TOKEN_KIND_NUMBER, .number = value, .position = lexer->position});
     return true;
 }

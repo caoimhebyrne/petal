@@ -35,6 +35,9 @@ void allocator_init(Allocator* allocator);
 // This function will return NULL if the allocation did not succeed.
 void* allocator_alloc(Allocator* allocator, const size_t size);
 
+// Attempts to free the data associated with the provided pointer.
+void allocator_free(Allocator* allocator, const void* data, const size_t size);
+
 // Allocates a new portion of memory of size [new_size], copying existing data from [data] to the new memory location.
 // If a region does not exist with [new_size] bytes available, then a new region will be allocated with enough capacity
 // for the data.

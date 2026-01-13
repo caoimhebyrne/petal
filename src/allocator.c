@@ -86,16 +86,7 @@ void* allocator_alloc(Allocator* allocator, const size_t size) {
     return allocator_region_alloc(new_region, size);
 }
 
-void* allocator_realloc(Allocator* allocator, const void* data, const size_t old_size, const size_t new_size) {
-    void* new_data = allocator_alloc(allocator, new_size);
-    if (!new_data) {
-        return NULL;
-    }
-
-    memcpy(new_data, data, old_size);
-
-    // TODO: Move to allocator_free.
-
+void allocator_free(Allocator* allocator, const void* data, const size_t size) {
     // We should attempt to free the data in the old region to allow it to be re-used.
     // If the data is at its region's current cursor, then we can easily reclaim the memory by reversing the cursor
     // by [old_size] bytes.
@@ -107,9 +98,9 @@ void* allocator_realloc(Allocator* allocator, const void* data, const size_t old
         const void* region_end = region->start + region->capacity;
         if (region->start <= (char*)data && region_end >= data) {
             // If the region's last allocated pointer was this pointer, then we can reset it.
-            const void* potential_last_allocated_pointer = region->cursor - old_size;
+            const void* potential_last_allocated_pointer = region->cursor - size;
             if (potential_last_allocated_pointer == data) {
-                region->cursor -= old_size;
+                region->cursor -= size;
             }
 
             break;
@@ -117,6 +108,16 @@ void* allocator_realloc(Allocator* allocator, const void* data, const size_t old
 
         region = region->next;
     }
+}
+
+void* allocator_realloc(Allocator* allocator, const void* data, const size_t old_size, const size_t new_size) {
+    void* new_data = allocator_alloc(allocator, new_size);
+    if (!new_data) {
+        return NULL;
+    }
+
+    memcpy(new_data, data, old_size);
+    allocator_free(allocator, data, old_size);
 
     return new_data;
 }
