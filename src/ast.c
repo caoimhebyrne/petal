@@ -172,7 +172,9 @@ bool ast_parser_parse_statement(ASTParser* ast_parser, NodeArray* nodes) {
     }
 
     // After each statement, we can expect a semicolon to be present.
-    ast_parser_expect(ast_parser, TOKEN_KIND_SEMICOLON);
+    if (!ast_parser_expect(ast_parser, TOKEN_KIND_SEMICOLON)) {
+        return false;
+    }
 
     node_array_append(nodes, node);
     return true;
