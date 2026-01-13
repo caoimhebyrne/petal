@@ -55,37 +55,6 @@ bool ast_parser_peek_is(const ASTParser* ast_parser, const TokenKind kind) {
     return token->kind == kind;
 }
 
-// Returns the token at the parser's current position while advancing the cursor.
-const Token* ast_parser_consume(ASTParser* ast_parser) {
-    if (ast_parser_is_eof(ast_parser)) {
-        return NULL;
-    }
-
-    return &ast_parser->tokens->data[ast_parser->cursor++];
-}
-
-// Expects a token kind to be at the parser's current position, returning NULL if the token kind is not present.
-const Token* ast_parser_expect(ASTParser* ast_parser, const TokenKind kind) {
-    const Token* token = ast_parser_consume(ast_parser);
-    if (!token || token->kind != kind) {
-        // TODO: Emit a diagnostic.
-        return NULL;
-    }
-
-    return token;
-}
-
-// Expects a keyword to be at the parser's current position.
-bool ast_parser_expect_keyword(ASTParser* ast_parser, const Keyword keyword) {
-    const Token* token = ast_parser_expect(ast_parser, TOKEN_KIND_KEYWORD);
-    if (!token) {
-        return false;
-    }
-
-    // TODO: Emit a diagnostic if the keyword does not match.
-    return token->keyword == keyword;
-}
-
 // Pushes a diagnostic at the parser's current position.
 void ast_parser_push_current_diagnostic(const ASTParser* ast_parser, const DiagnosticKind kind, const char* message) {
     // If we cannot get a token at the current position, then we will just default to (0, 0).
@@ -115,6 +84,61 @@ void ast_parser_push_diagnostic(
         ast_parser->diagnostics,
         (Diagnostic){.kind = kind, .message = message, .position = token->position}
     );
+}
+
+// Returns the token at the parser's current position while advancing the cursor.
+const Token* ast_parser_consume(ASTParser* ast_parser) {
+    if (ast_parser_is_eof(ast_parser)) {
+        return NULL;
+    }
+
+    return &ast_parser->tokens->data[ast_parser->cursor++];
+}
+
+// Expects a token kind to be at the parser's current position, returning NULL if the token kind is not present.
+const Token* ast_parser_expect(ASTParser* ast_parser, const TokenKind kind) {
+    const Token* token = ast_parser_consume(ast_parser);
+    if (!token) {
+        // TODO: Improve message to include information about kinds.
+        ast_parser_push_current_diagnostic(ast_parser, DIAGNOSTIC_KIND_ERROR, "expected a token, but got eof");
+        return NULL;
+    }
+
+    if (token->kind != kind) {
+        // TODO: Improve message to include information about kinds.
+        ast_parser_push_diagnostic(
+            ast_parser,
+            token,
+            DIAGNOSTIC_KIND_ERROR,
+            "expected a token, but got another token instead"
+        );
+
+        return NULL;
+    }
+
+    return token;
+}
+
+// Expects a keyword to be at the parser's current position.
+bool ast_parser_expect_keyword(ASTParser* ast_parser, const Keyword keyword) {
+    const Token* token = ast_parser_expect(ast_parser, TOKEN_KIND_KEYWORD);
+    if (!token) {
+        return false;
+    }
+
+    if (token->keyword != keyword) {
+        // TODO: Improve message to include information about keywords.
+        ast_parser_push_diagnostic(
+            ast_parser,
+            token,
+            DIAGNOSTIC_KIND_ERROR,
+            "expected a keyword, but got another keyword instead"
+        );
+
+        return false;
+    }
+
+    return true;
 }
 
 void ast_parser_init(
