@@ -14,6 +14,9 @@ DEFINE_ARRAY_TYPE(NodeArray, node_array, Node*)
 typedef enum {
     // A function declaration node.
     NODE_KIND_FUNCTION_DECLARATION,
+
+    // Returning a value from a scope.
+    NODE_KIND_RETURN,
 } NodeKind;
 
 // A function declaration node.
@@ -25,6 +28,12 @@ typedef struct {
     NodeArray body;
 } FunctionDeclarationNode;
 
+// A return node.
+typedef struct {
+    // The value being returned. Can be NULL if there is no value.
+    Node* value;
+} ReturnNode;
+
 // A node in an abstract syntax tree.
 struct Node {
     // The kind of node that this is.
@@ -33,11 +42,17 @@ struct Node {
     union {
         // Only available in `NODE_KIND_FUNCTION_DECLARATION`.
         FunctionDeclarationNode function_declaration;
+
+        // Only available in `NODE_KIND_RETURN`.
+        ReturnNode return_;
     };
 };
 
 // Allocates a new function declaration node with the provided allocator.
 Node* function_declaration_node_create(Allocator* allocator, StringBuffer name, NodeArray body);
+
+// Allocates a new return node with the provided allocator.
+Node* return_node_create(Allocator* allocator, Node* value);
 
 typedef struct {
     // The allocator to use when allocating memory.

@@ -33,6 +33,7 @@ int main(const int argc, const char** argv, const char** envp) {
 
     for (size_t i = 0; i < diagnostics.length; i++) {
         const Diagnostic diagnostic = diagnostics.data[i];
+
         fprintf(
             stderr,
             COLOR_RED "%s" COLOR_RESET COLOR_WHITE "(%.*s:%zu:%zu):" COLOR_RESET " %s\n",

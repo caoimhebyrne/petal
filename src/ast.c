@@ -12,10 +12,21 @@ Node* function_declaration_node_create(Allocator* allocator, StringBuffer name, 
     Node* node = allocator_alloc(allocator, sizeof(Node));
     assert(node && "Failed to allocate function declaration node");
 
+    node->kind = NODE_KIND_FUNCTION_DECLARATION;
     node->function_declaration = (FunctionDeclarationNode){
         .name = name,
         .body = body,
     };
+
+    return node;
+}
+
+Node* return_node_create(Allocator* allocator, Node* value) {
+    Node* node = allocator_alloc(allocator, sizeof(Node));
+    assert(node && "Failed to allocate function declaration node");
+
+    node->kind = NODE_KIND_RETURN;
+    node->return_ = (ReturnNode){.value = value};
 
     return node;
 }
@@ -134,17 +145,48 @@ bool ast_parser_parse(ASTParser* ast_parser, NodeArray* nodes) {
     return true;
 }
 
+bool ast_parser_parse_return(ASTParser* ast_parser, Node** output);
+
 bool ast_parser_parse_statement(ASTParser* ast_parser, NodeArray* nodes) {
-    (void)ast_parser;
-    (void)nodes;
+    const Token* token = ast_parser_peek(ast_parser);
+    if (!token) {
+        ast_parser_push_current_diagnostic(ast_parser, DIAGNOSTIC_KIND_ERROR, "expected a token but got EOF");
+        return false;
+    }
 
-    ast_parser_push_current_diagnostic(
-        ast_parser,
-        DIAGNOSTIC_KIND_ERROR,
-        "ast_parser_parse_statement is not implemented"
-    );
+    Node* node;
 
-    return false;
+    if (token->kind == TOKEN_KIND_KEYWORD && token->keyword == KEYWORD_RETURN) {
+        if (!ast_parser_parse_return(ast_parser, &node)) {
+            return false;
+        }
+    } else {
+        ast_parser_push_diagnostic(
+            ast_parser,
+            token,
+            DIAGNOSTIC_KIND_ERROR,
+            "expected a statement, but got an unexpected token"
+        );
+
+        return false;
+    }
+
+    // After each statement, we can expect a semicolon to be present.
+    ast_parser_expect(ast_parser, TOKEN_KIND_SEMICOLON);
+
+    node_array_append(nodes, node);
+    return true;
+}
+
+bool ast_parser_parse_return(ASTParser* ast_parser, Node** node) {
+    if (!ast_parser_expect_keyword(ast_parser, KEYWORD_RETURN)) {
+        return false;
+    }
+
+    // TODO: Parse value
+    *node = return_node_create(ast_parser->allocator, NULL);
+
+    return true;
 }
 
 bool ast_parser_parse_top_level_statement(ASTParser* ast_parser, NodeArray* nodes) {

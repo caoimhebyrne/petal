@@ -1,4 +1,5 @@
 #include "module.h"
+#include "allocator.h"
 #include "array.h"
 #include "ast.h"
 #include "diagnostic.h"
@@ -8,6 +9,8 @@
 #include <string.h>
 
 static size_t global_module_id = 1;
+
+void print_node_tree(Allocator* allocator, const NodeArray* nodes, size_t depth);
 
 bool module_init(Module* module, Allocator* allocator, DiagnosticArray* diagnostics, const char* file_path) {
     StringBuffer source_buffer = {0};
@@ -66,23 +69,46 @@ bool module_parse(Module* module) {
         return false;
     }
 
-    for (size_t i = 0; i < nodes.length; i++) {
-        const Node* node = nodes.data[i];
+    print_node_tree(module->allocator, &nodes, 0);
+
+    return true;
+}
+
+void print_node_tree(Allocator* allocator, const NodeArray* nodes, size_t depth) {
+    StringBuffer padding = {0};
+    string_buffer_init(&padding, allocator);
+
+    for (size_t i = 0; i < depth * 4; i++) {
+        string_buffer_append(&padding, ' ');
+    }
+
+    for (size_t i = 0; i < nodes->length; i++) {
+        const Node* node = nodes->data[i];
 
         switch (node->kind) {
         case NODE_KIND_FUNCTION_DECLARATION: {
             const FunctionDeclarationNode function_declaration = node->function_declaration;
 
             log_info(
-                "function declaration '%.*s'",
+                "%.*sfunction declaration '%.*s'",
+                (int)padding.length,
+                padding.data,
                 (int)function_declaration.name.length,
                 function_declaration.name.data
             );
+
+            print_node_tree(allocator, &function_declaration.body, depth + 1);
+
+            break;
+        }
+
+        case NODE_KIND_RETURN: {
+            const ReturnNode return_ = node->return_;
+
+            log_info("%.*sreturn %p", (int)padding.length, padding.data, return_.value);
 
             break;
         }
         }
     }
-
-    return true;
 }
