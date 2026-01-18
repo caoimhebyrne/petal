@@ -20,6 +20,11 @@ const FunctionDeclarationStatement* petal_vm_get_main_function(const PetalVM* vm
  */
 bool petal_vm_exec_statement(PetalVM* vm, VMScope* scope, Statement* statement);
 
+/**
+ * Evaluates the provided expression. If a nothing value is returned, the evaluation failed.
+ */
+VMValue petal_vm_eval_expression(PetalVM* vm, VMScope* scope, const Expression* expression);
+
 void petal_vm_init(PetalVM* vm, Allocator* allocator, const StatementArray* statements) {
     assert(vm != NULL && "NULL PetalVM passed to petal_vm_init");
     assert(allocator != NULL && "NULL Allocator passed to petal_vm_init");
@@ -77,20 +82,9 @@ bool petal_vm_exec_statement(PetalVM* vm, VMScope* scope, Statement* statement) 
     case STATEMENT_KIND_RETURN: {
         scope->continue_execution = false;
 
-        const Expression* expression = statement->return_.value;
-        if (!expression) {
-            break;
+        if (statement->return_.value) {
+            scope->return_value = petal_vm_eval_expression(vm, scope, statement->return_.value);
         }
-
-        VMValue return_value = {0};
-
-        switch (expression->kind) {
-        case EXPRESSION_KIND_NUMBER_LITERAL:
-            return_value = (VMValue){.kind = VM_VALUE_KIND_NUMBER, .number = expression->number_literal};
-            break;
-        }
-
-        scope->return_value = return_value;
 
         break;
     }
@@ -101,6 +95,17 @@ bool petal_vm_exec_statement(PetalVM* vm, VMScope* scope, Statement* statement) 
     }
 
     return true;
+}
+
+VMValue petal_vm_eval_expression(PetalVM* vm, VMScope* scope, const Expression* expression) {
+    (void)vm;
+    (void)scope;
+
+    switch (expression->kind) {
+    case EXPRESSION_KIND_NUMBER_LITERAL:
+        return (VMValue){.kind = VM_VALUE_KIND_NUMBER, .number = expression->number_literal};
+        break;
+    }
 }
 
 const FunctionDeclarationStatement* petal_vm_get_main_function(const PetalVM* vm) {
