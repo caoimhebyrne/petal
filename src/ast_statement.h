@@ -34,7 +34,7 @@ typedef struct {
     /**
      * The value type of the parameter.
      */
-    const Type type;
+    Type type;
 } FunctionParameter;
 
 DEFINE_ARRAY_TYPE(FunctionParameterArray, function_parameter_array, FunctionParameter)
@@ -51,17 +51,17 @@ typedef struct {
     /**
      * The parameters of the function.
      */
-    const FunctionParameterArray parameters;
+    FunctionParameterArray parameters;
 
     /**
      * The return type of this function.
      */
-    const Type return_type;
+    Type return_type;
 
     /**
      * The body of the function.
      */
-    const StatementArray body;
+    StatementArray body;
 } FunctionDeclarationStatement;
 
 /**
@@ -77,6 +77,6 @@ struct Statement {
         /**
          * STATEMENT_KIND_FUNCTION_DECLARATION.
          */
-        const FunctionDeclarationStatement function_declaration;
+        FunctionDeclarationStatement function_declaration;
     };
 };
