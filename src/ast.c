@@ -97,6 +97,17 @@ const Token* ast_parser_expect(ASTParser* parser, const TokenKind kind) {
 }
 
 /**
+ * Advances the cursor of the parser if the token at the current position is of a certain kind.
+ */
+bool ast_parser_consume_if(ASTParser* parser, const TokenKind kind) {
+    if (!ast_parser_peek_is(parser, kind)) {
+        return false;
+    }
+
+    return ast_parser_expect(parser, kind);
+}
+
+/**
  * Expects a certain keyword to be at the parser's current position, returning false if the keyword is not present.
  */
 bool ast_parser_expect_keyword(ASTParser* parser, const Keyword keyword) {
@@ -248,11 +259,7 @@ Statement* ast_parser_parse_function_declaration(ASTParser* parser) {
     // By default, all functions return void unless the type is overridden.
     Type return_type = (Type){.kind = TYPE_KIND_VOID};
 
-    if (ast_parser_peek_is(parser, TOKEN_KIND_HYPHEN)) {
-        if (!ast_parser_expect(parser, TOKEN_KIND_HYPHEN)) {
-            return NULL;
-        }
-
+    if (ast_parser_consume_if(parser, TOKEN_KIND_HYPHEN)) {
         if (!ast_parser_expect(parser, TOKEN_KIND_RIGHT_ANGLE_BRACKET)) {
             return NULL;
         }
