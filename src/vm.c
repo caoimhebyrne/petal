@@ -67,7 +67,7 @@ bool petal_vm_exec(PetalVM* vm) {
 
     // The scope should have a number return value.
     if (scope.return_value.kind != VM_VALUE_KIND_NUMBER) {
-        log_error("main function did not return an integer");
+        log_error("vm: main function did not return an integer");
         return false;
     }
 
@@ -90,7 +90,7 @@ bool petal_vm_exec_statement(PetalVM* vm, VMScope* scope, Statement* statement) 
     }
 
     case STATEMENT_KIND_FUNCTION_DECLARATION:
-        log_error("encountered a top-level statement kind while executing scope-based statement?");
+        log_error("vm: encountered a top-level statement kind while executing scope-based statement?");
         return false;
     }
 
@@ -120,12 +120,12 @@ const FunctionDeclarationStatement* petal_vm_get_main_function(const PetalVM* vm
         // TODO: 32-bit integer type.
         if (function->return_type.kind != TYPE_KIND_UNKNOWN ||
             !string_buffer_equals_cstr(&function->return_type.type_name, "i32")) {
-            log_error("return type of main function must be i32");
+            log_error("vm: return type of main function must be i32");
             return NULL;
         }
 
         if (function->parameters.length != 0) {
-            log_error("main function parameters are not supported yet");
+            log_error("vm: main function parameters are not supported yet");
             return NULL;
         }
 
@@ -133,7 +133,7 @@ const FunctionDeclarationStatement* petal_vm_get_main_function(const PetalVM* vm
     }
 
     log_error(
-        "vm could not find main function declaration. ensure that you have a function named `main` with an `i32` "
+        "vm: could not find main function declaration. ensure that you have a function named `main` with an `i32` "
         "return type"
     );
 
