@@ -18,3 +18,24 @@ void diagnostic_init(Diagnostic* diagnostic, const DiagnosticKind kind, const Po
     diagnostic->position = position;
     diagnostic->message = message;
 }
+
+void diagnostic_init_fmt(
+    Diagnostic* diagnostic,
+    Allocator* allocator,
+    const DiagnosticKind kind,
+    const Position position,
+    const char* format,
+    ...
+) {
+    va_list args;
+    va_start(args, format);
+
+    StringBuffer message = {0};
+    string_buffer_init_vfmt(&message, allocator, format, args);
+
+    va_end(args);
+
+    // C strings must be null-terminated.
+    string_buffer_append(&message, '\0');
+    diagnostic_init(diagnostic, kind, position, message.data);
+}

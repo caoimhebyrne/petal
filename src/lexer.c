@@ -331,6 +331,8 @@ const char* token_kind_to_string(const TokenKind kind) {
     case TOKEN_KIND_SLASH:
         return "slash";
     }
+
+    return "unknown";
 }
 
 const char* keyword_to_string(const Keyword keyword) {
@@ -342,7 +344,9 @@ const char* keyword_to_string(const Keyword keyword) {
         return "return";
 
     case KEYWORD_UNKNOWN:
-        assert(true && "This should never occur");
-        return NULL;
+        assert(false);
+        break;
     }
+
+    return "unknown";
 }

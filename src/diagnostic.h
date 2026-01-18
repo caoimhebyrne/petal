@@ -34,4 +34,16 @@ typedef struct {
  */
 void diagnostic_init(Diagnostic* diagnostic, const DiagnosticKind kind, const Position position, const char* message);
 
+/**
+ * Initializes a new [Diagnostic] with the provided kind, position, and message. The message will be formatted.
+ */
+void diagnostic_init_fmt(
+    Diagnostic* diagnostic,
+    Allocator* allocator,
+    const DiagnosticKind kind,
+    const Position position,
+    const char* format,
+    ...
+);
+
 DEFINE_ARRAY_TYPE(DiagnosticArray, diagnostic_array, Diagnostic)

@@ -14,16 +14,21 @@ void string_buffer_init_from_cstr(StringBuffer* buffer, Allocator* allocator, co
 }
 
 void string_buffer_init_fmt(StringBuffer* buffer, Allocator* allocator, const char* format, ...) {
-    assert(buffer != NULL && "NULL buffer passed to string_buffer_init_fmt");
-
     va_list args;
     va_start(args, format);
+
+    string_buffer_init_vfmt(buffer, allocator, format, args);
+
+    va_end(args);
+}
+
+void string_buffer_init_vfmt(StringBuffer* buffer, Allocator* allocator, const char* format, va_list args) {
+    assert(buffer != NULL && "NULL buffer passed to string_buffer_init_fmt");
 
     va_list args_copy;
     va_copy(args_copy, args);
 
     const size_t string_length = vsnprintf(NULL, 0, format, args);
-    va_end(args);
 
     assert(string_length > 0 && "Failed to init StringBuffer with format string (vsnprintf failed)");
 

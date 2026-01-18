@@ -2,6 +2,7 @@
 
 #include "allocator.h"
 #include "math.h"
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -63,6 +64,7 @@ void string_buffer_init_from_cstr(StringBuffer* buffer, Allocator* allocator, co
 
 // Creates a [StringBuffer] by formatting the provided format string with the variadic arguments.
 void string_buffer_init_fmt(StringBuffer* buffer, Allocator* allocator, const char* format, ...);
+void string_buffer_init_vfmt(StringBuffer* buffer, Allocator* allocator, const char* format, va_list args);
 
 // Checks whether the contents in two [StringBuffer]s are equal to each other.
 bool string_buffer_equals(const StringBuffer* buffer, const StringBuffer* other);

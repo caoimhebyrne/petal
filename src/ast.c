@@ -5,7 +5,6 @@
 #include "ast_type.h"
 #include "diagnostic.h"
 #include "lexer.h"
-#include "logger.h"
 #include <assert.h>
 
 IMPLEMENT_ARRAY_TYPE(StatementArray, statement_array, Statement*)
@@ -33,9 +32,14 @@ bool ast_parser_is_eof(const ASTParser* parser) {
  */
 const Token* ast_parser_consume(ASTParser* parser) {
     if (ast_parser_is_eof(parser)) {
-        const Diagnostic diagnostic = (Diagnostic){.kind = DIAGNOSTIC_KIND_ERROR,
-                                                   .message = "expected any token, but reached the end of the file",
-                                                   .position = (Position){.module_id = parser->module->id}};
+        Diagnostic diagnostic = {0};
+
+        diagnostic_init(
+            &diagnostic,
+            DIAGNOSTIC_KIND_ERROR,
+            (Position){.module_id = parser->module->id},
+            "expected any token, but reached the end of the file"
+        );
 
         diagnostic_array_append(parser->module->diagnostics, diagnostic);
         return NULL;
@@ -73,21 +77,17 @@ const Token* ast_parser_expect(ASTParser* parser, const TokenKind kind) {
     }
 
     if (token->kind != kind) {
-        StringBuffer error_message = {0};
+        Diagnostic diagnostic = {0};
 
-        string_buffer_init_fmt(
-            &error_message,
+        diagnostic_init_fmt(
+            &diagnostic,
             parser->module->allocator,
+            DIAGNOSTIC_KIND_ERROR,
+            token->position,
             "expected token '%s' but got token '%s'",
             token_kind_to_string(kind),
             token_kind_to_string(token->kind)
         );
-
-        string_buffer_append(&error_message, '\0');
-
-        const Diagnostic diagnostic = (Diagnostic){.kind = DIAGNOSTIC_KIND_ERROR,
-                                                   .message = error_message.data,
-                                                   .position = token->position};
 
         diagnostic_array_append(parser->module->diagnostics, diagnostic);
         return NULL;
@@ -106,21 +106,15 @@ bool ast_parser_expect_keyword(ASTParser* parser, const Keyword keyword) {
     }
 
     if (token->keyword != keyword) {
-        StringBuffer error_message = {0};
+        Diagnostic diagnostic = {0};
 
-        string_buffer_init_fmt(
-            &error_message,
+        diagnostic_init_fmt(
+            &diagnostic,
             parser->module->allocator,
-            "expected keyword '%s' but got keyword '%s'",
-            keyword_to_string(keyword),
-            keyword_to_string(token->keyword)
+            DIAGNOSTIC_KIND_ERROR,
+            token->position,
+            "expected keyword: '%s' but got keyword '%s'"
         );
-
-        string_buffer_append(&error_message, '\0');
-
-        const Diagnostic diagnostic = (Diagnostic){.kind = DIAGNOSTIC_KIND_ERROR,
-                                                   .message = error_message.data,
-                                                   .position = token->position};
 
         diagnostic_array_append(parser->module->diagnostics, diagnostic);
         return NULL;
@@ -156,8 +150,6 @@ bool ast_parser_parse(ASTParser* parser, StatementArray* statements) {
 }
 
 Statement* ast_parser_parse_statement(ASTParser* parser) {
-    StringBuffer error_message = {0};
-
     const Token* token = ast_parser_peek(parser);
 
     switch (token->kind) {
@@ -166,22 +158,21 @@ Statement* ast_parser_parse_statement(ASTParser* parser) {
         case KEYWORD_FUNC:
             return ast_parser_parse_function_declaration(parser);
 
-        default:
-            string_buffer_init_fmt(
-                &error_message,
+        default: {
+            Diagnostic diagnostic = {0};
+
+            diagnostic_init_fmt(
+                &diagnostic,
                 parser->module->allocator,
+                DIAGNOSTIC_KIND_ERROR,
+                token->position,
                 "expected to parse a statement, but got an unprocessable keyword: '%s'",
                 keyword_to_string(token->keyword)
             );
 
-            string_buffer_append(&error_message, '\0');
-
-            const Diagnostic diagnostic = (Diagnostic){.kind = DIAGNOSTIC_KIND_ERROR,
-                                                       .message = error_message.data,
-                                                       .position = token->position};
-
             diagnostic_array_append(parser->module->diagnostics, diagnostic);
             return NULL;
+        }
         }
 
         break;
@@ -191,18 +182,16 @@ Statement* ast_parser_parse_statement(ASTParser* parser) {
         break;
     }
 
-    string_buffer_init_fmt(
-        &error_message,
+    Diagnostic diagnostic = {0};
+
+    diagnostic_init_fmt(
+        &diagnostic,
         parser->module->allocator,
+        DIAGNOSTIC_KIND_ERROR,
+        token->position,
         "expected to parse a statement, but got an unprocessable token: '%s'",
         token_kind_to_string(token->kind)
     );
-
-    string_buffer_append(&error_message, '\0');
-
-    const Diagnostic diagnostic = (Diagnostic){.kind = DIAGNOSTIC_KIND_ERROR,
-                                               .message = error_message.data,
-                                               .position = token->position};
 
     diagnostic_array_append(parser->module->diagnostics, diagnostic);
     return NULL;
