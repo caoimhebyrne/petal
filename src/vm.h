@@ -3,6 +3,7 @@
 #include "allocator.h"
 #include "array.h"
 #include "ast_statement.h"
+#include "vm_value.h"
 #include <stddef.h>
 
 DEFINE_ARRAY_TYPE(FunctionDeclarationArray, function_declaration_array, FunctionDeclarationStatement)
@@ -16,6 +17,22 @@ typedef struct {
      */
     size_t exit_code;
 } VMState;
+
+/**
+ * A scope of execution within the VM.
+ * A scope has input parameters, and may optionally have a value that is returned from it.
+ */
+typedef struct {
+    /**
+     * The value being returned out of this scope.
+     */
+    VMValue return_value;
+
+    /**
+     * Whether the scope should continue executing after the current statement.
+     */
+    bool continue_execution;
+} VMScope;
 
 /**
  * A very barebones virtual machine for the Petal language.

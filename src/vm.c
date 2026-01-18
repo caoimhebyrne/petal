@@ -4,6 +4,7 @@
 #include "ast_statement.h"
 #include "ast_type.h"
 #include "logger.h"
+#include "vm_value.h"
 #include <assert.h>
 
 IMPLEMENT_ARRAY_TYPE(FunctionDeclarationArray, function_declaration_array, FunctionDeclarationStatement)
@@ -17,7 +18,7 @@ const FunctionDeclarationStatement* petal_vm_get_main_function(const PetalVM* vm
 /**
  * Attempts to execute the provided statement, updating the VM state if neccessary.
  */
-bool petal_vm_exec_statement(PetalVM* vm, Statement* statement);
+bool petal_vm_exec_statement(PetalVM* vm, VMScope* scope, Statement* statement);
 
 void petal_vm_init(PetalVM* vm, Allocator* allocator, const StatementArray* statements) {
     assert(vm != NULL && "NULL PetalVM passed to petal_vm_init");
@@ -40,35 +41,57 @@ void petal_vm_init(PetalVM* vm, Allocator* allocator, const StatementArray* stat
 }
 
 bool petal_vm_exec(PetalVM* vm) {
+    assert(vm != NULL && "NULL PetalVM passed to petal_vm_exec");
+
     const FunctionDeclarationStatement* main_function = petal_vm_get_main_function(vm);
     if (!main_function) {
         return false;
     }
 
+    VMScope scope = {.continue_execution = true};
+
     for (size_t i = 0; i < main_function->body.length; i++) {
-        if (!petal_vm_exec_statement(vm, main_function->body.data[i])) {
+        if (!petal_vm_exec_statement(vm, &scope, main_function->body.data[i])) {
             return false;
+        }
+
+        if (!scope.continue_execution) {
+            break;
         }
     }
 
+    // The scope should have a number return value.
+    if (scope.return_value.kind != VM_VALUE_KIND_NUMBER) {
+        log_error("main function did not return an integer");
+        return false;
+    }
+
+    vm->state.exit_code = (int)scope.return_value.number;
     return true;
 }
 
-bool petal_vm_exec_statement(PetalVM* vm, Statement* statement) {
+bool petal_vm_exec_statement(PetalVM* vm, VMScope* scope, Statement* statement) {
+    (void)vm;
+
     switch (statement->kind) {
     case STATEMENT_KIND_RETURN: {
-        // TODO: Support creating a scope and returning values from that scope instead of assuming that we're in the
-        // main function.
-        if (!statement->return_.value) {
+        scope->continue_execution = false;
+
+        const Expression* expression = statement->return_.value;
+        if (!expression) {
             break;
         }
 
-        if (statement->return_.value->kind != EXPRESSION_KIND_NUMBER_LITERAL) {
-            log_error("returning values other than number literals is not supported yet");
-            return false;
+        VMValue return_value = {0};
+
+        switch (expression->kind) {
+        case EXPRESSION_KIND_NUMBER_LITERAL:
+            return_value = (VMValue){.kind = VM_VALUE_KIND_NUMBER, .number = expression->number_literal};
+            break;
         }
 
-        vm->state.exit_code = (size_t)statement->return_.value->number_literal;
+        scope->return_value = return_value;
+
         break;
     }
 
@@ -88,7 +111,7 @@ const FunctionDeclarationStatement* petal_vm_get_main_function(const PetalVM* vm
         }
 
         // TODO: 32-bit integer type.
-        if (function->return_type.kind != TYPE_KIND_UNKNOWN &&
+        if (function->return_type.kind != TYPE_KIND_UNKNOWN ||
             !string_buffer_equals_cstr(&function->return_type.type_name, "i32")) {
             log_error("return type of main function must be i32");
             return NULL;
