@@ -3,6 +3,7 @@
 #include "allocator.h"
 #include "array.h"
 #include "ast_statement.h"
+#include "vm_api.h"
 #include "vm_value.h"
 #include <stddef.h>
 
@@ -78,7 +79,7 @@ typedef struct {
 /**
  * The type of a built-in function handler.
  */
-typedef VMValue (*VMBuiltinFunctionHandler)(PetalVM* vm, const VMValueArray* arguments);
+typedef VMValue (*VMBuiltinFunctionHandler)(PetalBuiltinContext* context);
 
 /**
  * A built-in function.

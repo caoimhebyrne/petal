@@ -3,24 +3,19 @@
 #include "array.h"
 #include "ast_statement.h"
 #include "logger.h"
+#include "vm_api.h"
+#include "vm_api_internal.h"
 #include "vm_value.h"
 #include <assert.h>
 
-VMValue petal_vm_builtin_print(PetalVM* vm, const VMValueArray* arguments) {
-    (void)vm;
-
-    // TODO: This is really bad...
-    if (arguments->length != 1) {
+VMValue petal_vm_builtin_print(PetalBuiltinContext* context) {
+    const VMValue* value = petal_builtin_arguments_get(context->arguments, 0);
+    if (value->kind != VM_VALUE_KIND_STRING) {
+        log_error("vm: expected a string to be passed to 'print' builtin!");
         return (VMValue){.kind = VM_VALUE_NOTHING};
     }
 
-    VMValue value = arguments->data[0];
-    if (value.kind != VM_VALUE_KIND_STRING) {
-        return (VMValue){.kind = VM_VALUE_NOTHING};
-    }
-
-    printf("%.*s\n", (int)value.string.length, value.string.data);
-
+    printf("%.*s\n", (int)value->string.length, value->string.data);
     return (VMValue){.kind = VM_VALUE_NOTHING};
 }
 
@@ -266,7 +261,10 @@ bool petal_vm_get_and_call_function(PetalVM* vm, VMScope* scope, const FunctionC
             vm_value_array_append(&arguments, petal_vm_eval_expression(vm, scope, call->arguments.data[i]));
         }
 
-        scope->return_value = builtin_function->handler(vm, &arguments);
+        PetalBuiltinContext context = {0};
+        petal_builtin_context_init(&context, vm->allocator, &arguments);
+
+        scope->return_value = builtin_function->handler(&context);
         return true;
     }
 

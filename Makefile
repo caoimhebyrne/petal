@@ -1,6 +1,6 @@
 # Input options
 # Each source file is assumed to be within the `src` directory
-SOURCES = allocator.c array.c ast_type.c ast.c diagnostic.c file.c lexer.c main.c module.c vm.c
+SOURCES = allocator.c array.c ast_type.c ast.c diagnostic.c file.c lexer.c main.c module.c vm_api.c vm.c
 
 # Compiler options
 CC = gcc
