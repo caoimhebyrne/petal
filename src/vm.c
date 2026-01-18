@@ -125,6 +125,10 @@ const FunctionDeclarationStatement* petal_vm_get_main_function(const PetalVM* vm
         return function;
     }
 
-    log_error("failed to find main function");
+    log_error(
+        "vm could not find main function declaration. ensure that you have a function named `main` with an `i32` "
+        "return type"
+    );
+
     return NULL;
 }
