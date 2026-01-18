@@ -17,6 +17,9 @@ typedef enum {
 
     // Returning a value from a scope.
     NODE_KIND_RETURN,
+
+    // A number literal.
+    NODE_KIND_NUMBER_LITERAL,
 } NodeKind;
 
 // A function declaration node.
@@ -34,6 +37,11 @@ typedef struct {
     Node* value;
 } ReturnNode;
 
+// An number literal node.
+typedef struct {
+    float value;
+} NumberLiteralNode;
+
 // A node in an abstract syntax tree.
 struct Node {
     // The kind of node that this is.
@@ -45,6 +53,9 @@ struct Node {
 
         // Only available in `NODE_KIND_RETURN`.
         ReturnNode return_;
+
+        // Only available in `NODE_KIND_NUMBER_LITERAL`.
+        NumberLiteralNode number_literal;
     };
 };
 
@@ -53,6 +64,9 @@ Node* function_declaration_node_create(Allocator* allocator, StringBuffer name, 
 
 // Allocates a new return node with the provided allocator.
 Node* return_node_create(Allocator* allocator, Node* value);
+
+// Allocates a new number literal node with the provided allocator.
+Node* number_literal_node_create(Allocator* allocator, float value);
 
 typedef struct {
     // The allocator to use when allocating memory.

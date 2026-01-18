@@ -103,9 +103,25 @@ void print_node_tree(Allocator* allocator, const NodeArray* nodes, size_t depth)
         }
 
         case NODE_KIND_RETURN: {
-            const ReturnNode return_ = node->return_;
+            ReturnNode return_ = node->return_;
 
-            log_info("%.*sreturn %p", (int)padding.length, padding.data, return_.value);
+            log_info("%.*sreturn", (int)padding.length, padding.data);
+
+            if (return_.value) {
+                print_node_tree(
+                    allocator,
+                    &(NodeArray){.allocator = allocator, .capacity = 1, .length = 1, .data = &return_.value},
+                    depth + 1
+                );
+            }
+
+            break;
+        }
+
+        case NODE_KIND_NUMBER_LITERAL: {
+            const NumberLiteralNode number_literal = node->number_literal;
+
+            log_info("%.*snumber literal %f", (int)padding.length, padding.data, number_literal.value);
 
             break;
         }

@@ -31,6 +31,16 @@ Node* return_node_create(Allocator* allocator, Node* value) {
     return node;
 }
 
+Node* number_literal_node_create(Allocator* allocator, float value) {
+    Node* node = allocator_alloc(allocator, sizeof(Node));
+    assert(node && "Failed to allocate number literal node");
+
+    node->kind = NODE_KIND_NUMBER_LITERAL;
+    node->number_literal = (NumberLiteralNode){.value = value};
+
+    return node;
+}
+
 // Returns whether the end of the token stream has been reached.
 bool ast_parser_is_eof(const ASTParser* ast_parser) {
     return ast_parser->cursor >= ast_parser->tokens->length;
@@ -204,14 +214,50 @@ bool ast_parser_parse_statement(ASTParser* ast_parser, NodeArray* nodes) {
     return true;
 }
 
+bool ast_parser_parse_expression(ASTParser* ast_parser, Node** output) {
+    const Token* token = ast_parser_peek(ast_parser);
+    if (!token) {
+        ast_parser_push_current_diagnostic(ast_parser, DIAGNOSTIC_KIND_ERROR, "expected any expression but got eof");
+        return false;
+    }
+
+    if (token->kind == TOKEN_KIND_NUMBER) {
+        ast_parser_consume(ast_parser);
+
+        *output = number_literal_node_create(ast_parser->allocator, token->number);
+    } else {
+        ast_parser_push_diagnostic(
+            ast_parser,
+            token,
+            DIAGNOSTIC_KIND_ERROR,
+            "expected any expression, but got an unexpected token"
+        );
+
+        return false;
+    }
+
+    return true;
+}
+
 bool ast_parser_parse_return(ASTParser* ast_parser, Node** node) {
     if (!ast_parser_expect_keyword(ast_parser, KEYWORD_RETURN)) {
         return false;
     }
 
-    // TODO: Parse value
-    *node = return_node_create(ast_parser->allocator, NULL);
+    // If there is no token after the return keyword, or the next token is a semicolon, then there is no value to parse.
+    const Token* token = ast_parser_peek(ast_parser);
+    if (!token || token->kind == TOKEN_KIND_SEMICOLON) {
+        *node = return_node_create(ast_parser->allocator, NULL);
+        return true;
+    }
 
+    // Otherwise, we must try to parse a value.
+    Node* value;
+    if (!ast_parser_parse_expression(ast_parser, &value)) {
+        return false;
+    }
+
+    *node = return_node_create(ast_parser->allocator, value);
     return true;
 }
 
