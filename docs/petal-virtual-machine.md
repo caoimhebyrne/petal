@@ -53,19 +53,9 @@ type Scope = struct {
     Array<Variable> variables;
 
     /**
-     * The return value of this scope.
-     */
-    Value return_value;
-
-    /**
      * The statements to execute at the end of this function scope.
      */
     Array<Expression> deferred;
-
-    /**
-     * Whether the scope should stop execution after the current statement.
-     */
-    boolean stop_execution;
 };
 ```
 
