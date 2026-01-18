@@ -4,7 +4,7 @@ SOURCES = allocator.c array.c ast_type.c ast.c diagnostic.c file.c lexer.c main.
 
 # Compiler options
 CC = gcc
-CFLAGS = -Wall -Wextra -Wpedantic -Wno-gnu-statement-expression -I./src
+CFLAGS = -Wall -Wextra -Wpedantic -I./src
 
 # Each final object will live in the `build` directory
 OBJECTS = $(addprefix ./build/,$(SOURCES:.c=.o))

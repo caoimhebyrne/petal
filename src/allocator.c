@@ -14,7 +14,9 @@
 AllocatorRegion* allocator_region_create(const size_t minimum_size) {
     const size_t region_size = min(minimum_size, ALLOCATOR_REGION_DEFAULT_CAPACITY_BYTES);
 
+#ifdef PETAL_ALLOCATOR_DEBUG
     log_debug("allocator creating a new region of size %zu", region_size);
+#endif // PETAL_ALLOCATOR_DEBUG
 
     AllocatorRegion* region = malloc(sizeof(AllocatorRegion) + region_size);
     assert(region != NULL && "Failed to create new allocator region");
@@ -132,7 +134,10 @@ void allocator_clean(Allocator* allocator) {
         const AllocatorRegion* next_region = region->next;
 
         void* region_address = region->start - sizeof(AllocatorRegion);
+
+#ifdef PETAL_ALLOCATOR_DEBUG
         log_debug("allocator freeing region at %p (capacity = %zu)", region_address, region->capacity);
+#endif // PETAL_ALLOCATOR_DEBUG
 
         // Any subsequently allocated regions have a header allocated just before them.
         free(region_address);
