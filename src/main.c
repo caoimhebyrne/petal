@@ -26,7 +26,7 @@ int main(const int argc, const char** argv, const char** envp) {
 
     Module main_module = {0};
     if (!module_init(&main_module, &allocator, &diagnostics, file_path)) {
-        return false;
+        goto fail;
     }
 
     const bool module_parse_result = module_parse(&main_module);
@@ -47,10 +47,13 @@ int main(const int argc, const char** argv, const char** envp) {
     }
 
     if (!module_parse_result) {
-        return false;
+        goto fail;
     }
 
     allocator_clean(&allocator);
-
     return EXIT_SUCCESS;
+
+fail:
+    allocator_clean(&allocator);
+    return EXIT_FAILURE;
 }
