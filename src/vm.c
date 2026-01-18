@@ -9,6 +9,12 @@
 IMPLEMENT_ARRAY_TYPE(FunctionDeclarationArray, function_declaration_array, FunctionDeclarationStatement)
 
 /**
+ * Attempts to find a function in the VM's current state with the provided name, returning NULL if it could not be
+ * found.
+ */
+const FunctionDeclarationStatement* petal_vm_get_function(PetalVM* vm, const StringBuffer* function_name);
+
+/**
  * Attempts to execute the provided statement, updating the VM state if neccessary.
  */
 bool petal_vm_exec_statement(PetalVM* vm, VMScope* scope, Statement* statement);
@@ -19,9 +25,19 @@ bool petal_vm_exec_statement(PetalVM* vm, VMScope* scope, Statement* statement);
 VMValue petal_vm_eval_expression(PetalVM* vm, VMScope* scope, const Expression* expression);
 
 /**
- * Attempts to call the function with the provided name and arguments.
+ * Attempts to call the function with the provided arguments.
  */
-bool petal_vm_call_function(PetalVM* vm, VMScope* scope, const StringBuffer* name, const ExpressionArray* arguments);
+bool petal_vm_call_function(
+    PetalVM* vm,
+    VMScope* scope,
+    const FunctionDeclarationStatement* function,
+    const ExpressionArray* arguments
+);
+
+/**
+ * Attempts to get and call the function using the information in the [FunctionCall].
+ */
+bool petal_vm_get_and_call_function(PetalVM* vm, VMScope* scope, const FunctionCall* call);
 
 void petal_vm_init(PetalVM* vm, Allocator* allocator, const StatementArray* statements) {
     assert(vm != NULL && "NULL PetalVM passed to petal_vm_init");
@@ -47,12 +63,12 @@ void petal_vm_init(PetalVM* vm, Allocator* allocator, const StatementArray* stat
 bool petal_vm_exec(PetalVM* vm) {
     assert(vm != NULL && "NULL PetalVM passed to petal_vm_exec");
 
-    StringBuffer main_function_name = {0};
-    string_buffer_init_from_cstr(&main_function_name, vm->allocator, "main");
+    FunctionCall main_function_call = {0};
+    string_buffer_init_from_cstr(&main_function_call.name, vm->allocator, "main");
 
     VMScope scope = {0};
 
-    if (!petal_vm_call_function(vm, &scope, &main_function_name, &(ExpressionArray){0})) {
+    if (!petal_vm_get_and_call_function(vm, &scope, &main_function_call)) {
         return false;
     }
 
@@ -75,10 +91,7 @@ bool petal_vm_exec_statement(PetalVM* vm, VMScope* scope, Statement* statement) 
     }
 
     case STATEMENT_KIND_FUNCTION_CALL: {
-        const FunctionCall function_call = statement->function_call;
-
-        VMScope call_scope = {0};
-        if (!petal_vm_call_function(vm, &call_scope, &function_call.name, &function_call.arguments)) {
+        if (!petal_vm_get_and_call_function(vm, &(VMScope){0}, &statement->function_call)) {
             return false;
         }
 
@@ -97,15 +110,14 @@ VMValue petal_vm_eval_expression(PetalVM* vm, VMScope* scope, const Expression* 
     (void)scope; // TODO: scope inheritance
 
     switch (expression->kind) {
-    case EXPRESSION_KIND_NUMBER_LITERAL:
+    case EXPRESSION_KIND_NUMBER_LITERAL: {
         return (VMValue){.kind = VM_VALUE_KIND_NUMBER, .number = expression->number_literal};
-        break;
+    }
 
     case EXPRESSION_KIND_FUNCTION_CALL: {
-        const FunctionCall function_call = expression->function_call;
-
         VMScope call_scope = {0};
-        if (!petal_vm_call_function(vm, &call_scope, &function_call.name, &function_call.arguments)) {
+
+        if (!petal_vm_get_and_call_function(vm, &call_scope, &expression->function_call)) {
             return (VMValue){.kind = VM_VALUE_NOTHING};
         }
 
@@ -116,25 +128,28 @@ VMValue petal_vm_eval_expression(PetalVM* vm, VMScope* scope, const Expression* 
     return (VMValue){.kind = VM_VALUE_NOTHING};
 }
 
-bool petal_vm_call_function(PetalVM* vm, VMScope* scope, const StringBuffer* name, const ExpressionArray* arguments) {
-    (void)arguments;
-    assert(arguments->length == 0 && "petal_vm_call_function: arguments are not supported");
-
-    FunctionDeclarationStatement* function = NULL;
-
+const FunctionDeclarationStatement* petal_vm_get_function(PetalVM* vm, const StringBuffer* function_name) {
     for (size_t i = 0; i < vm->functions.length; i++) {
-        FunctionDeclarationStatement* current_function = &vm->functions.data[i];
-        if (!string_buffer_equals(name, &current_function->name)) {
+        const FunctionDeclarationStatement* function = &vm->functions.data[i];
+
+        if (!string_buffer_equals(function_name, &function->name)) {
             continue;
         }
 
-        function = current_function;
+        return function;
     }
 
-    if (!function) {
-        log_error("vm: could not find function with name '%.*s'", (int)name->length, name->data);
-        return false;
-    }
+    return NULL;
+}
+
+bool petal_vm_call_function(
+    PetalVM* vm,
+    VMScope* scope,
+    const FunctionDeclarationStatement* function,
+    const ExpressionArray* arguments
+) {
+    assert(function != NULL && "petal_vm_call_function: function cannot be null");
+    assert(arguments != NULL && "petal_vm_call_function: arguments cannot be null");
 
     for (size_t i = 0; i < function->body.length; i++) {
         if (!petal_vm_exec_statement(vm, scope, function->body.data[i])) {
@@ -147,4 +162,13 @@ bool petal_vm_call_function(PetalVM* vm, VMScope* scope, const StringBuffer* nam
     }
 
     return true;
+}
+
+bool petal_vm_get_and_call_function(PetalVM* vm, VMScope* scope, const FunctionCall* call) {
+    const FunctionDeclarationStatement* function = petal_vm_get_function(vm, &call->name);
+    if (!function) {
+        return false;
+    }
+
+    return petal_vm_call_function(vm, scope, function, &call->arguments);
 }
