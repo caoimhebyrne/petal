@@ -329,7 +329,7 @@ Expression* ast_parser_parse_expression(ASTParser* parser) {
             }
 
             Expression* expression = allocator_alloc(parser->module->allocator, sizeof(Expression));
-            assert(expression != NULL && "Failed to allocate expression");
+            assert(expression != NULL && "Failed to allocate Expression");
 
             expression->kind = EXPRESSION_KIND_FUNCTION_CALL;
             expression->function_call = function_call;
@@ -337,7 +337,13 @@ Expression* ast_parser_parse_expression(ASTParser* parser) {
             return expression;
         }
 
-        break;
+        Expression* expression = allocator_alloc(parser->module->allocator, sizeof(Expression));
+        assert(expression != NULL && "Failed to allocate Expression");
+
+        expression->kind = EXPRESSION_KIND_IDENTIFIER_REFERENCE;
+        expression->identifier = token->string;
+
+        return expression;
     }
 
     case TOKEN_KIND_NUMBER: {

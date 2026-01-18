@@ -1,0 +1,12 @@
+// When declaring a function, you can specify the parameters that the function takes.
+// When calling the function, you can then fulfil those parameters by providing arguments.
+//
+// In this example, we have a function (magic_function) that takes an i32. It then just returns that i32.
+// We call this function in `main`, and use its value as the return value (exit code of the VM).
+func magic_function(input: i32) -> i32 {
+    return input;
+}
+
+func main() -> i32 {
+    return magic_function(12);
+}

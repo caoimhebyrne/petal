@@ -19,6 +19,23 @@ typedef struct {
 } VMState;
 
 /**
+ * A variable declared within the scope of the VM.
+ */
+typedef struct {
+    /**
+     * The name of the variable.
+     */
+    StringBuffer name;
+
+    /**
+     * The value assigned to the variable.
+     */
+    VMValue value;
+} VMVariable;
+
+DEFINE_ARRAY_TYPE(VMVariableArray, vm_variable_array, VMVariable)
+
+/**
  * A scope of execution within the VM.
  * A scope has input parameters, and may optionally have a value that is returned from it.
  */
@@ -32,7 +49,17 @@ typedef struct {
      * Whether the scope should stop executing after the current statement.
      */
     bool stop_execution;
+
+    /**
+     * The variables defined within this scope.
+     */
+    VMVariableArray variables;
 } VMScope;
+
+/**
+ * Initializes a new VM scope.
+ */
+void vm_scope_init(VMScope* scope, Allocator* allocator);
 
 /**
  * A very barebones virtual machine for the Petal language.
