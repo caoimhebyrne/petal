@@ -2,18 +2,11 @@
 #include "allocator.h"
 #include "array.h"
 #include "ast_statement.h"
-#include "ast_type.h"
 #include "logger.h"
 #include "vm_value.h"
 #include <assert.h>
 
 IMPLEMENT_ARRAY_TYPE(FunctionDeclarationArray, function_declaration_array, FunctionDeclarationStatement)
-
-/**
- * Attempts to find a declaration for the main method in the VM's current state, returning NULL if one could not be
- * found.
- */
-const FunctionDeclarationStatement* petal_vm_get_main_function(const PetalVM* vm);
 
 /**
  * Attempts to execute the provided statement, updating the VM state if neccessary.
@@ -25,11 +18,17 @@ bool petal_vm_exec_statement(PetalVM* vm, VMScope* scope, Statement* statement);
  */
 VMValue petal_vm_eval_expression(PetalVM* vm, VMScope* scope, const Expression* expression);
 
+/**
+ * Attempts to call the function with the provided name and arguments.
+ */
+bool petal_vm_call_function(PetalVM* vm, VMScope* scope, const StringBuffer* name, const ExpressionArray* arguments);
+
 void petal_vm_init(PetalVM* vm, Allocator* allocator, const StatementArray* statements) {
     assert(vm != NULL && "NULL PetalVM passed to petal_vm_init");
     assert(allocator != NULL && "NULL Allocator passed to petal_vm_init");
     assert(statements != NULL && "NULL StatementArray passed to petal_vm_init");
 
+    vm->allocator = allocator;
     vm->state = (VMState){0};
     vm->functions = (FunctionDeclarationArray){0};
 
@@ -48,26 +47,12 @@ void petal_vm_init(PetalVM* vm, Allocator* allocator, const StatementArray* stat
 bool petal_vm_exec(PetalVM* vm) {
     assert(vm != NULL && "NULL PetalVM passed to petal_vm_exec");
 
-    const FunctionDeclarationStatement* main_function = petal_vm_get_main_function(vm);
-    if (!main_function) {
-        return false;
-    }
+    StringBuffer main_function_name = {0};
+    string_buffer_init_from_cstr(&main_function_name, vm->allocator, "main");
 
-    VMScope scope = {.continue_execution = true};
+    VMScope scope = {0};
 
-    for (size_t i = 0; i < main_function->body.length; i++) {
-        if (!petal_vm_exec_statement(vm, &scope, main_function->body.data[i])) {
-            return false;
-        }
-
-        if (!scope.continue_execution) {
-            break;
-        }
-    }
-
-    // The scope should have a number return value.
-    if (scope.return_value.kind != VM_VALUE_KIND_NUMBER) {
-        log_error("vm: main function did not return an integer");
+    if (!petal_vm_call_function(vm, &scope, &main_function_name, &(ExpressionArray){0})) {
         return false;
     }
 
@@ -80,10 +65,21 @@ bool petal_vm_exec_statement(PetalVM* vm, VMScope* scope, Statement* statement) 
 
     switch (statement->kind) {
     case STATEMENT_KIND_RETURN: {
-        scope->continue_execution = false;
+        scope->stop_execution = true;
 
         if (statement->return_.value) {
             scope->return_value = petal_vm_eval_expression(vm, scope, statement->return_.value);
+        }
+
+        break;
+    }
+
+    case STATEMENT_KIND_FUNCTION_CALL: {
+        const FunctionCall function_call = statement->function_call;
+
+        VMScope call_scope = {0};
+        if (!petal_vm_call_function(vm, &call_scope, &function_call.name, &function_call.arguments)) {
+            return false;
         }
 
         break;
@@ -98,44 +94,57 @@ bool petal_vm_exec_statement(PetalVM* vm, VMScope* scope, Statement* statement) 
 }
 
 VMValue petal_vm_eval_expression(PetalVM* vm, VMScope* scope, const Expression* expression) {
-    (void)vm;
-    (void)scope;
+    (void)scope; // TODO: scope inheritance
 
     switch (expression->kind) {
     case EXPRESSION_KIND_NUMBER_LITERAL:
         return (VMValue){.kind = VM_VALUE_KIND_NUMBER, .number = expression->number_literal};
         break;
+
+    case EXPRESSION_KIND_FUNCTION_CALL: {
+        const FunctionCall function_call = expression->function_call;
+
+        VMScope call_scope = {0};
+        if (!petal_vm_call_function(vm, &call_scope, &function_call.name, &function_call.arguments)) {
+            return (VMValue){.kind = VM_VALUE_NOTHING};
+        }
+
+        return call_scope.return_value;
+    }
     }
 
     return (VMValue){.kind = VM_VALUE_NOTHING};
 }
 
-const FunctionDeclarationStatement* petal_vm_get_main_function(const PetalVM* vm) {
+bool petal_vm_call_function(PetalVM* vm, VMScope* scope, const StringBuffer* name, const ExpressionArray* arguments) {
+    (void)arguments;
+    assert(arguments->length == 0 && "petal_vm_call_function: arguments are not supported");
+
+    FunctionDeclarationStatement* function = NULL;
+
     for (size_t i = 0; i < vm->functions.length; i++) {
-        const FunctionDeclarationStatement* function = &vm->functions.data[i];
-        if (!string_buffer_equals_cstr(&function->name, "main")) {
+        FunctionDeclarationStatement* current_function = &vm->functions.data[i];
+        if (!string_buffer_equals(name, &current_function->name)) {
             continue;
         }
 
-        // TODO: 32-bit integer type.
-        if (function->return_type.kind != TYPE_KIND_UNKNOWN ||
-            !string_buffer_equals_cstr(&function->return_type.type_name, "i32")) {
-            log_error("vm: return type of main function must be i32");
-            return NULL;
-        }
-
-        if (function->parameters.length != 0) {
-            log_error("vm: main function parameters are not supported yet");
-            return NULL;
-        }
-
-        return function;
+        function = current_function;
     }
 
-    log_error(
-        "vm: could not find main function declaration. ensure that you have a function named `main` with an `i32` "
-        "return type"
-    );
+    if (!function) {
+        log_error("vm: could not find function with name '%.*s'", (int)name->length, name->data);
+        return false;
+    }
 
-    return NULL;
+    for (size_t i = 0; i < function->body.length; i++) {
+        if (!petal_vm_exec_statement(vm, scope, function->body.data[i])) {
+            return false;
+        }
+
+        if (scope->stop_execution) {
+            break;
+        }
+    }
+
+    return true;
 }

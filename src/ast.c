@@ -9,6 +9,7 @@
 
 IMPLEMENT_ARRAY_TYPE(StatementArray, statement_array, Statement*)
 IMPLEMENT_ARRAY_TYPE(FunctionParameterArray, function_parameter_array, FunctionParameter)
+IMPLEMENT_ARRAY_TYPE(ExpressionArray, expression_array, Expression*)
 
 void ast_parser_init(ASTParser* parser, Module* module, const TokenArray* tokens) {
     assert(parser != NULL && "NULL parser pointer passed to ast_parser_init");
@@ -60,10 +61,31 @@ const Token* ast_parser_peek(const ASTParser* parser) {
 }
 
 /**
+ * Returns the token at the provided offset from the cursor in the token stream without advancing the cursor.
+ */
+const Token* ast_parser_peek_nth(const ASTParser* parser, const size_t offset) {
+    const size_t cursor = parser->cursor + offset;
+
+    if (cursor >= parser->tokens->length) {
+        return NULL;
+    }
+
+    return &parser->tokens->data[cursor];
+}
+
+/**
  * Returns whether the token at the parser's current position is of a certain kind.
  */
 bool ast_parser_peek_is(const ASTParser* parser, const TokenKind kind) {
     const Token* token = ast_parser_peek(parser);
+    return token && token->kind == kind;
+}
+
+/**
+ * Returns whether the token at the parser's current position is of a certain kind.
+ */
+bool ast_parser_peek_nth_is(const ASTParser* parser, const size_t offset, const TokenKind kind) {
+    const Token* token = ast_parser_peek_nth(parser, offset);
     return token && token->kind == kind;
 }
 
@@ -216,6 +238,11 @@ Statement* ast_parser_parse_top_level_statement(ASTParser* parser) {
  */
 Statement* ast_parser_parse_return_statement(ASTParser* parser);
 
+/**
+ * Attempts to parse a function call at the parser's current position.
+ */
+bool ast_parser_parse_function_call(ASTParser* parser, FunctionCall* call, const Token* identifier_token);
+
 Statement* ast_parser_parse_statement(ASTParser* parser) {
     const Token* token = ast_parser_peek(parser);
     if (!token) {
@@ -223,6 +250,25 @@ Statement* ast_parser_parse_statement(ASTParser* parser) {
     }
 
     switch (token->kind) {
+    case TOKEN_KIND_IDENTIFIER: {
+        if (ast_parser_peek_nth_is(parser, TOKEN_KIND_OPEN_PARENTHESIS, 2)) {
+            FunctionCall function_call = {0};
+            if (!ast_parser_parse_function_call(parser, &function_call, NULL)) {
+                return NULL;
+            }
+
+            Statement* statement = allocator_alloc(parser->module->allocator, sizeof(Statement));
+            assert(statement != NULL && "Failed to allocate statement");
+
+            statement->kind = STATEMENT_KIND_FUNCTION_CALL;
+            statement->function_call = function_call;
+
+            return statement;
+        }
+
+        break;
+    }
+
     case TOKEN_KIND_KEYWORD: {
         switch (token->keyword) {
         case KEYWORD_RETURN:
@@ -275,6 +321,25 @@ Expression* ast_parser_parse_expression(ASTParser* parser) {
     }
 
     switch (token->kind) {
+    case TOKEN_KIND_IDENTIFIER: {
+        if (ast_parser_peek_is(parser, TOKEN_KIND_OPEN_PARENTHESIS)) {
+            FunctionCall function_call = {0};
+            if (!ast_parser_parse_function_call(parser, &function_call, token)) {
+                return NULL;
+            }
+
+            Expression* expression = allocator_alloc(parser->module->allocator, sizeof(Expression));
+            assert(expression != NULL && "Failed to allocate expression");
+
+            expression->kind = EXPRESSION_KIND_FUNCTION_CALL;
+            expression->function_call = function_call;
+
+            return expression;
+        }
+
+        break;
+    }
+
     case TOKEN_KIND_NUMBER: {
         Expression* expression = allocator_alloc(parser->module->allocator, sizeof(Expression));
         assert(expression != NULL && "Failed to allocate expression");
@@ -302,6 +367,49 @@ Expression* ast_parser_parse_expression(ASTParser* parser) {
 
     diagnostic_array_append(parser->module->diagnostics, diagnostic);
     return NULL;
+}
+
+bool ast_parser_parse_function_call(ASTParser* parser, FunctionCall* call, const Token* identifier_token) {
+    expression_array_init(&call->arguments, parser->module->allocator);
+
+    if (!identifier_token) {
+        const Token* token = ast_parser_expect(parser, TOKEN_KIND_IDENTIFIER);
+        if (!token) {
+            return false;
+        }
+
+        call->name = token->string;
+    } else {
+        call->name = identifier_token->string;
+    }
+
+    if (!ast_parser_expect(parser, TOKEN_KIND_OPEN_PARENTHESIS)) {
+        return false;
+    }
+
+    while (!ast_parser_peek_is(parser, TOKEN_KIND_CLOSE_PARENTHESIS)) {
+        Expression* expression = ast_parser_parse_expression(parser);
+        if (!expression) {
+            return false;
+        }
+
+        expression_array_append(&call->arguments, expression);
+
+        if (!ast_parser_peek_is(parser, TOKEN_KIND_CLOSE_PARENTHESIS)) {
+            ast_parser_expect(parser, TOKEN_KIND_COMMA);
+        }
+    }
+
+    if (!ast_parser_expect(parser, TOKEN_KIND_CLOSE_PARENTHESIS)) {
+        return false;
+    }
+
+    // TODO: Move this to the caller.
+    if (!identifier_token && !ast_parser_expect(parser, TOKEN_KIND_SEMICOLON)) {
+        return NULL;
+    }
+
+    return true;
 }
 
 Statement* ast_parser_parse_function_declaration(ASTParser* parser) {

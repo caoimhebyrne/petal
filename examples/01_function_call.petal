@@ -1,0 +1,14 @@
+// The previous example introduced the main function.
+// Other functions can be declared too, but they won't be invoked unless you call them yourself.
+//
+// In this example, we declare a function: `get_return_value`. The function returns an integer.
+//
+// Then, in the main function we call the `get_return_value` function, and use its return value as the value that we
+// return from the main function.
+func get_return_value() -> i32 {
+    return 19;
+}
+
+func main() -> i32 {
+    return get_return_value();
+}

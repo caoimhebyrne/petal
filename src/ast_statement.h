@@ -26,6 +26,11 @@ typedef enum {
      * A return statement.
      */
     STATEMENT_KIND_RETURN,
+
+    /**
+     * A function call statement.
+     */
+    STATEMENT_KIND_FUNCTION_CALL,
 } StatementKind;
 
 /**
@@ -97,5 +102,10 @@ struct Statement {
          * STATEMENT_KIND_RETURN.
          */
         ReturnStatement return_;
+
+        /**
+         * STATEMENT_KIND_FUNCTION_CALL.
+         */
+        FunctionCall function_call;
     };
 };

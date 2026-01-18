@@ -29,15 +29,18 @@ typedef struct {
     VMValue return_value;
 
     /**
-     * Whether the scope should continue executing after the current statement.
+     * Whether the scope should stop executing after the current statement.
      */
-    bool continue_execution;
+    bool stop_execution;
 } VMScope;
 
 /**
  * A very barebones virtual machine for the Petal language.
  */
 typedef struct {
+    // The allocator.
+    Allocator* allocator;
+
     // The state of the virtual machine.
     VMState state;
 
