@@ -1,2 +1,2 @@
 CompileFlags:
-    Add: [-Wall, -Wextra, -Wpedantic]
+    Add: [-Wall, -Wextra, -Wpedantic, -Wno-gnu-statement-expression]

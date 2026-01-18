@@ -29,7 +29,7 @@ typedef struct {
     /**
      * The name of the parameter.
      */
-    const StringBuffer name;
+    StringBuffer name;
 
     /**
      * The value type of the parameter.
@@ -46,7 +46,7 @@ typedef struct {
     /**
      * The name of the function being declared.
      */
-    const StringBuffer name;
+    StringBuffer name;
 
     /**
      * The parameters of the function.
@@ -71,7 +71,7 @@ struct Statement {
     /**
      * The kind of statement that this is.
      */
-    const StatementKind kind;
+    StatementKind kind;
 
     union {
         /**

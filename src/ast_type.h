@@ -20,13 +20,13 @@ typedef struct {
     /**
      * The kind of type that this is.
      */
-    const TypeKind kind;
+    TypeKind kind;
 
     union {
         /**
          * The name of a TYPE_KIND_UNKNOWN.
          */
-        const StringBuffer type_name;
+        StringBuffer type_name;
     };
 } Type;
 

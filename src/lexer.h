@@ -92,3 +92,13 @@ void lexer_init(Lexer* lexer, const Module* module);
  * Attempts to parse all of the tokens available to the lexer, returning false if an error occurs.
  */
 bool lexer_parse(Lexer* lexer, TokenArray* tokens);
+
+/**
+ * Returns the human-readable name for a specific TokenKind.
+ */
+const char* token_kind_to_string(const TokenKind kind);
+
+/**
+ * Returns the human-readable name for a specific Keyword.
+ */
+const char* keyword_to_string(const Keyword keyword);

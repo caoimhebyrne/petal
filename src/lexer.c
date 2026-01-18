@@ -286,3 +286,63 @@ bool lexer_parse_number(Lexer* lexer, TokenArray* tokens) {
     token_array_append(tokens, (Token){.kind = TOKEN_KIND_NUMBER, .number = value, .position = lexer->position});
     return true;
 }
+
+const char* token_kind_to_string(const TokenKind kind) {
+    switch (kind) {
+    case TOKEN_KIND_CLOSE_PARENTHESIS:
+        return "closing parenthesis";
+
+    case TOKEN_KIND_OPEN_PARENTHESIS:
+        return "opening parenthesis";
+
+    case TOKEN_KIND_IDENTIFIER:
+        return "an identifier";
+
+    case TOKEN_KIND_NUMBER:
+        return "number";
+
+    case TOKEN_KIND_KEYWORD:
+        return "a keyword";
+
+    case TOKEN_KIND_EQUALS:
+        return "equals";
+
+    case TOKEN_KIND_OPEN_BRACE:
+        return "opening brace";
+
+    case TOKEN_KIND_CLOSE_BRACE:
+        return "closing brace";
+
+    case TOKEN_KIND_COLON:
+        return "colon";
+
+    case TOKEN_KIND_SEMICOLON:
+        return "semicolon";
+
+    case TOKEN_KIND_COMMA:
+        return "comma";
+
+    case TOKEN_KIND_HYPHEN:
+        return "hyphen";
+
+    case TOKEN_KIND_RIGHT_ANGLE_BRACKET:
+        return "right angle bracket";
+
+    case TOKEN_KIND_SLASH:
+        return "slash";
+    }
+}
+
+const char* keyword_to_string(const Keyword keyword) {
+    switch (keyword) {
+    case KEYWORD_FUNC:
+        return "func";
+
+    case KEYWORD_RETURN:
+        return "return";
+
+    case KEYWORD_UNKNOWN:
+        assert(true && "This should never occur");
+        return NULL;
+    }
+}
