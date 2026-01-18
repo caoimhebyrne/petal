@@ -106,6 +106,8 @@ VMValue petal_vm_eval_expression(PetalVM* vm, VMScope* scope, const Expression* 
         return (VMValue){.kind = VM_VALUE_KIND_NUMBER, .number = expression->number_literal};
         break;
     }
+
+    return (VMValue){.kind = VM_VALUE_NOTHING};
 }
 
 const FunctionDeclarationStatement* petal_vm_get_main_function(const PetalVM* vm) {
