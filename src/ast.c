@@ -137,7 +137,7 @@ bool ast_parser_expect_keyword(ASTParser* parser, const Keyword keyword) {
 /**
  * Attempts to parse a single statement at the parser's current position.
  */
-Statement* ast_parser_parse_statement(ASTParser* parser);
+Statement* ast_parser_parse_top_level_statement(ASTParser* parser);
 
 /**
  * Attempts to parse a function declaration statement at the parser's current position.
@@ -149,7 +149,7 @@ bool ast_parser_parse(ASTParser* parser, StatementArray* statements) {
     assert(statements != NULL && "NULL statements pointer passed to ast_parser_parse");
 
     while (!ast_parser_is_eof(parser)) {
-        Statement* statement = ast_parser_parse_statement(parser);
+        Statement* statement = ast_parser_parse_top_level_statement(parser);
         if (!statement) {
             return false;
         }
@@ -160,8 +160,11 @@ bool ast_parser_parse(ASTParser* parser, StatementArray* statements) {
     return true;
 }
 
-Statement* ast_parser_parse_statement(ASTParser* parser) {
+Statement* ast_parser_parse_top_level_statement(ASTParser* parser) {
     const Token* token = ast_parser_peek(parser);
+    if (!token) {
+        return NULL;
+    }
 
     switch (token->kind) {
     case TOKEN_KIND_KEYWORD: {
@@ -177,7 +180,7 @@ Statement* ast_parser_parse_statement(ASTParser* parser) {
                 parser->module->allocator,
                 DIAGNOSTIC_KIND_ERROR,
                 token->position,
-                "expected to parse a statement, but got an unprocessable keyword: '%s'",
+                "expected to parse a top level statement, but got an unprocessable keyword: '%s'",
                 keyword_to_string(token->keyword)
             );
 
@@ -191,6 +194,27 @@ Statement* ast_parser_parse_statement(ASTParser* parser) {
 
     default:
         break;
+    }
+
+    Diagnostic diagnostic = {0};
+
+    diagnostic_init_fmt(
+        &diagnostic,
+        parser->module->allocator,
+        DIAGNOSTIC_KIND_ERROR,
+        token->position,
+        "expected to parse a top level statement, but got an unprocessable token: '%s'",
+        token_kind_to_string(token->kind)
+    );
+
+    diagnostic_array_append(parser->module->diagnostics, diagnostic);
+    return NULL;
+}
+
+Statement* ast_parser_parse_statement(ASTParser* parser) {
+    const Token* token = ast_parser_peek(parser);
+    if (!token) {
+        return NULL;
     }
 
     Diagnostic diagnostic = {0};
