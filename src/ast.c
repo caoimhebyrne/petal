@@ -211,10 +211,43 @@ Statement* ast_parser_parse_top_level_statement(ASTParser* parser) {
     return NULL;
 }
 
+/**
+ * Attempts to parse a return statement at the AST parser's current position.
+ */
+Statement* ast_parser_parse_return_statement(ASTParser* parser);
+
 Statement* ast_parser_parse_statement(ASTParser* parser) {
     const Token* token = ast_parser_peek(parser);
     if (!token) {
         return NULL;
+    }
+
+    switch (token->kind) {
+    case TOKEN_KIND_KEYWORD: {
+        switch (token->keyword) {
+        case KEYWORD_RETURN:
+            return ast_parser_parse_return_statement(parser);
+
+        default: {
+            Diagnostic diagnostic = {0};
+
+            diagnostic_init_fmt(
+                &diagnostic,
+                parser->module->allocator,
+                DIAGNOSTIC_KIND_ERROR,
+                token->position,
+                "expected to parse a statement, but got an unprocessable keyword: '%s'",
+                keyword_to_string(token->keyword)
+            );
+
+            diagnostic_array_append(parser->module->diagnostics, diagnostic);
+            return NULL;
+        }
+        }
+    }
+
+    default:
+        break;
     }
 
     Diagnostic diagnostic = {0};
@@ -225,6 +258,45 @@ Statement* ast_parser_parse_statement(ASTParser* parser) {
         DIAGNOSTIC_KIND_ERROR,
         token->position,
         "expected to parse a statement, but got an unprocessable token: '%s'",
+        token_kind_to_string(token->kind)
+    );
+
+    diagnostic_array_append(parser->module->diagnostics, diagnostic);
+    return NULL;
+}
+
+/**
+ * Attempts to parse an expression at the parser's current position.
+ */
+Expression* ast_parser_parse_expression(ASTParser* parser) {
+    const Token* token = ast_parser_consume(parser);
+    if (!token) {
+        return NULL;
+    }
+
+    switch (token->kind) {
+    case TOKEN_KIND_NUMBER: {
+        Expression* expression = allocator_alloc(parser->module->allocator, sizeof(Expression));
+        assert(expression != NULL && "Failed to allocate expression");
+
+        expression->kind = EXPRESSION_KIND_NUMBER_LITERAL;
+        expression->number_literal = token->number;
+
+        return expression;
+    }
+
+    default:
+        break;
+    }
+
+    Diagnostic diagnostic = {0};
+
+    diagnostic_init_fmt(
+        &diagnostic,
+        parser->module->allocator,
+        DIAGNOSTIC_KIND_ERROR,
+        token->position,
+        "expected to parse an expression, but got an unprocessable token: '%s'",
         token_kind_to_string(token->kind)
     );
 
@@ -327,6 +399,35 @@ Statement* ast_parser_parse_function_declaration(ASTParser* parser) {
                                                                      .name = name_token->string,
                                                                      .parameters = parameters,
                                                                      .return_type = return_type};
+
+    return statement;
+}
+
+Statement* ast_parser_parse_return_statement(ASTParser* parser) {
+    if (!ast_parser_expect_keyword(parser, KEYWORD_RETURN)) {
+        return false;
+    }
+
+    Expression* value = NULL;
+
+    // If the next token is not EOF and not a semicolon, then we must parse a value.
+    if (!ast_parser_is_eof(parser) && !ast_parser_peek_is(parser, TOKEN_KIND_SEMICOLON)) {
+        value = ast_parser_parse_expression(parser);
+        if (!value) {
+            return NULL;
+        }
+    }
+
+    // TODO: Move this to the caller.
+    if (!ast_parser_expect(parser, TOKEN_KIND_SEMICOLON)) {
+        return NULL;
+    }
+
+    Statement* statement = allocator_alloc(parser->module->allocator, sizeof(Statement));
+    assert(statement != NULL && "Failed to allocate Statement");
+
+    statement->kind = STATEMENT_KIND_RETURN;
+    statement->return_ = (ReturnStatement){.value = value};
 
     return statement;
 }

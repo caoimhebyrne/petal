@@ -1,6 +1,7 @@
 #pragma once
 
 #include "array.h"
+#include "ast_expression.h"
 #include "ast_type.h"
 
 /**
@@ -20,6 +21,11 @@ typedef enum {
      * A function declaration statement.
      */
     STATEMENT_KIND_FUNCTION_DECLARATION,
+
+    /**
+     * A return statement.
+     */
+    STATEMENT_KIND_RETURN,
 } StatementKind;
 
 /**
@@ -65,6 +71,14 @@ typedef struct {
 } FunctionDeclarationStatement;
 
 /**
+ * A return statement.
+ */
+typedef struct {
+    // The value being returned from the scope, may be NULL.
+    Expression* value;
+} ReturnStatement;
+
+/**
  * The statement struct was forward declared for the `StatementArray` type.
  */
 struct Statement {
@@ -78,5 +92,10 @@ struct Statement {
          * STATEMENT_KIND_FUNCTION_DECLARATION.
          */
         FunctionDeclarationStatement function_declaration;
+
+        /**
+         * STATEMENT_KIND_RETURN.
+         */
+        ReturnStatement return_;
     };
 };
