@@ -47,7 +47,7 @@ bool module_init(Module* module, Allocator* allocator, DiagnosticArray* diagnost
     return true;
 }
 
-bool module_parse(Module* module) {
+bool module_parse(Module* module, StatementArray* statements) {
     Lexer lexer = {0};
     lexer_init(&lexer, module);
 
@@ -61,10 +61,7 @@ bool module_parse(Module* module) {
     ASTParser parser = {0};
     ast_parser_init(&parser, module, &tokens);
 
-    StatementArray statements = {0};
-    statement_array_init(&statements, module->allocator);
-
-    if (!ast_parser_parse(&parser, &statements)) {
+    if (!ast_parser_parse(&parser, statements)) {
         return false;
     }
 

@@ -2,6 +2,7 @@
 
 #include "allocator.h"
 #include "array.h"
+#include "ast_statement.h"
 #include "diagnostic.h"
 #include "module_id.h"
 #include <stdbool.h>
@@ -30,4 +31,4 @@ typedef struct {
 bool module_init(Module* module, Allocator* allocator, DiagnosticArray* diagnostics, const char* file_path);
 
 // Parses the provided module's source code.
-bool module_parse(Module* module);
+bool module_parse(Module* module, StatementArray* statements);

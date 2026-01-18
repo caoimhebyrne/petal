@@ -3,9 +3,7 @@
 // Each application must have a `main` function that returns an `i32`. This is a 32-bit integer that indicates the
 // process' exit code.
 //
-// In this example, we return `0`. Running the program in the Petal VM should exit with a zero status code.
-// 
-// TIP: In Bash, you can use `echo $?` to print the exit code of the previous command.
+// In this example, we return `123`. Running the program in the Petal VM should exit with an exit code of 123.
 func main() -> i32 {
-    return 0;
+    return 123;
 }

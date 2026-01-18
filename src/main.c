@@ -1,7 +1,9 @@
 #include "allocator.h"
+#include "ast_statement.h"
 #include "diagnostic.h"
 #include "logger.h"
 #include "module.h"
+#include "vm.h"
 #include <stdlib.h>
 
 int main(const int argc, const char** argv, const char** envp) {
@@ -29,7 +31,10 @@ int main(const int argc, const char** argv, const char** envp) {
         goto fail;
     }
 
-    const bool module_parse_result = module_parse(&main_module);
+    StatementArray statements = {0};
+    statement_array_init(&statements, &allocator);
+
+    const bool module_parse_result = module_parse(&main_module, &statements);
 
     for (size_t i = 0; i < diagnostics.length; i++) {
         const Diagnostic diagnostic = diagnostics.data[i];
@@ -49,6 +54,15 @@ int main(const int argc, const char** argv, const char** envp) {
     if (!module_parse_result) {
         goto fail;
     }
+
+    PetalVM vm = {0};
+    petal_vm_init(&vm, &allocator, &statements);
+
+    if (!petal_vm_exec(&vm)) {
+        goto fail;
+    }
+
+    log_info("vm executed successfully, exit code: %zu", vm.state.exit_code);
 
     allocator_clean(&allocator);
     return EXIT_SUCCESS;
