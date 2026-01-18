@@ -2,6 +2,7 @@
 #include "allocator.h"
 #include "array.h"
 #include "ast.h"
+#include "ast_statement.h"
 #include "diagnostic.h"
 #include "file.h"
 #include "lexer.h"
@@ -9,8 +10,6 @@
 #include <string.h>
 
 static size_t global_module_id = 1;
-
-void print_node_tree(Allocator* allocator, const NodeArray* nodes, size_t depth);
 
 bool module_init(Module* module, Allocator* allocator, DiagnosticArray* diagnostics, const char* file_path) {
     StringBuffer source_buffer = {0};
@@ -59,72 +58,15 @@ bool module_parse(Module* module) {
         return false;
     }
 
-    ASTParser ast_parser = {0};
-    ast_parser_init(&ast_parser, module->allocator, module->diagnostics, module->id, &tokens);
+    ASTParser parser = {0};
+    ast_parser_init(&parser, module, &tokens);
 
-    NodeArray nodes = {0};
-    node_array_init(&nodes, module->allocator);
+    StatementArray statements = {0};
+    statement_array_init(&statements, module->allocator);
 
-    if (!ast_parser_parse(&ast_parser, &nodes)) {
+    if (!ast_parser_parse(&parser, &statements)) {
         return false;
     }
 
-    print_node_tree(module->allocator, &nodes, 0);
-
     return true;
-}
-
-void print_node_tree(Allocator* allocator, const NodeArray* nodes, size_t depth) {
-    StringBuffer padding = {0};
-    string_buffer_init(&padding, allocator);
-
-    for (size_t i = 0; i < depth * 4; i++) {
-        string_buffer_append(&padding, ' ');
-    }
-
-    for (size_t i = 0; i < nodes->length; i++) {
-        const Node* node = nodes->data[i];
-
-        switch (node->kind) {
-        case NODE_KIND_FUNCTION_DECLARATION: {
-            const FunctionDeclarationNode function_declaration = node->function_declaration;
-
-            log_info(
-                "%.*sfunction declaration '%.*s'",
-                (int)padding.length,
-                padding.data,
-                (int)function_declaration.name.length,
-                function_declaration.name.data
-            );
-
-            print_node_tree(allocator, &function_declaration.body, depth + 1);
-
-            break;
-        }
-
-        case NODE_KIND_RETURN: {
-            ReturnNode return_ = node->return_;
-
-            log_info("%.*sreturn", (int)padding.length, padding.data);
-
-            if (return_.value) {
-                print_node_tree(
-                    allocator,
-                    &(NodeArray){.allocator = allocator, .capacity = 1, .length = 1, .data = &return_.value},
-                    depth + 1
-                );
-            }
-
-            break;
-        }
-
-        case NODE_KIND_NUMBER_LITERAL: {
-            const NumberLiteralNode number_literal = node->number_literal;
-
-            log_info("%.*snumber literal %f", (int)padding.length, padding.data, number_literal.value);
-
-            break;
-        }
-        }
-    }
 }

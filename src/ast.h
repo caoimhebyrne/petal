@@ -1,98 +1,35 @@
 #pragma once
 
-// An abstract syntax tree parser. Takes tokens from a [TokenArray] and produces a [NodeArray].
-#include "allocator.h"
-#include "array.h"
-#include "diagnostic.h"
+#include "ast_statement.h"
 #include "lexer.h"
-#include "module_id.h"
+#include "module.h"
 
-typedef struct Node Node;
-
-DEFINE_ARRAY_TYPE(NodeArray, node_array, Node*)
-
-typedef enum {
-    // A function declaration node.
-    NODE_KIND_FUNCTION_DECLARATION,
-
-    // Returning a value from a scope.
-    NODE_KIND_RETURN,
-
-    // A number literal.
-    NODE_KIND_NUMBER_LITERAL,
-} NodeKind;
-
-// A function declaration node.
+/**
+ * Parses tokens into an AST.
+ */
 typedef struct {
-    // The name of the function being declared.
-    StringBuffer name;
+    /**
+     * The module that the tokens belong to.
+     */
+    Module* module;
 
-    // The body of the function.
-    NodeArray body;
-} FunctionDeclarationNode;
-
-// A return node.
-typedef struct {
-    // The value being returned. Can be NULL if there is no value.
-    Node* value;
-} ReturnNode;
-
-// An number literal node.
-typedef struct {
-    float value;
-} NumberLiteralNode;
-
-// A node in an abstract syntax tree.
-struct Node {
-    // The kind of node that this is.
-    NodeKind kind;
-
-    union {
-        // Only available in `NODE_KIND_FUNCTION_DECLARATION`.
-        FunctionDeclarationNode function_declaration;
-
-        // Only available in `NODE_KIND_RETURN`.
-        ReturnNode return_;
-
-        // Only available in `NODE_KIND_NUMBER_LITERAL`.
-        NumberLiteralNode number_literal;
-    };
-};
-
-// Allocates a new function declaration node with the provided allocator.
-Node* function_declaration_node_create(Allocator* allocator, StringBuffer name, NodeArray body);
-
-// Allocates a new return node with the provided allocator.
-Node* return_node_create(Allocator* allocator, Node* value);
-
-// Allocates a new number literal node with the provided allocator.
-Node* number_literal_node_create(Allocator* allocator, float value);
-
-typedef struct {
-    // The allocator to use when allocating memory.
-    Allocator* allocator;
-
-    // The [DiagnosticArray] to produce diagnostics on to.
-    DiagnosticArray* diagnostics;
-
-    // The ID of the module that is being compiled.
-    ModuleId module_id;
-
-    // The tokens to transform into AST nodes.
+    /**
+     * The tokens to parse.
+     */
     const TokenArray* tokens;
 
-    // The index into the [TokenArray] that the [ASTParser] is currently at.
+    /**
+     * The position that the parser is at in the TokenArray.
+     */
     size_t cursor;
 } ASTParser;
 
-// Initializes an [ASTParser] with the provided [TokenArray].
-void ast_parser_init(
-    ASTParser* ast_parser,
-    Allocator* allocator,
-    DiagnosticArray* diagnostics,
-    ModuleId module_id,
-    const TokenArray* tokens
-);
+/**
+ * Initializes an [ASTParser] with the provided module and tokens.
+ */
+void ast_parser_init(ASTParser* parser, Module* module, const TokenArray* tokens);
 
-// Attempts to parse an AST from the tokens in this [ASTParser].
-bool ast_parser_parse(ASTParser* ast_parser, NodeArray* nodes);
+/**
+ * Attempts to parse the tokens within this parser, appending statements onto the provided [StatementArray].
+ */
+bool ast_parser_parse(ASTParser* parser, StatementArray* statements);
