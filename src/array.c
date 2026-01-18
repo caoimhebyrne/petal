@@ -1,5 +1,8 @@
 #include "array.h"
 #include "allocator.h"
+#include "assert.h"
+#include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
 
 IMPLEMENT_ARRAY_TYPE(StringBuffer, string_buffer, char)
@@ -8,6 +11,30 @@ void string_buffer_init_from_cstr(StringBuffer* buffer, Allocator* allocator, co
     string_buffer_init(buffer, allocator);
     // FIXME: This is a bad cast, but the value being `const` seems to cause issues with pointer types.
     string_buffer_append_many(buffer, (char*)cstr, strlen(cstr));
+}
+
+void string_buffer_init_fmt(StringBuffer* buffer, Allocator* allocator, const char* format, ...) {
+    assert(buffer != NULL && "NULL buffer passed to string_buffer_init_fmt");
+
+    va_list args;
+    va_start(args, format);
+
+    va_list args_copy;
+    va_copy(args_copy, args);
+
+    const size_t string_length = vsnprintf(NULL, 0, format, args);
+    va_end(args);
+
+    assert(string_length > 0 && "Failed to init StringBuffer with format string (vsnprintf failed)");
+
+    string_buffer_init(buffer, allocator);
+    string_buffer_resize(buffer, sizeof(char) * string_length);
+
+    // We add 1 to the length because vsnprintf assumes that the provided pointer is null-terminated.
+    vsnprintf(buffer->data, string_length + 1, format, args_copy);
+    va_end(args_copy);
+
+    buffer->length = string_length;
 }
 
 bool string_buffer_equals(const StringBuffer* buffer, const StringBuffer* other) {

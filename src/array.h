@@ -61,6 +61,9 @@ DEFINE_ARRAY_TYPE(StringBuffer, string_buffer, char)
 // Creates a [StringBuffer] by copying the contents of the provided C-string.
 void string_buffer_init_from_cstr(StringBuffer* buffer, Allocator* allocator, const char* cstr);
 
+// Creates a [StringBuffer] by formatting the provided format string with the variadic arguments.
+void string_buffer_init_fmt(StringBuffer* buffer, Allocator* allocator, const char* format, ...);
+
 // Checks whether the contents in two [StringBuffer]s are equal to each other.
 bool string_buffer_equals(const StringBuffer* buffer, const StringBuffer* other);
 
