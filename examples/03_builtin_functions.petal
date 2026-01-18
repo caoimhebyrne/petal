@@ -1,0 +1,8 @@
+// The Petal VM provides some built-in functions to make interfacing with the Virtual Machine easy.
+//
+// The main built-in is the `print` function. It takes a string literal and writes it to the standard output, followed
+// by a new-line.
+func main() -> i32 {
+    print("Hello from Petal!");
+    return 0;
+}

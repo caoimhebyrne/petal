@@ -11,6 +11,7 @@ typedef enum {
     TOKEN_KIND_IDENTIFIER,
     TOKEN_KIND_NUMBER,
     TOKEN_KIND_KEYWORD,
+    TOKEN_KIND_STRING,
 
     TOKEN_KIND_EQUALS,
     TOKEN_KIND_OPEN_PARENTHESIS,
@@ -47,7 +48,7 @@ typedef struct {
     Position position;
 
     union {
-        // Only available on TOKEN_KIND_IDENTIFIER.
+        // Only available on TOKEN_KIND_STRING and TOKEN_KIND_IDENTIFIER.
         StringBuffer string;
 
         // Only available on TOKEN_KIND_NUMBER.

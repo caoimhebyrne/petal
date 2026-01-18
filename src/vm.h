@@ -76,6 +76,22 @@ typedef struct {
 } PetalVM;
 
 /**
+ * The type of a built-in function handler.
+ */
+typedef VMValue (*VMBuiltinFunctionHandler)(PetalVM* vm, const VMValueArray* arguments);
+
+/**
+ * A built-in function.
+ */
+typedef struct {
+    // The name of the built-in function.
+    const char* name;
+
+    // The C function to call to handle the function.
+    VMBuiltinFunctionHandler handler;
+} VMBuiltinFunction;
+
+/**
  * Initializes a [PetalVM] with the provided top-level statements.
  */
 void petal_vm_init(PetalVM* vm, Allocator* allocator, const StatementArray* statements);

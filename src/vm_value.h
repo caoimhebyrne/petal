@@ -1,5 +1,7 @@
 #pragma once
 
+#include "array.h"
+
 /**
  * Represents the different kinds of values that can be used within a virtual machine.
  */
@@ -13,6 +15,11 @@ typedef enum {
      * A number (C float).
      */
     VM_VALUE_KIND_NUMBER,
+
+    /**
+     * A string.
+     */
+    VM_VALUE_KIND_STRING,
 } VMValueKind;
 
 /**
@@ -29,5 +36,12 @@ typedef struct {
          * VM_VALUE_KIND_NUMBER.
          */
         float number;
+
+        /**
+         * VM_VALUE_KIND_STRING.
+         */
+        StringBuffer string;
     };
 } VMValue;
+
+DEFINE_ARRAY_TYPE(VMValueArray, vm_value_array, VMValue)

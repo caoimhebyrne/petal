@@ -19,9 +19,14 @@ typedef enum {
     EXPRESSION_KIND_FUNCTION_CALL,
 
     /**
-     * An identifier reference/
+     * An identifier reference.
      */
     EXPRESSION_KIND_IDENTIFIER_REFERENCE,
+
+    /**
+     * A string literal.
+     */
+    EXPRESSION_KIND_STRING_LITERAL,
 } ExpressionKind;
 
 /**
@@ -57,13 +62,13 @@ struct Expression {
         float number_literal;
 
         /**
-         * EXPRESSION_KIND_FUNCTION_CALL
+         * EXPRESSION_KIND_FUNCTION_CALL.
          */
         FunctionCall function_call;
 
         /**
-         * EXPRESSION_KIND_IDENTIFIER_REFERENCE
+         * EXPRESSION_KIND_IDENTIFIER_REFERENCE, EXPRESSION_KIND_STRING_LITERAL.
          */
-        StringBuffer identifier;
+        StringBuffer string;
     };
 };

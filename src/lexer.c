@@ -117,6 +117,9 @@ bool lexer_parse_identifier(Lexer* lexer, TokenArray* tokens);
 // Attempts to parse a number token at the lexer's current position.
 bool lexer_parse_number(Lexer* lexer, TokenArray* tokens);
 
+// Attempts to parse a string literal token at the lexer's current position.
+bool lexer_parse_string_literal(Lexer* lexer, TokenArray* tokens);
+
 bool lexer_parse(Lexer* lexer, TokenArray* tokens) {
     while (!lexer_is_eof(lexer)) {
         // Any ongoing length groups must be ended at the start of each iteration.
@@ -164,6 +167,16 @@ bool lexer_parse(Lexer* lexer, TokenArray* tokens) {
         case '-':
             lexer_push_single_token(lexer, tokens, TOKEN_KIND_HYPHEN);
             continue;
+
+        case '"': {
+            lexer_consume(lexer);
+
+            if (!lexer_parse_string_literal(lexer, tokens)) {
+                return false;
+            }
+
+            continue;
+        }
 
         case '/':
             if (lexer_peek_nth(lexer, 1) == '/') {
@@ -287,6 +300,27 @@ bool lexer_parse_number(Lexer* lexer, TokenArray* tokens) {
     return true;
 }
 
+bool lexer_parse_string_literal(Lexer* lexer, TokenArray* tokens) {
+    lexer_start_length_group(lexer);
+
+    StringBuffer string = {0};
+    string_buffer_init(&string, lexer->allocator);
+
+    do {
+        const char character = lexer_peek(lexer);
+
+        if (character == '\n' || character == '\"')
+            break;
+
+        string_buffer_append(&string, lexer_consume(lexer));
+    } while (true);
+
+    lexer_consume(lexer);
+
+    token_array_append(tokens, (Token){.kind = TOKEN_KIND_STRING, .string = string, .position = lexer->position});
+    return true;
+}
+
 const char* token_kind_to_string(const TokenKind kind) {
     switch (kind) {
     case TOKEN_KIND_CLOSE_PARENTHESIS:
@@ -330,6 +364,9 @@ const char* token_kind_to_string(const TokenKind kind) {
 
     case TOKEN_KIND_SLASH:
         return "slash";
+
+    case TOKEN_KIND_STRING:
+        return "string literal";
     }
 
     return "unknown";

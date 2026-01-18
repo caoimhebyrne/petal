@@ -6,8 +6,29 @@
 #include "vm_value.h"
 #include <assert.h>
 
+VMValue petal_vm_builtin_print(PetalVM* vm, const VMValueArray* arguments) {
+    (void)vm;
+
+    // TODO: This is really bad...
+    if (arguments->length != 1) {
+        return (VMValue){.kind = VM_VALUE_NOTHING};
+    }
+
+    VMValue value = arguments->data[0];
+    if (value.kind != VM_VALUE_KIND_STRING) {
+        return (VMValue){.kind = VM_VALUE_NOTHING};
+    }
+
+    printf("%.*s\n", (int)value.string.length, value.string.data);
+
+    return (VMValue){.kind = VM_VALUE_NOTHING};
+}
+
+VMBuiltinFunction builtin_functions[] = {(VMBuiltinFunction){.name = "print", .handler = petal_vm_builtin_print}};
+
 IMPLEMENT_ARRAY_TYPE(FunctionDeclarationArray, function_declaration_array, FunctionDeclarationStatement)
 IMPLEMENT_ARRAY_TYPE(VMVariableArray, vm_variable_array, VMVariable)
+IMPLEMENT_ARRAY_TYPE(VMValueArray, vm_value_array, VMValue)
 
 /**
  * Attempts to find a function in the VM's current state with the provided name, returning NULL if it could not be
@@ -34,6 +55,11 @@ bool petal_vm_call_function(
     const FunctionDeclarationStatement* function,
     const ExpressionArray* arguments
 );
+
+/**
+ * Attempts to find a built-in function with the provided name.
+ */
+const VMBuiltinFunction* petal_vm_get_builtin_function(PetalVM* vm, const FunctionCall* call);
 
 /**
  * Attempts to get and call the function using the information in the [FunctionCall].
@@ -143,10 +169,14 @@ VMValue petal_vm_eval_expression(PetalVM* vm, VMScope* scope, const Expression* 
         return call_scope.return_value;
     }
 
+    case EXPRESSION_KIND_STRING_LITERAL: {
+        return (VMValue){.kind = VM_VALUE_KIND_STRING, .string = expression->string};
+    }
+
     case EXPRESSION_KIND_IDENTIFIER_REFERENCE: {
         for (size_t i = 0; i < scope->variables.length; i++) {
             VMVariable* variable = &scope->variables.data[i];
-            if (!string_buffer_equals(&variable->name, &expression->identifier)) {
+            if (!string_buffer_equals(&variable->name, &expression->string)) {
                 continue;
             }
 
@@ -155,8 +185,8 @@ VMValue petal_vm_eval_expression(PetalVM* vm, VMScope* scope, const Expression* 
 
         log_error(
             "vm: could not find variable with name '%.*s'",
-            (int)expression->identifier.length,
-            expression->identifier.data
+            (int)expression->string.length,
+            expression->string.data
         );
 
         return (VMValue){.kind = VM_VALUE_NOTHING};
@@ -227,10 +257,41 @@ bool petal_vm_call_function(
 }
 
 bool petal_vm_get_and_call_function(PetalVM* vm, VMScope* scope, const FunctionCall* call) {
+    const VMBuiltinFunction* builtin_function = petal_vm_get_builtin_function(vm, call);
+    if (builtin_function) {
+        VMValueArray arguments = {0};
+        vm_value_array_init(&arguments, vm->allocator);
+
+        for (size_t i = 0; i < call->arguments.length; i++) {
+            vm_value_array_append(&arguments, petal_vm_eval_expression(vm, scope, call->arguments.data[i]));
+        }
+
+        scope->return_value = builtin_function->handler(vm, &arguments);
+        return true;
+    }
+
     const FunctionDeclarationStatement* function = petal_vm_get_function(vm, &call->name);
     if (!function) {
+        log_error("vm: could not find function with name '%.*s'", (int)call->name.length, call->name.data);
         return false;
     }
 
     return petal_vm_call_function(vm, scope, function, &call->arguments);
+}
+
+const VMBuiltinFunction* petal_vm_get_builtin_function(PetalVM* vm, const FunctionCall* call) {
+    (void)vm;
+
+    const size_t number_of_builtins = sizeof(builtin_functions) / sizeof(VMBuiltinFunction);
+
+    for (size_t i = 0; i < number_of_builtins; i++) {
+        const VMBuiltinFunction* function = &builtin_functions[i];
+        if (!string_buffer_equals_cstr(&call->name, function->name)) {
+            continue;
+        }
+
+        return function;
+    }
+
+    return NULL;
 }
