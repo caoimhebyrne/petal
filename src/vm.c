@@ -5,21 +5,9 @@
 #include "logger.h"
 #include "vm_api.h"
 #include "vm_api_internal.h"
+#include "vm_builtin.h"
 #include "vm_value.h"
 #include <assert.h>
-
-VMValue petal_vm_builtin_print(PetalBuiltinContext* context) {
-    const VMValue* value = petal_builtin_arguments_get(context->arguments, 0);
-    if (value->kind != VM_VALUE_KIND_STRING) {
-        log_error("vm: expected a string to be passed to 'print' builtin!");
-        return (VMValue){.kind = VM_VALUE_NOTHING};
-    }
-
-    printf("%.*s\n", (int)value->string.length, value->string.data);
-    return (VMValue){.kind = VM_VALUE_NOTHING};
-}
-
-VMBuiltinFunction builtin_functions[] = {(VMBuiltinFunction){.name = "print", .handler = petal_vm_builtin_print}};
 
 IMPLEMENT_ARRAY_TYPE(FunctionDeclarationArray, function_declaration_array, FunctionDeclarationStatement)
 IMPLEMENT_ARRAY_TYPE(VMVariableArray, vm_variable_array, VMVariable)
@@ -280,10 +268,8 @@ bool petal_vm_get_and_call_function(PetalVM* vm, VMScope* scope, const FunctionC
 const VMBuiltinFunction* petal_vm_get_builtin_function(PetalVM* vm, const FunctionCall* call) {
     (void)vm;
 
-    const size_t number_of_builtins = sizeof(builtin_functions) / sizeof(VMBuiltinFunction);
-
-    for (size_t i = 0; i < number_of_builtins; i++) {
-        const VMBuiltinFunction* function = &builtin_functions[i];
+    for (size_t i = 0; i < petal_vm_builtin_functions_count; i++) {
+        const VMBuiltinFunction* function = &petal_vm_builtin_functions[i];
         if (!string_buffer_equals_cstr(&call->name, function->name)) {
             continue;
         }
