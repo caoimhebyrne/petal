@@ -164,7 +164,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     fn assert_lexer_tokens(source: &str, tokens: Vec<Token>) {
-        let mut lexer = Lexer::new(source.into());
+        let mut lexer = Lexer::new(source);
         assert_eq!(lexer.parse(), Ok(tokens));
     }
 
