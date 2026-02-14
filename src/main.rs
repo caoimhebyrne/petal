@@ -6,9 +6,11 @@ pub mod core;
 pub mod lexer;
 
 fn main() {
-    let program_name = env::args().next().unwrap_or("petal".into());
+    let mut args = env::args();
 
-    let file_path = match env::args().next() {
+    let program_name = args.next().unwrap_or("petal".into());
+
+    let file_path = match args.next() {
         Some(value) => value,
         _ => {
             eprintln!("Usage: {} file_path", program_name);
