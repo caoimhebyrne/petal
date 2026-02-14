@@ -216,6 +216,33 @@ mod tests {
     }
 
     #[test]
+    fn parse_basic_function_declaration() {
+        assert_lexer_tokens(
+            "func test() {}",
+            vec![
+                Token::new(TokenKind::Keyword(Keyword::Func), Span { start: 0, length: 4 }),
+                Token::new(TokenKind::Identifier("test".into()), Span { start: 5, length: 4 }),
+                Token::new(TokenKind::OpenParen, Span { start: 9, length: 1 }),
+                Token::new(TokenKind::CloseParen, Span { start: 10, length: 1 }),
+                Token::new(TokenKind::OpenBrace, Span { start: 12, length: 1 }),
+                Token::new(TokenKind::CloseBrace, Span { start: 13, length: 1 }),
+            ],
+        );
+    }
+
+    #[test]
+    fn parse_return() {
+        assert_lexer_tokens(
+            "return 123;",
+            vec![
+                Token::new(TokenKind::Keyword(Keyword::Return), Span { start: 0, length: 6 }),
+                Token::new(TokenKind::Number(123.0), Span { start: 7, length: 3 }),
+                Token::new(TokenKind::Semicolon, Span { start: 10, length: 1 }),
+            ],
+        );
+    }
+
+    #[test]
     fn skips_comments_but_retains_forward_slash() {
         assert_lexer_tokens(
             "// This is a test!\n//This is another test!\n/",

@@ -62,6 +62,9 @@ pub enum TokenKind {
 pub enum Keyword {
     /// The `func` keyword.
     Func,
+
+    /// The `return` keyword.
+    Return,
 }
 
 impl Keyword {
@@ -70,6 +73,7 @@ impl Keyword {
     pub fn from(string: &str) -> Option<Keyword> {
         let keyword = match string {
             "func" => Keyword::Func,
+            "return" => Keyword::Return,
 
             _ => return None,
         };
