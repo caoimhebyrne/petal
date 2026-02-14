@@ -1,0 +1,54 @@
+use std::fmt::Display;
+
+use owo_colors::OwoColorize;
+
+use crate::core::span::Span;
+
+/// An error trait for all error implementations to derive.
+///
+/// It is responsible for ensuring that an error implementation derives [`Display`], and provides
+/// an (optional) accessor for the [`Span`] that the error occurred at.
+pub trait Error: Display {
+    /// The [`Span`] that this error occurred at. If span information is not available, then
+    /// [`None`] should be returned.
+    fn span(&self) -> Option<Span>;
+
+    /// Prints this error to the standard output, including information about the source file and
+    /// line that caused it.
+    fn print_to_stderr(&self, file_path: &str, source: &str) {
+        let span = match self.span() {
+            Some(span) => span,
+            _ => {
+                eprintln!("{} {}", format!("error({}):", file_path).red().bold(), self.bright_white());
+                return;
+            }
+        };
+
+        // We need to find the line within the source file that caused this error. If we cannot
+        // find the line, then we can just print a generic error message without any line
+        // information.
+        if let Some(source_information) = span.get_source_information(source) {
+            let line_number_str = format!("{}", source_information.line_index + 1);
+            let left_padding = " ".repeat(line_number_str.len());
+
+            eprintln!("{} {}", "error:".red().bold(), self.bright_white());
+
+            eprintln!(
+                "{}",
+                format!(
+                    "{} ---> {}:{}:{}",
+                    left_padding,
+                    file_path,
+                    source_information.line_index + 1,
+                    source_information.column_index + 1
+                )
+            );
+
+            eprintln!("{} | ", left_padding);
+            eprintln!("{} | {}", line_number_str, source_information.line.bright_white());
+            eprintln!("{} | {}{}", left_padding, " ".repeat(source_information.column_index), "^".repeat(span.length));
+        } else {
+            eprintln!("{} {}", format!("error({}):", file_path).red().bold(), self.bright_white());
+        }
+    }
+}

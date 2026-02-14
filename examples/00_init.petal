@@ -1,0 +1,16 @@
+// Welcome to the examples for the Petal programming language!
+//
+// Each example .petal file will go through a new language feature. In this example, we'll
+// introduce the `main` function, and how it is used.
+//
+// The `main` function is called by the virtual machine once your program has passed all
+// compilation steps. It is expected to return a number, and this number is typically considered
+// to be the virtual machine's exit code.
+//
+// A function is declared using the `func` keyword. Extra information like function parameters
+// and return types will be covered in later examples.
+func main() -> i32 {
+    // A value can be returned from a function using the `return` keyword. In this example, we are
+    // returning the number 9.
+    return 9;
+}

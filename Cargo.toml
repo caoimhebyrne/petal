@@ -1,0 +1,10 @@
+[package]
+name = "petal"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+owo-colors = "4"
+
+[dev-dependencies]
+pretty_assertions = "1.4.1"
