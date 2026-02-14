@@ -24,7 +24,7 @@ pub enum LexerErrorKind {
 
 impl LexerError {
     /// Creates a new [`LexerError`].
-    pub fn new(kind: LexerErrorKind, span: Span) -> LexerError {
+    pub fn new(kind: LexerErrorKind, span: Span) -> Self {
         LexerError { kind, span }
     }
 }

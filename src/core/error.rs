@@ -34,14 +34,11 @@ pub trait Error: Display {
             eprintln!("{} {}", "error:".red().bold(), self.bright_white());
 
             eprintln!(
-                "{}",
-                format!(
-                    "{} ---> {}:{}:{}",
-                    left_padding,
-                    file_path,
-                    source_information.line_index + 1,
-                    source_information.column_index + 1
-                )
+                "{} ---> {}:{}:{}",
+                left_padding,
+                file_path,
+                source_information.line_index + 1,
+                source_information.column_index + 1,
             );
 
             eprintln!("{} | ", left_padding);

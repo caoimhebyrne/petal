@@ -6,10 +6,12 @@ pub mod core;
 pub mod lexer;
 
 fn main() {
-    let file_path = match env::args().nth(1) {
+    let program_name = env::args().next().unwrap_or("petal".into());
+
+    let file_path = match env::args().next() {
         Some(value) => value,
         _ => {
-            eprintln!("Usage: {} file_path", env::args().nth(0).unwrap_or("petal".into()));
+            eprintln!("Usage: {} file_path", program_name);
             return;
         }
     };
@@ -32,5 +34,5 @@ fn main() {
         }
     };
 
-    println!("info: parsed soruce code from '{}', read {} token(s)", &file_path, tokens.len());
+    println!("info: parsed source code from '{}', read {} token(s)", &file_path, tokens.len());
 }

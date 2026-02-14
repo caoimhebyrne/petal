@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     fn error_unexpected_character() {
-        let mut lexer = Lexer::new("\u{200b}".into());
+        let mut lexer = Lexer::new("\u{200b}");
         assert_eq!(
             lexer.parse(),
             Err(LexerError::new(LexerErrorKind::UnrecognizedCharacter('\u{200b}'), Span { start: 0, length: 1 }))

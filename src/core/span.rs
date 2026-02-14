@@ -30,9 +30,8 @@ impl Span {
     /// Returns information about this span's location in the provided [`source`] string.
     pub fn get_source_information(&self, source: &str) -> Option<SpanSourceInformation> {
         let mut current_offset: usize = 0;
-        let mut line_index: usize = 0;
 
-        for line in source.lines() {
+        for (line_index, line) in source.lines().enumerate() {
             let line_start_offset = current_offset;
 
             // We need to add an extra character to include the new-line. The `Span` includes new
@@ -47,8 +46,6 @@ impl Span {
                     line_index,
                 });
             }
-
-            line_index += 1;
         }
 
         None
