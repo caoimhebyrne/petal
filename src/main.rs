@@ -1,9 +1,10 @@
-use std::{env, fs};
+use std::env;
 
-use crate::{core::error::Error, lexer::Lexer};
+use crate::module::Module;
 
 pub mod core;
 pub mod lexer;
+pub mod module;
 
 fn main() {
     let mut args = env::args();
@@ -18,23 +19,15 @@ fn main() {
         }
     };
 
-    let file_contents = match fs::read_to_string(&file_path) {
+    let module = match Module::create(file_path.clone()) {
         Ok(value) => value,
         Err(error) => {
-            eprintln!("error: failed to read from '{}': {}", file_path, error);
+            eprintln!("error: {}", error);
             return;
         }
     };
 
-    let mut lexer = Lexer::new(&file_contents);
-    let tokens = match lexer.parse() {
-        Ok(value) => value,
-        Err(error) => {
-            error.print_to_stderr(&file_path, &file_contents);
-
-            return;
-        }
-    };
-
-    println!("info: parsed source code from '{}', read {} token(s)", &file_path, tokens.len());
+    if let Err(error) = module.parse() {
+        error.print_to_stderr(&module.file_path, &module.file_contents);
+    }
 }

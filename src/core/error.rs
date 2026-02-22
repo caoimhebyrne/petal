@@ -49,3 +49,9 @@ pub trait Error: Display {
         }
     }
 }
+
+impl<E: Error + 'static> From<E> for Box<dyn Error> {
+    fn from(value: E) -> Self {
+        Box::new(value)
+    }
+}
