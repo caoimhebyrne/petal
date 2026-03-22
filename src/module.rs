@@ -4,6 +4,7 @@ use std::{
 };
 
 use crate::{
+    ast::ASTParser,
     core::{error::Error, span::Span},
     lexer::Lexer,
 };
@@ -33,7 +34,10 @@ impl Module {
     /// Attempts to parse AST nodes from this module.
     pub fn parse(&self) -> Result<(), Box<dyn Error>> {
         let mut lexer = Lexer::new(&self.file_contents);
-        let _ = lexer.parse()?;
+
+        let tokens = lexer.parse()?;
+        let _ = ASTParser::new_and_parse(tokens)?;
+
         Ok(())
     }
 }

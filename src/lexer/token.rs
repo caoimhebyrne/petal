@@ -18,7 +18,7 @@ impl Token {
 }
 
 /// The different kinds of tokens that exist.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum TokenKind {
     /// An opening parenthesis: (
     OpenParen,
@@ -58,7 +58,7 @@ pub enum TokenKind {
 }
 
 /// A reserved keyword in the Petal programming language.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Keyword {
     /// The `func` keyword.
     Func,

@@ -1,5 +1,5 @@
 /// The location of some text within an original source file.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub struct Span {
     /// The index of the character in the source file that this span starts at.
     pub start: usize,

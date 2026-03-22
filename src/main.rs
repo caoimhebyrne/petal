@@ -2,6 +2,7 @@ use std::env;
 
 use crate::module::Module;
 
+pub mod ast;
 pub mod core;
 pub mod lexer;
 pub mod module;
