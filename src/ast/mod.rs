@@ -139,7 +139,6 @@ mod tests {
 
     use super::*;
     use crate::{
-        ast::statement::function_declaration::FunctionDeclaration,
         core::span::Span,
         lexer::token::{
             Keyword,
@@ -147,27 +146,37 @@ mod tests {
         },
     };
 
-    fn assert_ast_statements(tokens: Vec<Token>, statements: Vec<Statement>) {
-        assert_eq!(ASTParser::new_and_parse(tokens), Ok(statements));
-    }
-
     fn assert_ast_error(tokens: Vec<Token>, error: ASTError) {
         assert_eq!(ASTParser::new_and_parse(tokens), Err(error))
     }
 
     #[test]
     fn parse_function_declaration() {
-        assert_ast_statements(
-            vec![
-                Token::new(TokenKind::Keyword(Keyword::Func), Span { start: 0, length: 4 }),
-                Token::new(TokenKind::Identifier("main".into()), Span { start: 5, length: 4 }),
-                Token::new(TokenKind::OpenParen, Span { start: 10, length: 1 }),
-                Token::new(TokenKind::CloseParen, Span { start: 11, length: 1 }),
-                Token::new(TokenKind::OpenBrace, Span { start: 12, length: 1 }),
-                Token::new(TokenKind::CloseBrace, Span { start: 13, length: 1 }),
+        insta::assert_debug_snapshot!(ASTParser::new_and_parse(vec![
+            Token::new(TokenKind::Keyword(Keyword::Func), Span { start: 0, length: 4 }),
+            Token::new(TokenKind::Identifier("main".into()), Span { start: 5, length: 4 }),
+            Token::new(TokenKind::OpenParen, Span { start: 10, length: 1 }),
+            Token::new(TokenKind::CloseParen, Span { start: 11, length: 1 }),
+            Token::new(TokenKind::OpenBrace, Span { start: 12, length: 1 }),
+            Token::new(TokenKind::CloseBrace, Span { start: 13, length: 1 }),
+        ]), @r#"
+        Ok(
+            [
+                Statement {
+                    kind: FunctionDeclaration(
+                        FunctionDeclaration {
+                            name: "main",
+                            body: [],
+                        },
+                    ),
+                    span: Span {
+                        start: 0,
+                        length: 14,
+                    },
+                },
             ],
-            vec![Statement::from(FunctionDeclaration::new("main".into(), vec![]), Span { start: 0, length: 14 })],
-        );
+        )
+        "#);
     }
 
     #[test]
