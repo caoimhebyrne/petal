@@ -79,10 +79,16 @@ impl ASTParser {
         self.tokens.get(self.cursor).inspect(|_| self.cursor += 1)
     }
 
+    /// Expects a token to be at the [ASTParser]'s current position, advancing the cursor.
+    /// An [ASTErrorKind::UnexpectedEndOfFile] will be returned if there are no tokens left in the stream.
+    fn expect_any(&mut self) -> Result<&Token, ASTError> {
+        let last_token_span = self.tokens.last().map(|it| it.span).unwrap_or_default();
+        self.consume().ok_or(ASTErrorKind::UnexpectedEndOfFile.at(last_token_span))
+    }
+
     /// Expects a certain token to be at the [ASTParser]'s current position, advancing the cursor.
     fn expect(&mut self, kind: TokenKind) -> Result<&Token, ASTError> {
-        let token = self.consume().ok_or(ASTErrorKind::UnexpectedEndOfFile.at(Span::default()))?;
-
+        let token = self.expect_any()?;
         if token.kind != kind {
             return Err(ASTErrorKind::ExpectedToken { expected: kind, got: token.kind.clone() }.at(token.span));
         }
@@ -97,8 +103,7 @@ impl ASTParser {
 
     /// Expects an identifier token to be at the [ASTParser]'s current position, advancing the cursor.
     fn expect_identifier(&mut self) -> Result<(String, Span), ASTError> {
-        let token = self.consume().ok_or(ASTErrorKind::UnexpectedEndOfFile.at(Span::default()))?;
-
+        let token = self.expect_any()?;
         match &token.kind {
             TokenKind::Identifier(identifier) => Ok((identifier.into(), token.span)),
             _ => Err(ASTErrorKind::ExpectedIdentifier.at(token.span)),
@@ -121,6 +126,10 @@ mod tests {
         assert_eq!(ASTParser::new_and_parse(tokens), Ok(statements));
     }
 
+    fn assert_ast_error(tokens: Vec<Token>, error: ASTError) {
+        assert_eq!(ASTParser::new_and_parse(tokens), Err(error))
+    }
+
     #[test]
     fn parse_function_declaration() {
         assert_ast_statements(
@@ -133,6 +142,17 @@ mod tests {
                 Token::new(TokenKind::CloseBrace, Span { start: 13, length: 1 }),
             ],
             vec![Statement::from(FunctionDeclaration::new("main".into()), Span { start: 0, length: 12 })],
+        );
+    }
+
+    #[test]
+    fn error_at_unexpected_end_of_file() {
+        assert_ast_error(
+            vec![
+                Token::new(TokenKind::Keyword(Keyword::Func), Span { start: 0, length: 4 }),
+                Token::new(TokenKind::Identifier("main".into()), Span { start: 5, length: 4 }),
+            ],
+            ASTErrorKind::UnexpectedEndOfFile.at(Span { start: 5, length: 4 }),
         );
     }
 }
