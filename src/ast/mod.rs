@@ -1,10 +1,20 @@
 use crate::{
     ast::{
-        error::{ASTError, ASTErrorKind},
-        statement::{Statement, function_declaration::FunctionDeclaration},
+        error::{
+            ASTError,
+            ASTErrorKind,
+        },
+        statement::{
+            Statement,
+            function_declaration::FunctionDeclaration,
+        },
     },
     core::span::Span,
-    lexer::token::{Keyword, Token, TokenKind},
+    lexer::token::{
+        Keyword,
+        Token,
+        TokenKind,
+    },
 };
 
 pub mod error;
@@ -125,14 +135,17 @@ impl ASTParser {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
+    use super::*;
     use crate::{
         ast::statement::function_declaration::FunctionDeclaration,
         core::span::Span,
-        lexer::token::{Keyword, TokenKind},
+        lexer::token::{
+            Keyword,
+            TokenKind,
+        },
     };
-
-    use super::*;
-    use pretty_assertions::assert_eq;
 
     fn assert_ast_statements(tokens: Vec<Token>, statements: Vec<Statement>) {
         assert_eq!(ASTParser::new_and_parse(tokens), Ok(statements));

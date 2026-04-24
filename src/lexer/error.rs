@@ -1,6 +1,9 @@
 use std::fmt::Display;
 
-use crate::core::{error::Error, span::Span};
+use crate::core::{
+    error::Error,
+    span::Span,
+};
 
 /// A lexer error.
 #[derive(Debug, PartialEq)]

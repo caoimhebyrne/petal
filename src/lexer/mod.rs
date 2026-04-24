@@ -3,8 +3,15 @@ use std::str::Chars;
 use crate::{
     core::span::Span,
     lexer::{
-        error::{LexerError, LexerErrorKind},
-        token::{Keyword, Token, TokenKind},
+        error::{
+            LexerError,
+            LexerErrorKind,
+        },
+        token::{
+            Keyword,
+            Token,
+            TokenKind,
+        },
     },
 };
 
@@ -158,10 +165,10 @@ impl<'a> Lexer<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::lexer::token::Keyword;
+    use pretty_assertions::assert_eq;
 
     use super::*;
-    use pretty_assertions::assert_eq;
+    use crate::lexer::token::Keyword;
 
     fn assert_lexer_tokens(source: &str, tokens: Vec<Token>) {
         let mut lexer = Lexer::new(source);

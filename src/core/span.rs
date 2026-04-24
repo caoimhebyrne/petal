@@ -61,7 +61,10 @@ impl Span {
 mod test {
     use pretty_assertions::assert_eq;
 
-    use crate::core::span::{Span, SpanSourceInformation};
+    use crate::core::span::{
+        Span,
+        SpanSourceInformation,
+    };
 
     #[test]
     fn get_source_information_without_new_lines() {

@@ -1,11 +1,17 @@
 use std::{
-    fmt::{self},
-    fs, io,
+    fmt::{
+        self,
+    },
+    fs,
+    io,
 };
 
 use crate::{
     ast::ASTParser,
-    core::{error::Error, span::Span},
+    core::{
+        error::Error,
+        span::Span,
+    },
     lexer::Lexer,
 };
 

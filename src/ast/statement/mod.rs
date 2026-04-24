@@ -1,4 +1,7 @@
-use crate::{ast::statement::function_declaration::FunctionDeclaration, core::span::Span};
+use crate::{
+    ast::statement::function_declaration::FunctionDeclaration,
+    core::span::Span,
+};
 
 pub mod function_declaration;
 

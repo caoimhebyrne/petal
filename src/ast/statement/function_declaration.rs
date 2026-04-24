@@ -1,4 +1,7 @@
-use crate::ast::statement::{Statement, StatementKind};
+use crate::ast::statement::{
+    Statement,
+    StatementKind,
+};
 
 /// A function declaration within the AST.
 #[derive(Debug, Clone, PartialEq)]

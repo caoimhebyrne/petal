@@ -1,7 +1,10 @@
 use std::fmt::Display;
 
 use crate::{
-    core::{error::Error, span::Span},
+    core::{
+        error::Error,
+        span::Span,
+    },
     lexer::token::TokenKind,
 };
 
