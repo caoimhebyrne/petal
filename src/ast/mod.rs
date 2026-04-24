@@ -47,6 +47,11 @@ impl ASTParser {
         Ok(statements)
     }
 
+    /// Attempts to parse a statement at the [ASTParser]'s current position.
+    fn parse_statement(&mut self) -> Result<Statement, ASTError> {
+        todo!();
+    }
+
     /// Attempts to parse a function declaration from the [ASTParser]'s current position.
     fn parse_function_declaration(&mut self) -> Result<Statement, ASTError> {
         // All functions must start with the func keyword.
@@ -57,15 +62,22 @@ impl ASTParser {
 
         // Then parenthesis must surround the parameters to the function.
         self.expect(TokenKind::OpenParen)?;
-        let closing_paren_span = self.expect_span(TokenKind::CloseParen)?;
+        self.expect(TokenKind::CloseParen)?;
 
         // And braces must surround the body of the function.
         self.expect(TokenKind::OpenBrace)?;
-        self.expect(TokenKind::CloseBrace)?;
+
+        let mut body: Vec<Statement> = Vec::new();
+
+        while !self.peek().map(|it| it.kind == TokenKind::CloseBrace).unwrap_or(true) {
+            body.push(self.parse_statement()?);
+        }
+
+        let closing_brace_span = self.expect_span(TokenKind::CloseBrace)?;
 
         Ok(Statement::new(
-            FunctionDeclaration { name: function_name }.into(),
-            Span::between(func_keyword_span, closing_paren_span),
+            FunctionDeclaration::new(function_name, body).into(),
+            Span::between(func_keyword_span, closing_brace_span),
         ))
     }
 
@@ -141,7 +153,7 @@ mod tests {
                 Token::new(TokenKind::OpenBrace, Span { start: 12, length: 1 }),
                 Token::new(TokenKind::CloseBrace, Span { start: 13, length: 1 }),
             ],
-            vec![Statement::from(FunctionDeclaration::new("main".into()), Span { start: 0, length: 12 })],
+            vec![Statement::from(FunctionDeclaration::new("main".into(), vec![]), Span { start: 0, length: 14 })],
         );
     }
 
