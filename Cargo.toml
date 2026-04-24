@@ -7,4 +7,5 @@ edition = "2024"
 owo-colors = "4"
 
 [dev-dependencies]
+insta = { version = "1.47.2", features = ["yaml"] }
 pretty_assertions = "1.4.1"
