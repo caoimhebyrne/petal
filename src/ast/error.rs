@@ -18,7 +18,10 @@ pub struct ASTError {
 /// The different kinds of [`ASTError`]s that exist.
 #[derive(Debug, PartialEq)]
 pub enum ASTErrorKind {
+    ExpectedToken { expected: TokenKind, got: TokenKind },
+    ExpectedIdentifier,
     UnexpectedToken(TokenKind),
+    UnexpectedEndOfFile,
 }
 
 impl ASTErrorKind {
@@ -38,7 +41,12 @@ impl ASTError {
 impl Display for ASTErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            ASTErrorKind::ExpectedToken { expected, got } => {
+                write!(f, "Expected token '{:?}' but got '{:?}'", expected, got)
+            }
+            ASTErrorKind::ExpectedIdentifier => write!(f, "Expected any identifier"),
             ASTErrorKind::UnexpectedToken(token) => write!(f, "Unexpected token: '{:?}'", token),
+            ASTErrorKind::UnexpectedEndOfFile => write!(f, "Unexpected end-of-file"),
         }
     }
 }

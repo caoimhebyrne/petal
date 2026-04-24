@@ -27,6 +27,11 @@ impl Span {
         Span { start, length }
     }
 
+    /// Creates a new [`Span`] from the start and end of the provided spans.
+    pub fn between(start: Span, end: Span) -> Self {
+        Span { start: start.start, length: (end.start + end.length) - start.start }
+    }
+
     /// Returns information about this span's location in the provided [`source`] string.
     pub fn get_source_information(&self, source: &str) -> Option<SpanSourceInformation> {
         let mut current_offset: usize = 0;
