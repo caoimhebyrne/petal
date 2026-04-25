@@ -1,7 +1,7 @@
 use crate::core::span::Span;
 
 /// A single token parsed by the [`Lexer`].
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Token {
     /// The kind of token that this is.
     pub kind: TokenKind,

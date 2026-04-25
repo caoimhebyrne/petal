@@ -4,9 +4,14 @@ use crate::{
             ASTError,
             ASTErrorKind,
         },
+        expression::{
+            Expression,
+            ExpressionKind,
+        },
         statement::{
             Statement,
             function_declaration::FunctionDeclaration,
+            r#return::Return,
         },
     },
     core::span::Span,
@@ -18,6 +23,7 @@ use crate::{
 };
 
 pub mod error;
+pub mod expression;
 pub mod statement;
 
 /// The AST parser.
@@ -59,7 +65,34 @@ impl ASTParser {
 
     /// Attempts to parse a statement at the [ASTParser]'s current position.
     fn parse_statement(&mut self) -> Result<Statement, ASTError> {
-        todo!();
+        let token = self.peek_expect_any()?;
+
+        let statement = match token.kind {
+            TokenKind::Keyword(Keyword::Return) => self.parse_return()?,
+            _ => return Err(ASTErrorKind::ExpectedStatement(token.kind.clone()).at(token.span)),
+        };
+
+        self.expect(TokenKind::Semicolon)?;
+
+        Ok(statement)
+    }
+
+    /// Attempts to parse an expression at the [ASTParser]'s current position.
+    fn parse_expression(&mut self) -> Result<Expression, ASTError> {
+        let token = self.peek_expect_any()?;
+
+        let expression = match token.kind {
+            TokenKind::Number(value) => {
+                // FIXME: We need to copy the span before attempting to acquire a mutable reference via consume.
+                let span = token.span;
+                self.consume();
+                Expression::new(ExpressionKind::NumberLiteral(value), span)
+            }
+
+            _ => return Err(ASTErrorKind::ExpectedExpression(token.kind.clone()).at(token.span)),
+        };
+
+        Ok(expression)
     }
 
     /// Attempts to parse a function declaration from the [ASTParser]'s current position.
@@ -91,6 +124,19 @@ impl ASTParser {
         ))
     }
 
+    /// Attempts to parse a return statement from the [ASTParser]'s current position.
+    fn parse_return(&mut self) -> Result<Statement, ASTError> {
+        let return_keyword_span = self.expect_span(TokenKind::Keyword(Keyword::Return))?;
+
+        if self.peek().map(|it| it.kind == TokenKind::Semicolon).unwrap_or_default() {
+            return Ok(Statement::from(Return::new(None), return_keyword_span));
+        }
+
+        let value = self.parse_expression()?;
+        let span = Span::between(return_keyword_span, value.span);
+        Ok(Statement::from(Return::new(Some(value)), span))
+    }
+
     /// Returns the token at the [ASTParser]'s current position.
     fn peek(&self) -> Option<&Token> {
         self.tokens.get(self.cursor)
@@ -106,6 +152,13 @@ impl ASTParser {
     fn expect_any(&mut self) -> Result<&Token, ASTError> {
         let last_token_span = self.tokens.last().map(|it| it.span).unwrap_or_default();
         self.consume().ok_or(ASTErrorKind::UnexpectedEndOfFile.at(last_token_span))
+    }
+
+    /// Expects a token to be at the [ASTParser]'s current position, advancing the cursor.
+    /// An [ASTErrorKind::UnexpectedEndOfFile] will be returned if there are no tokens left in the stream.
+    fn peek_expect_any(&self) -> Result<&Token, ASTError> {
+        let last_token_span = self.tokens.last().map(|it| it.span).unwrap_or_default();
+        self.peek().ok_or(ASTErrorKind::UnexpectedEndOfFile.at(last_token_span))
     }
 
     /// Expects a certain token to be at the [ASTParser]'s current position, advancing the cursor.
@@ -172,6 +225,60 @@ mod tests {
                     span: Span {
                         start: 0,
                         length: 14,
+                    },
+                },
+            ],
+        )
+        "#);
+    }
+
+    #[test]
+    fn parse_function_declaration_with_return_statement() {
+        insta::assert_debug_snapshot!(ASTParser::new_and_parse(vec![
+            Token::new(TokenKind::Keyword(Keyword::Func), Span { start: 0, length: 4 }),
+            Token::new(TokenKind::Identifier("main".into()), Span { start: 5, length: 4 }),
+            Token::new(TokenKind::OpenParen, Span { start: 10, length: 1 }),
+            Token::new(TokenKind::CloseParen, Span { start: 11, length: 1 }),
+            Token::new(TokenKind::OpenBrace, Span { start: 12, length: 1 }),
+            Token::new(TokenKind::Keyword(Keyword::Return), Span { start: 13, length: 4 }),
+            Token::new(TokenKind::Number(1234.0), Span { start: 17, length: 4 }),
+            Token::new(TokenKind::Semicolon, Span { start: 21, length: 1 }),
+            Token::new(TokenKind::CloseBrace, Span { start: 22, length: 1 }),
+        ]), @r#"
+        Ok(
+            [
+                Statement {
+                    kind: FunctionDeclaration(
+                        FunctionDeclaration {
+                            name: "main",
+                            body: [
+                                Statement {
+                                    kind: Return(
+                                        Return {
+                                            value: Some(
+                                                Expression {
+                                                    kind: NumberLiteral(
+                                                        1234.0,
+                                                    ),
+                                                    span: Span {
+                                                        start: 17,
+                                                        length: 4,
+                                                    },
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                    span: Span {
+                                        start: 13,
+                                        length: 8,
+                                    },
+                                },
+                            ],
+                        },
+                    ),
+                    span: Span {
+                        start: 0,
+                        length: 23,
                     },
                 },
             ],

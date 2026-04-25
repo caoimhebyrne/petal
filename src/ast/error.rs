@@ -23,6 +23,8 @@ pub struct ASTError {
 pub enum ASTErrorKind {
     ExpectedToken { expected: TokenKind, got: TokenKind },
     ExpectedIdentifier,
+    ExpectedStatement(TokenKind),
+    ExpectedExpression(TokenKind),
     UnexpectedToken(TokenKind),
     UnexpectedEndOfFile,
 }
@@ -50,6 +52,8 @@ impl Display for ASTErrorKind {
             ASTErrorKind::ExpectedIdentifier => write!(f, "Expected any identifier"),
             ASTErrorKind::UnexpectedToken(token) => write!(f, "Unexpected token: '{:?}'", token),
             ASTErrorKind::UnexpectedEndOfFile => write!(f, "Unexpected end-of-file"),
+            ASTErrorKind::ExpectedStatement(token) => write!(f, "Expected a statement, but got '{:?}'", token),
+            ASTErrorKind::ExpectedExpression(token) => write!(f, "Expected an expression, but got '{:?}'", token),
         }
     }
 }

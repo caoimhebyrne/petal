@@ -1,9 +1,13 @@
 use crate::{
-    ast::statement::function_declaration::FunctionDeclaration,
+    ast::statement::{
+        function_declaration::FunctionDeclaration,
+        r#return::Return,
+    },
     core::span::Span,
 };
 
 pub mod function_declaration;
+pub mod r#return;
 
 /// A statement node within the abstract syntax tree.
 /// This node kind typically does not yield a value once evaluated.
@@ -33,4 +37,7 @@ impl Statement {
 pub enum StatementKind {
     /// A function declaration statement.
     FunctionDeclaration(FunctionDeclaration),
+
+    /// A return statement.
+    Return(Return),
 }
