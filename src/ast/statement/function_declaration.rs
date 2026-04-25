@@ -1,6 +1,9 @@
-use crate::ast::statement::{
-    Statement,
-    StatementKind,
+use crate::ast::{
+    statement::{
+        Statement,
+        StatementKind,
+    },
+    r#type::Type,
 };
 
 /// A function declaration within the AST.
@@ -11,12 +14,15 @@ pub struct FunctionDeclaration {
 
     /// The body of the function.
     pub body: Vec<Statement>,
+
+    /// The return type of the function.
+    pub return_type: Option<Type>,
 }
 
 impl FunctionDeclaration {
     /// Creates a new [FunctionDeclaration].
-    pub fn new(name: String, body: Vec<Statement>) -> Self {
-        FunctionDeclaration { name, body }
+    pub fn new(name: String, body: Vec<Statement>, return_type: Option<Type>) -> Self {
+        FunctionDeclaration { name, body, return_type }
     }
 }
 

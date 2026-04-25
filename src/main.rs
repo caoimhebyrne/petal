@@ -1,8 +1,13 @@
 use std::env;
 
-use crate::module::Module;
+use crate::{
+    backend::c::CBackend,
+    core::error::Error,
+    module::Module,
+};
 
 pub mod ast;
+pub mod backend;
 pub mod core;
 pub mod lexer;
 pub mod module;
@@ -28,7 +33,21 @@ fn main() {
         }
     };
 
-    if let Err(error) = module.parse() {
-        error.print_to_stderr(&module.file_path, &module.file_contents);
-    }
+    let parsed_module = match module.parse() {
+        Ok(value) => value,
+        Err(error) => {
+            error.print_to_stderr(&module.file_path, &module.file_contents);
+            return;
+        }
+    };
+
+    let code = match CBackend::compile(&parsed_module) {
+        Ok(value) => value,
+        Err(error) => {
+            error.print_to_stderr(&module.file_path, &module.file_contents);
+            return;
+        }
+    };
+
+    println!("{}", code);
 }

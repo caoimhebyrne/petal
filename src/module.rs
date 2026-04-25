@@ -7,7 +7,10 @@ use std::{
 };
 
 use crate::{
-    ast::ASTParser,
+    ast::{
+        ASTParser,
+        statement::Statement,
+    },
     core::{
         error::Error,
         span::Span,
@@ -24,6 +27,19 @@ pub struct Module {
     pub file_contents: String,
 }
 
+/// A module that has been parsed into an AST.
+pub struct ParsedModule {
+    /// The top-level statements within this module.
+    pub ast: Vec<Statement>,
+}
+
+impl ParsedModule {
+    /// Creates a new [ParsedModule].
+    pub fn new(ast: Vec<Statement>) -> Self {
+        Self { ast }
+    }
+}
+
 /// An error that occurs while creating a Petal module.
 pub enum ModuleError {
     /// The file could not be read.
@@ -38,13 +54,13 @@ impl Module {
     }
 
     /// Attempts to parse AST nodes from this module.
-    pub fn parse(&self) -> Result<(), Box<dyn Error>> {
+    pub fn parse(&self) -> Result<ParsedModule, Box<dyn Error>> {
         let mut lexer = Lexer::new(&self.file_contents);
 
         let tokens = lexer.parse()?;
-        let _ = ASTParser::new_and_parse(tokens)?;
+        let ast = ASTParser::new_and_parse(tokens)?;
 
-        Ok(())
+        Ok(ParsedModule::new(ast))
     }
 }
 
