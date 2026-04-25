@@ -20,7 +20,7 @@ impl CBackend {
     pub fn compile(module: &ParsedModule) -> Result<String, CBackendError> {
         let mut code = String::new();
 
-        code.push_str("#include <stdint.h>\n");
+        code.push_str("#include <stdint.h>\n\n");
 
         for statement in &module.ast {
             code.push_str(&CBackend::compile_statement(statement)?);
@@ -65,7 +65,7 @@ mod tests {
     fn compile_empty_function() {
         assert_compiles(
             vec![FunctionDeclaration::new("foo".into(), vec![], None).into()],
-            "#include <stdint.h>\nvoid foo(void) {\n}\n",
+            "#include <stdint.h>\n\nvoid foo(void) {\n}\n",
         );
     }
 
@@ -73,7 +73,7 @@ mod tests {
     fn compile_empty_function_i32_return_type() {
         assert_compiles(
             vec![FunctionDeclaration::new("foo".into(), vec![], Some(Type::Named("i32".into()))).into()],
-            "#include <stdint.h>\nint32_t foo(void) {\n}\n",
+            "#include <stdint.h>\n\nint32_t foo(void) {\n}\n",
         );
     }
 }
