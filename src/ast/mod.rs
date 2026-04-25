@@ -10,7 +10,10 @@ use crate::{
         },
         statement::{
             Statement,
-            function_declaration::FunctionDeclaration,
+            function_declaration::{
+                FunctionDeclaration,
+                FunctionParameter,
+            },
             r#return::Return,
         },
         r#type::Type,
@@ -107,6 +110,23 @@ impl ASTParser {
 
         // Then parenthesis must surround the parameters to the function.
         self.expect(TokenKind::OpenParen)?;
+
+        let mut parameters: Vec<FunctionParameter> = Vec::new();
+
+        while !self.peek().map(|it| it.kind == TokenKind::CloseParen).unwrap_or(true) {
+            let (parameter_name, _) = self.expect_identifier()?;
+            self.expect(TokenKind::Colon)?;
+            let (parameter_type_name, _) = self.expect_identifier()?;
+
+            parameters.push(FunctionParameter { name: parameter_name, r#type: Type::Named(parameter_type_name) });
+
+            if self.peek().map(|it| it.kind == TokenKind::CloseParen).unwrap_or_default() {
+                continue;
+            }
+
+            self.expect(TokenKind::Comma)?;
+        }
+
         self.expect(TokenKind::CloseParen)?;
 
         // There may be a `->` token, indicating that an explicit return type is being used.
@@ -133,7 +153,7 @@ impl ASTParser {
         let closing_brace_span = self.expect_span(TokenKind::CloseBrace)?;
 
         Ok(Statement::new(
-            FunctionDeclaration::new(function_name, body, return_type).into(),
+            FunctionDeclaration::new(function_name, body, parameters, return_type).into(),
             Span::between(func_keyword_span, closing_brace_span),
         ))
     }
@@ -234,12 +254,109 @@ mod tests {
                         FunctionDeclaration {
                             name: "main",
                             body: [],
+                            parameters: [],
                             return_type: None,
                         },
                     ),
                     span: Span {
                         start: 0,
                         length: 14,
+                    },
+                },
+            ],
+        )
+        "#);
+    }
+
+    #[test]
+    fn parse_function_declaration_with_parameter() {
+        insta::assert_debug_snapshot!(ASTParser::new_and_parse(vec![
+            Token::new(TokenKind::Keyword(Keyword::Func), Span { start: 0, length: 4 }),
+            Token::new(TokenKind::Identifier("main".into()), Span { start: 5, length: 4 }),
+            Token::new(TokenKind::OpenParen, Span { start: 10, length: 1 }),
+            Token::new(TokenKind::Identifier("argc".into()), Span { start: 11, length: 4 }),
+            Token::new(TokenKind::Colon, Span { start: 15, length: 1 }),
+            Token::new(TokenKind::Identifier("i32".into()), Span { start: 16, length: 3 }),
+            Token::new(TokenKind::CloseParen, Span { start: 19, length: 1 }),
+            Token::new(TokenKind::OpenBrace, Span { start: 20, length: 1 }),
+            Token::new(TokenKind::CloseBrace, Span { start: 21, length: 1 }),
+        ]), @r#"
+        Ok(
+            [
+                Statement {
+                    kind: FunctionDeclaration(
+                        FunctionDeclaration {
+                            name: "main",
+                            body: [],
+                            parameters: [
+                                FunctionParameter {
+                                    name: "argc",
+                                    type: Named(
+                                        "i32",
+                                    ),
+                                },
+                            ],
+                            return_type: None,
+                        },
+                    ),
+                    span: Span {
+                        start: 0,
+                        length: 22,
+                    },
+                },
+            ],
+        )
+        "#);
+    }
+
+    #[test]
+    fn parse_function_declaration_with_parameters() {
+        insta::assert_debug_snapshot!(ASTParser::new_and_parse(vec![
+            Token::new(TokenKind::Keyword(Keyword::Func), Span { start: 0, length: 4 }),
+            Token::new(TokenKind::Identifier("main".into()), Span { start: 5, length: 4 }),
+            Token::new(TokenKind::OpenParen, Span { start: 10, length: 1 }),
+
+            Token::new(TokenKind::Identifier("argc".into()), Span { start: 11, length: 4 }),
+            Token::new(TokenKind::Colon, Span { start: 15, length: 1 }),
+            Token::new(TokenKind::Identifier("i32".into()), Span { start: 16, length: 3 }),
+
+            Token::new(TokenKind::Comma, Span { start: 19, length: 1 }),
+
+            Token::new(TokenKind::Identifier("argv".into()), Span { start: 20, length: 4 }),
+            Token::new(TokenKind::Colon, Span { start: 24, length: 1 }),
+            Token::new(TokenKind::Identifier("todo".into()), Span { start: 25, length: 3 }),
+
+            Token::new(TokenKind::CloseParen, Span { start: 28, length: 1 }),
+            Token::new(TokenKind::OpenBrace, Span { start: 29, length: 1 }),
+            Token::new(TokenKind::CloseBrace, Span { start: 30, length: 1 }),
+        ]), @r#"
+        Ok(
+            [
+                Statement {
+                    kind: FunctionDeclaration(
+                        FunctionDeclaration {
+                            name: "main",
+                            body: [],
+                            parameters: [
+                                FunctionParameter {
+                                    name: "argc",
+                                    type: Named(
+                                        "i32",
+                                    ),
+                                },
+                                FunctionParameter {
+                                    name: "argv",
+                                    type: Named(
+                                        "todo",
+                                    ),
+                                },
+                            ],
+                            return_type: None,
+                        },
+                    ),
+                    span: Span {
+                        start: 0,
+                        length: 31,
                     },
                 },
             ],
@@ -267,6 +384,7 @@ mod tests {
                         FunctionDeclaration {
                             name: "main",
                             body: [],
+                            parameters: [],
                             return_type: Some(
                                 Named(
                                     "i32",
@@ -326,6 +444,7 @@ mod tests {
                                     },
                                 },
                             ],
+                            parameters: [],
                             return_type: None,
                         },
                     ),

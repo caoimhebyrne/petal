@@ -47,6 +47,12 @@ pub enum TokenKind {
     /// A semicolon: ;
     Semicolon,
 
+    /// A colon: :
+    Colon,
+
+    /// A comma: ,
+    Comma,
+
     /// An identifier.
     Identifier(String),
 

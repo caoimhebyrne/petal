@@ -64,7 +64,7 @@ mod tests {
     #[test]
     fn compile_empty_function() {
         assert_compiles(
-            vec![FunctionDeclaration::new("foo".into(), vec![], None).into()],
+            vec![FunctionDeclaration::new("foo".into(), vec![], vec![], None).into()],
             "#include <stdint.h>\n\nvoid foo(void) {\n}\n",
         );
     }
@@ -72,7 +72,7 @@ mod tests {
     #[test]
     fn compile_empty_function_i32_return_type() {
         assert_compiles(
-            vec![FunctionDeclaration::new("foo".into(), vec![], Some(Type::Named("i32".into()))).into()],
+            vec![FunctionDeclaration::new("foo".into(), vec![], vec![], Some(Type::Named("i32".into()))).into()],
             "#include <stdint.h>\n\nint32_t foo(void) {\n}\n",
         );
     }
