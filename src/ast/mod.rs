@@ -10,10 +10,7 @@ use crate::{
         },
         statement::{
             Statement,
-            function_declaration::{
-                FunctionDeclaration,
-                FunctionParameter,
-            },
+            function_declaration::FunctionDeclaration,
             r#return::Return,
         },
         r#type::Type,
@@ -116,21 +113,21 @@ impl ASTParser {
         // Then, the name of the function must be present.
         let (function_name, _) = self.expect_identifier()?;
 
+        let mut builder = FunctionDeclaration::builder(function_name);
+
         // Then parenthesis must surround the parameters to the function.
         self.expect(TokenKind::OpenParen)?;
-
-        let mut parameters: Vec<FunctionParameter> = Vec::new();
 
         while !self.peek().map(|it| it.kind == TokenKind::CloseParen).unwrap_or(true) {
             let (parameter_name, parameter_name_span) = self.expect_identifier()?;
             self.expect(TokenKind::Colon)?;
             let (parameter_type_name, parameter_type_name_span) = self.expect_identifier()?;
 
-            parameters.push(FunctionParameter::new(
+            builder = builder.parameter(
                 parameter_name,
                 Type::Named(parameter_type_name),
                 Span::between(parameter_name_span, parameter_type_name_span),
-            ));
+            );
 
             if self.peek().map(|it| it.kind == TokenKind::CloseParen).unwrap_or_default() {
                 continue;
@@ -142,32 +139,25 @@ impl ASTParser {
         self.expect(TokenKind::CloseParen)?;
 
         // There may be a `->` token, indicating that an explicit return type is being used.
-        let return_type = if self.peek().map(|it| it.kind == TokenKind::Hyphen).unwrap_or_default() {
+        if self.peek().map(|it| it.kind == TokenKind::Hyphen).unwrap_or_default() {
             self.expect(TokenKind::Hyphen)?;
             self.expect(TokenKind::RightAngleBracket)?;
 
             let (return_type_name, _) = self.expect_identifier()?;
 
-            Some(Type::Named(return_type_name))
-        } else {
-            None
-        };
+            builder = builder.return_type(Type::named(return_type_name));
+        }
 
         // And braces must surround the body of the function.
         self.expect(TokenKind::OpenBrace)?;
 
-        let mut body: Vec<Statement> = Vec::new();
-
         while !self.peek().map(|it| it.kind == TokenKind::CloseBrace).unwrap_or(true) {
-            body.push(self.parse_statement()?);
+            builder = builder.statement(self.parse_statement()?);
         }
 
         let closing_brace_span = self.expect_span(TokenKind::CloseBrace)?;
 
-        Ok(Statement::new(
-            FunctionDeclaration::new(function_name, body, parameters, return_type).into(),
-            Span::between(func_keyword_span, closing_brace_span),
-        ))
+        Ok(Statement::new(builder.build().into(), Span::between(func_keyword_span, closing_brace_span)))
     }
 
     /// Attempts to parse a return statement from the [ASTParser]'s current position.
