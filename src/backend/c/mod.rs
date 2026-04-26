@@ -48,10 +48,17 @@ mod tests {
 
     use super::*;
     use crate::{
-        ast::statement::{
-            Statement,
-            StatementKind,
-            function_declaration::FunctionDeclaration,
+        ast::{
+            expression::{
+                Expression,
+                ExpressionKind,
+            },
+            statement::{
+                Statement,
+                StatementKind,
+                function_declaration::FunctionDeclaration,
+                r#return::Return,
+            },
         },
         core::span::Span,
     };
@@ -66,6 +73,59 @@ mod tests {
         assert_compiles(
             vec![FunctionDeclaration::builder("foo").build().into()],
             "#include <stdint.h>\n\nvoid foo(void) {\n}\n",
+        );
+    }
+
+    #[test]
+    fn compile_function_with_return_void() {
+        assert_compiles(
+            vec![
+                FunctionDeclaration::builder("foo")
+                    .statement(Statement::from(Return { value: None }, Span::default()))
+                    .build()
+                    .into(),
+            ],
+            "#include <stdint.h>\n\nvoid foo(void) {\nreturn;\n}\n",
+        );
+    }
+
+    #[test]
+    fn compile_function_with_return_i32() {
+        assert_compiles(
+            vec![
+                FunctionDeclaration::builder("foo")
+                    .statement(Statement::from(
+                        Return { value: Some(Expression::new(ExpressionKind::NumberLiteral(123.0), Span::default())) },
+                        Span::default(),
+                    ))
+                    .return_type(Type::named("i32"))
+                    .build()
+                    .into(),
+            ],
+            "#include <stdint.h>\n\nint32_t foo(void) {\nreturn 123;\n}\n",
+        );
+    }
+
+    #[test]
+    fn compile_function_with_return_identifier_reference() {
+        assert_compiles(
+            vec![
+                FunctionDeclaration::builder("foo")
+                    .parameter("argc", Type::named("i32"), Span::default())
+                    .statement(Statement::from(
+                        Return {
+                            value: Some(Expression::new(
+                                ExpressionKind::IdentifierReference("argc".into()),
+                                Span::default(),
+                            )),
+                        },
+                        Span::default(),
+                    ))
+                    .return_type(Type::named("i32"))
+                    .build()
+                    .into(),
+            ],
+            "#include <stdint.h>\n\nint32_t foo(int32_t argc) {\nreturn argc;\n}\n",
         );
     }
 

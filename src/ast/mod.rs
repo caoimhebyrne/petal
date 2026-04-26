@@ -86,12 +86,20 @@ impl ASTParser {
     fn parse_expression(&mut self) -> Result<Expression, ASTError> {
         let token = self.peek_expect_any()?;
 
-        let expression = match token.kind {
+        let expression = match &token.kind {
             TokenKind::Number(value) => {
-                // FIXME: We need to copy the span before attempting to acquire a mutable reference via consume.
+                let value = *value;
                 let span = token.span;
                 self.consume();
                 Expression::new(ExpressionKind::NumberLiteral(value), span)
+            }
+
+            TokenKind::Identifier(name) => {
+                // FIXME: We need to copy the span before attempting to acquire a mutable reference via consume.
+                let name = name.clone();
+                let span = token.span;
+                self.consume();
+                Expression::new(ExpressionKind::IdentifierReference(name), span)
             }
 
             _ => return Err(ASTErrorKind::ExpectedExpression(token.kind.clone()).at(token.span)),

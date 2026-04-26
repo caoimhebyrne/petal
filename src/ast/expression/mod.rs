@@ -23,4 +23,7 @@ impl Expression {
 pub enum ExpressionKind {
     /// A number literal.
     NumberLiteral(f64),
+
+    /// An identifier reference.
+    IdentifierReference(String),
 }
