@@ -1,3 +1,5 @@
+![Logo](./assets/petal-logo.svg)
+
 ## `petal` 🌸
 
 Petal is a hobby programming language with a ~~compiler~~ transpiler (to C) written in Rust. A LLVM (or maybe
