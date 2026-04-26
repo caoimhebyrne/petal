@@ -72,14 +72,6 @@ impl Typechecker {
         Ok(CheckedModule::new(module.ast))
     }
 
-    /// Inserts a [`CheckedFunction`] into this [`Typechecker`].
-    fn insert_checked_function(&mut self, function_declaration: &FunctionDeclaration) {
-        self.functions.insert(
-            function_declaration.name.clone(),
-            CheckedFunction::new(function_declaration.parameters.clone(), function_declaration.return_type),
-        );
-    }
-
     /// Attempts to get a [`CheckedFunction`] from this [`Typechecker`] by its name.
     fn get_checked_function(&self, name: &str, span: Span) -> Result<&CheckedFunction, TypecheckerError> {
         self.functions.get(name).ok_or(TypecheckerErrorKind::UndeclaredFunction(name.into()).at(span))
@@ -90,14 +82,41 @@ impl Typechecker {
         self.variables.get(name).ok_or(TypecheckerErrorKind::UndeclaredVariable(name.into()).at(span))
     }
 
-    /// Inserts a variable into this [`Typechecker`].
-    fn insert_variable_from_declaration(&mut self, variable_declaration: &VariableDeclaration) {
-        self.insert_variable(variable_declaration.name.clone(), variable_declaration.r#type);
+    /// Inserts a [`CheckedFunction`] into this [`Typechecker`].
+    fn insert_checked_function(
+        &mut self,
+        function_declaration: &FunctionDeclaration,
+        span: Span,
+    ) -> Result<(), TypecheckerError> {
+        if self.functions.contains_key(&function_declaration.name) {
+            return Err(TypecheckerErrorKind::DuplicateFunctionDeclaration(function_declaration.name.clone()).at(span));
+        }
+
+        self.functions.insert(
+            function_declaration.name.clone(),
+            CheckedFunction::new(function_declaration.parameters.clone(), function_declaration.return_type),
+        );
+
+        Ok(())
     }
 
     /// Inserts a variable into this [`Typechecker`].
-    fn insert_variable(&mut self, name: String, r#type: Type) {
+    fn insert_variable_from_declaration(
+        &mut self,
+        variable_declaration: &VariableDeclaration,
+        span: Span,
+    ) -> Result<(), TypecheckerError> {
+        self.insert_variable(variable_declaration.name.clone(), variable_declaration.r#type, span)
+    }
+
+    /// Inserts a variable into this [`Typechecker`].
+    fn insert_variable(&mut self, name: String, r#type: Type, span: Span) -> Result<(), TypecheckerError> {
+        if self.variables.contains_key(&name) {
+            return Err(TypecheckerErrorKind::DuplicateVariableDeclaration(name).at(span));
+        }
+
         self.variables.insert(name, r#type);
+        Ok(())
     }
 
     /// Attempts to resolve the provided [`TypeExpr`] into a [`Type`].

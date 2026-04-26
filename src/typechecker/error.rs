@@ -26,6 +26,8 @@ pub enum TypecheckerErrorKind {
     IncompatibleVariableDeclarationTypes { declared: Type, value: Type },
     IncompatibleReturnTypes { declared: Type, value: Type },
     InvalidFunctionCall { name: String, parameters: Vec<Type>, arguments: Vec<Type> },
+    DuplicateFunctionDeclaration(String),
+    DuplicateVariableDeclaration(String),
     UndeclaredFunction(String),
     UndeclaredVariable(String),
     UnknownType(String),
@@ -79,6 +81,12 @@ impl Display for TypecheckerErrorKind {
                 "Function '{}' has parameters of types {:?}, but function call has arguments of types {:?}",
                 name, parameters, arguments
             ),
+
+            Self::DuplicateFunctionDeclaration(name) => write!(f, "A function named '{name}' already exists"),
+
+            Self::DuplicateVariableDeclaration(name) => {
+                write!(f, "A variable named '{name}' already exists in this scope")
+            }
         }
     }
 }

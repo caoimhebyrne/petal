@@ -57,10 +57,10 @@ impl Typechecker {
 
         for parameter in &mut function_declaration.parameters {
             let parameter_type = Typechecker::check_function_parameter(parameter)?;
-            self.insert_variable(parameter.name.clone(), parameter_type);
+            self.insert_variable(parameter.name.clone(), parameter_type, parameter.span)?;
         }
 
-        self.insert_checked_function(function_declaration);
+        self.insert_checked_function(function_declaration, span)?;
         self.expected_return_type = function_declaration.return_type;
 
         for statement in &mut function_declaration.body {
@@ -101,7 +101,7 @@ impl Typechecker {
         }
 
         variable_declaration.r#type = variable_type;
-        self.insert_variable_from_declaration(variable_declaration);
+        self.insert_variable_from_declaration(variable_declaration, span)?;
 
         Ok(())
     }
