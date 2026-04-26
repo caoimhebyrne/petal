@@ -19,12 +19,17 @@ pub struct CBackendError {
 #[derive(Debug, PartialEq)]
 pub enum CBackendErrorKind {
     UnsupportedType(String),
+    CompilerInvocationFailed(String),
 }
 
 impl CBackendErrorKind {
     /// Creates a [CBackendError] from a [CBackendErrorKind].
     pub fn at(self, span: Span) -> CBackendError {
         CBackendError::new(self, span)
+    }
+    /// Creates a [CBackendError] from a [CBackendErrorKind].
+    pub fn without_span(self) -> CBackendError {
+        CBackendError::new(self, Span::default())
     }
 }
 
@@ -45,6 +50,10 @@ impl Display for CBackendErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             CBackendErrorKind::UnsupportedType(name) => write!(f, "Unsupported type: '{name}'"),
+
+            CBackendErrorKind::CompilerInvocationFailed(message) => {
+                write!(f, "Failed to invoke C compiler: '{message}'")
+            }
         }
     }
 }

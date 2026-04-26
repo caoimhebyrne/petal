@@ -1,3 +1,12 @@
+use std::{
+    io::Write,
+    path::Path,
+    process::{
+        Command,
+        Stdio,
+    },
+};
+
 use crate::{
     ast::r#type::Type,
     backend::c::error::{
@@ -17,7 +26,7 @@ pub struct CBackend;
 
 impl CBackend {
     /// Compiles a [ParsedModule] to C code.
-    pub fn compile(module: &ParsedModule) -> Result<String, CBackendError> {
+    pub fn emit_code(module: &ParsedModule) -> Result<String, CBackendError> {
         let mut code = String::new();
 
         code.push_str("#include <stdint.h>\n\n");
@@ -27,6 +36,40 @@ impl CBackend {
         }
 
         Ok(code)
+    }
+
+    /// Compiles C code into a binary.
+    pub fn emit_binary(code: &str, output_binary_path: impl AsRef<Path>) -> Result<(), CBackendError> {
+        let mut child = Command::new("cc")
+            // Tell the compiler that the stdin contains C code.
+            .args(["-x", "c"])
+            .arg("-o")
+            .arg(output_binary_path.as_ref())
+            // Tell the compiler to read from stdin.
+            .arg("-")
+            .stdin(Stdio::piped())
+            .spawn()
+            .map_err(|e| CBackendErrorKind::CompilerInvocationFailed(e.to_string()).without_span())?;
+
+        child
+            .stdin
+            .as_mut()
+            .unwrap()
+            .write_all(code.as_bytes())
+            .map_err(|e| CBackendErrorKind::CompilerInvocationFailed(e.to_string()).without_span())?;
+
+        let status =
+            child.wait().map_err(|e| CBackendErrorKind::CompilerInvocationFailed(e.to_string()).without_span())?;
+
+        if !status.success() {
+            return Err(CBackendErrorKind::CompilerInvocationFailed(format!(
+                "Exited with a non-zero status code: {:?}",
+                status.code(),
+            ))
+            .without_span());
+        }
+
+        Ok(())
     }
 
     /// Converts a [Type] into a C type.
@@ -75,7 +118,7 @@ mod tests {
 
     fn assert_compiles(kinds: Vec<StatementKind>, compiled: &str) {
         let statements = kinds.into_iter().map(|kind| Statement::from(kind, Span::default())).collect();
-        assert_eq!(CBackend::compile(&ParsedModule::new(statements)), Ok(compiled.into()))
+        assert_eq!(CBackend::emit_code(&ParsedModule::new(statements)), Ok(compiled.into()))
     }
 
     #[test]

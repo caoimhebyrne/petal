@@ -1,4 +1,8 @@
-use std::env;
+use std::{
+    env,
+    ffi::OsStr,
+    path::PathBuf,
+};
 
 use crate::{
     backend::c::CBackend,
@@ -25,6 +29,8 @@ fn main() {
         }
     };
 
+    println!("[1/4] Creating module from '{file_path}'");
+
     let module = match Module::create(file_path.clone()) {
         Ok(value) => value,
         Err(error) => {
@@ -32,6 +38,8 @@ fn main() {
             return;
         }
     };
+
+    println!("[2/4] Parsing module");
 
     let parsed_module = match module.parse() {
         Ok(value) => value,
@@ -41,7 +49,9 @@ fn main() {
         }
     };
 
-    let code = match CBackend::compile(&parsed_module) {
+    println!("[3/4] Generating C code");
+
+    let code = match CBackend::emit_code(&parsed_module) {
         Ok(value) => value,
         Err(error) => {
             error.print_to_stderr(&module.file_path, &module.file_contents);
@@ -49,5 +59,12 @@ fn main() {
         }
     };
 
-    println!("{}", code);
+    // `./path/to/petal/file.petal` -> `file`
+    let binary_file_name = PathBuf::from(file_path).file_stem().and_then(OsStr::to_str).unwrap_or("output").to_string();
+
+    println!("[4/4] Compiling binary ('{binary_file_name}')");
+
+    if let Err(error) = CBackend::emit_binary(&code, binary_file_name) {
+        error.print_to_stderr(&module.file_path, &module.file_contents);
+    }
 }
