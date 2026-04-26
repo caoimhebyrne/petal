@@ -67,6 +67,7 @@ mod tests {
                 StatementKind,
                 function_declaration::FunctionDeclaration,
                 r#return::Return,
+                variable_declaration::VariableDeclaration,
             },
         },
         core::span::Span,
@@ -95,6 +96,26 @@ mod tests {
                     .into(),
             ],
             "#include <stdint.h>\n\nvoid foo(void) {\nreturn;\n}\n",
+        );
+    }
+
+    #[test]
+    fn compile_function_with_variable_declaration_i32() {
+        assert_compiles(
+            vec![
+                FunctionDeclaration::builder("foo")
+                    .statement(Statement::from(
+                        VariableDeclaration::new(
+                            "variable",
+                            Type::named("i32"),
+                            Expression::new(ExpressionKind::NumberLiteral(999.0), Span::default()),
+                        ),
+                        Span::default(),
+                    ))
+                    .build()
+                    .into(),
+            ],
+            "#include <stdint.h>\n\nvoid foo(void) {\nint32_t variable = 999;\n}\n",
         );
     }
 
@@ -135,6 +156,35 @@ mod tests {
                     .into(),
             ],
             "#include <stdint.h>\n\nint32_t foo(int32_t argc) {\nreturn argc;\n}\n",
+        );
+    }
+
+    #[test]
+    fn compile_function_with_variable_declaration_i32_and_return_identifier_reference() {
+        assert_compiles(
+            vec![
+                FunctionDeclaration::builder("foo")
+                    .statement(Statement::from(
+                        VariableDeclaration::new(
+                            "variable",
+                            Type::named("i32"),
+                            Expression::new(ExpressionKind::NumberLiteral(999.0), Span::default()),
+                        ),
+                        Span::default(),
+                    ))
+                    .statement(Statement::from(
+                        Return {
+                            value: Some(Expression::new(
+                                ExpressionKind::IdentifierReference("variable".into()),
+                                Span::default(),
+                            )),
+                        },
+                        Span::default(),
+                    ))
+                    .build()
+                    .into(),
+            ],
+            "#include <stdint.h>\n\nvoid foo(void) {\nint32_t variable = 999;\nreturn variable;\n}\n",
         );
     }
 

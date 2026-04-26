@@ -12,6 +12,7 @@ use crate::{
             Statement,
             function_declaration::FunctionDeclaration,
             r#return::Return,
+            variable_declaration::VariableDeclaration,
         },
         r#type::Type,
     },
@@ -71,6 +72,7 @@ impl ASTParser {
 
         let statement = match token.kind {
             TokenKind::Keyword(Keyword::Return) => self.parse_return()?,
+            TokenKind::Identifier(_) => self.parse_variable_declaration()?,
             _ => return Err(ASTErrorKind::ExpectedStatement(token.kind.clone()).at(token.span)),
         };
 
@@ -171,6 +173,24 @@ impl ASTParser {
         let value = self.parse_expression()?;
         let span = Span::between(return_keyword_span, value.span);
         Ok(Statement::from(Return::new(Some(value)), span))
+    }
+
+    /// Attempts to parse a variable declaration statement from the [ASTParser]'s current position.
+    fn parse_variable_declaration(&mut self) -> Result<Statement, ASTError> {
+        // The first token must be the type of the variable.
+        let (type_name, type_span) = self.expect_identifier()?;
+
+        // The next token must be the name of the variable.
+        let (name, _) = self.expect_identifier()?;
+
+        // The next token must be an equals.
+        self.expect(TokenKind::Equals)?;
+
+        // And finally, there must be an expression.
+        let value = self.parse_expression()?;
+
+        let span = Span::between(type_span, value.span);
+        Ok(Statement::from(VariableDeclaration::new(name, Type::named(type_name), value), span))
     }
 
     /// Returns the token at the [ASTParser]'s current position.
@@ -470,6 +490,66 @@ mod tests {
                     span: Span {
                         start: 0,
                         length: 23,
+                    },
+                },
+            ],
+        )
+        "#);
+    }
+
+    #[test]
+    fn parse_function_declaration_with_variable_declaration() {
+        insta::assert_debug_snapshot!(ASTParser::new_and_parse(vec![
+            Token::new(TokenKind::Keyword(Keyword::Func), Span { start: 0, length: 4 }),
+            Token::new(TokenKind::Identifier("main".into()), Span { start: 5, length: 4 }),
+            Token::new(TokenKind::OpenParen, Span { start: 10, length: 1 }),
+            Token::new(TokenKind::CloseParen, Span { start: 11, length: 1 }),
+            Token::new(TokenKind::OpenBrace, Span { start: 12, length: 1 }),
+            Token::new(TokenKind::Identifier("i32".into()), Span { start: 13, length: 4 }),
+            Token::new(TokenKind::Identifier("variable".into()), Span { start: 17, length: 8 }),
+            Token::new(TokenKind::Equals, Span { start: 25, length: 1 }),
+            Token::new(TokenKind::Number(4.5), Span { start: 26, length: 3 }),
+            Token::new(TokenKind::Semicolon, Span { start: 29, length: 1 }),
+            Token::new(TokenKind::CloseBrace, Span { start: 30, length: 1 }),
+        ]), @r#"
+        Ok(
+            [
+                Statement {
+                    kind: FunctionDeclaration(
+                        FunctionDeclaration {
+                            name: "main",
+                            body: [
+                                Statement {
+                                    kind: VariableDeclaration(
+                                        VariableDeclaration {
+                                            name: "variable",
+                                            type: Named(
+                                                "i32",
+                                            ),
+                                            value: Expression {
+                                                kind: NumberLiteral(
+                                                    4.5,
+                                                ),
+                                                span: Span {
+                                                    start: 26,
+                                                    length: 3,
+                                                },
+                                            },
+                                        },
+                                    ),
+                                    span: Span {
+                                        start: 13,
+                                        length: 16,
+                                    },
+                                },
+                            ],
+                            parameters: [],
+                            return_type: None,
+                        },
+                    ),
+                    span: Span {
+                        start: 0,
+                        length: 31,
                     },
                 },
             ],

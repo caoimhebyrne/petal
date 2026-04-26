@@ -7,6 +7,7 @@ use crate::{
             FunctionParameter,
         },
         r#return::Return,
+        variable_declaration::VariableDeclaration,
     },
     backend::c::{
         CBackend,
@@ -22,7 +23,12 @@ impl CBackend {
             StatementKind::FunctionDeclaration(function_declaration) => {
                 CBackend::compile_function_declaration(function_declaration, statement.span)
             }
+
             StatementKind::Return(r#return) => CBackend::compile_return(r#return, statement.span),
+
+            StatementKind::VariableDeclaration(variable_declaration) => {
+                CBackend::compile_variable_declaration(variable_declaration, statement.span)
+            }
         }
     }
 
@@ -82,5 +88,17 @@ impl CBackend {
         };
 
         Ok(string)
+    }
+
+    /// Compiles a variable declaration into C code.
+    pub fn compile_variable_declaration(
+        variable_declaration: &VariableDeclaration,
+        span: Span,
+    ) -> Result<String, CBackendError> {
+        let name = variable_declaration.name.clone();
+        let r#type = CBackend::compile_type(&variable_declaration.r#type, span)?;
+        let value = CBackend::compile_expression(&variable_declaration.value)?;
+
+        Ok(format!("{type} {name} = {value};"))
     }
 }
