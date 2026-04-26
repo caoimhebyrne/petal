@@ -2,7 +2,10 @@ use crate::{
     ast::statement::{
         Statement,
         StatementKind,
-        function_declaration::FunctionDeclaration,
+        function_declaration::{
+            FunctionDeclaration,
+            FunctionParameter,
+        },
         r#return::Return,
     },
     backend::c::{
@@ -39,9 +42,18 @@ impl CBackend {
             .transpose()?
             .unwrap_or("void".into());
 
-        // TODO: Function parameters.
+        let parameters: String = if function_declaration.parameters.is_empty() {
+            "void".into()
+        } else {
+            function_declaration
+                .parameters
+                .iter()
+                .map(CBackend::compile_function_parameter)
+                .collect::<Result<Vec<String>, CBackendError>>()?
+                .join(", ")
+        };
 
-        function.push_str(&format!("{return_type} {name}(void) {{\n"));
+        function.push_str(&format!("{return_type} {name}({parameters}) {{\n"));
 
         for statement in &function_declaration.body {
             function.push_str(&CBackend::compile_statement(statement)?);
@@ -51,6 +63,13 @@ impl CBackend {
         function.push_str("}\n");
 
         Ok(function)
+    }
+
+    /// Compiles a function parameter into C code.
+    pub fn compile_function_parameter(function_parameter: &FunctionParameter) -> Result<String, CBackendError> {
+        let name = function_parameter.name.clone();
+        let r#type = CBackend::compile_type(&function_parameter.r#type, function_parameter.span)?;
+        Ok(format!("{type} {name}"))
     }
 
     /// Compiles a return statement into C code.

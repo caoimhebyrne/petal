@@ -114,11 +114,15 @@ impl ASTParser {
         let mut parameters: Vec<FunctionParameter> = Vec::new();
 
         while !self.peek().map(|it| it.kind == TokenKind::CloseParen).unwrap_or(true) {
-            let (parameter_name, _) = self.expect_identifier()?;
+            let (parameter_name, parameter_name_span) = self.expect_identifier()?;
             self.expect(TokenKind::Colon)?;
-            let (parameter_type_name, _) = self.expect_identifier()?;
+            let (parameter_type_name, parameter_type_name_span) = self.expect_identifier()?;
 
-            parameters.push(FunctionParameter { name: parameter_name, r#type: Type::Named(parameter_type_name) });
+            parameters.push(FunctionParameter::new(
+                parameter_name,
+                Type::Named(parameter_type_name),
+                Span::between(parameter_name_span, parameter_type_name_span),
+            ));
 
             if self.peek().map(|it| it.kind == TokenKind::CloseParen).unwrap_or_default() {
                 continue;
@@ -294,6 +298,10 @@ mod tests {
                                     type: Named(
                                         "i32",
                                     ),
+                                    span: Span {
+                                        start: 11,
+                                        length: 8,
+                                    },
                                 },
                             ],
                             return_type: None,
@@ -343,12 +351,20 @@ mod tests {
                                     type: Named(
                                         "i32",
                                     ),
+                                    span: Span {
+                                        start: 11,
+                                        length: 8,
+                                    },
                                 },
                                 FunctionParameter {
                                     name: "argv",
                                     type: Named(
                                         "todo",
                                     ),
+                                    span: Span {
+                                        start: 20,
+                                        length: 8,
+                                    },
                                 },
                             ],
                             return_type: None,
