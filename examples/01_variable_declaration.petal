@@ -1,0 +1,16 @@
+// A variable is used in Petal to store data.
+//
+// Each variable declaration must provide: the type of the variable (e.g. i32), the name of the
+// variable, and an initial value for the variable.
+func main() -> i32 {
+    // In this example, we're declaring a variable named `my_variable`, with the `i32` type
+    // (32-bit integer), and we're setting an initial value of `10`.
+    i32 my_variable = 10;
+
+    // Then, we are returning the value in the variable from this function.
+    //
+    // From the previous example, we learned that the value returned by the main function is the
+    // exit code of theprocess. With this knowledge, the compiled program should yield an exit
+    // code of `10`.
+    return my_variable;
+}
