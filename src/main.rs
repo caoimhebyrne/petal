@@ -1,10 +1,10 @@
 use std::{
-    env,
     ffi::OsStr,
     path::PathBuf,
     process::ExitCode,
 };
 
+use clap::Parser;
 use owo_colors::OwoColorize;
 
 use crate::{
@@ -19,22 +19,32 @@ pub mod core;
 pub mod lexer;
 pub mod module;
 
+#[derive(Parser, Debug)]
+#[command()]
+struct Args {
+    /// Whether the generated code should be written to stdout.
+    #[arg(long)]
+    emit_code: bool,
+
+    /// Whether the compiler should skip emitting a binary.
+    #[arg(long)]
+    no_emit_binary: bool,
+
+    /// The path to write the final executable to.
+    #[arg(short, long)]
+    output: Option<String>,
+
+    /// The path to the source code to read from.
+    #[arg()]
+    input: String,
+}
+
 fn main() -> ExitCode {
-    let mut args = env::args();
+    let args = Args::parse();
 
-    let program_name = args.next().unwrap_or("petal".into());
+    println!("{} Creating module from '{}'", "[1/4]".bright_purple(), args.input);
 
-    let file_path = match args.next() {
-        Some(value) => value,
-        _ => {
-            eprintln!("Usage: {} file_path", program_name);
-            return ExitCode::FAILURE;
-        }
-    };
-
-    println!("{} Creating module from '{file_path}'", "[1/4]".bright_purple());
-
-    let module = match Module::create(file_path.clone()) {
+    let module = match Module::create(args.input.clone()) {
         Ok(value) => value,
         Err(error) => {
             eprintln!("error: {}", error);
@@ -62,14 +72,22 @@ fn main() -> ExitCode {
         }
     };
 
+    if args.emit_code {
+        println!("{code}");
+    }
+
     // `./path/to/petal/file.petal` -> `file`
-    let binary_file_name = PathBuf::from(file_path).file_stem().and_then(OsStr::to_str).unwrap_or("output").to_string();
+    let binary_file_name = args.output.unwrap_or_else(|| {
+        PathBuf::from(args.input).file_stem().and_then(OsStr::to_str).unwrap_or("output").to_string()
+    });
 
-    println!("{} Compiling binary ('{binary_file_name}')", "[4/4]".bright_purple());
+    if !args.no_emit_binary {
+        println!("{} Compiling binary ('{binary_file_name}')", "[4/4]".bright_purple());
 
-    if let Err(error) = CBackend::emit_binary(&code, binary_file_name) {
-        error.print_to_stderr(&module.file_path, &module.file_contents);
-        return ExitCode::FAILURE;
+        if let Err(error) = CBackend::emit_binary(&code, binary_file_name) {
+            error.print_to_stderr(&module.file_path, &module.file_contents);
+            return ExitCode::FAILURE;
+        }
     }
 
     ExitCode::SUCCESS
