@@ -7,6 +7,10 @@ use crate::{
         expression::{
             Expression,
             ExpressionKind,
+            binary_operation::{
+                BinaryOperand,
+                BinaryOperation,
+            },
             function_call::FunctionCall,
         },
         statement::{
@@ -84,6 +88,61 @@ impl ASTParser {
 
     /// Attempts to parse an expression at the [ASTParser]'s current position.
     fn parse_expression(&mut self) -> Result<Expression, ASTError> {
+        self.parse_addition_or_subtraction_expression()
+    }
+
+    /// Attempts to parse an addition or subtraction expression at the [ASTParser]'s current position.
+    fn parse_addition_or_subtraction_expression(&mut self) -> Result<Expression, ASTError> {
+        let left = self.parse_multiplication_or_division_expression()?;
+
+        let expression = if self.peek_is(TokenKind::Plus) {
+            self.expect(TokenKind::Plus)?;
+
+            let right = self.parse_expression()?;
+            let span = Span::between(left.span, right.span);
+
+            Expression::new(BinaryOperation::new(left, right, BinaryOperand::Add).into(), span)
+        } else if self.peek_is(TokenKind::Hyphen) {
+            self.expect(TokenKind::Hyphen)?;
+
+            let right = self.parse_expression()?;
+            let span = Span::between(left.span, right.span);
+
+            Expression::new(BinaryOperation::new(left, right, BinaryOperand::Subtract).into(), span)
+        } else {
+            left
+        };
+
+        Ok(expression)
+    }
+
+    /// Attempts to parse a multiplication or division expression at the [ASTParser]'s current position.
+    fn parse_multiplication_or_division_expression(&mut self) -> Result<Expression, ASTError> {
+        let left = self.parse_value()?;
+
+        let expression = if self.peek_is(TokenKind::Asterisk) {
+            self.expect(TokenKind::Asterisk)?;
+
+            let right = self.parse_expression()?;
+            let span = Span::between(left.span, right.span);
+
+            Expression::new(BinaryOperation::new(left, right, BinaryOperand::Multiply).into(), span)
+        } else if self.peek_is(TokenKind::ForwardSlash) {
+            self.expect(TokenKind::ForwardSlash)?;
+
+            let right = self.parse_expression()?;
+            let span = Span::between(left.span, right.span);
+
+            Expression::new(BinaryOperation::new(left, right, BinaryOperand::Divide).into(), span)
+        } else {
+            left
+        };
+
+        Ok(expression)
+    }
+
+    /// Attempts to parse a simple value at the [ASTParser]'s current position.
+    fn parse_value(&mut self) -> Result<Expression, ASTError> {
         let token = self.peek_expect_any()?;
 
         let expression = match &token.kind {

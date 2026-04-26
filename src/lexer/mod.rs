@@ -49,6 +49,8 @@ impl<'a> Lexer<'a> {
                 ';' => Token::new(TokenKind::Semicolon, self.span(1)),
                 ':' => Token::new(TokenKind::Colon, self.span(1)),
                 ',' => Token::new(TokenKind::Comma, self.span(1)),
+                '+' => Token::new(TokenKind::Plus, self.span(1)),
+                '*' => Token::new(TokenKind::Asterisk, self.span(1)),
 
                 '/' => {
                     // If the next token is also a slash, then this is a comment. We should keep

@@ -1,0 +1,10 @@
+// Addition, multiplicaton, subtraction, and division are all examples of binary operations.
+// Binary operations can be performed on values by using the `+`, `-`, `*`, and `/` operands.
+func main() -> i32 {
+    i32 add =   5 + 5;  // 10
+    i32 sub = add - 2;  // 8
+    i32 mul = sub * 2;  // 16
+    i32 div = mul / 4;  // 4
+
+    return div;
+}

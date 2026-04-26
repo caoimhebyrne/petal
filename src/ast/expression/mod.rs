@@ -1,8 +1,12 @@
 use crate::{
-    ast::expression::function_call::FunctionCall,
+    ast::expression::{
+        binary_operation::BinaryOperation,
+        function_call::FunctionCall,
+    },
     core::span::Span,
 };
 
+pub mod binary_operation;
 pub mod function_call;
 
 /// An expression node within the abstract syntax tree.
@@ -34,4 +38,7 @@ pub enum ExpressionKind {
 
     /// A function call.
     FunctionCall(FunctionCall),
+
+    /// A binary operation.
+    BinaryOperation(BinaryOperation),
 }

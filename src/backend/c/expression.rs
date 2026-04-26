@@ -2,6 +2,10 @@ use crate::{
     ast::expression::{
         Expression,
         ExpressionKind,
+        binary_operation::{
+            BinaryOperand,
+            BinaryOperation,
+        },
         function_call::FunctionCall,
     },
     backend::c::{
@@ -17,6 +21,10 @@ impl CBackend {
         match &expression.kind {
             ExpressionKind::FunctionCall(function_call) => {
                 CBackend::compile_function_call(function_call, expression.span)
+            }
+
+            ExpressionKind::BinaryOperation(binary_operation) => {
+                CBackend::compile_binary_operation(binary_operation, expression.span)
             }
 
             ExpressionKind::NumberLiteral(value) => CBackend::compile_number_literal(value, expression.span),
@@ -44,5 +52,21 @@ impl CBackend {
             .join(", ");
 
         Ok(format!("{}({arguments})", function_call.name))
+    }
+
+    /// Compiles a binary operation expression into C code.
+    pub fn compile_binary_operation(binary_operation: &BinaryOperation, _span: Span) -> Result<String, CBackendError> {
+        let left = CBackend::compile_expression(&binary_operation.left)?;
+
+        let right = CBackend::compile_expression(&binary_operation.right)?;
+
+        let operand = match binary_operation.operand {
+            BinaryOperand::Add => "+",
+            BinaryOperand::Subtract => "-",
+            BinaryOperand::Multiply => "*",
+            BinaryOperand::Divide => "/",
+        };
+
+        Ok(format!("{left} {operand} {right}"))
     }
 }

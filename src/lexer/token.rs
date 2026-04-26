@@ -53,6 +53,12 @@ pub enum TokenKind {
     /// A comma: ,
     Comma,
 
+    /// A plus: +
+    Plus,
+
+    /// An asterisk: *
+    Asterisk,
+
     /// An identifier.
     Identifier(String),
 
