@@ -1,4 +1,9 @@
-use crate::core::span::Span;
+use crate::{
+    ast::expression::function_call::FunctionCall,
+    core::span::Span,
+};
+
+pub mod function_call;
 
 /// An expression node within the abstract syntax tree.
 /// This node kind should always emit a value once evaluated.
@@ -26,4 +31,7 @@ pub enum ExpressionKind {
 
     /// An identifier reference.
     IdentifierReference(String),
+
+    /// A function call.
+    FunctionCall(FunctionCall),
 }

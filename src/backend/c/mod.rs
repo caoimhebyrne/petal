@@ -104,6 +104,7 @@ mod tests {
             expression::{
                 Expression,
                 ExpressionKind,
+                function_call::FunctionCall,
             },
             statement::{
                 Statement,
@@ -228,6 +229,115 @@ mod tests {
                     .into(),
             ],
             "#include <stdint.h>\n\nvoid foo(void) {\nint32_t variable = 999;\nreturn variable;\n}\n",
+        );
+    }
+
+    #[test]
+    fn compile_function_with_variable_declaration_func_call_no_args() {
+        assert_compiles(
+            vec![
+                FunctionDeclaration::builder("foo")
+                    .parameter("argc", Type::named("i32"), Span::default())
+                    .statement(Statement::from(
+                        VariableDeclaration::new(
+                            "variable",
+                            Type::named("i32"),
+                            Expression::new(FunctionCall::builder("my_func").build().into(), Span::default()),
+                        ),
+                        Span::default(),
+                    ))
+                    .return_type(Type::named("i32"))
+                    .build()
+                    .into(),
+            ],
+            "#include <stdint.h>\n\nint32_t foo(int32_t argc) {\nint32_t variable = my_func();\n}\n",
+        );
+    }
+
+    #[test]
+    fn compile_function_with_variable_declaration_func_call_with_arg() {
+        assert_compiles(
+            vec![
+                FunctionDeclaration::builder("foo")
+                    .parameter("argc", Type::named("i32"), Span::default())
+                    .statement(Statement::from(
+                        VariableDeclaration::new(
+                            "variable",
+                            Type::named("i32"),
+                            Expression::new(
+                                FunctionCall::builder("my_func")
+                                    .argument(Expression::new(ExpressionKind::NumberLiteral(1.0), Span::default()))
+                                    .build()
+                                    .into(),
+                                Span::default(),
+                            ),
+                        ),
+                        Span::default(),
+                    ))
+                    .return_type(Type::named("i32"))
+                    .build()
+                    .into(),
+            ],
+            "#include <stdint.h>\n\nint32_t foo(int32_t argc) {\nint32_t variable = my_func(1);\n}\n",
+        );
+    }
+
+    #[test]
+    fn compile_function_with_variable_declaration_func_call_with_args() {
+        assert_compiles(
+            vec![
+                FunctionDeclaration::builder("foo")
+                    .parameter("argc", Type::named("i32"), Span::default())
+                    .statement(Statement::from(
+                        VariableDeclaration::new(
+                            "variable",
+                            Type::named("i32"),
+                            Expression::new(
+                                FunctionCall::builder("my_func")
+                                    .argument(Expression::new(ExpressionKind::NumberLiteral(1.0), Span::default()))
+                                    .argument(Expression::new(ExpressionKind::NumberLiteral(2.0), Span::default()))
+                                    .argument(Expression::new(ExpressionKind::NumberLiteral(3.0), Span::default()))
+                                    .build()
+                                    .into(),
+                                Span::default(),
+                            ),
+                        ),
+                        Span::default(),
+                    ))
+                    .return_type(Type::named("i32"))
+                    .build()
+                    .into(),
+            ],
+            "#include <stdint.h>\n\nint32_t foo(int32_t argc) {\nint32_t variable = my_func(1, 2, 3);\n}\n",
+        );
+    }
+
+    #[test]
+    fn compile_function_with_variable_declaration_nested_func_call() {
+        assert_compiles(
+            vec![
+                FunctionDeclaration::builder("foo")
+                    .statement(Statement::from(
+                        VariableDeclaration::new(
+                            "variable",
+                            Type::named("i32"),
+                            Expression::new(
+                                FunctionCall::builder("foo")
+                                    .argument(Expression::new(
+                                        FunctionCall::builder("bar").build().into(),
+                                        Span::default(),
+                                    ))
+                                    .build()
+                                    .into(),
+                                Span::default(),
+                            ),
+                        ),
+                        Span::default(),
+                    ))
+                    .build()
+                    .into(),
+            ],
+            "#include <stdint.h>\n\nvoid foo(void) {\nint32_t variable = foo(bar());\n}\n",
         );
     }
 

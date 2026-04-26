@@ -7,6 +7,7 @@ use crate::{
         expression::{
             Expression,
             ExpressionKind,
+            function_call::FunctionCall,
         },
         statement::{
             Statement,
@@ -94,11 +95,16 @@ impl ASTParser {
             }
 
             TokenKind::Identifier(name) => {
-                // FIXME: We need to copy the span before attempting to acquire a mutable reference via consume.
-                let name = name.clone();
-                let span = token.span;
-                self.consume();
-                Expression::new(ExpressionKind::IdentifierReference(name), span)
+                if self.peek_nth(1).map(|it| it.kind == TokenKind::OpenParen).unwrap_or_default() {
+                    let (function_call, span) = self.parse_function_call()?;
+                    Expression::new(function_call.into(), span)
+                } else {
+                    // FIXME: We need to copy the span before attempting to acquire a mutable reference via consume.
+                    let name = name.clone();
+                    let span = token.span;
+                    self.consume();
+                    Expression::new(ExpressionKind::IdentifierReference(name), span)
+                }
             }
 
             _ => return Err(ASTErrorKind::ExpectedExpression(token.kind.clone()).at(token.span)),
@@ -193,9 +199,39 @@ impl ASTParser {
         Ok(Statement::from(VariableDeclaration::new(name, Type::named(type_name), value), span))
     }
 
+    /// Attempts to parse a function call from the [ASTParser]'s current position.
+    fn parse_function_call(&mut self) -> Result<(FunctionCall, Span), ASTError> {
+        // The first token must be the name of the function.
+        let (function_name, function_name_span) = self.expect_identifier()?;
+
+        let mut builder = FunctionCall::builder(function_name);
+
+        // Then, the arguments of the function will be surrounded by parenthesis.
+        self.expect(TokenKind::OpenParen)?;
+
+        while !self.peek_is(TokenKind::CloseParen) {
+            builder = builder.argument(self.parse_expression()?);
+
+            if self.peek_is(TokenKind::CloseParen) {
+                continue;
+            }
+
+            self.expect(TokenKind::Comma)?;
+        }
+
+        let close_paren_span = self.expect_span(TokenKind::CloseParen)?;
+
+        Ok((builder.build(), Span::between(function_name_span, close_paren_span)))
+    }
+
     /// Returns the token at the [ASTParser]'s current position.
     fn peek(&self) -> Option<&Token> {
         self.tokens.get(self.cursor)
+    }
+
+    /// Returns the token at the [ASTParser]'s current position.
+    fn peek_nth(&self, offset: usize) -> Option<&Token> {
+        self.tokens.get(self.cursor + offset)
     }
 
     /// Returns whether the token at the [ASTParser]'s current position is of a certain [TokenKind].
@@ -490,6 +526,299 @@ mod tests {
                     span: Span {
                         start: 0,
                         length: 23,
+                    },
+                },
+            ],
+        )
+        "#);
+    }
+
+    #[test]
+    fn parse_function_declaration_with_return_function_call_no_args() {
+        insta::assert_debug_snapshot!(ASTParser::new_and_parse(vec![
+            Token::new(TokenKind::Keyword(Keyword::Func), Span { start: 0, length: 4 }),
+            Token::new(TokenKind::Identifier("main".into()), Span { start: 5, length: 4 }),
+            Token::new(TokenKind::OpenParen, Span { start: 10, length: 1 }),
+            Token::new(TokenKind::CloseParen, Span { start: 11, length: 1 }),
+            Token::new(TokenKind::OpenBrace, Span { start: 12, length: 1 }),
+            Token::new(TokenKind::Keyword(Keyword::Return), Span { start: 13, length: 4 }),
+            Token::new(TokenKind::Identifier("foo".into()), Span { start: 17, length: 3 }),
+            Token::new(TokenKind::OpenParen, Span { start: 20, length: 1 }),
+            Token::new(TokenKind::CloseParen, Span { start: 21, length: 1 }),
+            Token::new(TokenKind::Semicolon, Span { start: 22, length: 1 }),
+            Token::new(TokenKind::CloseBrace, Span { start: 23, length: 1 }),
+        ]), @r#"
+        Ok(
+            [
+                Statement {
+                    kind: FunctionDeclaration(
+                        FunctionDeclaration {
+                            name: "main",
+                            body: [
+                                Statement {
+                                    kind: Return(
+                                        Return {
+                                            value: Some(
+                                                Expression {
+                                                    kind: FunctionCall(
+                                                        FunctionCall {
+                                                            name: "foo",
+                                                            arguments: [],
+                                                        },
+                                                    ),
+                                                    span: Span {
+                                                        start: 17,
+                                                        length: 5,
+                                                    },
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                    span: Span {
+                                        start: 13,
+                                        length: 9,
+                                    },
+                                },
+                            ],
+                            parameters: [],
+                            return_type: None,
+                        },
+                    ),
+                    span: Span {
+                        start: 0,
+                        length: 24,
+                    },
+                },
+            ],
+        )
+        "#);
+    }
+
+    #[test]
+    fn parse_function_declaration_with_return_function_call_with_arg() {
+        insta::assert_debug_snapshot!(ASTParser::new_and_parse(vec![
+            Token::new(TokenKind::Keyword(Keyword::Func), Span { start: 0, length: 4 }),
+            Token::new(TokenKind::Identifier("main".into()), Span { start: 5, length: 4 }),
+            Token::new(TokenKind::OpenParen, Span { start: 10, length: 1 }),
+            Token::new(TokenKind::CloseParen, Span { start: 11, length: 1 }),
+            Token::new(TokenKind::OpenBrace, Span { start: 12, length: 1 }),
+            Token::new(TokenKind::Keyword(Keyword::Return), Span { start: 13, length: 4 }),
+            Token::new(TokenKind::Identifier("foo".into()), Span { start: 17, length: 3 }),
+            Token::new(TokenKind::OpenParen, Span { start: 20, length: 1 }),
+            Token::new(TokenKind::Identifier("ident".into()), Span { start: 21, length: 5 }),
+            Token::new(TokenKind::CloseParen, Span { start: 26, length: 1 }),
+            Token::new(TokenKind::Semicolon, Span { start: 27, length: 1 }),
+            Token::new(TokenKind::CloseBrace, Span { start: 28, length: 1 }),
+        ]), @r#"
+        Ok(
+            [
+                Statement {
+                    kind: FunctionDeclaration(
+                        FunctionDeclaration {
+                            name: "main",
+                            body: [
+                                Statement {
+                                    kind: Return(
+                                        Return {
+                                            value: Some(
+                                                Expression {
+                                                    kind: FunctionCall(
+                                                        FunctionCall {
+                                                            name: "foo",
+                                                            arguments: [
+                                                                Expression {
+                                                                    kind: IdentifierReference(
+                                                                        "ident",
+                                                                    ),
+                                                                    span: Span {
+                                                                        start: 21,
+                                                                        length: 5,
+                                                                    },
+                                                                },
+                                                            ],
+                                                        },
+                                                    ),
+                                                    span: Span {
+                                                        start: 17,
+                                                        length: 10,
+                                                    },
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                    span: Span {
+                                        start: 13,
+                                        length: 14,
+                                    },
+                                },
+                            ],
+                            parameters: [],
+                            return_type: None,
+                        },
+                    ),
+                    span: Span {
+                        start: 0,
+                        length: 29,
+                    },
+                },
+            ],
+        )
+        "#);
+    }
+
+    #[test]
+    fn parse_function_declaration_with_return_function_call_with_args() {
+        insta::assert_debug_snapshot!(ASTParser::new_and_parse(vec![
+            Token::new(TokenKind::Keyword(Keyword::Func), Span { start: 0, length: 4 }),
+            Token::new(TokenKind::Identifier("main".into()), Span { start: 5, length: 4 }),
+            Token::new(TokenKind::OpenParen, Span { start: 10, length: 1 }),
+            Token::new(TokenKind::CloseParen, Span { start: 11, length: 1 }),
+            Token::new(TokenKind::OpenBrace, Span { start: 12, length: 1 }),
+            Token::new(TokenKind::Keyword(Keyword::Return), Span { start: 13, length: 4 }),
+            Token::new(TokenKind::Identifier("foo".into()), Span { start: 17, length: 3 }),
+            Token::new(TokenKind::OpenParen, Span { start: 20, length: 1 }),
+            Token::new(TokenKind::Identifier("ident_a".into()), Span { start: 21, length: 7 }),
+            Token::new(TokenKind::Comma, Span { start: 28, length: 1 }),
+            Token::new(TokenKind::Identifier("ident_b".into()), Span { start: 29, length: 7 }),
+            Token::new(TokenKind::CloseParen, Span { start: 36, length: 1 }),
+            Token::new(TokenKind::Semicolon, Span { start: 37, length: 1 }),
+            Token::new(TokenKind::CloseBrace, Span { start: 38, length: 1 }),
+        ]), @r#"
+        Ok(
+            [
+                Statement {
+                    kind: FunctionDeclaration(
+                        FunctionDeclaration {
+                            name: "main",
+                            body: [
+                                Statement {
+                                    kind: Return(
+                                        Return {
+                                            value: Some(
+                                                Expression {
+                                                    kind: FunctionCall(
+                                                        FunctionCall {
+                                                            name: "foo",
+                                                            arguments: [
+                                                                Expression {
+                                                                    kind: IdentifierReference(
+                                                                        "ident_a",
+                                                                    ),
+                                                                    span: Span {
+                                                                        start: 21,
+                                                                        length: 7,
+                                                                    },
+                                                                },
+                                                                Expression {
+                                                                    kind: IdentifierReference(
+                                                                        "ident_b",
+                                                                    ),
+                                                                    span: Span {
+                                                                        start: 29,
+                                                                        length: 7,
+                                                                    },
+                                                                },
+                                                            ],
+                                                        },
+                                                    ),
+                                                    span: Span {
+                                                        start: 17,
+                                                        length: 20,
+                                                    },
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                    span: Span {
+                                        start: 13,
+                                        length: 24,
+                                    },
+                                },
+                            ],
+                            parameters: [],
+                            return_type: None,
+                        },
+                    ),
+                    span: Span {
+                        start: 0,
+                        length: 39,
+                    },
+                },
+            ],
+        )
+        "#);
+    }
+
+    #[test]
+    fn parse_function_declaration_with_return_nested_function_call() {
+        insta::assert_debug_snapshot!(ASTParser::new_and_parse(vec![
+            Token::new(TokenKind::Keyword(Keyword::Func), Span { start: 0, length: 4 }),
+            Token::new(TokenKind::Identifier("main".into()), Span { start: 5, length: 4 }),
+            Token::new(TokenKind::OpenParen, Span { start: 10, length: 1 }),
+            Token::new(TokenKind::CloseParen, Span { start: 11, length: 1 }),
+            Token::new(TokenKind::OpenBrace, Span { start: 12, length: 1 }),
+            Token::new(TokenKind::Keyword(Keyword::Return), Span { start: 13, length: 4 }),
+            Token::new(TokenKind::Identifier("foo".into()), Span { start: 17, length: 3 }),
+            Token::new(TokenKind::OpenParen, Span { start: 20, length: 1 }),
+            Token::new(TokenKind::Identifier("bar".into()), Span { start: 21, length: 3 }),
+            Token::new(TokenKind::OpenParen, Span { start: 24, length: 1 }),
+            Token::new(TokenKind::CloseParen, Span { start: 25, length: 1 }),
+            Token::new(TokenKind::CloseParen, Span { start: 26, length: 1 }),
+            Token::new(TokenKind::Semicolon, Span { start: 27, length: 1 }),
+            Token::new(TokenKind::CloseBrace, Span { start: 28, length: 1 }),
+        ]), @r#"
+        Ok(
+            [
+                Statement {
+                    kind: FunctionDeclaration(
+                        FunctionDeclaration {
+                            name: "main",
+                            body: [
+                                Statement {
+                                    kind: Return(
+                                        Return {
+                                            value: Some(
+                                                Expression {
+                                                    kind: FunctionCall(
+                                                        FunctionCall {
+                                                            name: "foo",
+                                                            arguments: [
+                                                                Expression {
+                                                                    kind: FunctionCall(
+                                                                        FunctionCall {
+                                                                            name: "bar",
+                                                                            arguments: [],
+                                                                        },
+                                                                    ),
+                                                                    span: Span {
+                                                                        start: 21,
+                                                                        length: 5,
+                                                                    },
+                                                                },
+                                                            ],
+                                                        },
+                                                    ),
+                                                    span: Span {
+                                                        start: 17,
+                                                        length: 10,
+                                                    },
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                    span: Span {
+                                        start: 13,
+                                        length: 14,
+                                    },
+                                },
+                            ],
+                            parameters: [],
+                            return_type: None,
+                        },
+                    ),
+                    span: Span {
+                        start: 0,
+                        length: 29,
                     },
                 },
             ],
