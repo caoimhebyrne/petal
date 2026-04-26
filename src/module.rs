@@ -40,6 +40,20 @@ impl ParsedModule {
     }
 }
 
+/// A module that has been verified by the Typechecker.
+#[derive(Debug)]
+pub struct CheckedModule {
+    /// The top-level statements within this module.
+    pub ast: Vec<Statement>,
+}
+
+impl CheckedModule {
+    /// Creates a new [CheckedModule].
+    pub fn new(ast: Vec<Statement>) -> Self {
+        Self { ast }
+    }
+}
+
 /// An error that occurs while creating a Petal module.
 pub enum ModuleError {
     /// The file could not be read.

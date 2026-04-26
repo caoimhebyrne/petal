@@ -11,6 +11,7 @@ use crate::{
     backend::c::CBackend,
     core::error::Error,
     module::Module,
+    typechecker::Typechecker,
 };
 
 pub mod ast;
@@ -18,6 +19,7 @@ pub mod backend;
 pub mod core;
 pub mod lexer;
 pub mod module;
+pub mod typechecker;
 
 #[derive(Parser, Debug)]
 #[command()]
@@ -42,7 +44,7 @@ struct Args {
 fn main() -> ExitCode {
     let args = Args::parse();
 
-    println!("{} Creating module from '{}'", "[1/4]".bright_purple(), args.input);
+    println!("{} Creating module from '{}'", "[1/5]".bright_purple(), args.input);
 
     let module = match Module::create(args.input.clone()) {
         Ok(value) => value,
@@ -52,7 +54,7 @@ fn main() -> ExitCode {
         }
     };
 
-    println!("{} Parsing module", "[2/4]".bright_purple());
+    println!("{} Parsing module", "[2/5]".bright_purple());
 
     let parsed_module = match module.parse() {
         Ok(value) => value,
@@ -62,9 +64,20 @@ fn main() -> ExitCode {
         }
     };
 
-    println!("{} Generating C code", "[3/4]".bright_purple());
+    println!("{} Checking types", "[3/5]".bright_purple());
 
-    let code = match CBackend::emit_code(&parsed_module) {
+    let mut typechecker = Typechecker::default();
+    let checked_module = match typechecker.check(parsed_module) {
+        Ok(value) => value,
+        Err(error) => {
+            error.print_to_stderr(&module.file_path, &module.file_contents);
+            return ExitCode::FAILURE;
+        }
+    };
+
+    println!("{} Generating C code", "[4/5]".bright_purple());
+
+    let code = match CBackend::emit_code(&checked_module) {
         Ok(value) => value,
         Err(error) => {
             error.print_to_stderr(&module.file_path, &module.file_contents);
@@ -82,7 +95,7 @@ fn main() -> ExitCode {
     });
 
     if !args.no_emit_binary {
-        println!("{} Compiling binary ('{binary_file_name}')", "[4/4]".bright_purple());
+        println!("{} Compiling binary ('{binary_file_name}')", "[5/5]".bright_purple());
 
         if let Err(error) = CBackend::emit_binary(&code, binary_file_name) {
             error.print_to_stderr(&module.file_path, &module.file_contents);

@@ -4,9 +4,10 @@ use crate::{
             Statement,
             StatementKind,
         },
-        r#type::Type,
+        type_expr::TypeExpr,
     },
     core::span::Span,
+    typechecker::r#type::Type,
 };
 
 /// A function declaration within the AST.
@@ -21,8 +22,11 @@ pub struct FunctionDeclaration {
     /// The parameters of the function.
     pub parameters: Vec<FunctionParameter>,
 
-    /// The return type of the function.
-    pub return_type: Option<Type>,
+    /// The declared return type of the function.
+    pub return_type_expr: Option<TypeExpr>,
+
+    /// The resolved return type.
+    pub return_type: Type,
 }
 
 impl FunctionDeclaration {
@@ -31,9 +35,10 @@ impl FunctionDeclaration {
         name: impl Into<String>,
         body: Vec<Statement>,
         parameters: Vec<FunctionParameter>,
-        return_type: Option<Type>,
+        return_type_expr: Option<TypeExpr>,
+        return_type: Type,
     ) -> Self {
-        FunctionDeclaration { name: name.into(), body, parameters, return_type }
+        FunctionDeclaration { name: name.into(), body, parameters, return_type_expr, return_type }
     }
 
     /// Creates a new [`FunctionDeclarationBuilder`].
@@ -61,14 +66,17 @@ pub struct FunctionDeclarationBuilder {
     /// The parameters of the function.
     parameters: Vec<FunctionParameter>,
 
-    /// The return type of the function.
-    return_type: Option<Type>,
+    /// The declared return type of the function.
+    return_type_expr: Option<TypeExpr>,
+
+    /// The resolved return type of the function.
+    return_type: Type,
 }
 
 impl FunctionDeclarationBuilder {
     /// Creates a new [`FunctionDeclarationBuilder`].
     pub fn new(name: impl Into<String>) -> Self {
-        Self { name: name.into(), body: vec![], parameters: vec![], return_type: None }
+        Self { name: name.into(), body: vec![], parameters: vec![], return_type_expr: None, return_type: Type::Unknown }
     }
 
     /// Adds a statement to the body of the function.
@@ -78,20 +86,21 @@ impl FunctionDeclarationBuilder {
     }
 
     /// Adds a parameter to the body of the function.
-    pub fn parameter(mut self, name: impl Into<String>, r#type: Type, span: Span) -> Self {
-        self.parameters.push(FunctionParameter::new(name, r#type, span));
+    pub fn parameter(mut self, name: impl Into<String>, type_expr: TypeExpr, r#type: Type, span: Span) -> Self {
+        self.parameters.push(FunctionParameter::new(name, type_expr, r#type, span));
         self
     }
 
     /// Sets the return type of the function.
-    pub fn return_type(mut self, r#type: Type) -> Self {
-        self.return_type = Some(r#type);
+    pub fn return_type(mut self, type_expr: TypeExpr, r#type: Type) -> Self {
+        self.return_type_expr = Some(type_expr);
+        self.return_type = r#type;
         self
     }
 
     /// Builds this [`FunctionDeclarationBuilder`] into a [`FunctionDeclaration`].
     pub fn build(self) -> FunctionDeclaration {
-        FunctionDeclaration::new(self.name, self.body, self.parameters, self.return_type)
+        FunctionDeclaration::new(self.name, self.body, self.parameters, self.return_type_expr, self.return_type)
     }
 }
 
@@ -100,7 +109,10 @@ pub struct FunctionParameter {
     /// The name of the parameter.
     pub name: String,
 
-    /// The type of the parameter.
+    /// The declared type of the parameter.
+    pub type_expr: TypeExpr,
+
+    /// The resolved type of the parameter.
     pub r#type: Type,
 
     /// The location within the source code that this parameter occurred at.
@@ -109,7 +121,7 @@ pub struct FunctionParameter {
 
 impl FunctionParameter {
     /// Creates a new [`FunctionParameter`].
-    pub fn new(name: impl Into<String>, r#type: Type, span: Span) -> Self {
-        Self { name: name.into(), r#type, span }
+    pub fn new(name: impl Into<String>, type_expr: TypeExpr, r#type: Type, span: Span) -> Self {
+        Self { name: name.into(), type_expr, r#type, span }
     }
 }

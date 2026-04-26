@@ -41,12 +41,7 @@ impl CBackend {
 
         let name = function_declaration.name.clone();
 
-        let return_type = function_declaration
-            .return_type
-            .as_ref()
-            .map(|it| CBackend::compile_type(it, span))
-            .transpose()?
-            .unwrap_or("void".into());
+        let return_type = CBackend::compile_type(&function_declaration.return_type, span)?;
 
         let parameters: String = if function_declaration.parameters.is_empty() {
             "void".into()

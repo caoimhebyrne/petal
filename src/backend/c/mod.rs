@@ -8,13 +8,13 @@ use std::{
 };
 
 use crate::{
-    ast::r#type::Type,
     backend::c::error::{
         CBackendError,
         CBackendErrorKind,
     },
     core::span::Span,
-    module::ParsedModule,
+    module::CheckedModule,
+    typechecker::r#type::Type,
 };
 
 pub mod error;
@@ -25,8 +25,8 @@ pub mod statement;
 pub struct CBackend;
 
 impl CBackend {
-    /// Compiles a [ParsedModule] to C code.
-    pub fn emit_code(module: &ParsedModule) -> Result<String, CBackendError> {
+    /// Compiles a [`CheckedModule`] to C code.
+    pub fn emit_code(module: &CheckedModule) -> Result<String, CBackendError> {
         let mut code = String::new();
 
         code.push_str("#include <stdint.h>\n\n");
@@ -74,20 +74,11 @@ impl CBackend {
 
     /// Converts a [Type] into a C type.
     fn compile_type(r#type: &Type, span: Span) -> Result<String, CBackendError> {
-        let Type::Named(name) = r#type;
-
-        let value: String = match name.as_str() {
-            "i8" => "int8_t".into(),
-            "i16" => "int16_t".into(),
-            "i32" => "int32_t".into(),
-            "i64" => "int64_t".into(),
-
-            "u8" => "uint8_t".into(),
-            "u16" => "uint16_t".into(),
-            "u32" => "uint32_t".into(),
-            "u64" => "uint64_t".into(),
-
-            _ => return Err(CBackendErrorKind::UnsupportedType(name.clone()).at(span)),
+        let value = match r#type {
+            Type::SignedInteger(size) => format!("int{}_t", size),
+            Type::UnsignedInteger(size) => format!("uint{}_t", size),
+            Type::Void => "void".into(),
+            Type::Unknown => return Err(CBackendErrorKind::UnknownType.at(span)),
         };
 
         Ok(value)
@@ -113,19 +104,20 @@ mod tests {
                 r#return::Return,
                 variable_declaration::VariableDeclaration,
             },
+            type_expr::TypeExpr,
         },
         core::span::Span,
     };
 
     fn assert_compiles(kinds: Vec<StatementKind>, compiled: &str) {
         let statements = kinds.into_iter().map(|kind| Statement::from(kind, Span::default())).collect();
-        assert_eq!(CBackend::emit_code(&ParsedModule::new(statements)), Ok(compiled.into()))
+        assert_eq!(CBackend::emit_code(&CheckedModule::new(statements)), Ok(compiled.into()))
     }
 
     #[test]
     fn compile_empty_function() {
         assert_compiles(
-            vec![FunctionDeclaration::builder("foo").build().into()],
+            vec![FunctionDeclaration::builder("foo").return_type(TypeExpr::named("void"), Type::Void).build().into()],
             "#include <stdint.h>\n\nvoid foo(void) {\n}\n",
         );
     }
@@ -136,6 +128,7 @@ mod tests {
             vec![
                 FunctionDeclaration::builder("foo")
                     .statement(Statement::from(Return { value: None }, Span::default()))
+                    .return_type(TypeExpr::named("void"), Type::Void)
                     .build()
                     .into(),
             ],
@@ -151,11 +144,13 @@ mod tests {
                     .statement(Statement::from(
                         VariableDeclaration::new(
                             "variable",
-                            Type::named("i32"),
+                            TypeExpr::named("i32"),
+                            Type::SignedInteger(32),
                             Expression::new(ExpressionKind::NumberLiteral(999.0), Span::default()),
                         ),
                         Span::default(),
                     ))
+                    .return_type(TypeExpr::named("void"), Type::Void)
                     .build()
                     .into(),
             ],
@@ -172,7 +167,7 @@ mod tests {
                         Return { value: Some(Expression::new(ExpressionKind::NumberLiteral(123.0), Span::default())) },
                         Span::default(),
                     ))
-                    .return_type(Type::named("i32"))
+                    .return_type(TypeExpr::named("i32"), Type::SignedInteger(32))
                     .build()
                     .into(),
             ],
@@ -185,7 +180,7 @@ mod tests {
         assert_compiles(
             vec![
                 FunctionDeclaration::builder("foo")
-                    .parameter("argc", Type::named("i32"), Span::default())
+                    .parameter("argc", TypeExpr::named("i32"), Type::SignedInteger(32), Span::default())
                     .statement(Statement::from(
                         Return {
                             value: Some(Expression::new(
@@ -195,7 +190,7 @@ mod tests {
                         },
                         Span::default(),
                     ))
-                    .return_type(Type::named("i32"))
+                    .return_type(TypeExpr::named("i32"), Type::SignedInteger(32))
                     .build()
                     .into(),
             ],
@@ -211,7 +206,8 @@ mod tests {
                     .statement(Statement::from(
                         VariableDeclaration::new(
                             "variable",
-                            Type::named("i32"),
+                            TypeExpr::named("i32"),
+                            Type::SignedInteger(32),
                             Expression::new(ExpressionKind::NumberLiteral(999.0), Span::default()),
                         ),
                         Span::default(),
@@ -225,6 +221,7 @@ mod tests {
                         },
                         Span::default(),
                     ))
+                    .return_type(TypeExpr::named("void"), Type::Void)
                     .build()
                     .into(),
             ],
@@ -237,16 +234,17 @@ mod tests {
         assert_compiles(
             vec![
                 FunctionDeclaration::builder("foo")
-                    .parameter("argc", Type::named("i32"), Span::default())
+                    .parameter("argc", TypeExpr::named("i32"), Type::SignedInteger(32), Span::default())
                     .statement(Statement::from(
                         VariableDeclaration::new(
                             "variable",
-                            Type::named("i32"),
+                            TypeExpr::named("i32"),
+                            Type::SignedInteger(32),
                             Expression::new(FunctionCall::builder("my_func").build().into(), Span::default()),
                         ),
                         Span::default(),
                     ))
-                    .return_type(Type::named("i32"))
+                    .return_type(TypeExpr::named("i32"), Type::SignedInteger(32))
                     .build()
                     .into(),
             ],
@@ -259,11 +257,12 @@ mod tests {
         assert_compiles(
             vec![
                 FunctionDeclaration::builder("foo")
-                    .parameter("argc", Type::named("i32"), Span::default())
+                    .parameter("argc", TypeExpr::named("i32"), Type::SignedInteger(32), Span::default())
                     .statement(Statement::from(
                         VariableDeclaration::new(
                             "variable",
-                            Type::named("i32"),
+                            TypeExpr::named("i32"),
+                            Type::SignedInteger(32),
                             Expression::new(
                                 FunctionCall::builder("my_func")
                                     .argument(Expression::new(ExpressionKind::NumberLiteral(1.0), Span::default()))
@@ -274,7 +273,7 @@ mod tests {
                         ),
                         Span::default(),
                     ))
-                    .return_type(Type::named("i32"))
+                    .return_type(TypeExpr::named("i32"), Type::SignedInteger(32))
                     .build()
                     .into(),
             ],
@@ -287,11 +286,12 @@ mod tests {
         assert_compiles(
             vec![
                 FunctionDeclaration::builder("foo")
-                    .parameter("argc", Type::named("i32"), Span::default())
+                    .parameter("argc", TypeExpr::named("i32"), Type::SignedInteger(32), Span::default())
                     .statement(Statement::from(
                         VariableDeclaration::new(
                             "variable",
-                            Type::named("i32"),
+                            TypeExpr::named("i32"),
+                            Type::SignedInteger(32),
                             Expression::new(
                                 FunctionCall::builder("my_func")
                                     .argument(Expression::new(ExpressionKind::NumberLiteral(1.0), Span::default()))
@@ -304,7 +304,7 @@ mod tests {
                         ),
                         Span::default(),
                     ))
-                    .return_type(Type::named("i32"))
+                    .return_type(TypeExpr::named("i32"), Type::SignedInteger(32))
                     .build()
                     .into(),
             ],
@@ -317,10 +317,12 @@ mod tests {
         assert_compiles(
             vec![
                 FunctionDeclaration::builder("foo")
+                    .return_type(TypeExpr::named("void"), Type::Void)
                     .statement(Statement::from(
                         VariableDeclaration::new(
                             "variable",
-                            Type::named("i32"),
+                            TypeExpr::named("i32"),
+                            Type::SignedInteger(32),
                             Expression::new(
                                 FunctionCall::builder("foo")
                                     .argument(Expression::new(
@@ -344,7 +346,12 @@ mod tests {
     #[test]
     fn compile_empty_function_i32_return_type() {
         assert_compiles(
-            vec![FunctionDeclaration::builder("foo").return_type(Type::named("i32")).build().into()],
+            vec![
+                FunctionDeclaration::builder("foo")
+                    .return_type(TypeExpr::named("i32"), Type::SignedInteger(32))
+                    .build()
+                    .into(),
+            ],
             "#include <stdint.h>\n\nint32_t foo(void) {\n}\n",
         );
     }
@@ -354,9 +361,9 @@ mod tests {
         assert_compiles(
             vec![
                 FunctionDeclaration::builder("foo")
-                    .parameter("a", Type::Named("i32".into()), Span::default())
-                    .parameter("b", Type::Named("i32".into()), Span::default())
-                    .return_type(Type::named("i32"))
+                    .parameter("a", TypeExpr::Named("i32".into()), Type::SignedInteger(32), Span::default())
+                    .parameter("b", TypeExpr::Named("i32".into()), Type::SignedInteger(32), Span::default())
+                    .return_type(TypeExpr::named("i32"), Type::SignedInteger(32))
                     .build()
                     .into(),
             ],

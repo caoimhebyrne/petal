@@ -1,8 +1,11 @@
 use std::fmt::Display;
 
-use crate::core::{
-    error::Error,
-    span::Span,
+use crate::{
+    core::{
+        error::Error,
+        span::Span,
+    },
+    typechecker::r#type::Type,
 };
 
 /// An error emitted by the C backend.
@@ -18,7 +21,8 @@ pub struct CBackendError {
 /// The different kinds of [`CBackendError`]s that exist.
 #[derive(Debug, PartialEq)]
 pub enum CBackendErrorKind {
-    UnsupportedType(String),
+    UnsupportedType(Type),
+    UnknownType,
     CompilerInvocationFailed(String),
 }
 
@@ -49,7 +53,8 @@ impl Error for CBackendError {
 impl Display for CBackendErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CBackendErrorKind::UnsupportedType(name) => write!(f, "Unsupported type: '{name}'"),
+            CBackendErrorKind::UnsupportedType(r#type) => write!(f, "Unsupported type: '{:?}'", r#type),
+            CBackendErrorKind::UnknownType => write!(f, "Unresolved/unknown type"),
 
             CBackendErrorKind::CompilerInvocationFailed(message) => {
                 write!(f, "Failed to invoke C compiler: '{message}'")

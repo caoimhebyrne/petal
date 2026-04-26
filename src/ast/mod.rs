@@ -19,7 +19,7 @@ use crate::{
             r#return::Return,
             variable_declaration::VariableDeclaration,
         },
-        r#type::Type,
+        type_expr::TypeExpr,
     },
     core::span::Span,
     lexer::token::{
@@ -27,12 +27,13 @@ use crate::{
         Token,
         TokenKind,
     },
+    typechecker::r#type::Type,
 };
 
 pub mod error;
 pub mod expression;
 pub mod statement;
-pub mod r#type;
+pub mod type_expr;
 
 /// The AST parser.
 pub struct ASTParser {
@@ -192,7 +193,8 @@ impl ASTParser {
 
             builder = builder.parameter(
                 parameter_name,
-                Type::Named(parameter_type_name),
+                TypeExpr::Named(parameter_type_name),
+                Type::default(),
                 Span::between(parameter_name_span, parameter_type_name_span),
             );
 
@@ -212,7 +214,7 @@ impl ASTParser {
 
             let (return_type_name, _) = self.expect_identifier()?;
 
-            builder = builder.return_type(Type::named(return_type_name));
+            builder = builder.return_type(TypeExpr::named(return_type_name), Type::Unknown);
         }
 
         // And braces must surround the body of the function.
@@ -255,7 +257,7 @@ impl ASTParser {
         let value = self.parse_expression()?;
 
         let span = Span::between(type_span, value.span);
-        Ok(Statement::from(VariableDeclaration::new(name, Type::named(type_name), value), span))
+        Ok(Statement::from(VariableDeclaration::new(name, TypeExpr::named(type_name), Type::Unknown, value), span))
     }
 
     /// Attempts to parse a function call from the [ASTParser]'s current position.
@@ -377,7 +379,8 @@ mod tests {
                             name: "main",
                             body: [],
                             parameters: [],
-                            return_type: None,
+                            return_type_expr: None,
+                            return_type: Unknown,
                         },
                     ),
                     span: Span {
@@ -413,16 +416,18 @@ mod tests {
                             parameters: [
                                 FunctionParameter {
                                     name: "argc",
-                                    type: Named(
+                                    type_expr: Named(
                                         "i32",
                                     ),
+                                    type: Unknown,
                                     span: Span {
                                         start: 11,
                                         length: 8,
                                     },
                                 },
                             ],
-                            return_type: None,
+                            return_type_expr: None,
+                            return_type: Unknown,
                         },
                     ),
                     span: Span {
@@ -466,9 +471,10 @@ mod tests {
                             parameters: [
                                 FunctionParameter {
                                     name: "argc",
-                                    type: Named(
+                                    type_expr: Named(
                                         "i32",
                                     ),
+                                    type: Unknown,
                                     span: Span {
                                         start: 11,
                                         length: 8,
@@ -476,16 +482,18 @@ mod tests {
                                 },
                                 FunctionParameter {
                                     name: "argv",
-                                    type: Named(
+                                    type_expr: Named(
                                         "todo",
                                     ),
+                                    type: Unknown,
                                     span: Span {
                                         start: 20,
                                         length: 8,
                                     },
                                 },
                             ],
-                            return_type: None,
+                            return_type_expr: None,
+                            return_type: Unknown,
                         },
                     ),
                     span: Span {
@@ -519,11 +527,12 @@ mod tests {
                             name: "main",
                             body: [],
                             parameters: [],
-                            return_type: Some(
+                            return_type_expr: Some(
                                 Named(
                                     "i32",
                                 ),
                             ),
+                            return_type: Unknown,
                         },
                     ),
                     span: Span {
@@ -579,7 +588,8 @@ mod tests {
                                 },
                             ],
                             parameters: [],
-                            return_type: None,
+                            return_type_expr: None,
+                            return_type: Unknown,
                         },
                     ),
                     span: Span {
@@ -640,7 +650,8 @@ mod tests {
                                 },
                             ],
                             parameters: [],
-                            return_type: None,
+                            return_type_expr: None,
+                            return_type: Unknown,
                         },
                     ),
                     span: Span {
@@ -712,7 +723,8 @@ mod tests {
                                 },
                             ],
                             parameters: [],
-                            return_type: None,
+                            return_type_expr: None,
+                            return_type: Unknown,
                         },
                     ),
                     span: Span {
@@ -795,7 +807,8 @@ mod tests {
                                 },
                             ],
                             parameters: [],
-                            return_type: None,
+                            return_type_expr: None,
+                            return_type: Unknown,
                         },
                     ),
                     span: Span {
@@ -872,7 +885,8 @@ mod tests {
                                 },
                             ],
                             parameters: [],
-                            return_type: None,
+                            return_type_expr: None,
+                            return_type: Unknown,
                         },
                     ),
                     span: Span {
@@ -911,9 +925,10 @@ mod tests {
                                     kind: VariableDeclaration(
                                         VariableDeclaration {
                                             name: "variable",
-                                            type: Named(
+                                            type_expr: Named(
                                                 "i32",
                                             ),
+                                            type: Unknown,
                                             value: Expression {
                                                 kind: NumberLiteral(
                                                     4.5,
@@ -932,7 +947,8 @@ mod tests {
                                 },
                             ],
                             parameters: [],
-                            return_type: None,
+                            return_type_expr: None,
+                            return_type: Unknown,
                         },
                     ),
                     span: Span {
