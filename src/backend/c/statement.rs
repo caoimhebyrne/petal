@@ -55,15 +55,22 @@ impl CBackend {
         };
 
         function.push_str(&format!("{return_type} {name}({parameters}) {{\n"));
-
-        for statement in &function_declaration.body {
-            function.push_str(&CBackend::compile_statement(statement)?);
-            function.push('\n');
-        }
-
+        function.push_str(&CBackend::compile_block(&function_declaration.body)?);
         function.push_str("}\n");
 
         Ok(function)
+    }
+
+    /// Compiles a block into C code.
+    fn compile_block(block: &Vec<Statement>) -> Result<String, CBackendError> {
+        let mut string = String::new();
+
+        for statement in block {
+            string.push_str(&CBackend::compile_statement(statement)?);
+            string.push('\n');
+        }
+
+        Ok(string)
     }
 
     /// Compiles a function parameter into C code.

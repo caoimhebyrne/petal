@@ -44,10 +44,6 @@ impl Typechecker {
         function_declaration: &mut FunctionDeclaration,
         span: Span,
     ) -> Result<(), TypecheckerError> {
-        // Create a copy of the previous expected return type and variables so that we can restore it later.
-        let previous_return_type = self.expected_return_type;
-        let previous_variables = take(&mut self.variables);
-
         function_declaration.return_type = function_declaration
             .return_type_expr
             .as_ref()
@@ -61,15 +57,27 @@ impl Typechecker {
         }
 
         self.insert_checked_function(function_declaration, span)?;
+
+        // Create a copy of the previous expected return type and variables so that we can restore it later.
+        let previous_return_type = self.expected_return_type;
         self.expected_return_type = function_declaration.return_type;
 
-        for statement in &mut function_declaration.body {
+        self.check_block(&mut function_declaration.body)?;
+
+        self.expected_return_type = previous_return_type;
+
+        Ok(())
+    }
+
+    /// Checks and resolves any [`Type`]s referenced in the provided block.
+    fn check_block(&mut self, block: &mut Vec<Statement>) -> Result<(), TypecheckerError> {
+        let previous_variables = take(&mut self.variables);
+
+        for statement in block {
             self.check_statement(statement)?;
         }
 
-        self.expected_return_type = previous_return_type;
         self.variables = previous_variables;
-
         Ok(())
     }
 
