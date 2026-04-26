@@ -118,7 +118,7 @@ impl ASTParser {
         // Then parenthesis must surround the parameters to the function.
         self.expect(TokenKind::OpenParen)?;
 
-        while !self.peek().map(|it| it.kind == TokenKind::CloseParen).unwrap_or(true) {
+        while !self.peek_is(TokenKind::CloseParen) {
             let (parameter_name, parameter_name_span) = self.expect_identifier()?;
             self.expect(TokenKind::Colon)?;
             let (parameter_type_name, parameter_type_name_span) = self.expect_identifier()?;
@@ -129,7 +129,7 @@ impl ASTParser {
                 Span::between(parameter_name_span, parameter_type_name_span),
             );
 
-            if self.peek().map(|it| it.kind == TokenKind::CloseParen).unwrap_or_default() {
+            if self.peek_is(TokenKind::CloseParen) {
                 continue;
             }
 
@@ -139,7 +139,7 @@ impl ASTParser {
         self.expect(TokenKind::CloseParen)?;
 
         // There may be a `->` token, indicating that an explicit return type is being used.
-        if self.peek().map(|it| it.kind == TokenKind::Hyphen).unwrap_or_default() {
+        if self.peek_is(TokenKind::Hyphen) {
             self.expect(TokenKind::Hyphen)?;
             self.expect(TokenKind::RightAngleBracket)?;
 
@@ -151,7 +151,7 @@ impl ASTParser {
         // And braces must surround the body of the function.
         self.expect(TokenKind::OpenBrace)?;
 
-        while !self.peek().map(|it| it.kind == TokenKind::CloseBrace).unwrap_or(true) {
+        while !self.peek_is(TokenKind::CloseBrace) {
             builder = builder.statement(self.parse_statement()?);
         }
 
@@ -164,7 +164,7 @@ impl ASTParser {
     fn parse_return(&mut self) -> Result<Statement, ASTError> {
         let return_keyword_span = self.expect_span(TokenKind::Keyword(Keyword::Return))?;
 
-        if self.peek().map(|it| it.kind == TokenKind::Semicolon).unwrap_or_default() {
+        if self.peek_is(TokenKind::Semicolon) {
             return Ok(Statement::from(Return::new(None), return_keyword_span));
         }
 
@@ -176,6 +176,11 @@ impl ASTParser {
     /// Returns the token at the [ASTParser]'s current position.
     fn peek(&self) -> Option<&Token> {
         self.tokens.get(self.cursor)
+    }
+
+    /// Returns whether the token at the [ASTParser]'s current position is of a certain [TokenKind].
+    fn peek_is(&self, kind: TokenKind) -> bool {
+        self.peek().map(|it| it.kind == kind).unwrap_or_default()
     }
 
     /// Returns the token at the [ASTParser]'s current position, advancing the cursor.
