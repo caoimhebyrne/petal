@@ -34,7 +34,16 @@ impl CBackend {
         let Type::Named(name) = r#type;
 
         let value: String = match name.as_str() {
+            "i8" => "int8_t".into(),
+            "i16" => "int16_t".into(),
             "i32" => "int32_t".into(),
+            "i64" => "int64_t".into(),
+
+            "u8" => "uint8_t".into(),
+            "u16" => "uint16_t".into(),
+            "u32" => "uint32_t".into(),
+            "u64" => "uint64_t".into(),
+
             _ => return Err(CBackendErrorKind::UnsupportedType(name.clone()).at(span)),
         };
 
