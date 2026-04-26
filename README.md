@@ -5,6 +5,34 @@
 Petal is a hobby programming language with a ~~compiler~~ transpiler (to C) written in Rust. A LLVM (or maybe
 Cranelift) compiler backend will be added in the future.
 
+### Roadmap
+
+- [x] Basic function declarations (parameters, return types)
+- [x] Signed and unsigned integer types
+- [x] Variable declarations
+- [x] Function calls (arguments)
+- [x] Basic type-checking
+- [ ] Variable re-assignment
+- [ ] Smart type inference for integers
+  - For example, `i64 a = 5;` should compile, but it does not as `5` is always treated as an `i32`. It should be
+    inferred to be an `i64` (if the literal fits in the width).
+- [ ] Booleans
+- [ ] Control flow (if, while)
+- [ ] Multiple module support
+  - [ ] Name mangling
+- [ ] References
+- [ ] User defined types (`type CString = &u8`)
+- [ ] Structures
+  - [ ] Member functions
+- [ ] Basic generics
+- [ ] Optionals (`type Optional<T> = { is_present: bool, value: T }`)
+  - [ ] Short-hand via type modifiers, e.g. `?i32`.
+  - [ ] Smart casting
+- [ ] Arrays
+- ...
+- [ ] Website/playground REPL
+- [ ] LLVM or Cranelift backend
+
 ### Contributions
 
 Anyone is open to making a pull request! Before you do, please ensure that the feature you are adding is documented
