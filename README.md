@@ -12,7 +12,7 @@ Cranelift) compiler backend will be added in the future.
 - [x] Variable declarations
 - [x] Function calls (arguments)
 - [x] Basic type-checking
-- [ ] Variable re-assignment
+- [x] Variable assignment
 - [ ] Named function parameters (`myFunc(value: i32)`)
 - [ ] Booleans
 - [ ] Control flow (if, while)

@@ -102,6 +102,7 @@ mod tests {
                 StatementKind,
                 function_declaration::FunctionDeclaration,
                 r#return::Return,
+                variable_assignment::VariableAssignment,
                 variable_declaration::VariableDeclaration,
             },
             type_expr::TypeExpr,
@@ -226,6 +227,26 @@ mod tests {
                     .into(),
             ],
             "#include <stdint.h>\n\nvoid foo(void) {\nint32_t variable = 999;\nreturn variable;\n}\n",
+        );
+    }
+
+    #[test]
+    fn compile_function_with_variable_assignment() {
+        assert_compiles(
+            vec![
+                FunctionDeclaration::builder("foo")
+                    .statement(Statement::from(
+                        VariableAssignment::new(
+                            "variable",
+                            Expression::new(ExpressionKind::NumberLiteral(456.0), Span::default()),
+                        ),
+                        Span::default(),
+                    ))
+                    .return_type(TypeExpr::named("i32"), Type::SignedInteger(32))
+                    .build()
+                    .into(),
+            ],
+            "#include <stdint.h>\n\nint32_t foo(void) {\nvariable = 456;\n}\n",
         );
     }
 

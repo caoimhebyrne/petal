@@ -1,0 +1,12 @@
+// All variables in Petal are mutable, and values can be re-assigned to them at any point during
+// execution.
+func main() -> i32 {
+    // The variable starts with a value of 10.
+    i32 my_variable = 10;
+
+    // We then assign the value 5 to the variable.
+    my_variable = 5;
+
+    // The exit code of the program should reflect the updated value of the variable.
+    return my_variable;
+}

@@ -7,6 +7,7 @@ use crate::{
             FunctionParameter,
         },
         r#return::Return,
+        variable_assignment::VariableAssignment,
         variable_declaration::VariableDeclaration,
     },
     backend::c::{
@@ -28,6 +29,10 @@ impl CBackend {
 
             StatementKind::VariableDeclaration(variable_declaration) => {
                 CBackend::compile_variable_declaration(variable_declaration, statement.span)
+            }
+
+            StatementKind::VariableAssignment(variable_assignment) => {
+                CBackend::compile_variable_assignment(variable_assignment, statement.span)
             }
         }
     }
@@ -102,5 +107,16 @@ impl CBackend {
         let value = CBackend::compile_expression(&variable_declaration.value)?;
 
         Ok(format!("{type} {name} = {value};"))
+    }
+
+    /// Compiles a variable assignment into C code.
+    pub fn compile_variable_assignment(
+        variable_assignment: &VariableAssignment,
+        _span: Span,
+    ) -> Result<String, CBackendError> {
+        let name = variable_assignment.name.clone();
+        let value = CBackend::compile_expression(&variable_assignment.value)?;
+
+        Ok(format!("{name} = {value};"))
     }
 }

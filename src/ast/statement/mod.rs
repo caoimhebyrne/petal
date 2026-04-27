@@ -2,6 +2,7 @@ use crate::{
     ast::statement::{
         function_declaration::FunctionDeclaration,
         r#return::Return,
+        variable_assignment::VariableAssignment,
         variable_declaration::VariableDeclaration,
     },
     core::span::Span,
@@ -9,6 +10,7 @@ use crate::{
 
 pub mod function_declaration;
 pub mod r#return;
+pub mod variable_assignment;
 pub mod variable_declaration;
 
 /// A statement node within the abstract syntax tree.
@@ -45,4 +47,7 @@ pub enum StatementKind {
 
     /// A variable declaration statement.
     VariableDeclaration(VariableDeclaration),
+
+    /// A variable assignment statement.
+    VariableAssignment(VariableAssignment),
 }

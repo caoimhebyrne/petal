@@ -9,6 +9,7 @@ use crate::{
             FunctionParameter,
         },
         r#return::Return,
+        variable_assignment::VariableAssignment,
         variable_declaration::VariableDeclaration,
     },
     core::span::Span,
@@ -35,6 +36,10 @@ impl Typechecker {
             }
 
             StatementKind::Return(r#return) => self.check_return(r#return, statement.span),
+
+            StatementKind::VariableAssignment(variable_assignment) => {
+                self.check_variable_assignment(variable_assignment, statement.span)
+            }
         }
     }
 
@@ -110,6 +115,29 @@ impl Typechecker {
 
         variable_declaration.r#type = variable_type;
         self.insert_variable_from_declaration(variable_declaration, span)?;
+
+        Ok(())
+    }
+
+    /// Checks and resolves any [`Type`]s referenced in the provided [`VariableAssignment`].
+    fn check_variable_assignment(
+        &mut self,
+        variable_assignment: &mut VariableAssignment,
+        span: Span,
+    ) -> Result<(), TypecheckerError> {
+        // The variable must already be defined.
+        let variable_type = self.get_variable(&variable_assignment.name, span).cloned()?;
+
+        // The initial value for the variable must have a valid type too, and then that type must be equal to the
+        // variable type.
+        let value_type = self.check_expression(&mut variable_assignment.value)?;
+        if variable_type != value_type {
+            return Err(TypecheckerErrorKind::IncompatibleVariableDeclarationTypes {
+                declared: variable_type,
+                value: value_type,
+            }
+            .at(span));
+        }
 
         Ok(())
     }
