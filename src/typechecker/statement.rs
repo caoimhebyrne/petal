@@ -49,6 +49,8 @@ impl Typechecker {
         function_declaration: &mut FunctionDeclaration,
         span: Span,
     ) -> Result<(), TypecheckerError> {
+        let previous_variables = take(&mut self.variables);
+
         function_declaration.return_type = function_declaration
             .return_type_expr
             .as_ref()
@@ -67,22 +69,13 @@ impl Typechecker {
         let previous_return_type = self.expected_return_type;
         self.expected_return_type = function_declaration.return_type;
 
-        self.check_block(&mut function_declaration.body)?;
-
-        self.expected_return_type = previous_return_type;
-
-        Ok(())
-    }
-
-    /// Checks and resolves any [`Type`]s referenced in the provided block.
-    fn check_block(&mut self, block: &mut Vec<Statement>) -> Result<(), TypecheckerError> {
-        let previous_variables = take(&mut self.variables);
-
-        for statement in block {
+        for statement in &mut function_declaration.body {
             self.check_statement(statement)?;
         }
 
+        self.expected_return_type = previous_return_type;
         self.variables = previous_variables;
+
         Ok(())
     }
 
