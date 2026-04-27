@@ -44,10 +44,10 @@ impl CBackend {
 
     /// Compiles a function call expression into C code.
     pub fn compile_function_call(function_call: &FunctionCall, _span: Span) -> Result<String, CBackendError> {
-        let arguments = function_call
+        let arguments = &function_call
             .arguments
             .iter()
-            .map(CBackend::compile_expression)
+            .map(|it| CBackend::compile_expression(&it.value))
             .collect::<Result<Vec<String>, CBackendError>>()?
             .join(", ");
 

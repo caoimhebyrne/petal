@@ -295,7 +295,14 @@ impl ASTParser {
         self.expect(TokenKind::OpenParen)?;
 
         while !self.peek_is(TokenKind::CloseParen) {
-            builder = builder.argument(self.parse_expression()?);
+            let (argument_name, argument_name_span) = self.expect_identifier()?;
+
+            self.expect(TokenKind::Colon)?;
+
+            let value = self.parse_expression()?;
+            let span = Span::between(argument_name_span, value.span);
+
+            builder = builder.argument(argument_name, value, span);
 
             if self.peek_is(TokenKind::CloseParen) {
                 continue;
@@ -699,10 +706,12 @@ mod tests {
             Token::new(TokenKind::Keyword(Keyword::Return), Span { start: 13, length: 4 }),
             Token::new(TokenKind::Identifier("foo".into()), Span { start: 17, length: 3 }),
             Token::new(TokenKind::OpenParen, Span { start: 20, length: 1 }),
-            Token::new(TokenKind::Identifier("ident".into()), Span { start: 21, length: 5 }),
-            Token::new(TokenKind::CloseParen, Span { start: 26, length: 1 }),
-            Token::new(TokenKind::Semicolon, Span { start: 27, length: 1 }),
-            Token::new(TokenKind::CloseBrace, Span { start: 28, length: 1 }),
+            Token::new(TokenKind::Identifier("bar".into()), Span { start: 21, length: 3 }),
+            Token::new(TokenKind::Colon, Span { start: 24, length: 1 }),
+            Token::new(TokenKind::Identifier("ident".into()), Span { start: 25, length: 5 }),
+            Token::new(TokenKind::CloseParen, Span { start: 30, length: 1 }),
+            Token::new(TokenKind::Semicolon, Span { start: 31, length: 1 }),
+            Token::new(TokenKind::CloseBrace, Span { start: 32, length: 1 }),
         ]), @r#"
         Ok(
             [
@@ -720,13 +729,20 @@ mod tests {
                                                         FunctionCall {
                                                             name: "foo",
                                                             arguments: [
-                                                                Expression {
-                                                                    kind: IdentifierReference(
-                                                                        "ident",
-                                                                    ),
+                                                                FunctionCallArgument {
+                                                                    name: "bar",
+                                                                    value: Expression {
+                                                                        kind: IdentifierReference(
+                                                                            "ident",
+                                                                        ),
+                                                                        span: Span {
+                                                                            start: 25,
+                                                                            length: 5,
+                                                                        },
+                                                                    },
                                                                     span: Span {
                                                                         start: 21,
-                                                                        length: 5,
+                                                                        length: 9,
                                                                     },
                                                                 },
                                                             ],
@@ -734,7 +750,7 @@ mod tests {
                                                     ),
                                                     span: Span {
                                                         start: 17,
-                                                        length: 10,
+                                                        length: 14,
                                                     },
                                                 },
                                             ),
@@ -742,7 +758,7 @@ mod tests {
                                     ),
                                     span: Span {
                                         start: 13,
-                                        length: 14,
+                                        length: 18,
                                     },
                                 },
                             ],
@@ -753,7 +769,7 @@ mod tests {
                     ),
                     span: Span {
                         start: 0,
-                        length: 29,
+                        length: 33,
                     },
                 },
             ],
@@ -772,12 +788,16 @@ mod tests {
             Token::new(TokenKind::Keyword(Keyword::Return), Span { start: 13, length: 4 }),
             Token::new(TokenKind::Identifier("foo".into()), Span { start: 17, length: 3 }),
             Token::new(TokenKind::OpenParen, Span { start: 20, length: 1 }),
-            Token::new(TokenKind::Identifier("ident_a".into()), Span { start: 21, length: 7 }),
-            Token::new(TokenKind::Comma, Span { start: 28, length: 1 }),
-            Token::new(TokenKind::Identifier("ident_b".into()), Span { start: 29, length: 7 }),
-            Token::new(TokenKind::CloseParen, Span { start: 36, length: 1 }),
-            Token::new(TokenKind::Semicolon, Span { start: 37, length: 1 }),
-            Token::new(TokenKind::CloseBrace, Span { start: 38, length: 1 }),
+            Token::new(TokenKind::Identifier("bar".into()), Span { start: 21, length: 3 }),
+            Token::new(TokenKind::Colon, Span { start: 24, length: 1 }),
+            Token::new(TokenKind::Identifier("ident_a".into()), Span { start: 25, length: 7 }),
+            Token::new(TokenKind::Comma, Span { start: 32, length: 1 }),
+            Token::new(TokenKind::Identifier("baz".into()), Span { start: 33, length: 3 }),
+            Token::new(TokenKind::Colon, Span { start: 36, length: 1 }),
+            Token::new(TokenKind::Identifier("ident_b".into()), Span { start: 37, length: 7 }),
+            Token::new(TokenKind::CloseParen, Span { start: 44, length: 1 }),
+            Token::new(TokenKind::Semicolon, Span { start: 45, length: 1 }),
+            Token::new(TokenKind::CloseBrace, Span { start: 46, length: 1 }),
         ]), @r#"
         Ok(
             [
@@ -795,22 +815,36 @@ mod tests {
                                                         FunctionCall {
                                                             name: "foo",
                                                             arguments: [
-                                                                Expression {
-                                                                    kind: IdentifierReference(
-                                                                        "ident_a",
-                                                                    ),
+                                                                FunctionCallArgument {
+                                                                    name: "bar",
+                                                                    value: Expression {
+                                                                        kind: IdentifierReference(
+                                                                            "ident_a",
+                                                                        ),
+                                                                        span: Span {
+                                                                            start: 25,
+                                                                            length: 7,
+                                                                        },
+                                                                    },
                                                                     span: Span {
                                                                         start: 21,
-                                                                        length: 7,
+                                                                        length: 11,
                                                                     },
                                                                 },
-                                                                Expression {
-                                                                    kind: IdentifierReference(
-                                                                        "ident_b",
-                                                                    ),
+                                                                FunctionCallArgument {
+                                                                    name: "baz",
+                                                                    value: Expression {
+                                                                        kind: IdentifierReference(
+                                                                            "ident_b",
+                                                                        ),
+                                                                        span: Span {
+                                                                            start: 37,
+                                                                            length: 7,
+                                                                        },
+                                                                    },
                                                                     span: Span {
-                                                                        start: 29,
-                                                                        length: 7,
+                                                                        start: 33,
+                                                                        length: 11,
                                                                     },
                                                                 },
                                                             ],
@@ -818,7 +852,7 @@ mod tests {
                                                     ),
                                                     span: Span {
                                                         start: 17,
-                                                        length: 20,
+                                                        length: 28,
                                                     },
                                                 },
                                             ),
@@ -826,7 +860,7 @@ mod tests {
                                     ),
                                     span: Span {
                                         start: 13,
-                                        length: 24,
+                                        length: 32,
                                     },
                                 },
                             ],
@@ -837,7 +871,7 @@ mod tests {
                     ),
                     span: Span {
                         start: 0,
-                        length: 39,
+                        length: 47,
                     },
                 },
             ],
@@ -856,12 +890,14 @@ mod tests {
             Token::new(TokenKind::Keyword(Keyword::Return), Span { start: 13, length: 4 }),
             Token::new(TokenKind::Identifier("foo".into()), Span { start: 17, length: 3 }),
             Token::new(TokenKind::OpenParen, Span { start: 20, length: 1 }),
-            Token::new(TokenKind::Identifier("bar".into()), Span { start: 21, length: 3 }),
-            Token::new(TokenKind::OpenParen, Span { start: 24, length: 1 }),
-            Token::new(TokenKind::CloseParen, Span { start: 25, length: 1 }),
-            Token::new(TokenKind::CloseParen, Span { start: 26, length: 1 }),
-            Token::new(TokenKind::Semicolon, Span { start: 27, length: 1 }),
-            Token::new(TokenKind::CloseBrace, Span { start: 28, length: 1 }),
+            Token::new(TokenKind::Identifier("baz".into()), Span { start: 21, length: 3 }),
+            Token::new(TokenKind::Colon, Span { start: 24, length: 1 }),
+            Token::new(TokenKind::Identifier("bar".into()), Span { start: 25, length: 3 }),
+            Token::new(TokenKind::OpenParen, Span { start: 28, length: 1 }),
+            Token::new(TokenKind::CloseParen, Span { start: 29, length: 1 }),
+            Token::new(TokenKind::CloseParen, Span { start: 30, length: 1 }),
+            Token::new(TokenKind::Semicolon, Span { start: 31, length: 1 }),
+            Token::new(TokenKind::CloseBrace, Span { start: 32, length: 1 }),
         ]), @r#"
         Ok(
             [
@@ -879,16 +915,23 @@ mod tests {
                                                         FunctionCall {
                                                             name: "foo",
                                                             arguments: [
-                                                                Expression {
-                                                                    kind: FunctionCall(
-                                                                        FunctionCall {
-                                                                            name: "bar",
-                                                                            arguments: [],
+                                                                FunctionCallArgument {
+                                                                    name: "baz",
+                                                                    value: Expression {
+                                                                        kind: FunctionCall(
+                                                                            FunctionCall {
+                                                                                name: "bar",
+                                                                                arguments: [],
+                                                                            },
+                                                                        ),
+                                                                        span: Span {
+                                                                            start: 25,
+                                                                            length: 5,
                                                                         },
-                                                                    ),
+                                                                    },
                                                                     span: Span {
                                                                         start: 21,
-                                                                        length: 5,
+                                                                        length: 9,
                                                                     },
                                                                 },
                                                             ],
@@ -896,7 +939,7 @@ mod tests {
                                                     ),
                                                     span: Span {
                                                         start: 17,
-                                                        length: 10,
+                                                        length: 14,
                                                     },
                                                 },
                                             ),
@@ -904,7 +947,7 @@ mod tests {
                                     ),
                                     span: Span {
                                         start: 13,
-                                        length: 14,
+                                        length: 18,
                                     },
                                 },
                             ],
@@ -915,7 +958,7 @@ mod tests {
                     ),
                     span: Span {
                         start: 0,
-                        length: 29,
+                        length: 33,
                     },
                 },
             ],

@@ -1,6 +1,9 @@
-use crate::ast::expression::{
-    Expression,
-    ExpressionKind,
+use crate::{
+    ast::expression::{
+        Expression,
+        ExpressionKind,
+    },
+    core::span::Span,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -9,12 +12,12 @@ pub struct FunctionCall {
     pub name: String,
 
     /// The arguments being passed to the function.
-    pub arguments: Vec<Expression>,
+    pub arguments: Vec<FunctionCallArgument>,
 }
 
 impl FunctionCall {
     /// Creates a new [`FunctionCall`].
-    pub fn new(name: impl Into<String>, arguments: Vec<Expression>) -> Self {
+    pub fn new(name: impl Into<String>, arguments: Vec<FunctionCallArgument>) -> Self {
         Self { name: name.into(), arguments }
     }
 
@@ -22,6 +25,19 @@ impl FunctionCall {
     pub fn builder(name: impl Into<String>) -> FunctionCallBuilder {
         FunctionCallBuilder::new(name)
     }
+}
+
+/// An argument being passed during a function call.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FunctionCallArgument {
+    /// The name provided for the argument.
+    pub name: String,
+
+    /// The value provided for the argument.
+    pub value: Expression,
+
+    /// The span that this argument occurred at.
+    pub span: Span,
 }
 
 impl From<FunctionCall> for ExpressionKind {
@@ -36,7 +52,7 @@ pub struct FunctionCallBuilder {
     name: String,
 
     /// The arguments being passed to the function
-    arguments: Vec<Expression>,
+    arguments: Vec<FunctionCallArgument>,
 }
 
 impl FunctionCallBuilder {
@@ -46,8 +62,8 @@ impl FunctionCallBuilder {
     }
 
     /// Adds an argument to this function call.
-    pub fn argument(mut self, argument: Expression) -> Self {
-        self.arguments.push(argument);
+    pub fn argument(mut self, name: String, value: Expression, span: Span) -> Self {
+        self.arguments.push(FunctionCallArgument { name, value, span });
         self
     }
 

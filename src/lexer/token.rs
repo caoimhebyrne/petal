@@ -59,6 +59,9 @@ pub enum TokenKind {
     /// An asterisk: *
     Asterisk,
 
+    /// A tilda: ~
+    Tilda,
+
     /// An identifier.
     Identifier(String),
 

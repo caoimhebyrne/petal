@@ -3,7 +3,10 @@ use crate::{
         Expression,
         ExpressionKind,
         binary_operation::BinaryOperation,
-        function_call::FunctionCall,
+        function_call::{
+            FunctionCall,
+            FunctionCallArgument,
+        },
     },
     core::span::Span,
     typechecker::{
@@ -68,29 +71,61 @@ impl Typechecker {
 
     /// Checks and resolves the type of the provided [`FunctionCall`].
     fn check_function_call(&mut self, function_call: &mut FunctionCall, span: Span) -> Result<Type, TypecheckerError> {
-        // The arguments in the function call must be resolved.
-        let arguments = function_call
-            .arguments
-            .iter_mut()
-            .map(|it| self.check_expression(it))
-            .collect::<Result<Vec<Type>, TypecheckerError>>()?;
+        // FIXME: I don't like the clone here.
+        let checked_function = self.get_checked_function(&function_call.name, span).cloned()?;
 
-        // The function must have been declared already.
-        let checked_function = self.get_checked_function(&function_call.name, span)?;
-
-        // The parameters to the function must match the arguments of the function call.
-        let parameters: Vec<Type> = checked_function.parameters.iter().map(|it| it.r#type).collect();
-
-        // If the function call's arguments does not match the function's parameters, then we must not permit it.
-        if arguments != parameters {
-            return Err(TypecheckerErrorKind::InvalidFunctionCall {
+        // The first check is easy, we just need to ensure that a sufficient number of arguments were passed in the
+        // function call.
+        if function_call.arguments.len() != checked_function.parameters.len() {
+            return Err(TypecheckerErrorKind::FunctionCallArgumentSizeMismatch {
                 name: function_call.name.clone(),
-                parameters,
-                arguments,
+                expected: checked_function.parameters.len(),
+                got: function_call.arguments.len(),
             }
             .at(span));
         }
 
+        // We also must check that each function call argument has been supplied once, anything else is undefined behavior.
+        for argument in &function_call.arguments {
+            let occurrences = function_call.arguments.iter().filter(|it| it.name == argument.name).count();
+            if occurrences > 1 {
+                return Err(TypecheckerErrorKind::DuplicateFunctionCallArgument(argument.name.clone()).at(span));
+            }
+        }
+
+        // FIXME: I don't know if this really belongs here, but it's the best place that I can put it for now. We
+        //        are going to update the the function call to ensure that the Vec order of the arguments is
+        //        the same order that the parameters are defined in.
+        //
+        //        This allows the codegen backend to just iterate over the arguments in order, without needing to
+        //        check whether they match to the function's parameters.
+        let mut ordered_arguments: Vec<FunctionCallArgument> = Vec::new();
+
+        for parameter in &checked_function.parameters {
+            let argument = function_call.arguments.iter_mut().find(|it| it.name == parameter.name).ok_or(
+                TypecheckerErrorKind::MissingFunctionCallArgument {
+                    function_name: function_call.name.clone(),
+                    parameter_name: parameter.name.clone(),
+                }
+                .at(span),
+            )?;
+
+            let argument_type = self.check_expression(&mut argument.value)?;
+            if argument_type != parameter.r#type {
+                return Err(TypecheckerErrorKind::IncompatibleFunctionCallArgument {
+                    parameter_name: parameter.name.clone(),
+                    parameter_type: parameter.r#type,
+                    argument_type,
+                }
+                .at(argument.span));
+            }
+
+            ordered_arguments.push(argument.clone());
+        }
+
+        function_call.arguments = ordered_arguments;
+
+        // All arguments have been type checked. The result of this function call is the return type of the function.
         Ok(checked_function.return_type)
     }
 

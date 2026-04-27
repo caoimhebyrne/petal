@@ -286,7 +286,11 @@ mod tests {
                             Type::SignedInteger(32),
                             Expression::new(
                                 FunctionCall::builder("my_func")
-                                    .argument(Expression::new(ExpressionKind::NumberLiteral(1.0), Span::default()))
+                                    .argument(
+                                        "bar".into(),
+                                        Expression::new(ExpressionKind::NumberLiteral(1.0), Span::default()),
+                                        Span::default(),
+                                    )
                                     .build()
                                     .into(),
                                 Span::default(),
@@ -315,9 +319,21 @@ mod tests {
                             Type::SignedInteger(32),
                             Expression::new(
                                 FunctionCall::builder("my_func")
-                                    .argument(Expression::new(ExpressionKind::NumberLiteral(1.0), Span::default()))
-                                    .argument(Expression::new(ExpressionKind::NumberLiteral(2.0), Span::default()))
-                                    .argument(Expression::new(ExpressionKind::NumberLiteral(3.0), Span::default()))
+                                    .argument(
+                                        "a".into(),
+                                        Expression::new(ExpressionKind::NumberLiteral(1.0), Span::default()),
+                                        Span::default(),
+                                    )
+                                    .argument(
+                                        "b".into(),
+                                        Expression::new(ExpressionKind::NumberLiteral(2.0), Span::default()),
+                                        Span::default(),
+                                    )
+                                    .argument(
+                                        "c".into(),
+                                        Expression::new(ExpressionKind::NumberLiteral(3.0), Span::default()),
+                                        Span::default(),
+                                    )
                                     .build()
                                     .into(),
                                 Span::default(),
@@ -346,10 +362,11 @@ mod tests {
                             Type::SignedInteger(32),
                             Expression::new(
                                 FunctionCall::builder("foo")
-                                    .argument(Expression::new(
-                                        FunctionCall::builder("bar").build().into(),
+                                    .argument(
+                                        "bar".into(),
+                                        Expression::new(FunctionCall::builder("baz").build().into(), Span::default()),
                                         Span::default(),
-                                    ))
+                                    )
                                     .build()
                                     .into(),
                                 Span::default(),
@@ -360,7 +377,7 @@ mod tests {
                     .build()
                     .into(),
             ],
-            "#include <stdint.h>\n\nvoid foo(void) {\nint32_t variable = foo(bar());\n}\n",
+            "#include <stdint.h>\n\nvoid foo(void) {\nint32_t variable = foo(baz());\n}\n",
         );
     }
 

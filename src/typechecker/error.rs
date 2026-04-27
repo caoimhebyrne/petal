@@ -25,7 +25,10 @@ pub enum TypecheckerErrorKind {
     IncompatibleBinaryOperationTypes { left: Type, right: Type },
     IncompatibleVariableDeclarationTypes { declared: Type, value: Type },
     IncompatibleReturnTypes { declared: Type, value: Type },
-    InvalidFunctionCall { name: String, parameters: Vec<Type>, arguments: Vec<Type> },
+    FunctionCallArgumentSizeMismatch { name: String, expected: usize, got: usize },
+    MissingFunctionCallArgument { function_name: String, parameter_name: String },
+    DuplicateFunctionCallArgument(String),
+    IncompatibleFunctionCallArgument { parameter_name: String, parameter_type: Type, argument_type: Type },
     DuplicateFunctionDeclaration(String),
     DuplicateVariableDeclaration(String),
     UndeclaredFunction(String),
@@ -76,10 +79,26 @@ impl Display for TypecheckerErrorKind {
 
             Self::UndeclaredVariable(name) => write!(f, "Variable '{name}' has not been declared yet"),
 
-            Self::InvalidFunctionCall { name, parameters, arguments } => write!(
+            Self::DuplicateFunctionCallArgument(name) => {
+                write!(f, "Argument '{name}' has more than one value in this function call, this is not allowed")
+            }
+
+            Self::FunctionCallArgumentSizeMismatch { name, expected, got } => write!(
                 f,
-                "Function '{}' has parameters of types {:?}, but function call has arguments of types {:?}",
-                name, parameters, arguments
+                "Function '{name}' has {expected} parameter(s), but {got} argument(s) passed in function call",
+            ),
+
+            Self::MissingFunctionCallArgument { function_name, parameter_name } => {
+                write!(
+                    f,
+                    "No value was provided for parameter named '{parameter_name}' in call to function '{function_name}'"
+                )
+            }
+
+            Self::IncompatibleFunctionCallArgument { parameter_name, parameter_type, argument_type } => write!(
+                f,
+                "Parameter '{parameter_name}' has type '{:?}', but got argument of type '{:?}'",
+                parameter_type, argument_type
             ),
 
             Self::DuplicateFunctionDeclaration(name) => write!(f, "A function named '{name}' already exists"),

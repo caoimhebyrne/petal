@@ -13,7 +13,8 @@ Cranelift) compiler backend will be added in the future.
 - [x] Function calls (arguments)
 - [x] Basic type-checking
 - [x] Variable assignment
-- [ ] Named function parameters (`myFunc(value: i32)`)
+- [x] Named function call arguments (`myFunc(value: i32)`)
+  - [ ] Make positional parameters the default, with `~` signifying a named parameter.
 - [ ] Booleans
 - [ ] Control flow (if, while)
 - [ ] Smart type inference for integers

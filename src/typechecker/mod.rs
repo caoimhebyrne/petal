@@ -31,6 +31,7 @@ pub mod statement;
 pub mod r#type;
 
 /// A function which has been verified by the typechecker.
+#[derive(Debug, Clone)]
 pub(crate) struct CheckedFunction {
     /// The parameters to the function.
     pub parameters: Vec<FunctionParameter>,
