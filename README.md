@@ -13,11 +13,12 @@ Cranelift) compiler backend will be added in the future.
 - [x] Function calls (arguments)
 - [x] Basic type-checking
 - [ ] Variable re-assignment
+- [ ] Named function parameters (`myFunc(value: i32)`)
+- [ ] Booleans
+- [ ] Control flow (if, while)
 - [ ] Smart type inference for integers
   - For example, `i64 a = 5;` should compile, but it does not as `5` is always treated as an `i32`. It should be
     inferred to be an `i64` (if the literal fits in the width).
-- [ ] Booleans
-- [ ] Control flow (if, while)
 - [ ] Multiple module support
   - [ ] Name mangling
 - [ ] References
