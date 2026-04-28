@@ -163,6 +163,18 @@ impl ASTParser {
                 Expression::new(ExpressionKind::NumberLiteral(value), span)
             }
 
+            TokenKind::Keyword(Keyword::True) => {
+                let span = token.span;
+                self.consume();
+                Expression::new(ExpressionKind::BooleanLiteral(true), span)
+            }
+
+            TokenKind::Keyword(Keyword::False) => {
+                let span = token.span;
+                self.consume();
+                Expression::new(ExpressionKind::BooleanLiteral(false), span)
+            }
+
             TokenKind::Identifier(name) => {
                 if self.peek_nth(1).map(|it| it.kind == TokenKind::OpenParen).unwrap_or_default() {
                     let (function_call, span) = self.parse_function_call()?;

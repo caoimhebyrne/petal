@@ -80,6 +80,12 @@ pub enum Keyword {
 
     /// The `return` keyword.
     Return,
+
+    /// The true keyword (boolean literal).
+    True,
+
+    /// The false keyword (boolean literal).
+    False,
 }
 
 impl Keyword {
@@ -89,6 +95,8 @@ impl Keyword {
         let keyword = match string {
             "func" => Keyword::Func,
             "return" => Keyword::Return,
+            "true" => Keyword::True,
+            "false" => Keyword::False,
 
             _ => return None,
         };

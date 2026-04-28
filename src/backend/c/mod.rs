@@ -29,7 +29,7 @@ impl CBackend {
     pub fn emit_code(module: &CheckedModule) -> Result<String, CBackendError> {
         let mut code = String::new();
 
-        code.push_str("#include <stdint.h>\n\n");
+        code.push_str("#include <stdint.h>\n#include <stdbool.h>\n\n");
 
         for statement in &module.ast {
             code.push_str(&CBackend::compile_statement(statement)?);
@@ -77,6 +77,7 @@ impl CBackend {
         let value = match r#type {
             Type::SignedInteger(size) => format!("int{}_t", size),
             Type::UnsignedInteger(size) => format!("uint{}_t", size),
+            Type::Boolean => "bool".into(),
             Type::Void => "void".into(),
             Type::Unknown => return Err(CBackendErrorKind::UnknownType.at(span)),
         };

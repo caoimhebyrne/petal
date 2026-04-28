@@ -33,6 +33,9 @@ pub enum ExpressionKind {
     /// A number literal.
     NumberLiteral(f64),
 
+    /// A boolean literal.
+    BooleanLiteral(bool),
+
     /// An identifier reference.
     IdentifierReference(String),
 

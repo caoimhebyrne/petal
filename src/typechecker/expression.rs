@@ -28,6 +28,8 @@ impl Typechecker {
         let r#type = match &mut expression.kind {
             ExpressionKind::NumberLiteral(value) => Typechecker::check_number_literal(value, expression.span),
 
+            ExpressionKind::BooleanLiteral(value) => Typechecker::check_boolean_literal(value, expression.span),
+
             ExpressionKind::BinaryOperation(binary_operation) => {
                 self.check_binary_operation(binary_operation, expression.span)
             }
@@ -46,6 +48,11 @@ impl Typechecker {
         //       e.g: If the checker expects an `i32`, and the literal supports that type, then we should use that.
         //       For now, all integer literals are i32.
         Ok(Type::SignedInteger(32))
+    }
+
+    /// Checks and resolves the type of the provided boolean literal.
+    fn check_boolean_literal(_value: &bool, _span: Span) -> Result<Type, TypecheckerError> {
+        Ok(Type::Boolean)
     }
 
     /// Checks and resolves the type of the provided [`BinaryOperation`].

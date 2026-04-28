@@ -7,6 +7,9 @@ pub enum Type {
     /// A signed integer.
     SignedInteger(u8),
 
+    /// A boolean (true or false).
+    Boolean,
+
     /// The nothing type.
     Void,
 
