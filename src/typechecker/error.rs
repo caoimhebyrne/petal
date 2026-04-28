@@ -27,6 +27,7 @@ pub enum TypecheckerErrorKind {
     IncompatibleReturnTypes { declared: Type, value: Type },
     FunctionCallArgumentSizeMismatch { name: String, expected: usize, got: usize },
     MissingFunctionCallArgument { function_name: String, parameter_name: String },
+    ExpectedPositionalFunctionCallArgument { parameter_name: String },
     DuplicateFunctionCallArgument(String),
     IncompatibleFunctionCallArgument { parameter_name: String, parameter_type: Type, argument_type: Type },
     DuplicateFunctionDeclaration(String),
@@ -92,6 +93,13 @@ impl Display for TypecheckerErrorKind {
                 write!(
                     f,
                     "No value was provided for parameter named '{parameter_name}' in call to function '{function_name}'"
+                )
+            }
+
+            Self::ExpectedPositionalFunctionCallArgument { parameter_name } => {
+                write!(
+                    f,
+                    "Parameter '{parameter_name}' is a positional parameter, an explicit name must not be provided"
                 )
             }
 

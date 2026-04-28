@@ -181,7 +181,7 @@ mod tests {
         assert_compiles(
             vec![
                 FunctionDeclaration::builder("foo")
-                    .parameter("argc", TypeExpr::named("i32"), Type::SignedInteger(32), Span::default())
+                    .parameter("argc", TypeExpr::named("i32"), Type::SignedInteger(32), false, Span::default())
                     .statement(Statement::from(
                         Return {
                             value: Some(Expression::new(
@@ -255,7 +255,7 @@ mod tests {
         assert_compiles(
             vec![
                 FunctionDeclaration::builder("foo")
-                    .parameter("argc", TypeExpr::named("i32"), Type::SignedInteger(32), Span::default())
+                    .parameter("argc", TypeExpr::named("i32"), Type::SignedInteger(32), false, Span::default())
                     .statement(Statement::from(
                         VariableDeclaration::new(
                             "variable",
@@ -278,7 +278,7 @@ mod tests {
         assert_compiles(
             vec![
                 FunctionDeclaration::builder("foo")
-                    .parameter("argc", TypeExpr::named("i32"), Type::SignedInteger(32), Span::default())
+                    .parameter("argc", TypeExpr::named("i32"), Type::SignedInteger(32), false, Span::default())
                     .statement(Statement::from(
                         VariableDeclaration::new(
                             "variable",
@@ -287,7 +287,7 @@ mod tests {
                             Expression::new(
                                 FunctionCall::builder("my_func")
                                     .argument(
-                                        "bar".into(),
+                                        None,
                                         Expression::new(ExpressionKind::NumberLiteral(1.0), Span::default()),
                                         Span::default(),
                                     )
@@ -311,7 +311,7 @@ mod tests {
         assert_compiles(
             vec![
                 FunctionDeclaration::builder("foo")
-                    .parameter("argc", TypeExpr::named("i32"), Type::SignedInteger(32), Span::default())
+                    .parameter("argc", TypeExpr::named("i32"), Type::SignedInteger(32), false, Span::default())
                     .statement(Statement::from(
                         VariableDeclaration::new(
                             "variable",
@@ -320,17 +320,17 @@ mod tests {
                             Expression::new(
                                 FunctionCall::builder("my_func")
                                     .argument(
-                                        "a".into(),
+                                        None,
                                         Expression::new(ExpressionKind::NumberLiteral(1.0), Span::default()),
                                         Span::default(),
                                     )
                                     .argument(
-                                        "b".into(),
+                                        None,
                                         Expression::new(ExpressionKind::NumberLiteral(2.0), Span::default()),
                                         Span::default(),
                                     )
                                     .argument(
-                                        "c".into(),
+                                        None,
                                         Expression::new(ExpressionKind::NumberLiteral(3.0), Span::default()),
                                         Span::default(),
                                     )
@@ -363,7 +363,7 @@ mod tests {
                             Expression::new(
                                 FunctionCall::builder("foo")
                                     .argument(
-                                        "bar".into(),
+                                        None,
                                         Expression::new(FunctionCall::builder("baz").build().into(), Span::default()),
                                         Span::default(),
                                     )
@@ -399,8 +399,8 @@ mod tests {
         assert_compiles(
             vec![
                 FunctionDeclaration::builder("foo")
-                    .parameter("a", TypeExpr::Named("i32".into()), Type::SignedInteger(32), Span::default())
-                    .parameter("b", TypeExpr::Named("i32".into()), Type::SignedInteger(32), Span::default())
+                    .parameter("a", TypeExpr::Named("i32".into()), Type::SignedInteger(32), false, Span::default())
+                    .parameter("b", TypeExpr::Named("i32".into()), Type::SignedInteger(32), false, Span::default())
                     .return_type(TypeExpr::named("i32"), Type::SignedInteger(32))
                     .build()
                     .into(),

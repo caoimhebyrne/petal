@@ -1,12 +1,15 @@
 use crate::{
-    ast::expression::{
-        Expression,
-        ExpressionKind,
-        binary_operation::BinaryOperation,
-        function_call::{
-            FunctionCall,
-            FunctionCallArgument,
+    ast::{
+        expression::{
+            Expression,
+            ExpressionKind,
+            binary_operation::BinaryOperation,
+            function_call::{
+                FunctionCall,
+                FunctionCallArgument,
+            },
         },
+        statement::function_declaration::FunctionParameter,
     },
     core::span::Span,
     typechecker::{
@@ -85,14 +88,15 @@ impl Typechecker {
             .at(span));
         }
 
-        // We also must check that each function call argument has been supplied once, anything else is undefined behavior.
-        for argument in &function_call.arguments {
-            let occurrences = function_call.arguments.iter().filter(|it| it.name == argument.name).count();
-            if occurrences > 1 {
-                return Err(TypecheckerErrorKind::DuplicateFunctionCallArgument(argument.name.clone()).at(span));
-            }
-        }
-
+        // By default, a function parameter is positional. A function parameter may also be named,
+        // Positional function parameters must _always_ come before named function parameters.
+        //
+        // We will process arguments in two passes:
+        // 1. The positional arguments. Each positional argument must match directly to the parameter
+        //    of the same position.
+        // 2. The named arguments. Each named argument must have a matching named parameter, and they
+        //    can be defined in any order.
+        //
         // FIXME: I don't know if this really belongs here, but it's the best place that I can put it for now. We
         //        are going to update the the function call to ensure that the Vec order of the arguments is
         //        the same order that the parameters are defined in.
@@ -101,25 +105,39 @@ impl Typechecker {
         //        check whether they match to the function's parameters.
         let mut ordered_arguments: Vec<FunctionCallArgument> = Vec::new();
 
-        for parameter in &checked_function.parameters {
-            let argument = function_call.arguments.iter_mut().find(|it| it.name == parameter.name).ok_or(
-                TypecheckerErrorKind::MissingFunctionCallArgument {
-                    function_name: function_call.name.clone(),
+        // Process the positional arguments. Each positional argument must have a matching parameter.
+        for (idx, parameter) in checked_function.parameters.iter().filter(|it| !it.is_named).enumerate() {
+            // A corresponding argument must exist, we checked the length of the `Vec`s above.
+            let argument = &mut function_call.arguments[idx];
+            if argument.name.is_some() {
+                return Err(TypecheckerErrorKind::ExpectedPositionalFunctionCallArgument {
                     parameter_name: parameter.name.clone(),
-                }
-                .at(span),
-            )?;
-
-            let argument_type = self.check_expression(&mut argument.value)?;
-            if argument_type != parameter.r#type {
-                return Err(TypecheckerErrorKind::IncompatibleFunctionCallArgument {
-                    parameter_name: parameter.name.clone(),
-                    parameter_type: parameter.r#type,
-                    argument_type,
                 }
                 .at(argument.span));
             }
 
+            // For completeness sake, we can also provide the name in the function call argument beyond this point.
+            argument.name = Some(parameter.name.clone());
+
+            self.check_function_call_argument(argument, parameter)?;
+            ordered_arguments.push(argument.clone());
+        }
+
+        // Process the named arguments.
+        for parameter in checked_function.parameters.iter().filter(|it| it.is_named) {
+            let argument = function_call
+                .arguments
+                .iter_mut()
+                .find(|it| it.name.as_ref().map(|it| it == &parameter.name).unwrap_or_default())
+                .ok_or(
+                    TypecheckerErrorKind::MissingFunctionCallArgument {
+                        function_name: function_call.name.clone(),
+                        parameter_name: parameter.name.clone(),
+                    }
+                    .at(span),
+                )?;
+
+            self.check_function_call_argument(argument, parameter)?;
             ordered_arguments.push(argument.clone());
         }
 
@@ -127,6 +145,26 @@ impl Typechecker {
 
         // All arguments have been type checked. The result of this function call is the return type of the function.
         Ok(checked_function.return_type)
+    }
+
+    /// Checks the type of a [`FunctionArgument`] against its matching [`FunctionParameter`].
+    fn check_function_call_argument(
+        &mut self,
+        argument: &mut FunctionCallArgument,
+        parameter: &FunctionParameter,
+    ) -> Result<(), TypecheckerError> {
+        let argument_type = self.check_expression(&mut argument.value)?;
+
+        if argument_type != parameter.r#type {
+            return Err(TypecheckerErrorKind::IncompatibleFunctionCallArgument {
+                parameter_name: parameter.name.clone(),
+                parameter_type: parameter.r#type,
+                argument_type,
+            }
+            .at(argument.span));
+        }
+
+        Ok(())
     }
 
     /// Checks and resolves the type of the provided identifier reference.

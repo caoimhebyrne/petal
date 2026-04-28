@@ -196,6 +196,13 @@ impl ASTParser {
         self.expect(TokenKind::OpenParen)?;
 
         while !self.peek_is(TokenKind::CloseParen) {
+            let is_named = if self.peek_is(TokenKind::Tilda) {
+                self.expect(TokenKind::Tilda)?;
+                true
+            } else {
+                false
+            };
+
             let (parameter_name, parameter_name_span) = self.expect_identifier()?;
             self.expect(TokenKind::Colon)?;
             let (parameter_type_name, parameter_type_name_span) = self.expect_identifier()?;
@@ -204,6 +211,7 @@ impl ASTParser {
                 parameter_name,
                 TypeExpr::Named(parameter_type_name),
                 Type::default(),
+                is_named,
                 Span::between(parameter_name_span, parameter_type_name_span),
             );
 
@@ -295,14 +303,21 @@ impl ASTParser {
         self.expect(TokenKind::OpenParen)?;
 
         while !self.peek_is(TokenKind::CloseParen) {
-            let (argument_name, argument_name_span) = self.expect_identifier()?;
+            // If the token after the current one is present, then this is a named parameter.
+            let identifier = if self.peek_nth(1).map(|it| it.kind == TokenKind::Colon).unwrap_or_default() {
+                let identifier = self.expect_identifier()?;
 
-            self.expect(TokenKind::Colon)?;
+                self.expect(TokenKind::Colon)?;
+
+                Some(identifier)
+            } else {
+                None
+            };
 
             let value = self.parse_expression()?;
-            let span = Span::between(argument_name_span, value.span);
+            let span = identifier.as_ref().map(|it| Span::between(it.1, value.span)).unwrap_or(value.span);
 
-            builder = builder.argument(argument_name, value, span);
+            builder = builder.argument(identifier.map(|it| it.0), value, span);
 
             if self.peek_is(TokenKind::CloseParen) {
                 continue;
@@ -451,6 +466,7 @@ mod tests {
                                         "i32",
                                     ),
                                     type: Unknown,
+                                    is_named: false,
                                     span: Span {
                                         start: 11,
                                         length: 8,
@@ -506,6 +522,7 @@ mod tests {
                                         "i32",
                                     ),
                                     type: Unknown,
+                                    is_named: false,
                                     span: Span {
                                         start: 11,
                                         length: 8,
@@ -517,6 +534,7 @@ mod tests {
                                         "todo",
                                     ),
                                     type: Unknown,
+                                    is_named: false,
                                     span: Span {
                                         start: 20,
                                         length: 8,
@@ -730,7 +748,9 @@ mod tests {
                                                             name: "foo",
                                                             arguments: [
                                                                 FunctionCallArgument {
-                                                                    name: "bar",
+                                                                    name: Some(
+                                                                        "bar",
+                                                                    ),
                                                                     value: Expression {
                                                                         kind: IdentifierReference(
                                                                             "ident",
@@ -816,7 +836,9 @@ mod tests {
                                                             name: "foo",
                                                             arguments: [
                                                                 FunctionCallArgument {
-                                                                    name: "bar",
+                                                                    name: Some(
+                                                                        "bar",
+                                                                    ),
                                                                     value: Expression {
                                                                         kind: IdentifierReference(
                                                                             "ident_a",
@@ -832,7 +854,9 @@ mod tests {
                                                                     },
                                                                 },
                                                                 FunctionCallArgument {
-                                                                    name: "baz",
+                                                                    name: Some(
+                                                                        "baz",
+                                                                    ),
                                                                     value: Expression {
                                                                         kind: IdentifierReference(
                                                                             "ident_b",
@@ -916,7 +940,9 @@ mod tests {
                                                             name: "foo",
                                                             arguments: [
                                                                 FunctionCallArgument {
-                                                                    name: "baz",
+                                                                    name: Some(
+                                                                        "baz",
+                                                                    ),
                                                                     value: Expression {
                                                                         kind: FunctionCall(
                                                                             FunctionCall {

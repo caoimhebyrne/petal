@@ -31,7 +31,7 @@ impl FunctionCall {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionCallArgument {
     /// The name provided for the argument.
-    pub name: String,
+    pub name: Option<String>,
 
     /// The value provided for the argument.
     pub value: Expression,
@@ -62,7 +62,7 @@ impl FunctionCallBuilder {
     }
 
     /// Adds an argument to this function call.
-    pub fn argument(mut self, name: String, value: Expression, span: Span) -> Self {
+    pub fn argument(mut self, name: Option<String>, value: Expression, span: Span) -> Self {
         self.arguments.push(FunctionCallArgument { name, value, span });
         self
     }

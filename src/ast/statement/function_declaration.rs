@@ -86,8 +86,15 @@ impl FunctionDeclarationBuilder {
     }
 
     /// Adds a parameter to the body of the function.
-    pub fn parameter(mut self, name: impl Into<String>, type_expr: TypeExpr, r#type: Type, span: Span) -> Self {
-        self.parameters.push(FunctionParameter::new(name, type_expr, r#type, span));
+    pub fn parameter(
+        mut self,
+        name: impl Into<String>,
+        type_expr: TypeExpr,
+        r#type: Type,
+        is_named: bool,
+        span: Span,
+    ) -> Self {
+        self.parameters.push(FunctionParameter::new(name, type_expr, r#type, is_named, span));
         self
     }
 
@@ -115,13 +122,16 @@ pub struct FunctionParameter {
     /// The resolved type of the parameter.
     pub r#type: Type,
 
+    /// Whether the parameter is a named parameter.
+    pub is_named: bool,
+
     /// The location within the source code that this parameter occurred at.
     pub span: Span,
 }
 
 impl FunctionParameter {
     /// Creates a new [`FunctionParameter`].
-    pub fn new(name: impl Into<String>, type_expr: TypeExpr, r#type: Type, span: Span) -> Self {
-        Self { name: name.into(), type_expr, r#type, span }
+    pub fn new(name: impl Into<String>, type_expr: TypeExpr, r#type: Type, is_named: bool, span: Span) -> Self {
+        Self { name: name.into(), type_expr, r#type, is_named, span }
     }
 }

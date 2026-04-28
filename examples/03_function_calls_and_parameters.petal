@@ -6,16 +6,15 @@
 //
 // In this example, we'll define a function (`i32_subtract`), which takes two `i32`s and subtracts them.
 //
-// TODO:
 // The `~` character before a parameter name indicates that the parameter must have a _named argument_ in
 // the function call, all parameters without this modifier do not require a named argument in the function
 // call.
-func i32_subtract(a: i32, b: i32) -> i32 {
+func i32_subtract(a: i32, ~b: i32) -> i32 {
     return a - b;
 }
 
 func main() -> i32 {
-    // When calling a function, you must specify the name of each parameter that you are providing a
-    // value for.
-    return i32_subtract(a: 10, b: 5);
+    // Here, we do not need to specify a name for the first argument, as its parameter is not named.
+    // We need to specify a name for the second argument, as its parameter is named (see the `~`).
+    return i32_subtract(10, b: 5);
 }
