@@ -86,6 +86,12 @@ pub enum Keyword {
 
     /// The false keyword (boolean literal).
     False,
+
+    /// An if expression.
+    If,
+
+    /// An else expression.
+    Else,
 }
 
 impl Keyword {
@@ -97,6 +103,8 @@ impl Keyword {
             "return" => Keyword::Return,
             "true" => Keyword::True,
             "false" => Keyword::False,
+            "if" => Keyword::If,
+            "else" => Keyword::Else,
 
             _ => return None,
         };

@@ -8,6 +8,7 @@ use crate::{
             FunctionDeclaration,
             FunctionParameter,
         },
+        r#if::If,
         r#return::Return,
         variable_assignment::VariableAssignment,
         variable_declaration::VariableDeclaration,
@@ -40,6 +41,8 @@ impl Typechecker {
             StatementKind::VariableAssignment(variable_assignment) => {
                 self.check_variable_assignment(variable_assignment, statement.span)
             }
+
+            StatementKind::If(r#if) => self.check_if(r#if, statement.span),
         }
     }
 
@@ -147,6 +150,28 @@ impl Typechecker {
             }
             .at(span));
         }
+
+        Ok(())
+    }
+
+    /// Checks and resolves any [`Type`]s referenced in the provided [`If`].
+    fn check_if(&mut self, r#if: &mut If, _span: Span) -> Result<(), TypecheckerError> {
+        // The type of the condition must be a boolean.
+        let condition_type = self.check_expression(&mut r#if.condition)?;
+        if condition_type != Type::Boolean {
+            return Err(TypecheckerErrorKind::IncompatibleTypes { expected: Type::Boolean, got: condition_type }
+                .at(r#if.condition.span));
+        }
+
+        // All of the statements within the block must be valid.
+        let previous_variables = take(&mut self.variables);
+        self.variables = previous_variables.clone();
+
+        for statement in &mut r#if.block {
+            self.check_statement(statement)?;
+        }
+
+        self.variables = previous_variables;
 
         Ok(())
     }

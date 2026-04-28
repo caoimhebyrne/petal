@@ -16,6 +16,7 @@ use crate::{
         statement::{
             Statement,
             function_declaration::FunctionDeclaration,
+            r#if::If,
             r#return::Return,
             variable_assignment::VariableAssignment,
             variable_declaration::VariableDeclaration,
@@ -77,21 +78,26 @@ impl ASTParser {
     fn parse_statement(&mut self) -> Result<Statement, ASTError> {
         let token = self.peek_expect_any()?;
 
-        let statement = match token.kind {
-            TokenKind::Keyword(Keyword::Return) => self.parse_return()?,
+        let (statement, requires_semicolon) = match token.kind {
+            TokenKind::Keyword(Keyword::Return) => (self.parse_return()?, true),
 
-            TokenKind::Identifier(_) => {
+            TokenKind::Keyword(Keyword::If) => (self.parse_if()?, false),
+
+            TokenKind::Identifier(_) => (
                 if self.peek_nth(1).map(|it| it.kind == TokenKind::Equals).unwrap_or_default() {
                     self.parse_variable_assignment()
                 } else {
                     self.parse_variable_declaration()
-                }?
-            }
+                }?,
+                true,
+            ),
 
             _ => return Err(ASTErrorKind::ExpectedStatement(token.kind.clone()).at(token.span)),
         };
 
-        self.expect(TokenKind::Semicolon)?;
+        if requires_semicolon {
+            self.expect(TokenKind::Semicolon)?;
+        }
 
         Ok(statement)
     }
@@ -341,6 +347,26 @@ impl ASTParser {
         let close_paren_span = self.expect_span(TokenKind::CloseParen)?;
 
         Ok((builder.build(), Span::between(function_name_span, close_paren_span)))
+    }
+
+    /// Attempts to parse an if statement from the [ASTParser]'s current position.
+    fn parse_if(&mut self) -> Result<Statement, ASTError> {
+        // The first token must be the if keyword.
+        let if_keyword_span = self.expect_span(TokenKind::Keyword(Keyword::If))?;
+
+        // Then there must be a condition.
+        let condition = self.parse_expression()?;
+
+        // And then the block of code to execute when the condition is true.
+        let mut block: Vec<Statement> = Vec::new();
+        self.expect(TokenKind::OpenBrace)?;
+
+        while !self.peek_is(TokenKind::CloseBrace) {
+            block.push(self.parse_statement()?);
+        }
+
+        let closing_brace_span = self.expect_span(TokenKind::CloseBrace)?;
+        Ok(Statement::from(If::new(condition, block), Span::between(if_keyword_span, closing_brace_span)))
     }
 
     /// Returns the token at the [ASTParser]'s current position.

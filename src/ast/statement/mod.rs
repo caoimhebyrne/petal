@@ -1,6 +1,7 @@
 use crate::{
     ast::statement::{
         function_declaration::FunctionDeclaration,
+        r#if::If,
         r#return::Return,
         variable_assignment::VariableAssignment,
         variable_declaration::VariableDeclaration,
@@ -9,6 +10,7 @@ use crate::{
 };
 
 pub mod function_declaration;
+pub mod r#if;
 pub mod r#return;
 pub mod variable_assignment;
 pub mod variable_declaration;
@@ -41,6 +43,9 @@ impl Statement {
 pub enum StatementKind {
     /// A function declaration statement.
     FunctionDeclaration(FunctionDeclaration),
+
+    /// An if statement.
+    If(If),
 
     /// A return statement.
     Return(Return),

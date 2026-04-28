@@ -1,0 +1,11 @@
+// `if` statements can be used to run code when a certain expression evaluates to be true.
+//
+// This code should evaluate to have an exit code of 1, changing the if statement's condition
+// to `true`, should make it return 0!
+func main() -> i32 {
+    if false {
+        return 0;
+    }
+
+    return 1;
+}

@@ -30,6 +30,7 @@ pub enum TypecheckerErrorKind {
     ExpectedPositionalFunctionCallArgument { parameter_name: String },
     DuplicateFunctionCallArgument(String),
     IncompatibleFunctionCallArgument { parameter_name: String, parameter_type: Type, argument_type: Type },
+    IncompatibleTypes { expected: Type, got: Type },
     DuplicateFunctionDeclaration(String),
     DuplicateVariableDeclaration(String),
     UndeclaredFunction(String),
@@ -113,6 +114,10 @@ impl Display for TypecheckerErrorKind {
 
             Self::DuplicateVariableDeclaration(name) => {
                 write!(f, "A variable named '{name}' already exists in this scope")
+            }
+
+            Self::IncompatibleTypes { expected, got } => {
+                write!(f, "Expected type '{:?}', but got '{:?}'", expected, got)
             }
         }
     }

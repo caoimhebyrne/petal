@@ -6,6 +6,7 @@ use crate::{
             FunctionDeclaration,
             FunctionParameter,
         },
+        r#if::If,
         r#return::Return,
         variable_assignment::VariableAssignment,
         variable_declaration::VariableDeclaration,
@@ -34,6 +35,8 @@ impl CBackend {
             StatementKind::VariableAssignment(variable_assignment) => {
                 CBackend::compile_variable_assignment(variable_assignment, statement.span)
             }
+
+            StatementKind::If(r#if) => CBackend::compile_if(r#if, statement.span),
         }
     }
 
@@ -118,5 +121,17 @@ impl CBackend {
         let value = CBackend::compile_expression(&variable_assignment.value)?;
 
         Ok(format!("{name} = {value};"))
+    }
+
+    /// Compiles an if statement into C code.
+    pub fn compile_if(r#if: &If, _span: Span) -> Result<String, CBackendError> {
+        let condition = CBackend::compile_expression(&r#if.condition)?;
+        let mut string = String::new();
+
+        string.push_str(&format!("if ({condition}) {{\n"));
+        string.push_str(&CBackend::compile_block(&r#if.block)?);
+        string.push_str("}\n");
+
+        Ok(string)
     }
 }
