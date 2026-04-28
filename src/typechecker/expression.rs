@@ -3,7 +3,10 @@ use crate::{
         expression::{
             Expression,
             ExpressionKind,
-            binary_operation::BinaryOperation,
+            binary_operation::{
+                BinaryOperand,
+                BinaryOperation,
+            },
             function_call::{
                 FunctionCall,
                 FunctionCallArgument,
@@ -68,6 +71,11 @@ impl Typechecker {
         // Both of the types must be the same. If they are not, then we must error.
         if left != right {
             return Err(TypecheckerErrorKind::IncompatibleBinaryOperationTypes { left, right }.at(span));
+        }
+
+        // If the operator is comparing the two values, then the returned type is a boolean.
+        if binary_operation.operand == BinaryOperand::Equals || binary_operation.operand == BinaryOperand::NotEquals {
+            return Ok(Type::Boolean);
         }
 
         // TODO: Check if the operation is supported on the type. Some types do not support certain binary operations.

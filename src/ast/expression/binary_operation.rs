@@ -34,4 +34,6 @@ pub enum BinaryOperand {
     Subtract,
     Divide,
     Multiply,
+    Equals,
+    NotEquals,
 }

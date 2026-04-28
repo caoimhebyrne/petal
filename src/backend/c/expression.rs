@@ -71,6 +71,8 @@ impl CBackend {
             BinaryOperand::Subtract => "-",
             BinaryOperand::Multiply => "*",
             BinaryOperand::Divide => "/",
+            BinaryOperand::Equals => "==",
+            BinaryOperand::NotEquals => "!=",
         };
 
         Ok(format!("{left} {operand} {right}"))

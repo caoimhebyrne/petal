@@ -134,7 +134,7 @@ impl ASTParser {
 
     /// Attempts to parse a multiplication or division expression at the [ASTParser]'s current position.
     fn parse_multiplication_or_division_expression(&mut self) -> Result<Expression, ASTError> {
-        let left = self.parse_value()?;
+        let left = self.parse_equals_or_not_equals_expression()?;
 
         let expression = if self.peek_is(TokenKind::Asterisk) {
             self.expect(TokenKind::Asterisk)?;
@@ -150,6 +150,33 @@ impl ASTParser {
             let span = Span::between(left.span, right.span);
 
             Expression::new(BinaryOperation::new(left, right, BinaryOperand::Divide).into(), span)
+        } else {
+            left
+        };
+
+        Ok(expression)
+    }
+
+    /// Attempts to parse an equals or not equals expression at the [ASTParser]'s current position.
+    fn parse_equals_or_not_equals_expression(&mut self) -> Result<Expression, ASTError> {
+        let left = self.parse_value()?;
+
+        let expression = if self.peek_is(TokenKind::Equals) {
+            self.expect(TokenKind::Equals)?;
+            self.expect(TokenKind::Equals)?;
+
+            let right = self.parse_expression()?;
+            let span = Span::between(left.span, right.span);
+
+            Expression::new(BinaryOperation::new(left, right, BinaryOperand::Equals).into(), span)
+        } else if self.peek_is(TokenKind::ExclamationMark) {
+            self.expect(TokenKind::ExclamationMark)?;
+            self.expect(TokenKind::Equals)?;
+
+            let right = self.parse_expression()?;
+            let span = Span::between(left.span, right.span);
+
+            Expression::new(BinaryOperation::new(left, right, BinaryOperand::NotEquals).into(), span)
         } else {
             left
         };

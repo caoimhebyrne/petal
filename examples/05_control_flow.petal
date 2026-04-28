@@ -1,9 +1,9 @@
 // `if` statements can be used to run code when a certain expression evaluates to be true.
 //
-// This code should evaluate to have an exit code of 1, changing the if statement's condition
-// to `true`, should make it return 0!
+// This code should evaluate to have an exit code of 1, try changing the `2` to a `1` to make both
+// sides equal on the condition!
 func main() -> i32 {
-    if false {
+    if 1 == 2 {
         return 0;
     }
 

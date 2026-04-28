@@ -62,6 +62,9 @@ pub enum TokenKind {
     /// A tilda: ~
     Tilda,
 
+    /// An exclamation mark: !
+    ExclamationMark,
+
     /// An identifier.
     Identifier(String),
 
