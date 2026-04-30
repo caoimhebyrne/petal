@@ -67,13 +67,15 @@ impl CheckedModule {
 /// An error that occurs while creating a Petal module.
 pub enum ModuleError {
     /// The file could not be read.
-    IOError(io::Error),
+    IOError { path: String, error: io::Error },
 }
 
 impl Module {
     /// Creates a new [`Module`] from a file path.
     pub fn create(id: ModuleId, file_path: String) -> Result<Module, ModuleError> {
-        let file_contents = fs::read_to_string(&file_path).map_err(ModuleError::IOError)?;
+        let file_contents =
+            fs::read_to_string(&file_path).map_err(|error| ModuleError::IOError { path: file_path.clone(), error })?;
+
         Ok(Module { id, file_path, file_contents })
     }
 
@@ -97,7 +99,7 @@ impl Error for ModuleError {
 impl fmt::Display for ModuleError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ModuleError::IOError(error) => write!(f, "failed to read module file contents: {}", error),
+            ModuleError::IOError { path, error } => write!(f, "Could not read from '{path}': {error}"),
         }
     }
 }
