@@ -16,10 +16,14 @@ use crate::{
         span::Span,
     },
     lexer::Lexer,
+    module_registry::ModuleId,
 };
 
 /// A module being compiled by the Petal compiler.
 pub struct Module {
+    /// The unique identifier for this [`Module`].
+    pub id: ModuleId,
+
     /// The path of the file that this module is being created from.
     pub file_path: String,
 
@@ -62,17 +66,17 @@ pub enum ModuleError {
 
 impl Module {
     /// Creates a new [`Module`] from a file path.
-    pub fn create(file_path: String) -> Result<Module, ModuleError> {
+    pub fn create(id: ModuleId, file_path: String) -> Result<Module, ModuleError> {
         let file_contents = fs::read_to_string(&file_path).map_err(ModuleError::IOError)?;
-        Ok(Module { file_path, file_contents })
+        Ok(Module { id, file_path, file_contents })
     }
 
     /// Attempts to parse AST nodes from this module.
     pub fn parse(&self) -> Result<ParsedModule, Box<dyn Error>> {
-        let mut lexer = Lexer::new(&self.file_contents);
+        let mut lexer = Lexer::new(self.id, &self.file_contents);
 
         let tokens = lexer.parse()?;
-        let ast = ASTParser::new_and_parse(tokens)?;
+        let ast = ASTParser::new_and_parse(self.id, tokens)?;
 
         Ok(ParsedModule::new(ast))
     }

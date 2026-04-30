@@ -5,6 +5,7 @@ use crate::{
         error::Error,
         span::Span,
     },
+    module_registry::ModuleId,
     typechecker::r#type::Type,
 };
 
@@ -31,9 +32,10 @@ impl CBackendErrorKind {
     pub fn at(self, span: Span) -> CBackendError {
         CBackendError::new(self, span)
     }
+
     /// Creates a [CBackendError] from a [CBackendErrorKind].
-    pub fn without_span(self) -> CBackendError {
-        CBackendError::new(self, Span::default())
+    pub fn without_span(self, module_id: ModuleId) -> CBackendError {
+        CBackendError::new(self, Span::new(module_id, 0, 0))
     }
 }
 

@@ -1,6 +1,17 @@
+use crate::module_registry::ModuleId;
+
 /// The location of some text within an original source file.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Span {
+    /// The module that the span occurred in.
+    pub module_id: ModuleId,
+
+    /// The location that the span occurred at.
+    pub location: SpanLocation,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct SpanLocation {
     /// The index of the character in the source file that this span starts at.
     pub start: usize,
 
@@ -23,13 +34,20 @@ pub struct SpanSourceInformation {
 
 impl Span {
     /// Creates a new [`Span`].
-    pub fn new(start: usize, length: usize) -> Self {
-        Span { start, length }
+    pub fn new(module_id: ModuleId, start: usize, length: usize) -> Self {
+        Span { module_id, location: SpanLocation { start, length } }
     }
 
     /// Creates a new [`Span`] from the start and end of the provided spans.
     pub fn between(start: Span, end: Span) -> Self {
-        Span { start: start.start, length: (end.start + end.length) - start.start }
+        Span { module_id: start.module_id, location: SpanLocation::between(start.location, end.location) }
+    }
+}
+
+impl SpanLocation {
+    /// Creates a new [`SpanLocation`] from the start and end of the provided spans.
+    pub fn between(start: SpanLocation, end: SpanLocation) -> Self {
+        Self { start: start.start, length: (end.start + end.length) - start.start }
     }
 
     /// Returns information about this span's location in the provided [`source`] string.
@@ -62,17 +80,17 @@ mod test {
     use pretty_assertions::assert_eq;
 
     use crate::core::span::{
-        Span,
+        SpanLocation,
         SpanSourceInformation,
     };
 
     #[test]
     fn get_source_information_without_new_lines() {
         let source = "ab c";
-        let span = Span { start: 3, length: 1 };
+        let location = SpanLocation { start: 3, length: 1 };
 
         assert_eq!(
-            span.get_source_information(source),
+            location.get_source_information(source),
             Some(SpanSourceInformation { line_index: 0, column_index: 3, line: "ab c".into() })
         )
     }
@@ -80,10 +98,10 @@ mod test {
     #[test]
     fn get_source_information_with_new_lines() {
         let source = "\n\nidentifier 123\n";
-        let span = Span { start: 12, length: 3 };
+        let location = SpanLocation { start: 12, length: 3 };
 
         assert_eq!(
-            span.get_source_information(source),
+            location.get_source_information(source),
             Some(SpanSourceInformation { line_index: 2, column_index: 10, line: "identifier 123".into() })
         )
     }

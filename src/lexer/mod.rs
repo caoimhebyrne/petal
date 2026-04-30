@@ -13,6 +13,7 @@ use crate::{
             TokenKind,
         },
     },
+    module_registry::ModuleId,
 };
 
 pub mod error;
@@ -20,6 +21,9 @@ pub mod token;
 
 /// A basic [`Lexer`] for the Petal programming language.
 pub struct Lexer<'a> {
+    /// The ID of the module being parsed.
+    module_id: ModuleId,
+
     /// The contents of the source file to parse.
     source: Chars<'a>,
 
@@ -29,8 +33,8 @@ pub struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     /// Creates a new [`Lexer`].
-    pub fn new(source: &'a str) -> Self {
-        Lexer { source: source.chars(), cursor: 0 }
+    pub fn new(module_id: ModuleId, source: &'a str) -> Self {
+        Lexer { module_id, source: source.chars(), cursor: 0 }
     }
 
     /// Attempts to parse the source code within this [`Lexer`] into a [`Vec`] of [`Token`]s.
@@ -165,7 +169,7 @@ impl<'a> Lexer<'a> {
         //
         // The only exception to that is a bad input, but bugs for that should be caught by the
         // unit tests.
-        Span { start: self.cursor - length, length }
+        Span::new(self.module_id, self.cursor - length, length)
     }
 }
 
@@ -174,10 +178,13 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::lexer::token::Keyword;
+    use crate::{
+        lexer::token::Keyword,
+        module_registry::MOCK_MODULE_ID,
+    };
 
     fn assert_lexer_tokens(source: &str, tokens: Vec<Token>) {
-        let mut lexer = Lexer::new(source);
+        let mut lexer = Lexer::new(MOCK_MODULE_ID, source);
         assert_eq!(lexer.parse(), Ok(tokens));
     }
 
@@ -186,33 +193,36 @@ mod tests {
         assert_lexer_tokens(
             "(   )",
             vec![
-                Token::new(TokenKind::OpenParen, Span { start: 0, length: 1 }),
-                Token::new(TokenKind::CloseParen, Span { start: 4, length: 1 }),
+                Token::new(TokenKind::OpenParen, Span::new(MOCK_MODULE_ID, 0, 1)),
+                Token::new(TokenKind::CloseParen, Span::new(MOCK_MODULE_ID, 4, 1)),
             ],
         )
     }
 
     #[test]
     fn parse_integer_number_literal() {
-        assert_lexer_tokens("123456", vec![Token::new(TokenKind::Number(123456.0), Span { start: 0, length: 6 })])
+        assert_lexer_tokens("123456", vec![Token::new(TokenKind::Number(123456.0), Span::new(MOCK_MODULE_ID, 0, 6))])
     }
 
     #[test]
     fn parse_float_number_literal() {
-        assert_lexer_tokens("123.456", vec![Token::new(TokenKind::Number(123.456), Span { start: 0, length: 7 })]);
+        assert_lexer_tokens("123.456", vec![Token::new(TokenKind::Number(123.456), Span::new(MOCK_MODULE_ID, 0, 7))]);
     }
 
     #[test]
     fn parse_identifier() {
         assert_lexer_tokens(
             "identifier",
-            vec![Token::new(TokenKind::Identifier("identifier".into()), Span { start: 0, length: 10 })],
+            vec![Token::new(TokenKind::Identifier("identifier".into()), Span::new(MOCK_MODULE_ID, 0, 10))],
         );
     }
 
     #[test]
     fn parse_func_keyword() {
-        assert_lexer_tokens("func", vec![Token::new(TokenKind::Keyword(Keyword::Func), Span { start: 0, length: 4 })]);
+        assert_lexer_tokens(
+            "func",
+            vec![Token::new(TokenKind::Keyword(Keyword::Func), Span::new(MOCK_MODULE_ID, 0, 4))],
+        );
     }
 
     #[test]
@@ -220,10 +230,10 @@ mod tests {
         assert_lexer_tokens(
             "i32 identifier = 100",
             vec![
-                Token::new(TokenKind::Identifier("i32".into()), Span { start: 0, length: 3 }),
-                Token::new(TokenKind::Identifier("identifier".into()), Span { start: 4, length: 10 }),
-                Token::new(TokenKind::Equals, Span { start: 15, length: 1 }),
-                Token::new(TokenKind::Number(100.0), Span { start: 17, length: 3 }),
+                Token::new(TokenKind::Identifier("i32".into()), Span::new(MOCK_MODULE_ID, 0, 3)),
+                Token::new(TokenKind::Identifier("identifier".into()), Span::new(MOCK_MODULE_ID, 4, 10)),
+                Token::new(TokenKind::Equals, Span::new(MOCK_MODULE_ID, 15, 1)),
+                Token::new(TokenKind::Number(100.0), Span::new(MOCK_MODULE_ID, 17, 3)),
             ],
         );
     }
@@ -233,12 +243,12 @@ mod tests {
         assert_lexer_tokens(
             "func test() {}",
             vec![
-                Token::new(TokenKind::Keyword(Keyword::Func), Span { start: 0, length: 4 }),
-                Token::new(TokenKind::Identifier("test".into()), Span { start: 5, length: 4 }),
-                Token::new(TokenKind::OpenParen, Span { start: 9, length: 1 }),
-                Token::new(TokenKind::CloseParen, Span { start: 10, length: 1 }),
-                Token::new(TokenKind::OpenBrace, Span { start: 12, length: 1 }),
-                Token::new(TokenKind::CloseBrace, Span { start: 13, length: 1 }),
+                Token::new(TokenKind::Keyword(Keyword::Func), Span::new(MOCK_MODULE_ID, 0, 4)),
+                Token::new(TokenKind::Identifier("test".into()), Span::new(MOCK_MODULE_ID, 5, 4)),
+                Token::new(TokenKind::OpenParen, Span::new(MOCK_MODULE_ID, 9, 1)),
+                Token::new(TokenKind::CloseParen, Span::new(MOCK_MODULE_ID, 10, 1)),
+                Token::new(TokenKind::OpenBrace, Span::new(MOCK_MODULE_ID, 12, 1)),
+                Token::new(TokenKind::CloseBrace, Span::new(MOCK_MODULE_ID, 13, 1)),
             ],
         );
     }
@@ -248,9 +258,9 @@ mod tests {
         assert_lexer_tokens(
             "return 123;",
             vec![
-                Token::new(TokenKind::Keyword(Keyword::Return), Span { start: 0, length: 6 }),
-                Token::new(TokenKind::Number(123.0), Span { start: 7, length: 3 }),
-                Token::new(TokenKind::Semicolon, Span { start: 10, length: 1 }),
+                Token::new(TokenKind::Keyword(Keyword::Return), Span::new(MOCK_MODULE_ID, 0, 6)),
+                Token::new(TokenKind::Number(123.0), Span::new(MOCK_MODULE_ID, 7, 3)),
+                Token::new(TokenKind::Semicolon, Span::new(MOCK_MODULE_ID, 10, 1)),
             ],
         );
     }
@@ -259,16 +269,16 @@ mod tests {
     fn skips_comments_but_retains_forward_slash() {
         assert_lexer_tokens(
             "// This is a test!\n//This is another test!\n/",
-            vec![Token::new(TokenKind::ForwardSlash, Span { start: 43, length: 1 })],
+            vec![Token::new(TokenKind::ForwardSlash, Span::new(MOCK_MODULE_ID, 43, 1))],
         );
     }
 
     #[test]
     fn error_unexpected_character() {
-        let mut lexer = Lexer::new("\u{200b}");
+        let mut lexer = Lexer::new(MOCK_MODULE_ID, "\u{200b}");
         assert_eq!(
             lexer.parse(),
-            Err(LexerError::new(LexerErrorKind::UnrecognizedCharacter('\u{200b}'), Span { start: 0, length: 1 }))
+            Err(LexerError::new(LexerErrorKind::UnrecognizedCharacter('\u{200b}'), Span::new(MOCK_MODULE_ID, 0, 1)))
         );
     }
 }

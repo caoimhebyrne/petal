@@ -10,7 +10,7 @@ use owo_colors::OwoColorize;
 use crate::{
     backend::c::CBackend,
     core::error::Error,
-    module::Module,
+    module_registry::ModuleRegistry,
     typechecker::Typechecker,
 };
 
@@ -19,6 +19,7 @@ pub mod backend;
 pub mod core;
 pub mod lexer;
 pub mod module;
+pub mod module_registry;
 pub mod typechecker;
 
 #[derive(Parser, Debug)]
@@ -43,10 +44,11 @@ struct Args {
 
 fn main() -> ExitCode {
     let args = Args::parse();
+    let mut module_registry = ModuleRegistry::default();
 
     println!("{} Creating module from '{}'", "[1/5]".bright_purple(), args.input);
 
-    let module = match Module::create(args.input.clone()) {
+    let module_id = match module_registry.create_module(args.input.clone()) {
         Ok(value) => value,
         Err(error) => {
             eprintln!("error: {}", error);
@@ -54,12 +56,14 @@ fn main() -> ExitCode {
         }
     };
 
+    let module = module_registry.get_module(module_id);
+
     println!("{} Parsing module", "[2/5]".bright_purple());
 
     let parsed_module = match module.parse() {
         Ok(value) => value,
         Err(error) => {
-            error.print_to_stderr(&module.file_path, &module.file_contents);
+            error.print_to_stderr(&module_registry, module_id);
             return ExitCode::FAILURE;
         }
     };
@@ -70,7 +74,7 @@ fn main() -> ExitCode {
     let checked_module = match typechecker.check(parsed_module) {
         Ok(value) => value,
         Err(error) => {
-            error.print_to_stderr(&module.file_path, &module.file_contents);
+            error.print_to_stderr(&module_registry, module_id);
             return ExitCode::FAILURE;
         }
     };
@@ -80,7 +84,7 @@ fn main() -> ExitCode {
     let code = match CBackend::emit_code(&checked_module) {
         Ok(value) => value,
         Err(error) => {
-            error.print_to_stderr(&module.file_path, &module.file_contents);
+            error.print_to_stderr(&module_registry, module_id);
             return ExitCode::FAILURE;
         }
     };
@@ -97,8 +101,8 @@ fn main() -> ExitCode {
     if !args.no_emit_binary {
         println!("{} Compiling binary ('{binary_file_name}')", "[5/5]".bright_purple());
 
-        if let Err(error) = CBackend::emit_binary(&code, binary_file_name) {
-            error.print_to_stderr(&module.file_path, &module.file_contents);
+        if let Err(error) = CBackend::emit_binary(module.id, &code, binary_file_name) {
+            error.print_to_stderr(&module_registry, module_id);
             return ExitCode::FAILURE;
         }
     }
