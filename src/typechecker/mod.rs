@@ -70,7 +70,7 @@ impl Typechecker {
             self.check_statement(statement)?;
         }
 
-        Ok(CheckedModule::new(module.ast))
+        Ok(CheckedModule::new(module.id, module.ast))
     }
 
     /// Attempts to get a [`CheckedFunction`] from this [`Typechecker`] by its name.

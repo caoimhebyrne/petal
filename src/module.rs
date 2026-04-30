@@ -33,28 +33,34 @@ pub struct Module {
 
 /// A module that has been parsed into an AST.
 pub struct ParsedModule {
+    /// The unique identifier for this [`ParsedModule`]. This is inherited from its parent [`Module`].
+    pub id: ModuleId,
+
     /// The top-level statements within this module.
     pub ast: Vec<Statement>,
 }
 
 impl ParsedModule {
     /// Creates a new [ParsedModule].
-    pub fn new(ast: Vec<Statement>) -> Self {
-        Self { ast }
+    pub fn new(id: ModuleId, ast: Vec<Statement>) -> Self {
+        Self { id, ast }
     }
 }
 
 /// A module that has been verified by the Typechecker.
 #[derive(Debug)]
 pub struct CheckedModule {
+    /// The unique identifier for this [`CheckedModule`]. This is inherited from its parent [`ParsedModule`].
+    pub id: ModuleId,
+
     /// The top-level statements within this module.
     pub ast: Vec<Statement>,
 }
 
 impl CheckedModule {
     /// Creates a new [CheckedModule].
-    pub fn new(ast: Vec<Statement>) -> Self {
-        Self { ast }
+    pub fn new(id: ModuleId, ast: Vec<Statement>) -> Self {
+        Self { id, ast }
     }
 }
 
@@ -78,7 +84,7 @@ impl Module {
         let tokens = lexer.parse()?;
         let ast = ASTParser::new_and_parse(self.id, tokens)?;
 
-        Ok(ParsedModule::new(ast))
+        Ok(ParsedModule::new(self.id, ast))
     }
 }
 
