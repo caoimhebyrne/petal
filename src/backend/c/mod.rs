@@ -122,7 +122,7 @@ mod tests {
 
     fn assert_compiles(kinds: Vec<StatementKind>, compiled: &str) {
         let statements = kinds.into_iter().map(|kind| Statement::from(kind, Span::new(MOCK_MODULE_ID, 0, 0))).collect();
-        assert_eq!(CBackend::emit_code(&CheckedModule::new(statements)), Ok(compiled.into()))
+        assert_eq!(CBackend::emit_code(&CheckedModule::new(MOCK_MODULE_ID, statements)), Ok(compiled.into()))
     }
 
     #[test]
