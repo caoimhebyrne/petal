@@ -52,7 +52,7 @@ impl Typechecker {
         function_declaration: &mut FunctionDeclaration,
         span: Span,
     ) -> Result<(), TypecheckerError> {
-        let previous_variables = take(&mut self.variables);
+        let previous_variables = take(&mut self.context.variables);
 
         function_declaration.return_type = function_declaration
             .return_type_expr
@@ -63,21 +63,21 @@ impl Typechecker {
 
         for parameter in &mut function_declaration.parameters {
             let parameter_type = Typechecker::check_function_parameter(parameter)?;
-            self.insert_variable(parameter.name.clone(), parameter_type, parameter.span)?;
+            self.context.insert_variable(parameter.name.clone(), parameter_type, parameter.span)?;
         }
 
-        self.insert_checked_function(function_declaration, span)?;
+        self.context.insert_checked_function(function_declaration, span)?;
 
         // Create a copy of the previous expected return type and variables so that we can restore it later.
-        let previous_return_type = self.expected_return_type;
-        self.expected_return_type = function_declaration.return_type;
+        let previous_return_type = self.context.expected_return_type;
+        self.context.expected_return_type = function_declaration.return_type;
 
         for statement in &mut function_declaration.body {
             self.check_statement(statement)?;
         }
 
-        self.expected_return_type = previous_return_type;
-        self.variables = previous_variables;
+        self.context.expected_return_type = previous_return_type;
+        self.context.variables = previous_variables;
 
         Ok(())
     }
@@ -110,7 +110,7 @@ impl Typechecker {
         }
 
         variable_declaration.r#type = variable_type;
-        self.insert_variable_from_declaration(variable_declaration, span)?;
+        self.context.insert_variable_from_declaration(variable_declaration, span)?;
 
         Ok(())
     }
@@ -122,7 +122,7 @@ impl Typechecker {
         span: Span,
     ) -> Result<(), TypecheckerError> {
         // The variable must already be defined.
-        let variable_type = self.get_variable(&variable_assignment.name, span).cloned()?;
+        let variable_type = self.context.get_variable(&variable_assignment.name, span).cloned()?;
 
         // The initial value for the variable must have a valid type too, and then that type must be equal to the
         // variable type.
@@ -143,14 +143,14 @@ impl Typechecker {
         let value_type = r#return
             .value
             .as_mut()
-            .map(|it| self.check_expression(it, Some(self.expected_return_type)))
+            .map(|it| self.check_expression(it, Some(self.context.expected_return_type)))
             .transpose()?
             .unwrap_or(Type::Void);
 
         // The value being returned must have the same return type as the function being parsed.
-        if self.expected_return_type != value_type {
+        if self.context.expected_return_type != value_type {
             return Err(TypecheckerErrorKind::IncompatibleReturnTypes {
-                declared: self.expected_return_type,
+                declared: self.context.expected_return_type,
                 value: value_type,
             }
             .at(span));
@@ -169,14 +169,14 @@ impl Typechecker {
         }
 
         // All of the statements within the block must be valid.
-        let previous_variables = take(&mut self.variables);
-        self.variables = previous_variables.clone();
+        let previous_variables = take(&mut self.context.variables);
+        self.context.variables = previous_variables.clone();
 
         for statement in &mut r#if.block {
             self.check_statement(statement)?;
         }
 
-        self.variables = previous_variables;
+        self.context.variables = previous_variables;
 
         Ok(())
     }

@@ -146,7 +146,7 @@ impl Typechecker {
     /// Checks and resolves the type of the provided [`FunctionCall`].
     fn check_function_call(&mut self, function_call: &mut FunctionCall, span: Span) -> Result<Type, TypecheckerError> {
         // FIXME: I don't like the clone here.
-        let checked_function = self.get_checked_function(&function_call.name, span).cloned()?;
+        let checked_function = self.context.get_checked_function(&function_call.name, span).cloned()?;
 
         // The first check is easy, we just need to ensure that a sufficient number of arguments were passed in the
         // function call.
@@ -240,6 +240,6 @@ impl Typechecker {
 
     /// Checks and resolves the type of the provided identifier reference.
     fn check_identifier_reference(&mut self, name: &str, span: Span) -> Result<Type, TypecheckerError> {
-        self.get_variable(name, span).copied()
+        self.context.get_variable(name, span).copied()
     }
 }
