@@ -56,25 +56,21 @@ impl Display for TypecheckerErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::BinaryOperationNotSupported(r#type) => {
-                write!(f, "Binary operations are not supported on the type '{:?}'", r#type)
+                write!(f, "Binary operations are not supported on the type '{}'", r#type)
             }
 
             Self::UnknownType(name) => write!(f, "Unknown type: '{name}'"),
 
             Self::IncompatibleBinaryOperationTypes { left, right } => {
-                write!(f, "Binary operation has two values of incompatible types: '{:?}' and '{:?}'", left, right)
+                write!(f, "Binary operation has two values of incompatible types: '{}' and '{}'", left, right)
             }
 
             Self::IncompatibleVariableDeclarationTypes { declared, value } => {
-                write!(f, "Unable to assign value of type '{:?}' to variable of type '{:?}'", value, declared)
+                write!(f, "Unable to assign value of type '{}' to variable of type '{}'", value, declared)
             }
 
             Self::IncompatibleReturnTypes { declared, value } => {
-                write!(
-                    f,
-                    "Unable to return value of type '{:?}' from function with return type '{:?}'",
-                    value, declared
-                )
+                write!(f, "Unable to return value of type '{}' from function with return type '{}'", value, declared)
             }
 
             Self::UndeclaredFunction(name) => write!(f, "Function '{name}' has not been declared yet"),
@@ -106,7 +102,7 @@ impl Display for TypecheckerErrorKind {
 
             Self::IncompatibleFunctionCallArgument { parameter_name, parameter_type, argument_type } => write!(
                 f,
-                "Parameter '{parameter_name}' has type '{:?}', but got argument of type '{:?}'",
+                "Parameter '{parameter_name}' has type '{}', but got argument of type '{}'",
                 parameter_type, argument_type
             ),
 
@@ -117,7 +113,7 @@ impl Display for TypecheckerErrorKind {
             }
 
             Self::IncompatibleTypes { expected, got } => {
-                write!(f, "Expected type '{:?}', but got '{:?}'", expected, got)
+                write!(f, "Expected type '{}', but got '{}'", expected, got)
             }
         }
     }
