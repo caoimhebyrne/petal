@@ -10,6 +10,7 @@ use owo_colors::OwoColorize;
 use crate::{
     backend::c::CBackend,
     core::error::Error,
+    module::ParsedModule,
     module_registry::ModuleRegistry,
     typechecker::Typechecker,
 };
@@ -38,40 +39,44 @@ struct Args {
     output: Option<String>,
 
     /// The path to the source code to read from.
-    #[arg()]
-    input: String,
+    #[arg(required = true, num_args=1..)]
+    input: Vec<String>,
 }
 
 fn main_impl(args: Args, module_registry: &mut ModuleRegistry) -> Result<(), Box<dyn Error>> {
-    println!("{} Creating module from '{}'", "[1/5]".bright_purple(), args.input);
+    println!("{} Parsing modules", "[1/4]".bright_purple());
 
-    let module_id = module_registry.create_module(args.input.clone())?;
-    let module = module_registry.get_module(module_id);
+    let parsed_modules: Vec<ParsedModule> = args
+        .input
+        .clone()
+        .into_iter()
+        .map(|file_path| {
+            let module_id = module_registry.create_module(file_path)?;
+            module_registry.get_module(module_id).parse()
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
-    println!("{} Parsing module", "[2/5]".bright_purple());
-    let parsed_module = module.parse()?;
-
-    println!("{} Checking types", "[3/5]".bright_purple());
+    println!("{} Checking types", "[2/4]".bright_purple());
 
     let mut typechecker = Typechecker::default();
-    let checked_module = typechecker.check(parsed_module)?;
+    let checked_modules = typechecker.check(parsed_modules)?;
 
-    println!("{} Generating C code", "[4/5]".bright_purple());
+    println!("{} Generating C code", "[3/4]".bright_purple());
 
-    let code = CBackend::emit_code(&checked_module)?;
+    let code = CBackend::emit_code(&checked_modules)?;
     if args.emit_code {
         println!("{code}");
     }
 
     // `./path/to/petal/file.petal` -> `file`
     let binary_file_name = args.output.unwrap_or_else(|| {
-        PathBuf::from(args.input).file_stem().and_then(OsStr::to_str).unwrap_or("output").to_string()
+        // FIXME: There might be a better way to determine this instead of `args.input[0]`?
+        PathBuf::from(args.input[0].clone()).file_stem().and_then(OsStr::to_str).unwrap_or("output").to_string()
     });
 
     if !args.no_emit_binary {
-        println!("{} Compiling binary ('{binary_file_name}')", "[5/5]".bright_purple());
-
-        CBackend::emit_binary(module.id, &code, binary_file_name)?;
+        println!("{} Compiling binary ('{binary_file_name}')", "[4/4]".bright_purple());
+        CBackend::emit_binary(&code, binary_file_name)?;
     }
 
     Ok(())

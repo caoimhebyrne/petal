@@ -65,12 +65,17 @@ pub struct Typechecker {
 
 impl Typechecker {
     /// Checks and resolved any [`Type`]s referenced in the provided [`ParsedModule`].
-    pub fn check(&mut self, mut module: ParsedModule) -> Result<CheckedModule, TypecheckerError> {
-        for statement in &mut module.ast {
-            self.check_statement(statement)?;
-        }
+    pub fn check(&mut self, module: Vec<ParsedModule>) -> Result<Vec<CheckedModule>, TypecheckerError> {
+        module
+            .into_iter()
+            .map(|mut it| {
+                for statement in &mut it.ast {
+                    self.check_statement(statement)?;
+                }
 
-        Ok(CheckedModule::new(module.id, module.ast))
+                Ok(CheckedModule::new(it.id, it.ast))
+            })
+            .collect()
     }
 
     /// Attempts to get a [`CheckedFunction`] from this [`Typechecker`] by its name.

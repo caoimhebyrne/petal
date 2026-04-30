@@ -14,7 +14,6 @@ use crate::{
     },
     core::span::Span,
     module::CheckedModule,
-    module_registry::ModuleId,
     typechecker::r#type::Type,
 };
 
@@ -27,26 +26,22 @@ pub struct CBackend;
 
 impl CBackend {
     /// Compiles a [`CheckedModule`] to C code.
-    pub fn emit_code(module: &CheckedModule) -> Result<String, CBackendError> {
+    pub fn emit_code(modules: &Vec<CheckedModule>) -> Result<String, CBackendError> {
         let mut code = String::new();
 
         code.push_str("#include <stdint.h>\n#include <stdbool.h>\n\n");
 
-        for statement in &module.ast {
-            code.push_str(&CBackend::compile_statement(statement)?);
+        for module in modules {
+            for statement in &module.ast {
+                code.push_str(&CBackend::compile_statement(statement)?);
+            }
         }
 
         Ok(code)
     }
 
     /// Compiles C code into a binary.
-    pub fn emit_binary(
-        // FIXME: Is this really valid here? A binary doesn't really belong to a specific module, we should probably
-        // change how these errors are reported.
-        module_id: ModuleId,
-        code: &str,
-        output_binary_path: impl AsRef<Path>,
-    ) -> Result<(), CBackendError> {
+    pub fn emit_binary(code: &str, output_binary_path: impl AsRef<Path>) -> Result<(), CBackendError> {
         let mut child = Command::new("cc")
             // Tell the compiler that the stdin contains C code.
             .args(["-x", "c"])
@@ -56,25 +51,24 @@ impl CBackend {
             .arg("-")
             .stdin(Stdio::piped())
             .spawn()
-            .map_err(|e| CBackendErrorKind::CompilerInvocationFailed(e.to_string()).without_span(module_id))?;
+            .map_err(|e| CBackendErrorKind::CompilerInvocationFailed(e.to_string()).without_span())?;
 
         child
             .stdin
             .as_mut()
             .unwrap()
             .write_all(code.as_bytes())
-            .map_err(|e| CBackendErrorKind::CompilerInvocationFailed(e.to_string()).without_span(module_id))?;
+            .map_err(|e| CBackendErrorKind::CompilerInvocationFailed(e.to_string()).without_span())?;
 
-        let status = child
-            .wait()
-            .map_err(|e| CBackendErrorKind::CompilerInvocationFailed(e.to_string()).without_span(module_id))?;
+        let status =
+            child.wait().map_err(|e| CBackendErrorKind::CompilerInvocationFailed(e.to_string()).without_span())?;
 
         if !status.success() {
             return Err(CBackendErrorKind::CompilerInvocationFailed(format!(
                 "Exited with a non-zero status code: {:?}",
                 status.code(),
             ))
-            .without_span(module_id));
+            .without_span());
         }
 
         Ok(())
@@ -122,7 +116,7 @@ mod tests {
 
     fn assert_compiles(kinds: Vec<StatementKind>, compiled: &str) {
         let statements = kinds.into_iter().map(|kind| Statement::from(kind, Span::new(MOCK_MODULE_ID, 0, 0))).collect();
-        assert_eq!(CBackend::emit_code(&CheckedModule::new(MOCK_MODULE_ID, statements)), Ok(compiled.into()))
+        assert_eq!(CBackend::emit_code(&vec![CheckedModule::new(MOCK_MODULE_ID, statements)]), Ok(compiled.into()))
     }
 
     #[test]
