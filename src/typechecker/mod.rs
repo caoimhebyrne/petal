@@ -11,14 +11,17 @@ use crate::{
             TypecheckerError,
             TypecheckerErrorKind,
         },
+        pass::{
+            body::BodyPass,
+            declaration::DeclarationPass,
+        },
         r#type::Type,
     },
 };
 
 pub(crate) mod context;
 pub(crate) mod error;
-pub(crate) mod expression;
-pub(crate) mod statement;
+pub(crate) mod pass;
 pub mod r#type;
 
 /// The typechecker.
@@ -31,17 +34,13 @@ pub struct Typechecker {
 
 impl Typechecker {
     /// Checks and resolved any [`Type`]s referenced in the provided [`ParsedModule`].
-    pub fn check(&mut self, module: Vec<ParsedModule>) -> Result<Vec<CheckedModule>, TypecheckerError> {
-        module
-            .into_iter()
-            .map(|mut it| {
-                for statement in &mut it.ast {
-                    self.check_statement(statement)?;
-                }
+    pub fn check(&mut self, modules: Vec<ParsedModule>) -> Result<Vec<CheckedModule>, TypecheckerError> {
+        let mut modules = modules;
 
-                Ok(CheckedModule::new(it.id, it.ast))
-            })
-            .collect()
+        DeclarationPass::new(self).run(&mut modules)?;
+        BodyPass::new(self).run(&mut modules)?;
+
+        Ok(modules.into_iter().map(|it| CheckedModule::new(it.id, it.ast)).collect())
     }
 
     /// Attempts to resolve the provided [`TypeExpr`] into a [`Type`].
