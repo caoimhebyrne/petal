@@ -42,53 +42,23 @@ struct Args {
     input: String,
 }
 
-fn main() -> ExitCode {
-    let args = Args::parse();
-    let mut module_registry = ModuleRegistry::default();
-
+fn main_impl(args: Args, module_registry: &mut ModuleRegistry) -> Result<(), Box<dyn Error>> {
     println!("{} Creating module from '{}'", "[1/5]".bright_purple(), args.input);
 
-    let module_id = match module_registry.create_module(args.input.clone()) {
-        Ok(value) => value,
-        Err(error) => {
-            eprintln!("error: {}", error);
-            return ExitCode::FAILURE;
-        }
-    };
-
+    let module_id = module_registry.create_module(args.input.clone())?;
     let module = module_registry.get_module(module_id);
 
     println!("{} Parsing module", "[2/5]".bright_purple());
-
-    let parsed_module = match module.parse() {
-        Ok(value) => value,
-        Err(error) => {
-            error.print_to_stderr(&module_registry, module_id);
-            return ExitCode::FAILURE;
-        }
-    };
+    let parsed_module = module.parse()?;
 
     println!("{} Checking types", "[3/5]".bright_purple());
 
     let mut typechecker = Typechecker::default();
-    let checked_module = match typechecker.check(parsed_module) {
-        Ok(value) => value,
-        Err(error) => {
-            error.print_to_stderr(&module_registry, module_id);
-            return ExitCode::FAILURE;
-        }
-    };
+    let checked_module = typechecker.check(parsed_module)?;
 
     println!("{} Generating C code", "[4/5]".bright_purple());
 
-    let code = match CBackend::emit_code(&checked_module) {
-        Ok(value) => value,
-        Err(error) => {
-            error.print_to_stderr(&module_registry, module_id);
-            return ExitCode::FAILURE;
-        }
-    };
-
+    let code = CBackend::emit_code(&checked_module)?;
     if args.emit_code {
         println!("{code}");
     }
@@ -101,11 +71,20 @@ fn main() -> ExitCode {
     if !args.no_emit_binary {
         println!("{} Compiling binary ('{binary_file_name}')", "[5/5]".bright_purple());
 
-        if let Err(error) = CBackend::emit_binary(module.id, &code, binary_file_name) {
-            error.print_to_stderr(&module_registry, module_id);
-            return ExitCode::FAILURE;
-        }
+        CBackend::emit_binary(module.id, &code, binary_file_name)?;
     }
 
-    ExitCode::SUCCESS
+    Ok(())
+}
+
+fn main() -> ExitCode {
+    let args = Args::parse();
+    let mut module_registry = ModuleRegistry::default();
+
+    if let Err(error) = main_impl(args, &mut module_registry) {
+        error.print_to_stderr(&module_registry);
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    }
 }
