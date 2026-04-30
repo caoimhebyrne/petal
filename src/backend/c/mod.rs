@@ -149,7 +149,7 @@ mod tests {
     fn compile_empty_function() {
         assert_compiles(
             vec![FunctionDeclaration::builder("foo").return_type(TypeExpr::named("void"), Type::Void).build().into()],
-            "#include <stdint.h>\n#include <stdbool.h>\n\nvoid foo(void) {\n}\n",
+            "#include <stdint.h>\n#include <stdbool.h>\n\nvoid foo(void);\n\nvoid foo(void) {\n}\n\n",
         );
     }
 
@@ -163,7 +163,7 @@ mod tests {
                     .build()
                     .into(),
             ],
-            "#include <stdint.h>\n#include <stdbool.h>\n\nvoid foo(void) {\nreturn;\n}\n",
+            "#include <stdint.h>\n#include <stdbool.h>\n\nvoid foo(void);\n\nvoid foo(void) {\nreturn;\n}\n\n",
         );
     }
 
@@ -185,7 +185,7 @@ mod tests {
                     .build()
                     .into(),
             ],
-            "#include <stdint.h>\n#include <stdbool.h>\n\nvoid foo(void) {\nint32_t variable = 999;\n}\n",
+            "#include <stdint.h>\n#include <stdbool.h>\n\nvoid foo(void);\n\nvoid foo(void) {\nint32_t variable = 999;\n}\n\n",
         );
     }
 
@@ -207,7 +207,7 @@ mod tests {
                     .build()
                     .into(),
             ],
-            "#include <stdint.h>\n#include <stdbool.h>\n\nint32_t foo(void) {\nreturn 123;\n}\n",
+            "#include <stdint.h>\n#include <stdbool.h>\n\nint32_t foo(void);\n\nint32_t foo(void) {\nreturn 123;\n}\n\n",
         );
     }
 
@@ -236,7 +236,7 @@ mod tests {
                     .build()
                     .into(),
             ],
-            "#include <stdint.h>\n#include <stdbool.h>\n\nint32_t foo(int32_t argc) {\nreturn argc;\n}\n",
+            "#include <stdint.h>\n#include <stdbool.h>\n\nint32_t foo(int32_t argc);\n\nint32_t foo(int32_t argc) {\nreturn argc;\n}\n\n",
         );
     }
 
@@ -267,7 +267,7 @@ mod tests {
                     .build()
                     .into(),
             ],
-            "#include <stdint.h>\n#include <stdbool.h>\n\nvoid foo(void) {\nint32_t variable = 999;\nreturn variable;\n}\n",
+            "#include <stdint.h>\n#include <stdbool.h>\n\nvoid foo(void);\n\nvoid foo(void) {\nint32_t variable = 999;\nreturn variable;\n}\n\n",
         );
     }
 
@@ -287,7 +287,7 @@ mod tests {
                     .build()
                     .into(),
             ],
-            "#include <stdint.h>\n#include <stdbool.h>\n\nint32_t foo(void) {\nvariable = 456;\n}\n",
+            "#include <stdint.h>\n#include <stdbool.h>\n\nint32_t foo(void);\n\nint32_t foo(void) {\nvariable = 456;\n}\n\n",
         );
     }
 
@@ -319,7 +319,7 @@ mod tests {
                     .build()
                     .into(),
             ],
-            "#include <stdint.h>\n#include <stdbool.h>\n\nint32_t foo(int32_t argc) {\nint32_t variable = my_func();\n}\n",
+            "#include <stdint.h>\n#include <stdbool.h>\n\nint32_t foo(int32_t argc);\n\nint32_t foo(int32_t argc) {\nint32_t variable = my_func();\n}\n\n",
         );
     }
 
@@ -361,7 +361,7 @@ mod tests {
                     .build()
                     .into(),
             ],
-            "#include <stdint.h>\n#include <stdbool.h>\n\nint32_t foo(int32_t argc) {\nint32_t variable = my_func(1);\n}\n",
+            "#include <stdint.h>\n#include <stdbool.h>\n\nint32_t foo(int32_t argc);\n\nint32_t foo(int32_t argc) {\nint32_t variable = my_func(1);\n}\n\n",
         );
     }
 
@@ -419,7 +419,7 @@ mod tests {
                     .build()
                     .into(),
             ],
-            "#include <stdint.h>\n#include <stdbool.h>\n\nint32_t foo(int32_t argc) {\nint32_t variable = my_func(1, 2, 3);\n}\n",
+            "#include <stdint.h>\n#include <stdbool.h>\n\nint32_t foo(int32_t argc);\n\nint32_t foo(int32_t argc) {\nint32_t variable = my_func(1, 2, 3);\n}\n\n",
         );
     }
 
@@ -454,7 +454,7 @@ mod tests {
                     .build()
                     .into(),
             ],
-            "#include <stdint.h>\n#include <stdbool.h>\n\nvoid foo(void) {\nint32_t variable = foo(baz());\n}\n",
+            "#include <stdint.h>\n#include <stdbool.h>\n\nvoid foo(void);\n\nvoid foo(void) {\nint32_t variable = foo(baz());\n}\n\n",
         );
     }
 
@@ -467,7 +467,7 @@ mod tests {
                     .build()
                     .into(),
             ],
-            "#include <stdint.h>\n#include <stdbool.h>\n\nint32_t foo(void) {\n}\n",
+            "#include <stdint.h>\n#include <stdbool.h>\n\nint32_t foo(void);\n\nint32_t foo(void) {\n}\n\n",
         );
     }
 
@@ -494,7 +494,7 @@ mod tests {
                     .build()
                     .into(),
             ],
-            "#include <stdint.h>\n#include <stdbool.h>\n\nint32_t foo(int32_t a, int32_t b) {\n}\n",
+            "#include <stdint.h>\n#include <stdbool.h>\n\nint32_t foo(int32_t a, int32_t b);\n\nint32_t foo(int32_t a, int32_t b) {\n}\n\n",
         );
     }
 }
