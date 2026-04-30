@@ -1,11 +1,11 @@
 ![Logo](./assets/petal-logo.svg)
 
-## `petal` 🌸
+# `petal` 🌸
 
 Petal is a hobby programming language with a ~~compiler~~ transpiler (to C) written in Rust. A LLVM (or maybe
 Cranelift) compiler backend will be added in the future.
 
-### Roadmap
+## Roadmap
 
 - [x] Basic function declarations (parameters, return types)
 - [x] Signed and unsigned integer types
@@ -36,7 +36,7 @@ Cranelift) compiler backend will be added in the future.
 - [ ] Website/playground REPL
 - [ ] LLVM or Cranelift backend
 
-### Contributions
+## Contributions
 
 Anyone is open to making a pull request! Before you do, please ensure that the feature you are adding is documented
 on a GitHub issue, and has been approved by @caoimhebyrne.
@@ -46,6 +46,6 @@ I request that any code submissions are not entirely AI written. If you are goin
 - Ensure that you understand the code that it is producing.
 - Guide the AI using your existing knowledge and ideas.
 
-### License
+## License
 
 This project is licensed under the MIT license.
