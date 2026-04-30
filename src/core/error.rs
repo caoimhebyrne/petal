@@ -41,7 +41,7 @@ pub trait Error: Display {
             eprintln!(
                 "{} ---> {}:{}:{}",
                 left_padding,
-                module.file_path,
+                module.file_path.to_string_lossy(),
                 source_information.line_index + 1,
                 source_information.column_index + 1,
             );
@@ -55,7 +55,11 @@ pub trait Error: Display {
                 "^".repeat(span.location.length)
             );
         } else {
-            eprintln!("{} {}", format!("error({}):", module.file_path).red().bold(), self.bright_white());
+            eprintln!(
+                "{} {}",
+                format!("error({}):", module.file_path.to_string_lossy()).red().bold(),
+                self.bright_white()
+            );
         }
     }
 }

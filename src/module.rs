@@ -4,6 +4,7 @@ use std::{
     },
     fs,
     io,
+    path::PathBuf,
 };
 
 use crate::{
@@ -25,7 +26,7 @@ pub struct Module {
     pub id: ModuleId,
 
     /// The path of the file that this module is being created from.
-    pub file_path: String,
+    pub file_path: PathBuf,
 
     /// The contents of the file that this module is being created from.
     pub file_contents: String,
@@ -67,12 +68,12 @@ impl CheckedModule {
 /// An error that occurs while creating a Petal module.
 pub enum ModuleError {
     /// The file could not be read.
-    IOError { path: String, error: io::Error },
+    IOError { path: PathBuf, error: io::Error },
 }
 
 impl Module {
     /// Creates a new [`Module`] from a file path.
-    pub fn create(id: ModuleId, file_path: String) -> Result<Module, ModuleError> {
+    pub fn create(id: ModuleId, file_path: PathBuf) -> Result<Module, ModuleError> {
         let file_contents =
             fs::read_to_string(&file_path).map_err(|error| ModuleError::IOError { path: file_path.clone(), error })?;
 
@@ -99,7 +100,9 @@ impl Error for ModuleError {
 impl fmt::Display for ModuleError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ModuleError::IOError { path, error } => write!(f, "Could not read from '{path}': {error}"),
+            ModuleError::IOError { path, error } => {
+                write!(f, "Could not read from '{}': {error}", path.to_string_lossy())
+            }
         }
     }
 }

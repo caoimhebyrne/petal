@@ -50,6 +50,7 @@ fn main_impl(args: Args, module_registry: &mut ModuleRegistry) -> Result<(), Box
         .input
         .clone()
         .into_iter()
+        .map(PathBuf::from)
         .map(|file_path| {
             let module_id = module_registry.create_module(file_path)?;
             module_registry.get_module(module_id).parse()

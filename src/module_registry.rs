@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    path::PathBuf,
+};
 
 use crate::module::{
     Module,
@@ -21,10 +24,10 @@ pub struct ModuleRegistry {
 
 impl ModuleRegistry {
     /// Creates a new [`Module`] within this [`ModuleRegistry`], assigning it a unique [`ModuleId`].
-    pub fn create_module(&mut self, path: String) -> Result<ModuleId, ModuleError> {
+    pub fn create_module(&mut self, file_path: PathBuf) -> Result<ModuleId, ModuleError> {
         let id = ModuleId(self.modules.len());
 
-        let module = Module::create(id, path)?;
+        let module = Module::create(id, file_path)?;
         self.modules.insert(id, module);
 
         Ok(id)
