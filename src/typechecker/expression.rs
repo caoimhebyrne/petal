@@ -1,3 +1,5 @@
+use std::cmp::max;
+
 use crate::{
     ast::{
         expression::{
@@ -27,15 +29,24 @@ use crate::{
 
 impl Typechecker {
     /// Checks and resolves the type of the provided [`Expression`].
-    pub(crate) fn check_expression(&mut self, expression: &mut Expression) -> Result<Type, TypecheckerError> {
+    ///
+    /// [type_hint] is the "recommended" type for the expression. In the case of something like a number literal, this
+    /// is often the type of the variable that it is being assigned to, or the return type of the function.
+    pub(crate) fn check_expression(
+        &mut self,
+        expression: &mut Expression,
+        type_hint: Option<Type>,
+    ) -> Result<Type, TypecheckerError> {
         let r#type = match &mut expression.kind {
-            ExpressionKind::NumberLiteral(value) => Typechecker::check_number_literal(value, expression.span),
-
-            ExpressionKind::BooleanLiteral(value) => Typechecker::check_boolean_literal(value, expression.span),
+            ExpressionKind::NumberLiteral(value) => {
+                Typechecker::check_number_literal(value, type_hint, expression.span)
+            }
 
             ExpressionKind::BinaryOperation(binary_operation) => {
-                self.check_binary_operation(binary_operation, expression.span)
+                self.check_binary_operation(binary_operation, type_hint, expression.span)
             }
+
+            ExpressionKind::BooleanLiteral(value) => Typechecker::check_boolean_literal(value, expression.span),
 
             ExpressionKind::FunctionCall(function_call) => self.check_function_call(function_call, expression.span),
 
@@ -46,11 +57,55 @@ impl Typechecker {
     }
 
     /// Checks and resolves the type of the provided number literal.
-    fn check_number_literal(_value: &f64, _span: Span) -> Result<Type, TypecheckerError> {
-        // TODO: Use the context of the check to infer the type.
-        //       e.g: If the checker expects an `i32`, and the literal supports that type, then we should use that.
-        //       For now, all integer literals are i32.
-        Ok(Type::SignedInteger(32))
+    fn check_number_literal(value: &f64, type_hint: Option<Type>, _span: Span) -> Result<Type, TypecheckerError> {
+        // TODO: Support for floating point values.
+
+        let minimum_integer_type = if *value < 0.0 {
+            let bits = match *value {
+                v if v >= i8::MIN as f64 => 8,
+                v if v >= i16::MIN as f64 => 16,
+                v if v >= i32::MIN as f64 => 32,
+                _ => 64,
+            };
+
+            Type::SignedInteger(bits)
+        } else {
+            let bits = match *value {
+                v if v <= u8::MAX as f64 => 8,
+                v if v <= u16::MAX as f64 => 16,
+                v if v <= u32::MAX as f64 => 32,
+                _ => 64,
+            };
+
+            Type::UnsignedInteger(bits)
+        };
+
+        // If the type that was suggested is some integer type, then we can become that type if we are
+        // compatible with it.
+        let r#type = match type_hint {
+            // The hint suggests that we should use a signed type. All integer types are castable to signed.
+            Some(Type::SignedInteger(hint_bits)) => match minimum_integer_type {
+                Type::SignedInteger(recommended_bits) => Type::SignedInteger(max(hint_bits, recommended_bits)),
+                Type::UnsignedInteger(recommended_bits) => Type::SignedInteger(max(hint_bits, recommended_bits)),
+                _ => unreachable!("recommended_integer_type can only be Type::UnsignedInteger or Type::SignedInteger"),
+            },
+
+            // The hint suggests that we should use an unsigned type. Not all integer types are castable to unsigned.
+            Some(Type::UnsignedInteger(hint_bits)) => match minimum_integer_type {
+                Type::UnsignedInteger(recommended_bits) => Type::UnsignedInteger(max(hint_bits, recommended_bits)),
+
+                // We still return the signed integer in this case, even though the hint suggests an unsigned integer.
+                // The caller is responsible for checking whether the signed-ness is OK.
+                Type::SignedInteger(_) => minimum_integer_type,
+
+                _ => unreachable!("recommended_integer_type can only be Type::UnsignedInteger or Type::SignedInteger"),
+            },
+
+            // Return the recommended type, the type that was suggested is not an integer type.
+            _ => minimum_integer_type,
+        };
+
+        Ok(r#type)
     }
 
     /// Checks and resolves the type of the provided boolean literal.
@@ -62,11 +117,12 @@ impl Typechecker {
     fn check_binary_operation(
         &mut self,
         binary_operation: &mut BinaryOperation,
+        type_hint: Option<Type>,
         span: Span,
     ) -> Result<Type, TypecheckerError> {
         // Types on both sides of the operation must be resolvable.
-        let left = self.check_expression(&mut binary_operation.left)?;
-        let right = self.check_expression(&mut binary_operation.right)?;
+        let left = self.check_expression(&mut binary_operation.left, type_hint)?;
+        let right = self.check_expression(&mut binary_operation.right, type_hint.or(Some(left)))?;
 
         // Both of the types must be the same. If they are not, then we must error.
         if left != right {
@@ -168,7 +224,7 @@ impl Typechecker {
         argument: &mut FunctionCallArgument,
         parameter: &FunctionParameter,
     ) -> Result<(), TypecheckerError> {
-        let argument_type = self.check_expression(&mut argument.value)?;
+        let argument_type = self.check_expression(&mut argument.value, Some(parameter.r#type))?;
 
         if argument_type != parameter.r#type {
             return Err(TypecheckerErrorKind::IncompatibleFunctionCallArgument {

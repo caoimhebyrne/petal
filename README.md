@@ -18,7 +18,7 @@ Cranelift) compiler backend will be added in the future.
 - [x] Booleans
 - [x] Control flow (if, while)
 - [x] Equality operands (`==`, `!=`)
-- [ ] Smart type inference for integers
+- [x] Smart type inference for integers
   - For example, `i64 a = 5;` should compile, but it does not as `5` is always treated as an `i32`. It should be
     inferred to be an `i64` (if the literal fits in the width).
 - [ ] Multiple module support

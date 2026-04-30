@@ -100,7 +100,7 @@ impl Typechecker {
 
         // The initial value for the variable must have a valid type too, and then that type must be equal to the
         // variable type.
-        let value_type = self.check_expression(&mut variable_declaration.value)?;
+        let value_type = self.check_expression(&mut variable_declaration.value, Some(variable_type))?;
         if variable_type != value_type {
             return Err(TypecheckerErrorKind::IncompatibleVariableDeclarationTypes {
                 declared: variable_type,
@@ -126,7 +126,7 @@ impl Typechecker {
 
         // The initial value for the variable must have a valid type too, and then that type must be equal to the
         // variable type.
-        let value_type = self.check_expression(&mut variable_assignment.value)?;
+        let value_type = self.check_expression(&mut variable_assignment.value, Some(variable_type))?;
         if variable_type != value_type {
             return Err(TypecheckerErrorKind::IncompatibleVariableDeclarationTypes {
                 declared: variable_type,
@@ -140,7 +140,12 @@ impl Typechecker {
 
     /// Checks and resolves any [`Type`]s referenced in the provided [`Return`].
     fn check_return(&mut self, r#return: &mut Return, span: Span) -> Result<(), TypecheckerError> {
-        let value_type = r#return.value.as_mut().map(|it| self.check_expression(it)).transpose()?.unwrap_or(Type::Void);
+        let value_type = r#return
+            .value
+            .as_mut()
+            .map(|it| self.check_expression(it, Some(self.expected_return_type)))
+            .transpose()?
+            .unwrap_or(Type::Void);
 
         // The value being returned must have the same return type as the function being parsed.
         if self.expected_return_type != value_type {
@@ -157,7 +162,7 @@ impl Typechecker {
     /// Checks and resolves any [`Type`]s referenced in the provided [`If`].
     fn check_if(&mut self, r#if: &mut If, _span: Span) -> Result<(), TypecheckerError> {
         // The type of the condition must be a boolean.
-        let condition_type = self.check_expression(&mut r#if.condition)?;
+        let condition_type = self.check_expression(&mut r#if.condition, Some(Type::Boolean))?;
         if condition_type != Type::Boolean {
             return Err(TypecheckerErrorKind::IncompatibleTypes { expected: Type::Boolean, got: condition_type }
                 .at(r#if.condition.span));
