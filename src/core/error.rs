@@ -4,10 +4,7 @@ use owo_colors::OwoColorize;
 
 use crate::{
     core::span::Span,
-    module_registry::{
-        ModuleId,
-        ModuleRegistry,
-    },
+    module_registry::ModuleRegistry,
 };
 
 /// An error trait for all error implementations to derive.
@@ -21,16 +18,16 @@ pub trait Error: Display {
 
     /// Prints this error to the standard output, including information about the source file and
     /// line that caused it.
-    fn print_to_stderr(&self, module_registry: &ModuleRegistry, module_id: ModuleId) {
-        let module = module_registry.get_module(module_id);
-
+    fn print_to_stderr(&self, module_registry: &ModuleRegistry) {
         let span = match self.span() {
             Some(span) => span,
             _ => {
-                eprintln!("{} {}", format!("error({}):", module.file_path).red().bold(), self.bright_white());
+                eprintln!("{} {}", "error:".red().bold(), self.bright_white());
                 return;
             }
         };
+
+        let module = module_registry.get_module(span.module_id);
 
         // We need to find the line within the source file that caused this error. If we cannot
         // find the line, then we can just print a generic error message without any line
