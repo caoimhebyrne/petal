@@ -1,0 +1,9 @@
+// Unlike C, the order that you declare your functions in does not matter!
+func main() -> i32 {
+    return get_return_value();
+}
+
+// In C, `get_return_value` would have to be declared above `main` for it to be usable.
+func get_return_value() -> i32 {
+    return 5;
+}

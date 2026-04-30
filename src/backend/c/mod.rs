@@ -8,6 +8,7 @@ use std::{
 };
 
 use crate::{
+    ast::statement::StatementKind,
     backend::c::error::{
         CBackendError,
         CBackendErrorKind,
@@ -30,6 +31,31 @@ impl CBackend {
         let mut code = String::new();
 
         code.push_str("#include <stdint.h>\n#include <stdbool.h>\n\n");
+
+        // FIXME: It would be nice to introduce passes like the typechecker, but that's not so easy here.
+        for module in modules {
+            for statement in &module.ast {
+                if let StatementKind::FunctionDeclaration(function_declaration) = &statement.kind {
+                    let name = function_declaration.name.clone();
+                    let return_type = CBackend::compile_type(&function_declaration.return_type, statement.span)?;
+
+                    let parameters: String = if function_declaration.parameters.is_empty() {
+                        "void".into()
+                    } else {
+                        function_declaration
+                            .parameters
+                            .iter()
+                            .map(CBackend::compile_function_parameter)
+                            .collect::<Result<Vec<String>, CBackendError>>()?
+                            .join(", ")
+                    };
+
+                    code.push_str(&format!("{return_type} {name}({parameters});\n"));
+                }
+            }
+        }
+
+        code.push('\n');
 
         for module in modules {
             for statement in &module.ast {

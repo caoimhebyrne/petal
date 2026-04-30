@@ -64,7 +64,7 @@ impl CBackend {
 
         function.push_str(&format!("{return_type} {name}({parameters}) {{\n"));
         function.push_str(&CBackend::compile_block(&function_declaration.body)?);
-        function.push_str("}\n");
+        function.push_str("}\n\n");
 
         Ok(function)
     }
