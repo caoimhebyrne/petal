@@ -62,7 +62,7 @@ impl SpanLocation {
             current_offset += line.len() + 1;
 
             // The first line that contains the starting offset will be returned.
-            if current_offset >= self.start {
+            if current_offset > self.start {
                 return Some(SpanSourceInformation {
                     line: line.into(),
                     column_index: self.start - line_start_offset,
