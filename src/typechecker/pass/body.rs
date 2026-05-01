@@ -80,6 +80,9 @@ impl<'a> BodyPass<'a> {
             }
 
             StatementKind::If(r#if) => self.visit_if(r#if, statement.span),
+
+            // We don't have to do anything at this pass for imports.
+            StatementKind::Import(_) => Ok(()),
         }
     }
 

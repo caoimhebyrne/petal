@@ -26,6 +26,8 @@ impl CBackend {
                 CBackend::compile_function_declaration(function_declaration, statement.span)
             }
 
+            StatementKind::Import(_) => Ok("".into()),
+
             StatementKind::Return(r#return) => CBackend::compile_return(r#return, statement.span),
 
             StatementKind::VariableDeclaration(variable_declaration) => {

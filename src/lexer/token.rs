@@ -95,6 +95,9 @@ pub enum Keyword {
 
     /// An else expression.
     Else,
+
+    /// An import statement.
+    Import,
 }
 
 impl Keyword {
@@ -108,6 +111,7 @@ impl Keyword {
             "false" => Keyword::False,
             "if" => Keyword::If,
             "else" => Keyword::Else,
+            "import" => Keyword::Import,
 
             _ => return None,
         };

@@ -1,0 +1,11 @@
+// Each `.petal` file that the compiler parses is called a 'module'. You can import code in other modules by using the
+// `import` keyword.
+//
+// When using the `import` keyword, the name provided must exist as a `.petal` file in the same directory as the
+// current file.
+import utils;
+
+func main() -> i32 {
+    // Here, we are using the function defined in `utils.petal`.
+    return get_magic_number();
+}

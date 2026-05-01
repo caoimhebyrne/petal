@@ -34,6 +34,9 @@ impl<'a> DeclarationPass<'a> {
                         self.visit_function_declaration(function_declaration, statement.span)?;
                     }
 
+                    // We don't have to do anything at this pass for imports.
+                    StatementKind::Import(_) => {}
+
                     _ => panic!("Statement '{:?}' not supported at declaration pass", statement.kind),
                 }
             }

@@ -1,0 +1,4 @@
+// This module is imported by `main.petal`, and `get_magic_number` is called by it too!
+func get_magic_number() -> i32 {
+    return 7;
+}

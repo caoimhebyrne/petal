@@ -2,6 +2,7 @@ use crate::{
     ast::statement::{
         function_declaration::FunctionDeclaration,
         r#if::If,
+        import::Import,
         r#return::Return,
         variable_assignment::VariableAssignment,
         variable_declaration::VariableDeclaration,
@@ -11,6 +12,7 @@ use crate::{
 
 pub mod function_declaration;
 pub mod r#if;
+pub mod import;
 pub mod r#return;
 pub mod variable_assignment;
 pub mod variable_declaration;
@@ -55,4 +57,7 @@ pub enum StatementKind {
 
     /// A variable assignment statement.
     VariableAssignment(VariableAssignment),
+
+    /// An import statement.
+    Import(Import),
 }

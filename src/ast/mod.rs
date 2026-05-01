@@ -17,6 +17,7 @@ use crate::{
             Statement,
             function_declaration::FunctionDeclaration,
             r#if::If,
+            import::Import,
             r#return::Return,
             variable_assignment::VariableAssignment,
             variable_declaration::VariableDeclaration,
@@ -69,6 +70,8 @@ impl ASTParser {
         while let Some(token) = self.peek() {
             let statement: Statement = match token.kind {
                 TokenKind::Keyword(Keyword::Func) => self.parse_function_declaration()?,
+                TokenKind::Keyword(Keyword::Import) => self.parse_import()?,
+
                 _ => return Err(ASTErrorKind::UnexpectedToken(token.kind.clone()).at(token.span)),
             };
 
@@ -398,6 +401,20 @@ impl ASTParser {
 
         let closing_brace_span = self.expect_span(TokenKind::CloseBrace)?;
         Ok(Statement::from(If::new(condition, block), Span::between(if_keyword_span, closing_brace_span)))
+    }
+
+    /// Attempts to parse an import statement from the [ASTParser]'s current position.
+    fn parse_import(&mut self) -> Result<Statement, ASTError> {
+        // The first token must be the import keyword.
+        let import_keyword_span = self.expect_span(TokenKind::Keyword(Keyword::Import))?;
+
+        // Then, there must be the name of the module to import.
+        let (name, _) = self.expect_identifier()?;
+
+        // And finally, there must be a semicolon.
+        let semicolon_span = self.expect_span(TokenKind::Semicolon)?;
+
+        Ok(Statement::from(Import::new(name), Span::between(import_keyword_span, semicolon_span)))
     }
 
     /// Returns the token at the [ASTParser]'s current position.
