@@ -39,9 +39,15 @@ pub(crate) struct TypecheckerContext {
 impl TypecheckerContext {
     /// Attempts to get a [`CheckedFunction`] from this [`Typechecker`] by its name.
     pub(crate) fn get_checked_function(&self, name: &str, span: Span) -> Result<&CheckedFunction, TypecheckerError> {
-        // TODO: Functions are private to modules unless explicitly exposed.
         // TODO: We should support function overloads.
-        let function_candidates = self.functions.values().filter(|it| it.name == name).collect::<Vec<_>>();
+        // FIXME: Functions need to be generated and prefixed with their module name. How do we do that?
+        let function_candidates = self
+            .functions
+            .values()
+            .filter(|it| it.name == name)
+            .filter(|it| it.is_visible_to_module(span.module_id))
+            .collect::<Vec<_>>();
+
         if function_candidates.len() > 1 {
             return Err(TypecheckerErrorKind::AmbiguousFunctionCall(name.into()).at(span));
         }
@@ -99,7 +105,7 @@ impl TypecheckerContext {
 #[derive(Debug, Clone)]
 pub(crate) struct CheckedFunction {
     /// The ID of the module that this function belongs to.
-    pub _module_id: ModuleId,
+    pub module_id: ModuleId,
 
     /// The name of the function.
     pub name: String,
@@ -114,6 +120,15 @@ pub(crate) struct CheckedFunction {
 impl CheckedFunction {
     /// Creates a new [`CheckedFunction`].
     pub fn new(module_id: ModuleId, name: String, parameters: Vec<FunctionParameter>, return_type: Type) -> Self {
-        Self { _module_id: module_id, name, parameters, return_type }
+        Self { module_id: module_id, name, parameters, return_type }
+    }
+
+    /// Returns whether this [`CheckedFunction`] is visible to the provided module ID.
+    ///
+    /// By default, all functions are private, and can only be accessed by the module that they are defined in. If a
+    /// function is marked with the 'public' modifier, then it can be accessed by any module.
+    pub fn is_visible_to_module(&self, other_module_id: ModuleId) -> bool {
+        // TODO: Access modifiers
+        return self.module_id == other_module_id;
     }
 }
