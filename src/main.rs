@@ -45,42 +45,34 @@ struct Args {
 }
 
 fn create_and_parse_module(
+    parsed_modules: &mut Vec<ParsedModule>,
     module_registry: &mut ModuleRegistry,
     file_path: PathBuf,
-) -> Result<Vec<ParsedModule>, Box<dyn Error>> {
+) -> Result<(), Box<dyn Error>> {
     let module_id = module_registry.create_module(file_path.clone())?;
     let parsed_module = module_registry.get_module(module_id).parse()?;
-
-    // A module may import other modules.
-    let mut modules: Vec<ParsedModule> = Vec::new();
 
     for statement in &parsed_module.ast {
         // If this is an import statement, then we must be able to find a module with the imported name in the
         // same directory.
         if let StatementKind::Import(import) = &statement.kind {
             let imported_module_path = file_path.with_file_name(import.name.clone()).with_extension("petal");
-            let mut imported_modules = create_and_parse_module(module_registry, imported_module_path)?;
-            modules.append(&mut imported_modules);
+            create_and_parse_module(parsed_modules, module_registry, imported_module_path)?;
         }
     }
 
-    modules.push(parsed_module);
-    Ok(modules)
+    parsed_modules.push(parsed_module);
+    Ok(())
 }
 
 fn main_impl(args: Args, module_registry: &mut ModuleRegistry) -> Result<(), Box<dyn Error>> {
     println!("{} Parsing modules", "[1/4]".bright_purple());
 
-    let parsed_modules: Vec<ParsedModule> = args
-        .input
-        .clone()
-        .into_iter()
-        .map(PathBuf::from)
-        .map(|it| create_and_parse_module(module_registry, it))
-        .collect::<Result<Vec<_>, _>>()?
-        .into_iter()
-        .flatten()
-        .collect();
+    let mut parsed_modules: Vec<ParsedModule> = Vec::new();
+
+    for file_path in &args.input {
+        create_and_parse_module(&mut parsed_modules, module_registry, PathBuf::from(file_path))?;
+    }
 
     println!("{} Checking types", "[2/4]".bright_purple());
 
