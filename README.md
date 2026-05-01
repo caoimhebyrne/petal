@@ -48,4 +48,4 @@ I request that any code submissions are not entirely AI written. If you are goin
 
 ## License
 
-This project is licensed under the MIT license.
+This project is licensed under the [Apache License 2.0](./LICENSE) license.
