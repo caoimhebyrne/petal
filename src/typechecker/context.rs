@@ -44,7 +44,7 @@ impl TypecheckerContext {
         let function_candidates = self
             .functions
             .values()
-            .filter(|it| it.name == name)
+            .filter(|it| it.declared_name == name)
             .filter(|it| it.is_visible_to_module(span.module_id))
             .collect::<Vec<_>>();
 
@@ -53,6 +53,11 @@ impl TypecheckerContext {
         }
 
         function_candidates.first().map(|it| *it).ok_or(TypecheckerErrorKind::UndeclaredFunction(name.into()).at(span))
+    }
+
+    /// Attempts to get a [`CheckedFunction`] from this [`Typechecker`] by its its [`FunctionId`].
+    pub(crate) fn get_checked_function_by_id(&self, id: FunctionId) -> &CheckedFunction {
+        self.functions.get(&id).expect("functions.get should always succeed")
     }
 
     /// Attempts to get a variable from this [`Typechecker`] by its name.
@@ -65,7 +70,7 @@ impl TypecheckerContext {
         &mut self,
         function_declaration: &FunctionDeclaration,
         span: Span,
-    ) -> Result<(), TypecheckerError> {
+    ) -> Result<FunctionId, TypecheckerError> {
         let function_id = FunctionId(self.functions.len());
 
         self.functions.insert(
@@ -78,7 +83,7 @@ impl TypecheckerContext {
             ),
         );
 
-        Ok(())
+        Ok(function_id)
     }
 
     /// Inserts a variable into this [`Typechecker`].
@@ -110,6 +115,9 @@ pub(crate) struct CheckedFunction {
     /// The name of the function.
     pub name: String,
 
+    /// The declared name of the function.
+    pub declared_name: String,
+
     /// The parameters to the function.
     pub parameters: Vec<FunctionParameter>,
 
@@ -119,8 +127,24 @@ pub(crate) struct CheckedFunction {
 
 impl CheckedFunction {
     /// Creates a new [`CheckedFunction`].
-    pub fn new(module_id: ModuleId, name: String, parameters: Vec<FunctionParameter>, return_type: Type) -> Self {
-        Self { module_id: module_id, name, parameters, return_type }
+    pub fn new(
+        module_id: ModuleId,
+        declared_name: String,
+        parameters: Vec<FunctionParameter>,
+        return_type: Type,
+    ) -> Self {
+        Self {
+            module_id: module_id,
+            // FIXME: Add a modifier to function declarations which prevents their names from being mangled.
+            name: if declared_name == "main" {
+                declared_name.clone()
+            } else {
+                format!("ptl_mod_{module_id}_fn_{declared_name}")
+            },
+            declared_name,
+            parameters,
+            return_type,
+        }
     }
 
     /// Returns whether this [`CheckedFunction`] is visible to the provided module ID.

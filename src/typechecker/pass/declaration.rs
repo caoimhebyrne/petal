@@ -63,7 +63,12 @@ impl<'a> DeclarationPass<'a> {
             DeclarationPass::check_function_parameter(parameter)?;
         }
 
-        self.typechecker.context.insert_checked_function(function_declaration, span)
+        let function_id = self.typechecker.context.insert_checked_function(function_declaration, span)?;
+
+        // Finally, we need to modify the name of the function that we are generating.
+        function_declaration.name = self.typechecker.context.get_checked_function_by_id(function_id).name.clone();
+
+        Ok(())
     }
 
     /// Checks and resolves any [`Type`]s referenced in the provided [`FunctionParameter`].

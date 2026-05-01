@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    fmt::Display,
     path::PathBuf,
 };
 
@@ -12,6 +13,12 @@ use crate::module::{
 /// lifecycle, including when it gets promoted to a [`ParsedModule`] and/or a [`CheckedModule`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct ModuleId(usize);
+
+impl Display for ModuleId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[derive(Default)]
 pub struct ModuleRegistry {

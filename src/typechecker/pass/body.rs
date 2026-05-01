@@ -322,6 +322,9 @@ impl<'a> BodyPass<'a> {
         // FIXME: I don't like the clone here.
         let checked_function = self.typechecker.context.get_checked_function(&function_call.name, span).cloned()?;
 
+        // We now need to alter the function call to use the generated name of the function, not the name that is defined in the source code.
+        function_call.name = checked_function.name.clone();
+
         // The first check is easy, we just need to ensure that a sufficient number of arguments were passed in the
         // function call.
         if function_call.arguments.len() != checked_function.parameters.len() {
