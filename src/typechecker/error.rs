@@ -21,6 +21,7 @@ pub struct TypecheckerError {
 /// The different kinds of [`TypecheckerError`]s that exist.
 #[derive(Debug, PartialEq)]
 pub enum TypecheckerErrorKind {
+    AmbiguousFunctionCall(String),
     BinaryOperationNotSupported(Type),
     IncompatibleBinaryOperationTypes { left: Type, right: Type },
     IncompatibleVariableDeclarationTypes { declared: Type, value: Type },
@@ -55,6 +56,10 @@ impl TypecheckerError {
 impl Display for TypecheckerErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::AmbiguousFunctionCall(name) => {
+                write!(f, "More than one function exists with the name '{name}', consider renaming one of them")
+            }
+
             Self::BinaryOperationNotSupported(r#type) => {
                 write!(f, "Binary operations are not supported on the type '{}'", r#type)
             }

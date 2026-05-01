@@ -9,6 +9,7 @@ use crate::{
         variable_declaration::VariableDeclaration,
     },
     core::span::Span,
+    module_registry::ModuleId,
     typechecker::{
         error::{
             TypecheckerError,
@@ -18,15 +19,18 @@ use crate::{
     },
 };
 
+/// A unique identifier for a function.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct FunctionId(usize);
+
 /// The context of a [`Typechecker`].
 #[derive(Default)]
 pub(crate) struct TypecheckerContext {
     /// The expected return type of the current function.
     pub(crate) expected_return_type: Type,
 
-    // TODO: Function IDs?
     /// The functions that have been validated by this [`Typechecker`] instance.
-    pub(crate) functions: HashMap<String, CheckedFunction>,
+    pub(crate) functions: HashMap<FunctionId, CheckedFunction>,
 
     /// The variables that have been declared in the current scope.
     pub(crate) variables: HashMap<String, Type>,
@@ -35,7 +39,14 @@ pub(crate) struct TypecheckerContext {
 impl TypecheckerContext {
     /// Attempts to get a [`CheckedFunction`] from this [`Typechecker`] by its name.
     pub(crate) fn get_checked_function(&self, name: &str, span: Span) -> Result<&CheckedFunction, TypecheckerError> {
-        self.functions.get(name).ok_or(TypecheckerErrorKind::UndeclaredFunction(name.into()).at(span))
+        // TODO: Functions are private to modules unless explicitly exposed.
+        // TODO: We should support function overloads.
+        let function_candidates = self.functions.values().filter(|it| it.name == name).collect::<Vec<_>>();
+        if function_candidates.len() > 1 {
+            return Err(TypecheckerErrorKind::AmbiguousFunctionCall(name.into()).at(span));
+        }
+
+        function_candidates.first().map(|it| *it).ok_or(TypecheckerErrorKind::UndeclaredFunction(name.into()).at(span))
     }
 
     /// Attempts to get a variable from this [`Typechecker`] by its name.
@@ -49,13 +60,16 @@ impl TypecheckerContext {
         function_declaration: &FunctionDeclaration,
         span: Span,
     ) -> Result<(), TypecheckerError> {
-        if self.functions.contains_key(&function_declaration.name) {
-            return Err(TypecheckerErrorKind::DuplicateFunctionDeclaration(function_declaration.name.clone()).at(span));
-        }
+        let function_id = FunctionId(self.functions.len());
 
         self.functions.insert(
-            function_declaration.name.clone(),
-            CheckedFunction::new(function_declaration.parameters.clone(), function_declaration.return_type),
+            function_id,
+            CheckedFunction::new(
+                span.module_id,
+                function_declaration.name.clone(),
+                function_declaration.parameters.clone(),
+                function_declaration.return_type,
+            ),
         );
 
         Ok(())
@@ -84,6 +98,12 @@ impl TypecheckerContext {
 /// A function which has been verified by the typechecker.
 #[derive(Debug, Clone)]
 pub(crate) struct CheckedFunction {
+    /// The ID of the module that this function belongs to.
+    pub _module_id: ModuleId,
+
+    /// The name of the function.
+    pub name: String,
+
     /// The parameters to the function.
     pub parameters: Vec<FunctionParameter>,
 
@@ -93,7 +113,7 @@ pub(crate) struct CheckedFunction {
 
 impl CheckedFunction {
     /// Creates a new [`CheckedFunction`].
-    pub fn new(parameters: Vec<FunctionParameter>, return_type: Type) -> Self {
-        Self { parameters, return_type }
+    pub fn new(module_id: ModuleId, name: String, parameters: Vec<FunctionParameter>, return_type: Type) -> Self {
+        Self { _module_id: module_id, name, parameters, return_type }
     }
 }
