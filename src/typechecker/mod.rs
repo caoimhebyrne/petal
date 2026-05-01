@@ -59,6 +59,7 @@ impl Typechecker {
             "u64" => Type::UnsignedInteger(64),
 
             "bool" => Type::Boolean,
+            "void" => Type::Void,
 
             _ => return Err(TypecheckerErrorKind::UnknownType(name.clone()).at(span)),
         };
