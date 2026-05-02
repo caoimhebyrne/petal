@@ -98,6 +98,9 @@ pub enum Keyword {
 
     /// An import statement.
     Import,
+
+    /// The public access modifier.
+    Public,
 }
 
 impl Keyword {
@@ -112,6 +115,7 @@ impl Keyword {
             "if" => Keyword::If,
             "else" => Keyword::Else,
             "import" => Keyword::Import,
+            "public" => Keyword::Public,
 
             _ => return None,
         };

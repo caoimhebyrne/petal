@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::{
     ast::statement::{
         function_declaration::{
+            DeclarationModifier,
             FunctionDeclaration,
             FunctionParameter,
         },
@@ -80,6 +81,7 @@ impl TypecheckerContext {
                 function_declaration.name.clone(),
                 function_declaration.parameters.clone(),
                 function_declaration.return_type,
+                function_declaration.modifiers.clone(),
             ),
         );
 
@@ -123,6 +125,9 @@ pub(crate) struct CheckedFunction {
 
     /// The return type of the function.
     pub return_type: Type,
+
+    /// The modifiers of the function.
+    pub modifiers: Vec<DeclarationModifier>,
 }
 
 impl CheckedFunction {
@@ -132,6 +137,7 @@ impl CheckedFunction {
         declared_name: String,
         parameters: Vec<FunctionParameter>,
         return_type: Type,
+        modifiers: Vec<DeclarationModifier>,
     ) -> Self {
         Self {
             module_id,
@@ -144,6 +150,7 @@ impl CheckedFunction {
             declared_name,
             parameters,
             return_type,
+            modifiers,
         }
     }
 
@@ -152,7 +159,10 @@ impl CheckedFunction {
     /// By default, all functions are private, and can only be accessed by the module that they are defined in. If a
     /// function is marked with the 'public' modifier, then it can be accessed by any module.
     pub fn is_visible_to_module(&self, other_module_id: ModuleId) -> bool {
-        // TODO: Access modifiers
+        if self.modifiers.contains(&DeclarationModifier::Public) {
+            return true;
+        }
+
         self.module_id == other_module_id
     }
 }

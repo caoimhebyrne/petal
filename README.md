@@ -22,8 +22,8 @@ Cranelift) compiler backend will be added in the future.
   - For example, `i64 a = 5;` should compile, but it does not as `5` is always treated as an `i32`. It should be
     inferred to be an `i64` (if the literal fits in the width).
 - [x] Multiple module support
-  - [ ] Private module members by default (expose via `public` keyword)
-  - [ ] Name mangling
+  - [x] Private module members by default (expose via `public` keyword)
+  - [x] Name mangling
 - [ ] References
 - [ ] User defined types (`type CString = &u8`)
 - [ ] Structures

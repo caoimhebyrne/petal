@@ -15,7 +15,10 @@ use crate::{
         },
         statement::{
             Statement,
-            function_declaration::FunctionDeclaration,
+            function_declaration::{
+                DeclarationModifier,
+                FunctionDeclaration,
+            },
             r#if::If,
             import::Import,
             r#return::Return,
@@ -69,7 +72,10 @@ impl ASTParser {
 
         while let Some(token) = self.peek() {
             let statement: Statement = match token.kind {
-                TokenKind::Keyword(Keyword::Func) => self.parse_function_declaration()?,
+                TokenKind::Keyword(Keyword::Public) | TokenKind::Keyword(Keyword::Func) => {
+                    self.parse_function_declaration()?
+                }
+
                 TokenKind::Keyword(Keyword::Import) => self.parse_import()?,
 
                 _ => return Err(ASTErrorKind::UnexpectedToken(token.kind.clone()).at(token.span)),
@@ -236,6 +242,14 @@ impl ASTParser {
 
     /// Attempts to parse a function declaration from the [ASTParser]'s current position.
     fn parse_function_declaration(&mut self) -> Result<Statement, ASTError> {
+        // If a public keyword is present, then we can add the modifier.
+        let is_public = if self.peek_is(TokenKind::Keyword(Keyword::Public)) {
+            self.expect(TokenKind::Keyword(Keyword::Public))?;
+            true
+        } else {
+            false
+        };
+
         // All functions must start with the func keyword.
         let func_keyword_span = self.expect_span(TokenKind::Keyword(Keyword::Func))?;
 
@@ -243,6 +257,10 @@ impl ASTParser {
         let (function_name, _) = self.expect_identifier()?;
 
         let mut builder = FunctionDeclaration::builder(function_name);
+
+        if is_public {
+            builder = builder.modifier(DeclarationModifier::Public);
+        }
 
         // Then parenthesis must surround the parameters to the function.
         self.expect(TokenKind::OpenParen)?;

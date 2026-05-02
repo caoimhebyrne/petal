@@ -10,6 +10,13 @@ use crate::{
     typechecker::r#type::Type,
 };
 
+/// Modifiers for a function declaration.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum DeclarationModifier {
+    /// This declaration is public and can be accessed by other modules.
+    Public,
+}
+
 /// A function declaration within the AST.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDeclaration {
@@ -27,6 +34,9 @@ pub struct FunctionDeclaration {
 
     /// The resolved return type.
     pub return_type: Type,
+
+    /// The modifiers applied to this [`FunctionDeclaration`].
+    pub modifiers: Vec<DeclarationModifier>,
 }
 
 impl FunctionDeclaration {
@@ -37,8 +47,9 @@ impl FunctionDeclaration {
         parameters: Vec<FunctionParameter>,
         return_type_expr: Option<TypeExpr>,
         return_type: Type,
+        modifiers: Vec<DeclarationModifier>,
     ) -> Self {
-        FunctionDeclaration { name: name.into(), body, parameters, return_type_expr, return_type }
+        FunctionDeclaration { name: name.into(), body, parameters, return_type_expr, return_type, modifiers }
     }
 
     /// Creates a new [`FunctionDeclarationBuilder`].
@@ -71,12 +82,22 @@ pub struct FunctionDeclarationBuilder {
 
     /// The resolved return type of the function.
     return_type: Type,
+
+    /// The modifiers of this function
+    modifiers: Vec<DeclarationModifier>,
 }
 
 impl FunctionDeclarationBuilder {
     /// Creates a new [`FunctionDeclarationBuilder`].
     pub fn new(name: impl Into<String>) -> Self {
-        Self { name: name.into(), body: vec![], parameters: vec![], return_type_expr: None, return_type: Type::Unknown }
+        Self {
+            name: name.into(),
+            body: vec![],
+            parameters: vec![],
+            return_type_expr: None,
+            return_type: Type::Unknown,
+            modifiers: Vec::new(),
+        }
     }
 
     /// Adds a statement to the body of the function.
@@ -105,9 +126,22 @@ impl FunctionDeclarationBuilder {
         self
     }
 
+    /// Adds a modifier to this function.
+    pub fn modifier(mut self, modifier: DeclarationModifier) -> Self {
+        self.modifiers.push(modifier);
+        self
+    }
+
     /// Builds this [`FunctionDeclarationBuilder`] into a [`FunctionDeclaration`].
     pub fn build(self) -> FunctionDeclaration {
-        FunctionDeclaration::new(self.name, self.body, self.parameters, self.return_type_expr, self.return_type)
+        FunctionDeclaration::new(
+            self.name,
+            self.body,
+            self.parameters,
+            self.return_type_expr,
+            self.return_type,
+            self.modifiers,
+        )
     }
 }
 
