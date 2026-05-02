@@ -1,6 +1,9 @@
 use std::{
     cmp::max,
-    mem::take,
+    mem::{
+        self,
+        take,
+    },
 };
 
 use crate::{
@@ -95,12 +98,16 @@ impl<'a> BodyPass<'a> {
         let previous_variables = take(&mut self.typechecker.context.variables);
 
         for parameter in &function_declaration.parameters {
-            self.typechecker.context.insert_variable(parameter.name.clone(), parameter.r#type, parameter.span)?;
+            self.typechecker.context.insert_variable(
+                parameter.name.clone(),
+                parameter.r#type.clone(),
+                parameter.span,
+            )?;
         }
 
         // Create a copy of the previous expected return type and variables so that we can restore it later.
-        let previous_return_type = self.typechecker.context.expected_return_type;
-        self.typechecker.context.expected_return_type = function_declaration.return_type;
+        let previous_return_type = mem::take(&mut self.typechecker.context.expected_return_type);
+        self.typechecker.context.expected_return_type = function_declaration.return_type.clone();
 
         for statement in &mut function_declaration.body {
             self.visit_statement(statement)?;
@@ -123,7 +130,7 @@ impl<'a> BodyPass<'a> {
 
         // The initial value for the variable must have a valid type too, and then that type must be equal to the
         // variable type.
-        let value_type = self.visit_expression(&mut variable_declaration.value, Some(variable_type))?;
+        let value_type = self.visit_expression(&mut variable_declaration.value, Some(&variable_type))?;
         if variable_type != value_type {
             return Err(TypecheckerErrorKind::IncompatibleVariableDeclarationTypes {
                 declared: variable_type,
@@ -149,7 +156,7 @@ impl<'a> BodyPass<'a> {
 
         // The initial value for the variable must have a valid type too, and then that type must be equal to the
         // variable type.
-        let value_type = self.visit_expression(&mut variable_assignment.value, Some(variable_type))?;
+        let value_type = self.visit_expression(&mut variable_assignment.value, Some(&variable_type))?;
         if variable_type != value_type {
             return Err(TypecheckerErrorKind::IncompatibleVariableDeclarationTypes {
                 declared: variable_type,
@@ -166,14 +173,14 @@ impl<'a> BodyPass<'a> {
         let value_type = r#return
             .value
             .as_mut()
-            .map(|it| self.visit_expression(it, Some(self.typechecker.context.expected_return_type)))
+            .map(|it| self.visit_expression(it, Some(&self.typechecker.context.expected_return_type.clone())))
             .transpose()?
             .unwrap_or(Type::Void);
 
         // The value being returned must have the same return type as the function being parsed.
         if self.typechecker.context.expected_return_type != value_type {
             return Err(TypecheckerErrorKind::IncompatibleReturnTypes {
-                declared: self.typechecker.context.expected_return_type,
+                declared: self.typechecker.context.expected_return_type.clone(),
                 value: value_type,
             }
             .at(span));
@@ -185,7 +192,7 @@ impl<'a> BodyPass<'a> {
     /// Checks and resolves any [`Type`]s referenced in the provided [`If`].
     fn visit_if(&mut self, r#if: &mut If, _span: Span) -> Result<(), TypecheckerError> {
         // The type of the condition must be a boolean.
-        let condition_type = self.visit_expression(&mut r#if.condition, Some(Type::Boolean))?;
+        let condition_type = self.visit_expression(&mut r#if.condition, Some(&Type::Boolean))?;
         if condition_type != Type::Boolean {
             return Err(TypecheckerErrorKind::IncompatibleTypes { expected: Type::Boolean, got: condition_type }
                 .at(r#if.condition.span));
@@ -211,7 +218,7 @@ impl<'a> BodyPass<'a> {
     fn visit_expression(
         &mut self,
         expression: &mut Expression,
-        type_hint: Option<Type>,
+        type_hint: Option<&Type>,
     ) -> Result<Type, TypecheckerError> {
         let r#type = match &mut expression.kind {
             ExpressionKind::NumberLiteral(value) => BodyPass::visit_number_literal(value, type_hint, expression.span),
@@ -231,7 +238,7 @@ impl<'a> BodyPass<'a> {
     }
 
     /// Checks and resolves the type of the provided number literal.
-    fn visit_number_literal(value: &f64, type_hint: Option<Type>, _span: Span) -> Result<Type, TypecheckerError> {
+    fn visit_number_literal(value: &f64, type_hint: Option<&Type>, _span: Span) -> Result<Type, TypecheckerError> {
         // TODO: Support for floating point values.
 
         let minimum_integer_type = if *value < 0.0 {
@@ -259,24 +266,24 @@ impl<'a> BodyPass<'a> {
         let r#type = match type_hint {
             // The hint suggests that we should use a signed type. All integer types are castable to signed.
             Some(Type::SignedInteger(hint_bits)) => match minimum_integer_type {
-                Type::SignedInteger(recommended_bits) => Type::SignedInteger(max(hint_bits, recommended_bits)),
-                Type::UnsignedInteger(recommended_bits) => Type::SignedInteger(max(hint_bits, recommended_bits)),
+                Type::SignedInteger(recommended_bits) => Type::SignedInteger(max(*hint_bits, recommended_bits)),
+                Type::UnsignedInteger(recommended_bits) => Type::SignedInteger(max(*hint_bits, recommended_bits)),
                 _ => unreachable!("recommended_integer_type can only be Type::UnsignedInteger or Type::SignedInteger"),
             },
 
             // The hint suggests that we should use an unsigned type. Not all integer types are castable to unsigned.
             Some(Type::UnsignedInteger(hint_bits)) => match minimum_integer_type {
-                Type::UnsignedInteger(recommended_bits) => Type::UnsignedInteger(max(hint_bits, recommended_bits)),
+                Type::UnsignedInteger(recommended_bits) => Type::UnsignedInteger(max(*hint_bits, recommended_bits)),
 
                 // We still return the signed integer in this case, even though the hint suggests an unsigned integer.
                 // The caller is responsible for checking whether the signed-ness is OK.
-                Type::SignedInteger(_) => minimum_integer_type,
+                Type::SignedInteger(_) => minimum_integer_type.clone(),
 
                 _ => unreachable!("recommended_integer_type can only be Type::UnsignedInteger or Type::SignedInteger"),
             },
 
             // Return the recommended type, the type that was suggested is not an integer type.
-            _ => minimum_integer_type,
+            _ => minimum_integer_type.clone(),
         };
 
         if let Some(hint) = type_hint {
@@ -298,12 +305,12 @@ impl<'a> BodyPass<'a> {
     fn visit_binary_operation(
         &mut self,
         binary_operation: &mut BinaryOperation,
-        type_hint: Option<Type>,
+        type_hint: Option<&Type>,
         span: Span,
     ) -> Result<Type, TypecheckerError> {
         // Types on both sides of the operation must be resolvable.
         let left = self.visit_expression(&mut binary_operation.left, type_hint)?;
-        let right = self.visit_expression(&mut binary_operation.right, type_hint.or(Some(left)))?;
+        let right = self.visit_expression(&mut binary_operation.right, type_hint.or(Some(&left)))?;
 
         // Both of the types must be the same. If they are not, then we must error.
         if left != right {
@@ -408,12 +415,12 @@ impl<'a> BodyPass<'a> {
         argument: &mut FunctionCallArgument,
         parameter: &FunctionParameter,
     ) -> Result<(), TypecheckerError> {
-        let argument_type = self.visit_expression(&mut argument.value, Some(parameter.r#type))?;
+        let argument_type = self.visit_expression(&mut argument.value, Some(&parameter.r#type))?;
 
         if argument_type != parameter.r#type {
             return Err(TypecheckerErrorKind::IncompatibleFunctionCallArgument {
                 parameter_name: parameter.name.clone(),
-                parameter_type: parameter.r#type,
+                parameter_type: parameter.r#type.clone(),
                 argument_type,
             }
             .at(argument.span));
@@ -424,6 +431,6 @@ impl<'a> BodyPass<'a> {
 
     /// Checks and resolves the type of the provided identifier reference.
     fn visit_identifier_reference(&mut self, name: &str, span: Span) -> Result<Type, TypecheckerError> {
-        self.typechecker.context.get_variable(name, span).copied()
+        self.typechecker.context.get_variable(name, span).cloned()
     }
 }

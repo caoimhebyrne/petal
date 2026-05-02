@@ -74,7 +74,7 @@ impl<'a> DeclarationPass<'a> {
     /// Checks and resolves any [`Type`]s referenced in the provided [`FunctionParameter`].
     fn check_function_parameter(function_parameter: &mut FunctionParameter) -> Result<Type, TypecheckerError> {
         let r#type = Typechecker::resolve_type_from_expr(&function_parameter.type_expr, function_parameter.span)?;
-        function_parameter.r#type = r#type;
+        function_parameter.r#type = r#type.clone();
         Ok(r#type)
     }
 }

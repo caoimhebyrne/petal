@@ -45,7 +45,14 @@ impl Typechecker {
 
     /// Attempts to resolve the provided [`TypeExpr`] into a [`Type`].
     fn resolve_type_from_expr(expr: &TypeExpr, span: Span) -> Result<Type, TypecheckerError> {
-        let TypeExpr::Named(name) = expr;
+        let name = match expr {
+            TypeExpr::Named(value) => value,
+            TypeExpr::Reference(referenced_expr) => {
+                // This is referencing another type, we can construct the [`Type`] by resolving the referenced type.
+                let referenced = Typechecker::resolve_type_from_expr(referenced_expr, span)?;
+                return Ok(Type::Reference(referenced.into()));
+            }
+        };
 
         let r#type = match name.as_str() {
             "i8" => Type::SignedInteger(8),

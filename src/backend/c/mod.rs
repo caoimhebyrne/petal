@@ -107,6 +107,7 @@ impl CBackend {
             Type::UnsignedInteger(size) => format!("uint{}_t", size),
             Type::Boolean => "bool".into(),
             Type::Void => "void".into(),
+            Type::Reference(referenced) => format!("*{}", CBackend::compile_type(referenced, span)?),
             Type::Unknown => return Err(CBackendErrorKind::UnknownType.at(span)),
         };
 

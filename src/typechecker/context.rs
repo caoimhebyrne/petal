@@ -86,7 +86,7 @@ impl TypecheckerContext {
                 span.module_id,
                 function_declaration.name.clone(),
                 function_declaration.parameters.clone(),
-                function_declaration.return_type,
+                function_declaration.return_type.clone(),
                 function_declaration.modifiers.clone(),
             ),
         );
@@ -100,7 +100,7 @@ impl TypecheckerContext {
         variable_declaration: &VariableDeclaration,
         span: Span,
     ) -> Result<(), TypecheckerError> {
-        self.insert_variable(variable_declaration.name.clone(), variable_declaration.r#type, span)
+        self.insert_variable(variable_declaration.name.clone(), variable_declaration.r#type.clone(), span)
     }
 
     /// Inserts a variable into this [`Typechecker`].
