@@ -5,7 +5,6 @@ use std::{
 };
 
 use clap::Parser;
-use owo_colors::OwoColorize;
 
 use crate::{
     ast::statement::StatementKind,
@@ -24,12 +23,19 @@ pub mod module;
 pub mod module_registry;
 pub mod typechecker;
 
+#[macro_use]
+extern crate log;
+
 #[derive(Parser, Debug)]
 #[command()]
 struct Args {
     /// Whether the generated code should be written to stdout.
     #[arg(long)]
     emit_code: bool,
+
+    /// Whether verbose output is enabled.
+    #[arg(long, short)]
+    verbose: bool,
 
     /// Whether the compiler should skip emitting a binary.
     #[arg(long)]
@@ -57,6 +63,14 @@ fn create_and_parse_module(
         // same directory.
         if let StatementKind::Import(import) = &statement.kind {
             let imported_module_path = file_path.with_file_name(import.name.clone()).with_extension("petal");
+
+            debug!(
+                "Module {} imports '{}', which resolves to path '{}'",
+                module_id,
+                import.name,
+                imported_module_path.to_string_lossy()
+            );
+
             create_and_parse_module(parsed_modules, module_registry, imported_module_path)?;
         }
     }
@@ -66,7 +80,7 @@ fn create_and_parse_module(
 }
 
 fn main_impl(args: Args, module_registry: &mut ModuleRegistry) -> Result<(), Box<dyn Error>> {
-    println!("{} Parsing modules", "[1/4]".bright_purple());
+    info!("Parsing modules");
 
     let mut parsed_modules: Vec<ParsedModule> = Vec::new();
 
@@ -74,12 +88,12 @@ fn main_impl(args: Args, module_registry: &mut ModuleRegistry) -> Result<(), Box
         create_and_parse_module(&mut parsed_modules, module_registry, PathBuf::from(file_path))?;
     }
 
-    println!("{} Checking types", "[2/4]".bright_purple());
+    info!("Checking types");
 
     let mut typechecker = Typechecker::default();
     let checked_modules = typechecker.check(parsed_modules)?;
 
-    println!("{} Generating C code", "[3/4]".bright_purple());
+    info!("Generating code");
 
     let code = CBackend::emit_code(&checked_modules)?;
     if args.emit_code {
@@ -93,7 +107,7 @@ fn main_impl(args: Args, module_registry: &mut ModuleRegistry) -> Result<(), Box
     });
 
     if !args.no_emit_binary {
-        println!("{} Compiling binary ('{binary_file_name}')", "[4/4]".bright_purple());
+        info!("Compiling binary ('{binary_file_name}')");
         CBackend::emit_binary(&code, binary_file_name)?;
     }
 
@@ -102,6 +116,10 @@ fn main_impl(args: Args, module_registry: &mut ModuleRegistry) -> Result<(), Box
 
 fn main() -> ExitCode {
     let args = Args::parse();
+
+    let default_log_level = if args.verbose { log::LevelFilter::Trace } else { log::LevelFilter::Info };
+    pretty_env_logger::formatted_builder().filter_level(default_log_level).parse_default_env().init();
+
     let mut module_registry = ModuleRegistry::default();
 
     if let Err(error) = main_impl(args, &mut module_registry) {

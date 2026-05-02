@@ -279,6 +279,13 @@ impl<'a> BodyPass<'a> {
             _ => minimum_integer_type,
         };
 
+        if let Some(hint) = type_hint {
+            trace!(
+                "Number literal '{}' has a minimum integer type of '{}'. Type was hinted as '{}'. Final type is '{}'",
+                value, minimum_integer_type, hint, r#type
+            );
+        }
+
         Ok(r#type)
     }
 

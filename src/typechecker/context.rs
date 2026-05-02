@@ -50,6 +50,12 @@ impl TypecheckerContext {
             .collect::<Vec<_>>();
 
         if function_candidates.len() > 1 {
+            debug!(
+                "Lookup for function name '{}' in module {} has the following candidates: {}",
+                name,
+                span.module_id,
+                function_candidates.iter().map(|it| it.name.clone()).collect::<Vec<_>>().join(", ")
+            );
             return Err(TypecheckerErrorKind::AmbiguousFunctionCall(name.into()).at(span));
         }
 
