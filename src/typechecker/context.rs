@@ -52,7 +52,7 @@ impl TypecheckerContext {
             return Err(TypecheckerErrorKind::AmbiguousFunctionCall(name.into()).at(span));
         }
 
-        function_candidates.first().map(|it| *it).ok_or(TypecheckerErrorKind::UndeclaredFunction(name.into()).at(span))
+        function_candidates.first().copied().ok_or(TypecheckerErrorKind::UndeclaredFunction(name.into()).at(span))
     }
 
     /// Attempts to get a [`CheckedFunction`] from this [`Typechecker`] by its its [`FunctionId`].
@@ -134,7 +134,7 @@ impl CheckedFunction {
         return_type: Type,
     ) -> Self {
         Self {
-            module_id: module_id,
+            module_id,
             // FIXME: Add a modifier to function declarations which prevents their names from being mangled.
             name: if declared_name == "main" {
                 declared_name.clone()
@@ -153,6 +153,6 @@ impl CheckedFunction {
     /// function is marked with the 'public' modifier, then it can be accessed by any module.
     pub fn is_visible_to_module(&self, other_module_id: ModuleId) -> bool {
         // TODO: Access modifiers
-        return self.module_id == other_module_id;
+        self.module_id == other_module_id
     }
 }
