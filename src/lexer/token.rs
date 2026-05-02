@@ -65,6 +65,9 @@ pub enum TokenKind {
     /// An exclamation mark: !
     ExclamationMark,
 
+    /// An ampersand: &
+    Ampersand,
+
     /// An identifier.
     Identifier(String),
 

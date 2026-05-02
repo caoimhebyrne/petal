@@ -275,14 +275,14 @@ impl ASTParser {
 
             let (parameter_name, parameter_name_span) = self.expect_identifier()?;
             self.expect(TokenKind::Colon)?;
-            let (parameter_type_name, parameter_type_name_span) = self.expect_identifier()?;
+            let (parameter_type, parameter_type_span) = self.parse_type_expr()?;
 
             builder = builder.parameter(
                 parameter_name,
-                TypeExpr::Named(parameter_type_name),
+                parameter_type,
                 Type::default(),
                 is_named,
-                Span::between(parameter_name_span, parameter_type_name_span),
+                Span::between(parameter_name_span, parameter_type_span),
             );
 
             if self.peek_is(TokenKind::CloseParen) {
@@ -299,9 +299,9 @@ impl ASTParser {
             self.expect(TokenKind::Hyphen)?;
             self.expect(TokenKind::RightAngleBracket)?;
 
-            let (return_type_name, _) = self.expect_identifier()?;
+            let (return_type, _) = self.parse_type_expr()?;
 
-            builder = builder.return_type(TypeExpr::named(return_type_name), Type::Unknown);
+            builder = builder.return_type(return_type, Type::Unknown);
         }
 
         // And braces must surround the body of the function.
@@ -332,7 +332,7 @@ impl ASTParser {
     /// Attempts to parse a variable declaration statement from the [ASTParser]'s current position.
     fn parse_variable_declaration(&mut self) -> Result<Statement, ASTError> {
         // The first token must be the type of the variable.
-        let (type_name, type_span) = self.expect_identifier()?;
+        let (type_expr, type_span) = self.parse_type_expr()?;
 
         // The next token must be the name of the variable.
         let (name, _) = self.expect_identifier()?;
@@ -344,7 +344,7 @@ impl ASTParser {
         let value = self.parse_expression()?;
 
         let span = Span::between(type_span, value.span);
-        Ok(Statement::from(VariableDeclaration::new(name, TypeExpr::named(type_name), Type::Unknown, value), span))
+        Ok(Statement::from(VariableDeclaration::new(name, type_expr, Type::Unknown, value), span))
     }
 
     /// Attempts to parse a variable assignment statement from the [ASTParser]'s current position.
@@ -433,6 +433,21 @@ impl ASTParser {
         let semicolon_span = self.expect_span(TokenKind::Semicolon)?;
 
         Ok(Statement::from(Import::new(name), Span::between(import_keyword_span, semicolon_span)))
+    }
+
+    /// Attempts to parse a [`TypeExpr`] from the [`ASTParser`]'s current position.
+    fn parse_type_expr(&mut self) -> Result<(TypeExpr, Span), ASTError> {
+        // If the first token is an ampersand, then this is a reference type.
+        if self.peek_is(TokenKind::Ampersand) {
+            let ampersand_span = self.expect_span(TokenKind::Ampersand)?;
+
+            let (inner, inner_span) = self.parse_type_expr()?;
+            return Ok((TypeExpr::reference(inner), Span::between(ampersand_span, inner_span)));
+        }
+
+        // Otherwise, we can attempt to parse a named type.
+        let (name, name_span) = self.expect_identifier()?;
+        Ok((TypeExpr::named(name), name_span))
     }
 
     /// Returns the token at the [ASTParser]'s current position.
