@@ -1,10 +1,13 @@
 use std::{
     ffi::OsStr,
+    io::Write,
     path::PathBuf,
     process::ExitCode,
 };
 
 use clap::Parser;
+use log::Level;
+use pretty_env_logger::env_logger::fmt::Color;
 
 use crate::{
     ast::statement::StatementKind,
@@ -118,7 +121,24 @@ fn main() -> ExitCode {
     let args = Args::parse();
 
     let default_log_level = if args.verbose { log::LevelFilter::Trace } else { log::LevelFilter::Info };
-    pretty_env_logger::formatted_builder().filter_level(default_log_level).parse_default_env().init();
+
+    pretty_env_logger::formatted_builder()
+        .filter_level(default_log_level)
+        .parse_default_env()
+        .format(|buf, record| {
+            let mut style = buf.style();
+            style.set_color(match record.level() {
+                Level::Error => Color::Red,
+                Level::Warn => Color::Yellow,
+                Level::Info => Color::Green,
+                Level::Debug => Color::Blue,
+                Level::Trace => Color::Magenta,
+            });
+
+            let level = style.value(format!("{:>5}", record.level()));
+            writeln!(buf, "{level}  {}", record.args())
+        })
+        .init();
 
     let mut module_registry = ModuleRegistry::default();
 

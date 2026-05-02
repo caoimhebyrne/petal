@@ -1,7 +1,5 @@
 use std::fmt::Display;
 
-use owo_colors::OwoColorize;
-
 use crate::{
     core::span::Span,
     module_registry::ModuleRegistry,
@@ -22,7 +20,7 @@ pub trait Error: Display {
         let span = match self.span() {
             Some(span) => span,
             _ => {
-                eprintln!("{} {}", "error:".red().bold(), self.bright_white());
+                error!("{}", self);
                 return;
             }
         };
@@ -36,7 +34,7 @@ pub trait Error: Display {
             let line_number_str = format!("{}", source_information.line_index + 1);
             let left_padding = " ".repeat(line_number_str.len());
 
-            eprintln!("{} {}", "error:".red().bold(), self.bright_white());
+            error!("{}", self);
 
             eprintln!(
                 "{} ---> {}:{}:{}",
@@ -47,7 +45,7 @@ pub trait Error: Display {
             );
 
             eprintln!("{} | ", left_padding);
-            eprintln!("{} | {}", line_number_str, source_information.line.bright_white());
+            eprintln!("{} | {}", line_number_str, source_information.line);
             eprintln!(
                 "{} | {}{}",
                 left_padding,
@@ -55,11 +53,8 @@ pub trait Error: Display {
                 "^".repeat(span.location.length)
             );
         } else {
-            eprintln!(
-                "{} {}",
-                format!("error({}):", module.file_path.to_string_lossy()).red().bold(),
-                self.bright_white()
-            );
+            error!("{}", self);
+            eprintln!("---> {}", module.file_path.to_string_lossy(),);
         }
     }
 }
