@@ -1,11 +1,14 @@
 use crate::{
-    ast::statement::{
-        function_declaration::FunctionDeclaration,
-        r#if::If,
-        import::Import,
-        r#return::Return,
-        variable_assignment::VariableAssignment,
-        variable_declaration::VariableDeclaration,
+    ast::{
+        expression::function_call::FunctionCall,
+        statement::{
+            function_declaration::FunctionDeclaration,
+            r#if::If,
+            import::Import,
+            r#return::Return,
+            variable_assignment::VariableAssignment,
+            variable_declaration::VariableDeclaration,
+        },
     },
     core::span::Span,
 };
@@ -45,6 +48,9 @@ impl Statement {
 pub enum StatementKind {
     /// A function declaration statement.
     FunctionDeclaration(FunctionDeclaration),
+
+    /// A function call statement.
+    FunctionCall(FunctionCall),
 
     /// An if statement.
     If(If),

@@ -86,6 +86,11 @@ impl<'a> BodyPass<'a> {
 
             // We don't have to do anything at this pass for imports.
             StatementKind::Import(_) => Ok(()),
+
+            StatementKind::FunctionCall(function_call) => {
+                self.visit_function_call(function_call, statement.span)?;
+                Ok(())
+            }
         }
     }
 

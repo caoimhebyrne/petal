@@ -26,6 +26,10 @@ impl CBackend {
                 CBackend::compile_function_declaration(function_declaration, statement.span)
             }
 
+            StatementKind::FunctionCall(function_call) => {
+                Ok(format!("{};", CBackend::compile_function_call(function_call, statement.span)?))
+            }
+
             StatementKind::Import(_) => Ok("".into()),
 
             StatementKind::Return(r#return) => CBackend::compile_return(r#return, statement.span),

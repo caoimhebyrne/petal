@@ -15,6 +15,7 @@ use crate::{
         },
         statement::{
             Statement,
+            StatementKind,
             function_declaration::{
                 DeclarationModifier,
                 FunctionDeclaration,
@@ -98,10 +99,13 @@ impl ASTParser {
 
             TokenKind::Identifier(_) => (
                 if self.peek_nth(1).map(|it| it.kind == TokenKind::Equals).unwrap_or_default() {
-                    self.parse_variable_assignment()
+                    self.parse_variable_assignment()?
+                } else if self.peek_nth(1).map(|it| it.kind == TokenKind::OpenParen).unwrap_or_default() {
+                    let (function_call, span) = self.parse_function_call()?;
+                    Statement::new(StatementKind::FunctionCall(function_call), span)
                 } else {
-                    self.parse_variable_declaration()
-                }?,
+                    self.parse_variable_declaration()?
+                },
                 true,
             ),
 
