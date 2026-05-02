@@ -532,6 +532,7 @@ mod tests {
                             parameters: [],
                             return_type_expr: None,
                             return_type: Unknown,
+                            modifiers: [],
                         },
                     ),
                     span: Span {
@@ -590,6 +591,7 @@ mod tests {
                             ],
                             return_type_expr: None,
                             return_type: Unknown,
+                            modifiers: [],
                         },
                     ),
                     span: Span {
@@ -673,6 +675,7 @@ mod tests {
                             ],
                             return_type_expr: None,
                             return_type: Unknown,
+                            modifiers: [],
                         },
                     ),
                     span: Span {
@@ -717,6 +720,7 @@ mod tests {
                                 ),
                             ),
                             return_type: Unknown,
+                            modifiers: [],
                         },
                     ),
                     span: Span {
@@ -789,6 +793,7 @@ mod tests {
                             parameters: [],
                             return_type_expr: None,
                             return_type: Unknown,
+                            modifiers: [],
                         },
                     ),
                     span: Span {
@@ -866,6 +871,7 @@ mod tests {
                             parameters: [],
                             return_type_expr: None,
                             return_type: Unknown,
+                            modifiers: [],
                         },
                     ),
                     span: Span {
@@ -975,6 +981,7 @@ mod tests {
                             parameters: [],
                             return_type_expr: None,
                             return_type: Unknown,
+                            modifiers: [],
                         },
                     ),
                     span: Span {
@@ -1116,6 +1123,7 @@ mod tests {
                             parameters: [],
                             return_type_expr: None,
                             return_type: Unknown,
+                            modifiers: [],
                         },
                     ),
                     span: Span {
@@ -1230,6 +1238,7 @@ mod tests {
                             parameters: [],
                             return_type_expr: None,
                             return_type: Unknown,
+                            modifiers: [],
                         },
                     ),
                     span: Span {
@@ -1307,6 +1316,7 @@ mod tests {
                             parameters: [],
                             return_type_expr: None,
                             return_type: Unknown,
+                            modifiers: [],
                         },
                     ),
                     span: Span {
@@ -1379,6 +1389,7 @@ mod tests {
                             parameters: [],
                             return_type_expr: None,
                             return_type: Unknown,
+                            modifiers: [],
                         },
                     ),
                     span: Span {
