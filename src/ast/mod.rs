@@ -23,6 +23,7 @@ use crate::{
             r#if::If,
             import::Import,
             r#return::Return,
+            type_declaration::TypeDeclaration,
             variable_assignment::VariableAssignment,
             variable_declaration::VariableDeclaration,
         },
@@ -76,6 +77,8 @@ impl ASTParser {
                 TokenKind::Keyword(Keyword::Public) | TokenKind::Keyword(Keyword::Func) => {
                     self.parse_function_declaration()?
                 }
+
+                TokenKind::Keyword(Keyword::Type) => self.parse_type_declaration()?,
 
                 TokenKind::Keyword(Keyword::Import) => self.parse_import()?,
 
@@ -463,6 +466,24 @@ impl ASTParser {
         let semicolon_span = self.expect_span(TokenKind::Semicolon)?;
 
         Ok(Statement::from(Import::new(name), Span::between(import_keyword_span, semicolon_span)))
+    }
+
+    /// Attempts to parse a type declaration statement from the [ASTParser]'s current position.
+    fn parse_type_declaration(&mut self) -> Result<Statement, ASTError> {
+        // The first token must be the `type` keyword.
+        let type_keyword_span = self.expect_span(TokenKind::Keyword(Keyword::Type))?;
+
+        // Then, there must be the name of the type.
+        let (name, _) = self.expect_identifier()?;
+
+        // Then there must be an equals.
+        self.expect(TokenKind::Equals)?;
+
+        // And finally, an expression must be present for the type, followed by a semicolon.
+        let (type_expr, _) = self.parse_type_expr()?;
+        let semicolon_span = self.expect_span(TokenKind::Semicolon)?;
+
+        Ok(Statement::from(TypeDeclaration::new(name, type_expr), Span::between(type_keyword_span, semicolon_span)))
     }
 
     /// Attempts to parse a [`TypeExpr`] from the [`ASTParser`]'s current position.

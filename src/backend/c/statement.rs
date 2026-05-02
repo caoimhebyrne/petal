@@ -32,6 +32,9 @@ impl CBackend {
 
             StatementKind::Import(_) => Ok("".into()),
 
+            // TODO: Do we need to use `typedef ...` to forward declare these types, or should that be done another way?
+            StatementKind::TypeDeclaration(_) => Ok("".into()),
+
             StatementKind::Return(r#return) => CBackend::compile_return(r#return, statement.span),
 
             StatementKind::VariableDeclaration(variable_declaration) => {

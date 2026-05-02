@@ -44,12 +44,12 @@ impl Typechecker {
     }
 
     /// Attempts to resolve the provided [`TypeExpr`] into a [`Type`].
-    fn resolve_type_from_expr(expr: &TypeExpr, span: Span) -> Result<Type, TypecheckerError> {
+    fn resolve_type_from_expr(&self, expr: &TypeExpr, span: Span) -> Result<Type, TypecheckerError> {
         let name = match expr {
             TypeExpr::Named(value) => value,
             TypeExpr::Reference(referenced_expr) => {
                 // This is referencing another type, we can construct the [`Type`] by resolving the referenced type.
-                let referenced = Typechecker::resolve_type_from_expr(referenced_expr, span)?;
+                let referenced = self.resolve_type_from_expr(referenced_expr, span)?;
                 return Ok(Type::Reference(referenced.into()));
             }
         };
@@ -68,7 +68,12 @@ impl Typechecker {
             "bool" => Type::Boolean,
             "void" => Type::Void,
 
-            _ => return Err(TypecheckerErrorKind::UnknownType(name.clone()).at(span)),
+            // The built in types do not match, we can try to check for any user-defined types.
+            _ => self
+                .context
+                .get_declared_type_by_name(name, span)
+                .map(|it| it.r#type.clone())
+                .ok_or(TypecheckerErrorKind::UnknownType(name.clone()).at(span))?,
         };
 
         Ok(r#type)

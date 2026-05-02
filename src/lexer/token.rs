@@ -107,6 +107,9 @@ pub enum Keyword {
 
     /// The public access modifier.
     Public,
+
+    /// A type declaration.
+    Type,
 }
 
 impl Keyword {
@@ -122,6 +125,7 @@ impl Keyword {
             "else" => Keyword::Else,
             "import" => Keyword::Import,
             "public" => Keyword::Public,
+            "type" => Keyword::Type,
 
             _ => return None,
         };

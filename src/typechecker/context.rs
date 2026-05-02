@@ -24,6 +24,10 @@ use crate::{
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionId(usize);
 
+/// A unique identifier for a declared type.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct DeclaredTypeId(usize);
+
 /// The context of a [`Typechecker`].
 #[derive(Default)]
 pub(crate) struct TypecheckerContext {
@@ -35,6 +39,9 @@ pub(crate) struct TypecheckerContext {
 
     /// The variables that have been declared in the current scope.
     pub(crate) variables: HashMap<String, Type>,
+
+    /// The types that have been declared by the user in the current scope.
+    pub(crate) types: HashMap<DeclaredTypeId, DeclaredType>,
 }
 
 impl TypecheckerContext {
@@ -112,6 +119,25 @@ impl TypecheckerContext {
         self.variables.insert(name, r#type);
         Ok(())
     }
+
+    /// Retrieves a [`DeclaredType`] from this [`TypecheckerContext`] by its name.
+    pub(crate) fn get_declared_type_by_name(&self, name: &str, span: Span) -> Option<&DeclaredType> {
+        self.types.values().find(|it| it.name == name && it.is_visible_to_module(span.module_id))
+    }
+
+    /// Inserts a [`DeclaredType`] into this [`TypecheckerContext`].
+    pub(crate) fn insert_declared_type(
+        &mut self,
+        name: String,
+        r#type: Type,
+        span: Span,
+    ) -> Result<DeclaredTypeId, TypecheckerError> {
+        let type_id = DeclaredTypeId(self.types.len());
+
+        self.types.insert(type_id, DeclaredType::new(span.module_id, name, r#type));
+
+        Ok(type_id)
+    }
 }
 
 /// A function which has been verified by the typechecker.
@@ -169,6 +195,32 @@ impl CheckedFunction {
             return true;
         }
 
+        self.module_id == other_module_id
+    }
+}
+
+/// A type which has been declared by the user.
+#[derive(Debug, Clone)]
+pub(crate) struct DeclaredType {
+    /// The module that the type was declared in.
+    pub module_id: ModuleId,
+
+    /// The name of the type.
+    pub name: String,
+
+    /// The actual [`Type`].
+    pub r#type: Type,
+}
+
+impl DeclaredType {
+    /// Creates a new [`DeclaredType`].
+    pub fn new(module_id: ModuleId, name: String, r#type: Type) -> Self {
+        Self { module_id, name, r#type }
+    }
+
+    /// Returns whether this [`DeclaredType`] is visible to the provided module ID.
+    /// By default, all types are private, and can only be accessed by the module that they are defined in.
+    pub fn is_visible_to_module(&self, other_module_id: ModuleId) -> bool {
         self.module_id == other_module_id
     }
 }

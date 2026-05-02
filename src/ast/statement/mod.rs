@@ -6,6 +6,7 @@ use crate::{
             r#if::If,
             import::Import,
             r#return::Return,
+            type_declaration::TypeDeclaration,
             variable_assignment::VariableAssignment,
             variable_declaration::VariableDeclaration,
         },
@@ -17,6 +18,7 @@ pub mod function_declaration;
 pub mod r#if;
 pub mod import;
 pub mod r#return;
+pub mod type_declaration;
 pub mod variable_assignment;
 pub mod variable_declaration;
 
@@ -66,4 +68,7 @@ pub enum StatementKind {
 
     /// An import statement.
     Import(Import),
+
+    /// A type declaration.
+    TypeDeclaration(TypeDeclaration),
 }

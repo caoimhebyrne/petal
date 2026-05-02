@@ -86,6 +86,7 @@ impl<'a> BodyPass<'a> {
 
             // We don't have to do anything at this pass for imports.
             StatementKind::Import(_) => Ok(()),
+            StatementKind::TypeDeclaration(_) => Ok(()),
 
             StatementKind::FunctionCall(function_call) => {
                 self.visit_function_call(function_call, statement.span)?;
@@ -131,7 +132,7 @@ impl<'a> BodyPass<'a> {
         span: Span,
     ) -> Result<(), TypecheckerError> {
         // The type of the variable must be resolved.
-        let variable_type = Typechecker::resolve_type_from_expr(&variable_declaration.type_expr, span)?;
+        let variable_type = self.typechecker.resolve_type_from_expr(&variable_declaration.type_expr, span)?;
 
         // The initial value for the variable must have a valid type too, and then that type must be equal to the
         // variable type.

@@ -5,6 +5,7 @@ use crate::{
             FunctionDeclaration,
             FunctionParameter,
         },
+        type_declaration::TypeDeclaration,
     },
     core::span::Span,
     module::ParsedModule,
@@ -34,6 +35,10 @@ impl<'a> DeclarationPass<'a> {
                         self.visit_function_declaration(function_declaration, statement.span)?;
                     }
 
+                    StatementKind::TypeDeclaration(type_declaration) => {
+                        self.visit_type_declaration(type_declaration, statement.span)?;
+                    }
+
                     // We don't have to do anything at this pass for imports.
                     StatementKind::Import(_) => {}
 
@@ -55,12 +60,12 @@ impl<'a> DeclarationPass<'a> {
         function_declaration.return_type = function_declaration
             .return_type_expr
             .as_ref()
-            .map(|it| Typechecker::resolve_type_from_expr(it, span))
+            .map(|it| self.typechecker.resolve_type_from_expr(it, span))
             .transpose()?
             .unwrap_or(Type::Void);
 
         for parameter in &mut function_declaration.parameters {
-            DeclarationPass::check_function_parameter(parameter)?;
+            self.check_function_parameter(parameter)?;
         }
 
         let function_id = self.typechecker.context.insert_checked_function(function_declaration, span)?;
@@ -72,9 +77,22 @@ impl<'a> DeclarationPass<'a> {
     }
 
     /// Checks and resolves any [`Type`]s referenced in the provided [`FunctionParameter`].
-    fn check_function_parameter(function_parameter: &mut FunctionParameter) -> Result<Type, TypecheckerError> {
-        let r#type = Typechecker::resolve_type_from_expr(&function_parameter.type_expr, function_parameter.span)?;
+    fn check_function_parameter(&self, function_parameter: &mut FunctionParameter) -> Result<Type, TypecheckerError> {
+        let r#type = self.typechecker.resolve_type_from_expr(&function_parameter.type_expr, function_parameter.span)?;
         function_parameter.r#type = r#type.clone();
         Ok(r#type)
+    }
+
+    /// Visits the provided [`TypeDeclaration`] and inserts it into the [`Typechecker`]'s context.
+    fn visit_type_declaration(
+        &mut self,
+        type_declaration: &mut TypeDeclaration,
+        span: Span,
+    ) -> Result<(), TypecheckerError> {
+        // The type expression must be resolvable to an actual type.
+        let r#type = self.typechecker.resolve_type_from_expr(&type_declaration.type_expr, span)?;
+        self.typechecker.context.insert_declared_type(type_declaration.name.clone(), r#type, span)?;
+
+        Ok(())
     }
 }
