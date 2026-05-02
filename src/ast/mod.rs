@@ -105,6 +105,10 @@ impl ASTParser {
                 true,
             ),
 
+            TokenKind::At if self.peek_nth(2).map(|it| it.kind == TokenKind::Equals).unwrap_or_default() => {
+                (self.parse_variable_assignment()?, true)
+            }
+
             _ => return Err(ASTErrorKind::ExpectedStatement(token.kind.clone()).at(token.span)),
         };
 
@@ -174,7 +178,9 @@ impl ASTParser {
     fn parse_equals_or_not_equals_expression(&mut self) -> Result<Expression, ASTError> {
         let left = self.parse_value()?;
 
-        let expression = if self.peek_is(TokenKind::Equals) {
+        let expression = if self.peek_is(TokenKind::Equals)
+            && self.peek_nth(1).map(|it| it.kind == TokenKind::Equals).unwrap_or_default()
+        {
             self.expect(TokenKind::Equals)?;
             self.expect(TokenKind::Equals)?;
 
@@ -219,6 +225,26 @@ impl ASTParser {
                 let span = token.span;
                 self.consume();
                 Expression::new(ExpressionKind::BooleanLiteral(false), span)
+            }
+
+            TokenKind::At => {
+                // This is a dereference, we must parse another expression to see what is being dereferenced.
+                let span = token.span;
+                self.consume();
+
+                let inner = self.parse_value()?;
+                let span = Span::between(span, inner.span);
+                Expression::new(ExpressionKind::Dereference(inner.into()), span)
+            }
+
+            TokenKind::Ampersand => {
+                // This is a reference, we must parse another expression to see what is being passed as a reference.
+                let span = token.span;
+                self.consume();
+
+                let inner = self.parse_value()?;
+                let span = Span::between(span, inner.span);
+                Expression::new(ExpressionKind::Reference(inner.into()), span)
             }
 
             TokenKind::Identifier(name) => {
@@ -350,7 +376,7 @@ impl ASTParser {
     /// Attempts to parse a variable assignment statement from the [ASTParser]'s current position.
     fn parse_variable_assignment(&mut self) -> Result<Statement, ASTError> {
         // The first token must be the name of the variable.
-        let (name, name_span) = self.expect_identifier()?;
+        let target = self.parse_expression()?;
 
         // The next token must be an equals.
         self.expect(TokenKind::Equals)?;
@@ -358,8 +384,8 @@ impl ASTParser {
         // And finally, there must be an expression.
         let value = self.parse_expression()?;
 
-        let span = Span::between(name_span, value.span);
-        Ok(Statement::from(VariableAssignment::new(name, value), span))
+        let span = Span::between(target.span, value.span);
+        Ok(Statement::from(VariableAssignment::new(target, value), span))
     }
 
     /// Attempts to parse a function call from the [ASTParser]'s current position.
@@ -1373,7 +1399,20 @@ mod tests {
                                 Statement {
                                     kind: VariableAssignment(
                                         VariableAssignment {
-                                            name: "variable",
+                                            target: Expression {
+                                                kind: IdentifierReference(
+                                                    "variable",
+                                                ),
+                                                span: Span {
+                                                    module_id: ModuleId(
+                                                        0,
+                                                    ),
+                                                    location: SpanLocation {
+                                                        start: 13,
+                                                        length: 8,
+                                                    },
+                                                },
+                                            },
                                             value: Expression {
                                                 kind: NumberLiteral(
                                                     4.5,

@@ -107,7 +107,7 @@ impl CBackend {
             Type::UnsignedInteger(size) => format!("uint{}_t", size),
             Type::Boolean => "bool".into(),
             Type::Void => "void".into(),
-            Type::Reference(referenced) => format!("*{}", CBackend::compile_type(referenced, span)?),
+            Type::Reference(referenced) => format!("{}*", CBackend::compile_type(referenced, span)?),
             Type::Unknown => return Err(CBackendErrorKind::UnknownType.at(span)),
         };
 
@@ -279,7 +279,10 @@ mod tests {
                 FunctionDeclaration::builder("foo")
                     .statement(Statement::from(
                         VariableAssignment::new(
-                            "variable",
+                            Expression::new(
+                                ExpressionKind::IdentifierReference("variable".into()),
+                                Span::new(MOCK_MODULE_ID, 0, 0),
+                            ),
                             Expression::new(ExpressionKind::NumberLiteral(456.0), Span::new(MOCK_MODULE_ID, 0, 0)),
                         ),
                         Span::new(MOCK_MODULE_ID, 0, 0),

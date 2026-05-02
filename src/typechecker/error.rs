@@ -32,6 +32,7 @@ pub enum TypecheckerErrorKind {
     DuplicateFunctionCallArgument(String),
     IncompatibleFunctionCallArgument { parameter_name: String, parameter_type: Type, argument_type: Type },
     IncompatibleTypes { expected: Type, got: Type },
+    InvalidDereference(Type),
     DuplicateFunctionDeclaration(String),
     DuplicateVariableDeclaration(String),
     UndeclaredFunction(String),
@@ -90,6 +91,8 @@ impl Display for TypecheckerErrorKind {
                 f,
                 "Function '{name}' has {expected} parameter(s), but {got} argument(s) passed in function call",
             ),
+
+            Self::InvalidDereference(r#type) => write!(f, "Unable to dereference value of type '{type}'"),
 
             Self::MissingFunctionCallArgument { function_name, parameter_name } => {
                 write!(

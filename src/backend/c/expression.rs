@@ -27,6 +27,8 @@ impl CBackend {
                 CBackend::compile_binary_operation(binary_operation, expression.span)
             }
 
+            ExpressionKind::Reference(inner) => CBackend::compile_reference(inner, expression.span),
+            ExpressionKind::Dereference(inner) => CBackend::compile_dereference(inner, expression.span),
             ExpressionKind::BooleanLiteral(value) => CBackend::compile_boolean_literal(value, expression.span),
             ExpressionKind::NumberLiteral(value) => CBackend::compile_number_literal(value, expression.span),
             ExpressionKind::IdentifierReference(name) => CBackend::compile_identifier_reference(name, expression.span),
@@ -46,6 +48,16 @@ impl CBackend {
     /// Compiles an identifier reference expression into C code.
     pub fn compile_identifier_reference(value: &String, _span: Span) -> Result<String, CBackendError> {
         Ok(value.to_string())
+    }
+
+    /// Compiles a reference expression into C code.
+    fn compile_reference(value: &Expression, _span: Span) -> Result<String, CBackendError> {
+        Ok(format!("&({})", CBackend::compile_expression(value)?))
+    }
+
+    /// Compiles a dereference expression into C code.
+    fn compile_dereference(value: &Expression, _span: Span) -> Result<String, CBackendError> {
+        Ok(format!("*({})", CBackend::compile_expression(value)?))
     }
 
     /// Compiles a function call expression into C code.

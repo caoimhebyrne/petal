@@ -119,10 +119,9 @@ impl CBackend {
         variable_assignment: &VariableAssignment,
         _span: Span,
     ) -> Result<String, CBackendError> {
-        let name = variable_assignment.name.clone();
+        let target = CBackend::compile_expression(&variable_assignment.target)?;
         let value = CBackend::compile_expression(&variable_assignment.value)?;
-
-        Ok(format!("{name} = {value};"))
+        Ok(format!("{target} = {value};"))
     }
 
     /// Compiles an if statement into C code.

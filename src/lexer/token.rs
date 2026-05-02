@@ -68,6 +68,9 @@ pub enum TokenKind {
     /// An ampersand: &
     Ampersand,
 
+    /// At: @
+    At,
+
     /// An identifier.
     Identifier(String),
 

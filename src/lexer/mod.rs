@@ -58,6 +58,7 @@ impl<'a> Lexer<'a> {
                 '~' => Token::new(TokenKind::Tilda, self.span(1)),
                 '!' => Token::new(TokenKind::ExclamationMark, self.span(1)),
                 '&' => Token::new(TokenKind::Ampersand, self.span(1)),
+                '@' => Token::new(TokenKind::At, self.span(1)),
 
                 '/' => {
                     // If the next token is also a slash, then this is a comment. We should keep

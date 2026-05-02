@@ -151,15 +151,15 @@ impl<'a> BodyPass<'a> {
         variable_assignment: &mut VariableAssignment,
         span: Span,
     ) -> Result<(), TypecheckerError> {
-        // The variable must already be defined.
-        let variable_type = self.typechecker.context.get_variable(&variable_assignment.name, span).cloned()?;
+        let target_type = self.visit_expression(&mut variable_assignment.target, None)?;
 
         // The initial value for the variable must have a valid type too, and then that type must be equal to the
         // variable type.
-        let value_type = self.visit_expression(&mut variable_assignment.value, Some(&variable_type))?;
-        if variable_type != value_type {
+        let value_type = self.visit_expression(&mut variable_assignment.value, Some(&target_type))?;
+
+        if target_type != value_type {
             return Err(TypecheckerErrorKind::IncompatibleVariableDeclarationTypes {
-                declared: variable_type,
+                declared: target_type,
                 value: value_type,
             }
             .at(span));
@@ -232,6 +232,10 @@ impl<'a> BodyPass<'a> {
             ExpressionKind::FunctionCall(function_call) => self.visit_function_call(function_call, expression.span),
 
             ExpressionKind::IdentifierReference(name) => self.visit_identifier_reference(name, expression.span),
+
+            ExpressionKind::Reference(inner) => self.visit_reference(inner, expression.span),
+
+            ExpressionKind::Dereference(inner) => self.visit_dereference(inner, expression.span),
         }?;
 
         Ok(r#type)
@@ -432,5 +436,19 @@ impl<'a> BodyPass<'a> {
     /// Checks and resolves the type of the provided identifier reference.
     fn visit_identifier_reference(&mut self, name: &str, span: Span) -> Result<Type, TypecheckerError> {
         self.typechecker.context.get_variable(name, span).cloned()
+    }
+
+    /// Checks and resolves the type of the provided reference expression.
+    fn visit_reference(&mut self, value: &mut Expression, _span: Span) -> Result<Type, TypecheckerError> {
+        let inner = self.visit_expression(value, None)?;
+        Ok(Type::Reference(inner.into()))
+    }
+
+    /// Checks and resolves the type of the provided dereference expression.
+    fn visit_dereference(&mut self, value: &mut Expression, span: Span) -> Result<Type, TypecheckerError> {
+        match self.visit_expression(value, None)? {
+            Type::Reference(inner) => Ok(*inner),
+            r#type => Err(TypecheckerErrorKind::InvalidDereference(r#type).at(span)),
+        }
     }
 }

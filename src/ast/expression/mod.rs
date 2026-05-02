@@ -39,6 +39,12 @@ pub enum ExpressionKind {
     /// An identifier reference.
     IdentifierReference(String),
 
+    /// A reference expression.
+    Reference(Box<Expression>),
+
+    /// A dereference expression.
+    Dereference(Box<Expression>),
+
     /// A function call.
     FunctionCall(FunctionCall),
 
