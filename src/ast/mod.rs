@@ -8,8 +8,8 @@ use crate::{
             Expression,
             ExpressionKind,
             binary_operation::{
-                BinaryOperand,
                 BinaryOperation,
+                BinaryOperator,
             },
             function_call::FunctionCall,
         },
@@ -126,88 +126,54 @@ impl ASTParser {
         Ok(statement)
     }
 
-    /// Attempts to parse an expression at the [ASTParser]'s current position.
     fn parse_expression(&mut self) -> Result<Expression, ASTError> {
-        self.parse_addition_or_subtraction_expression()
+        self.parse_expression_with_precedence(0)
     }
 
-    /// Attempts to parse an addition or subtraction expression at the [ASTParser]'s current position.
-    fn parse_addition_or_subtraction_expression(&mut self) -> Result<Expression, ASTError> {
-        let left = self.parse_multiplication_or_division_expression()?;
+    /// Attempts to parse an expression at the [ASTParser]'s current position.
+    fn parse_expression_with_precedence(&mut self, precedence: u8) -> Result<Expression, ASTError> {
+        let mut left = if self.peek_is(TokenKind::OpenParen) {
+            self.expect(TokenKind::OpenParen)?;
+            let expression = self.parse_expression_with_precedence(0)?;
+            self.expect(TokenKind::CloseParen)?;
 
-        let expression = if self.peek_is(TokenKind::Plus) {
-            self.expect(TokenKind::Plus)?;
-
-            let right = self.parse_expression()?;
-            let span = Span::between(left.span, right.span);
-
-            Expression::new(BinaryOperation::new(left, right, BinaryOperand::Add).into(), span)
-        } else if self.peek_is(TokenKind::Hyphen) {
-            self.expect(TokenKind::Hyphen)?;
-
-            let right = self.parse_expression()?;
-            let span = Span::between(left.span, right.span);
-
-            Expression::new(BinaryOperation::new(left, right, BinaryOperand::Subtract).into(), span)
+            expression
         } else {
-            left
+            self.parse_value()?
         };
 
-        Ok(expression)
+        loop {
+            let operator = match self.peek_and_parse_binary_operator() {
+                Some(value) => value,
+                None => break,
+            };
+
+            if operator.precedence() < precedence {
+                break;
+            }
+
+            self.consume();
+
+            let right = self.parse_expression_with_precedence(operator.precedence() + 1)?;
+            let span = Span::between(left.span, right.span);
+
+            left = Expression::new(BinaryOperation::new(left, right, operator).into(), span);
+        }
+
+        Ok(left)
     }
 
-    /// Attempts to parse a multiplication or division expression at the [ASTParser]'s current position.
-    fn parse_multiplication_or_division_expression(&mut self) -> Result<Expression, ASTError> {
-        let left = self.parse_equals_or_not_equals_expression()?;
+    fn peek_and_parse_binary_operator(&mut self) -> Option<BinaryOperator> {
+        let operator = match self.peek()?.kind {
+            TokenKind::Plus => BinaryOperator::Add,
+            TokenKind::Hyphen => BinaryOperator::Subtract,
+            TokenKind::Asterisk => BinaryOperator::Multiply,
+            TokenKind::ForwardSlash => BinaryOperator::Divide,
 
-        let expression = if self.peek_is(TokenKind::Asterisk) {
-            self.expect(TokenKind::Asterisk)?;
-
-            let right = self.parse_expression()?;
-            let span = Span::between(left.span, right.span);
-
-            Expression::new(BinaryOperation::new(left, right, BinaryOperand::Multiply).into(), span)
-        } else if self.peek_is(TokenKind::ForwardSlash) {
-            self.expect(TokenKind::ForwardSlash)?;
-
-            let right = self.parse_expression()?;
-            let span = Span::between(left.span, right.span);
-
-            Expression::new(BinaryOperation::new(left, right, BinaryOperand::Divide).into(), span)
-        } else {
-            left
+            _ => return None,
         };
 
-        Ok(expression)
-    }
-
-    /// Attempts to parse an equals or not equals expression at the [ASTParser]'s current position.
-    fn parse_equals_or_not_equals_expression(&mut self) -> Result<Expression, ASTError> {
-        let left = self.parse_value()?;
-
-        let expression = if self.peek_is(TokenKind::Equals)
-            && self.peek_nth(1).map(|it| it.kind == TokenKind::Equals).unwrap_or_default()
-        {
-            self.expect(TokenKind::Equals)?;
-            self.expect(TokenKind::Equals)?;
-
-            let right = self.parse_expression()?;
-            let span = Span::between(left.span, right.span);
-
-            Expression::new(BinaryOperation::new(left, right, BinaryOperand::Equals).into(), span)
-        } else if self.peek_is(TokenKind::ExclamationMark) {
-            self.expect(TokenKind::ExclamationMark)?;
-            self.expect(TokenKind::Equals)?;
-
-            let right = self.parse_expression()?;
-            let span = Span::between(left.span, right.span);
-
-            Expression::new(BinaryOperation::new(left, right, BinaryOperand::NotEquals).into(), span)
-        } else {
-            left
-        };
-
-        Ok(expression)
+        Some(operator)
     }
 
     /// Attempts to parse a simple value at the [ASTParser]'s current position.
@@ -556,6 +522,113 @@ impl ASTParser {
         match &token.kind {
             TokenKind::Identifier(identifier) => Ok((identifier.into(), token.span)),
             _ => Err(ASTErrorKind::ExpectedIdentifier.at(token.span)),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use pretty_assertions::assert_eq;
+
+    use crate::{
+        ast::{
+            ASTParser,
+            expression::{
+                Expression,
+                ExpressionKind,
+                binary_operation::{
+                    BinaryOperation,
+                    BinaryOperator,
+                },
+            },
+        },
+        core::span::Span,
+        lexer::Lexer,
+        module_registry::MOCK_MODULE_ID,
+    };
+
+    /// Runs the lexer on the provided source string, and attempts to parse a single expression from it.
+    fn parse_expression_from_str(string: &str) -> Expression {
+        let mut lexer = Lexer::new(MOCK_MODULE_ID, string);
+        let mut parser = ASTParser::new(MOCK_MODULE_ID, lexer.parse().expect("Lexer failed to parse input string"));
+        parser.parse_expression().expect("Parser failed to parse expression")
+    }
+
+    /// Creates an identifier reference expression from the provided string.
+    fn ident(value: &str) -> Expression {
+        Expression::new(ExpressionKind::IdentifierReference(value.into()), Span::new(MOCK_MODULE_ID, 0, 0))
+    }
+
+    /// Creates a binary operation expression using the provided operator and values.
+    fn binop(left: Expression, operator: BinaryOperator, right: Expression) -> Expression {
+        Expression::new(BinaryOperation::new(left, right, operator).into(), Span::new(MOCK_MODULE_ID, 0, 0))
+    }
+
+    /// Asserts that the provided [`Expression`]s are the same, ignoring any differences in their [`Span`]s.
+    fn assert_expression_eq(mut a: Expression, mut b: Expression) {
+        remove_spans(&mut a);
+        remove_spans(&mut b);
+
+        assert_eq!(a, b);
+    }
+
+    /// Substitues the [`Span`] in the provided [`Expression`] with a default value.
+    fn remove_spans(expression: &mut Expression) {
+        expression.span = Span::new(MOCK_MODULE_ID, 0, 0);
+
+        match &mut expression.kind {
+            ExpressionKind::BinaryOperation(binary_operation) => {
+                remove_spans(&mut binary_operation.left);
+                remove_spans(&mut binary_operation.right);
+            }
+
+            ExpressionKind::Dereference(dereference) => {
+                remove_spans(dereference);
+            }
+
+            ExpressionKind::FunctionCall(function_call) => {
+                for argument in &mut function_call.arguments {
+                    remove_spans(&mut argument.value);
+
+                    argument.span = Span::new(MOCK_MODULE_ID, 0, 0);
+                }
+            }
+
+            ExpressionKind::Reference(reference) => {
+                remove_spans(reference);
+            }
+
+            // These expressions do not have any children.
+            ExpressionKind::BooleanLiteral(_) => {}
+            ExpressionKind::IdentifierReference(_) => {}
+            ExpressionKind::NumberLiteral(_) => {}
+        }
+    }
+
+    #[test]
+    fn operator_precedence_and_associativity() {
+        // Arrange
+        let cases = [
+            // Subtraction must be associative to the left.
+            (
+                "a - b - c",
+                binop(binop(ident("a"), BinaryOperator::Subtract, ident("b")), BinaryOperator::Subtract, ident("c")),
+            ),
+            // Parenthesis should force grouping of a binop.
+            (
+                "(a + b) * c",
+                binop(binop(ident("a"), BinaryOperator::Add, ident("b")), BinaryOperator::Multiply, ident("c")),
+            ),
+            // Multiplication takes precedence over addition.
+            (
+                "a + b * c",
+                binop(ident("a"), BinaryOperator::Add, binop(ident("b"), BinaryOperator::Multiply, ident("c"))),
+            ),
+        ];
+
+        for (src, expected) in cases {
+            println!("Validating operator precedence and associativity case '{src}'");
+            assert_expression_eq(parse_expression_from_str(src), expected)
         }
     }
 }

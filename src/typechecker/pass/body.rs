@@ -12,8 +12,8 @@ use crate::{
             Expression,
             ExpressionKind,
             binary_operation::{
-                BinaryOperand,
                 BinaryOperation,
+                BinaryOperator,
             },
             function_call::{
                 FunctionCall,
@@ -328,7 +328,8 @@ impl<'a> BodyPass<'a> {
         }
 
         // If the operator is comparing the two values, then the returned type is a boolean.
-        if binary_operation.operand == BinaryOperand::Equals || binary_operation.operand == BinaryOperand::NotEquals {
+        if binary_operation.operator == BinaryOperator::Equals || binary_operation.operator == BinaryOperator::NotEquals
+        {
             return Ok(Type::Boolean);
         }
 

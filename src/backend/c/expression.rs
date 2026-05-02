@@ -3,8 +3,8 @@ use crate::{
         Expression,
         ExpressionKind,
         binary_operation::{
-            BinaryOperand,
             BinaryOperation,
+            BinaryOperator,
         },
         function_call::FunctionCall,
     },
@@ -78,13 +78,13 @@ impl CBackend {
 
         let right = CBackend::compile_expression(&binary_operation.right)?;
 
-        let operand = match binary_operation.operand {
-            BinaryOperand::Add => "+",
-            BinaryOperand::Subtract => "-",
-            BinaryOperand::Multiply => "*",
-            BinaryOperand::Divide => "/",
-            BinaryOperand::Equals => "==",
-            BinaryOperand::NotEquals => "!=",
+        let operand = match binary_operation.operator {
+            BinaryOperator::Add => "+",
+            BinaryOperator::Subtract => "-",
+            BinaryOperator::Multiply => "*",
+            BinaryOperator::Divide => "/",
+            BinaryOperator::Equals => "==",
+            BinaryOperator::NotEquals => "!=",
         };
 
         Ok(format!("{left} {operand} {right}"))
