@@ -37,8 +37,6 @@ impl ModuleRegistry {
         let module = Module::create(id, file_path)?;
         self.modules.insert(id, module);
 
-        println!("created module with id {} from path '{}'", id, file_path.to_string_lossy());
-
         Ok(id)
     }
 
