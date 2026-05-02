@@ -24,7 +24,7 @@ Cranelift) compiler backend will be added in the future.
 - [x] Multiple module support
   - [x] Private module members by default (expose via `public` keyword)
   - [x] Name mangling
-- [ ] References
+- [x] References
 - [ ] User defined types (`type CString = &u8`)
 - [ ] Structures
   - [ ] Member functions

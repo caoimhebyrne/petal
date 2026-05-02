@@ -1,0 +1,20 @@
+// In previous examples, we have been passing the value of variables to other functions when calling them. The
+// functions that we call are not able to modify those values.
+//
+// In this example, we will showcase passing values by reference, and de-referencing values.
+func main() -> i32 {
+    i32 my_variable = 5;
+
+    // To allow a function to modify the value, you can pass it by reference. Passing a value by reference requires
+    // prefixing the expression with `&`. The function must accept a reference type.
+    magic_function(&my_variable);
+
+    // The variable has been modified by `my_function`, it now has a new value.
+    return my_variable;
+}
+
+// This function accepts a reference to a value.
+func magic_function(foo: &i32) {
+    // We use the `@` character to dereference a value. This assignment translates to "set the value at foo to 21".
+    @foo = 21;
+}
