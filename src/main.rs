@@ -1,8 +1,17 @@
 use std::{
-    ffi::OsStr,
+    env,
+    fs,
     io::Write,
     path::PathBuf,
-    process::ExitCode,
+    process::{
+        Command,
+        ExitCode,
+        exit,
+    },
+    time::{
+        SystemTime,
+        UNIX_EPOCH,
+    },
 };
 
 use clap::Parser;
@@ -39,6 +48,10 @@ struct Args {
     /// Whether verbose output is enabled.
     #[arg(long, short)]
     verbose: bool,
+
+    /// Whether run mode should be enabled.
+    #[arg(long, short)]
+    run: bool,
 
     /// Whether the compiler should skip emitting a binary.
     #[arg(long)]
@@ -82,7 +95,12 @@ fn create_and_parse_module(
     Ok(())
 }
 
-fn main_impl(args: Args, module_registry: &mut ModuleRegistry) -> Result<(), Box<dyn Error>> {
+fn main_impl(mut args: Args, module_registry: &mut ModuleRegistry) -> Result<(), Box<dyn Error>> {
+    if args.no_emit_binary && args.run {
+        warn!("--no-emit-binary and --run provided as arguments, this is not supported. Ignoring --no-emit-binary!");
+        args.no_emit_binary = false;
+    }
+
     info!("Parsing modules");
 
     let mut parsed_modules: Vec<ParsedModule> = Vec::new();
@@ -104,14 +122,34 @@ fn main_impl(args: Args, module_registry: &mut ModuleRegistry) -> Result<(), Box
     }
 
     // `./path/to/petal/file.petal` -> `file`
-    let binary_file_name = args.output.unwrap_or_else(|| {
-        // FIXME: There might be a better way to determine this instead of `args.input[0]`?
-        PathBuf::from(args.input[0].clone()).file_stem().and_then(OsStr::to_str).unwrap_or("output").to_string()
-    });
+    let executable_file_path = if args.run {
+        let current_timestamp =
+            SystemTime::now().duration_since(UNIX_EPOCH).expect("SystemTime::duration_since should not fail");
+
+        let mut path = env::temp_dir();
+        path.push(format!("petal-{}", current_timestamp.as_millis()));
+        path
+    } else {
+        let path = args.output.unwrap_or_else(|| args.input[0].clone());
+        PathBuf::from(path).with_extension("")
+    };
 
     if !args.no_emit_binary {
-        info!("Compiling binary ('{binary_file_name}')");
-        CBackend::emit_binary(&code, binary_file_name)?;
+        info!("Compiling binary ('{}')", executable_file_path.to_string_lossy());
+        CBackend::emit_binary(&code, &executable_file_path)?;
+    }
+
+    if args.run {
+        info!("Running '{}'", executable_file_path.to_string_lossy());
+
+        let mut child = Command::new(&executable_file_path).spawn().expect("Failed to launch generated executable");
+        let status = child.wait().expect("Failed to wait for child to finish execution");
+
+        if let Err(_) = fs::remove_file(&executable_file_path) {
+            warn!("Failed to clean up temporary executable at '{}'", executable_file_path.to_string_lossy())
+        }
+
+        exit(status.code().unwrap_or(-1))
     }
 
     Ok(())

@@ -1,6 +1,6 @@
 use std::{
     io::Write,
-    path::Path,
+    path::PathBuf,
     process::{
         Command,
         Stdio,
@@ -67,12 +67,12 @@ impl CBackend {
     }
 
     /// Compiles C code into a binary.
-    pub fn emit_binary(code: &str, output_binary_path: impl AsRef<Path>) -> Result<(), CBackendError> {
+    pub fn emit_binary(code: &str, executable_file_path: &PathBuf) -> Result<(), CBackendError> {
         let mut child = Command::new("cc")
             // Tell the compiler that the stdin contains C code.
             .args(["-x", "c"])
             .arg("-o")
-            .arg(output_binary_path.as_ref())
+            .arg(executable_file_path)
             // Tell the compiler to read from stdin.
             .arg("-")
             .stdin(Stdio::piped())
