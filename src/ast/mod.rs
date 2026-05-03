@@ -177,41 +177,39 @@ impl ASTParser {
     fn parse_value(&mut self) -> Result<Expression, ASTError> {
         let token = self.peek_expect_any()?;
 
+        // FIXME: We need to copy the span before attempting to acquire a mutable reference via consume.
+        let span = token.span;
+
         let expression = match &token.kind {
             TokenKind::Number(value) => {
                 let value = *value;
-                let span = token.span;
                 self.consume();
                 Expression::new(ExpressionKind::NumberLiteral(value), span)
             }
 
             TokenKind::Keyword(Keyword::True) => {
-                let span = token.span;
                 self.consume();
                 Expression::new(ExpressionKind::BooleanLiteral(true), span)
             }
 
             TokenKind::Keyword(Keyword::False) => {
-                let span = token.span;
                 self.consume();
                 Expression::new(ExpressionKind::BooleanLiteral(false), span)
             }
 
             TokenKind::At => {
-                // This is a dereference, we must parse another expression to see what is being dereferenced.
-                let span = token.span;
                 self.consume();
 
+                // This is a dereference, we must parse another expression to see what is being dereferenced.
                 let inner = self.parse_value()?;
                 let span = Span::between(span, inner.span);
                 Expression::new(ExpressionKind::Dereference(inner.into()), span)
             }
 
             TokenKind::Ampersand => {
-                // This is a reference, we must parse another expression to see what is being passed as a reference.
-                let span = token.span;
                 self.consume();
 
+                // This is a reference, we must parse another expression to see what is being passed as a reference.
                 let inner = self.parse_value()?;
                 let span = Span::between(span, inner.span);
                 Expression::new(ExpressionKind::Reference(inner.into()), span)
@@ -222,9 +220,8 @@ impl ASTParser {
                     let (function_call, span) = self.parse_function_call()?;
                     Expression::new(function_call.into(), span)
                 } else {
-                    // FIXME: We need to copy the span before attempting to acquire a mutable reference via consume.
                     let name = name.clone();
-                    let span = token.span;
+
                     self.consume();
                     Expression::new(ExpressionKind::IdentifierReference(name), span)
                 }
