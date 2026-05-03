@@ -1,11 +1,14 @@
 use crate::{
-    ast::statement::{
-        StatementKind,
-        function_declaration::{
-            FunctionDeclaration,
-            FunctionParameter,
+    ast::{
+        statement::{
+            StatementKind,
+            function_declaration::{
+                FunctionDeclaration,
+                FunctionParameter,
+            },
+            type_declaration::TypeDeclaration,
         },
-        type_declaration::TypeDeclaration,
+        type_expr::TypeExpr,
     },
     core::span::Span,
     module::ParsedModule,
@@ -92,10 +95,32 @@ impl<'a> DeclarationPass<'a> {
         type_declaration: &mut TypeDeclaration,
         span: Span,
     ) -> Result<(), TypecheckerError> {
-        self.typechecker.resolve_and_declare_type_from_expr(
-            type_declaration.name.clone(),
-            &mut type_declaration.type_expr,
-            span,
-        )
+        // TODO: If a type already exists with the same name, then we must not declare another.
+
+        // If this is a structure type, then we must assign a structure ID for it.
+        let resolved_type = match &mut type_declaration.type_expr {
+            TypeExpr::Structure { fields } => {
+                // We must ensure that the fields have a resolvable type.
+                for field in &mut *fields {
+                    field.r#type = self.typechecker.resolve_type_from_expr(&field.type_expr, field.span)?;
+                }
+
+                // Then, we can register the struct.
+                let structure_id = self.typechecker.context.insert_declared_structure(
+                    type_declaration.name.clone(),
+                    fields.clone(),
+                    span,
+                )?;
+
+                Type::Structure(structure_id)
+            }
+
+            expr => self.typechecker.resolve_type_from_expr(expr, span)?,
+        };
+
+        // We have resolved the type, we can insert it into the type declarations.
+        self.typechecker.context.insert_declared_type(type_declaration.name.clone(), resolved_type, span)?;
+
+        Ok(())
     }
 }
