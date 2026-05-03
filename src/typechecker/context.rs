@@ -69,29 +69,47 @@ pub(crate) struct TypecheckerContext {
     pub(crate) structures: HashMap<StructureId, DeclaredStructure>,
 }
 
+#[derive(Debug)]
+pub struct FunctionLookupRequest {
+    /// The name of the type which owns the function.
+    pub owner_type_name: Option<String>,
+
+    /// The name of the function.
+    pub name: String,
+}
+
 impl TypecheckerContext {
     /// Attempts to get a [`CheckedFunction`] from this [`Typechecker`] by its name.
-    pub(crate) fn get_checked_function(&self, name: &str, span: Span) -> Result<&CheckedFunction, TypecheckerError> {
+    pub(crate) fn get_checked_function(
+        &self,
+        request: &FunctionLookupRequest,
+        span: Span,
+    ) -> Result<&CheckedFunction, TypecheckerError> {
+        trace!("Attempting to find checked function from request: {:?}", request);
+
         // TODO: We should support function overloads.
-        // FIXME: Functions need to be generated and prefixed with their module name. How do we do that?
         let function_candidates = self
             .functions
             .values()
-            .filter(|it| it.declared_name == name)
+            .filter(|it| it.declared_name == request.name && it.owner_type_name == request.owner_type_name)
             .filter(|it| it.is_visible_to_module(span.module_id))
             .collect::<Vec<_>>();
 
         if function_candidates.len() > 1 {
             debug!(
-                "Lookup for function name '{}' in module {} has the following candidates: {}",
-                name,
+                "Lookup for function name '{}' (owned by '{:?}') in module {} has the following candidates: {}",
+                request.name,
+                request.owner_type_name,
                 span.module_id,
                 function_candidates.iter().map(|it| it.name.clone()).collect::<Vec<_>>().join(", ")
             );
-            return Err(TypecheckerErrorKind::AmbiguousFunctionCall(name.into()).at(span));
+            return Err(TypecheckerErrorKind::AmbiguousFunctionCall(request.name.clone()).at(span));
         }
 
-        function_candidates.first().copied().ok_or(TypecheckerErrorKind::UndeclaredFunction(name.into()).at(span))
+        function_candidates
+            .first()
+            .copied()
+            .ok_or(TypecheckerErrorKind::UndeclaredFunction(request.name.clone()).at(span))
     }
 
     /// Attempts to get a [`CheckedFunction`] from this [`Typechecker`] by its its [`FunctionId`].
@@ -117,6 +135,7 @@ impl TypecheckerContext {
             CheckedFunction::new(
                 span.module_id,
                 function_id,
+                function_declaration.owner_type_name.clone(),
                 function_declaration.name.clone(),
                 function_declaration.parameters.clone(),
                 function_declaration.return_type.clone(),
@@ -194,6 +213,9 @@ pub struct CheckedFunction {
     /// The unique identifier for this function.
     pub function_id: FunctionId,
 
+    /// The name of the type which owns the function.
+    pub owner_type_name: Option<String>,
+
     /// The name of the function.
     pub name: String,
 
@@ -215,25 +237,22 @@ impl CheckedFunction {
     pub fn new(
         module_id: ModuleId,
         function_id: FunctionId,
+        owner_type_name: Option<String>,
         declared_name: String,
         parameters: Vec<FunctionParameter>,
         return_type: Type,
         modifiers: Vec<DeclarationModifier>,
     ) -> Self {
-        Self {
-            module_id,
-            function_id,
-            // FIXME: Add a modifier to function declarations which prevents their names from being mangled.
-            name: if declared_name == "main" {
-                declared_name.clone()
-            } else {
-                format!("ptl_mod_{module_id}_fn_{declared_name}")
-            },
-            declared_name,
-            parameters,
-            return_type,
-            modifiers,
-        }
+        // FIXME: Add a modifier to function declarations which prevents their names from being mangled.
+        let name = if declared_name == "main" {
+            declared_name.clone()
+        } else if let Some(owner_type_name) = &owner_type_name {
+            format!("ptl_mod_{module_id}_fn_{owner_type_name}_{declared_name}")
+        } else {
+            format!("ptl_mod_{module_id}_fn_{declared_name}")
+        };
+
+        Self { module_id, function_id, owner_type_name, name, declared_name, parameters, return_type, modifiers }
     }
 
     /// Returns whether this [`CheckedFunction`] is visible to the provided module ID.

@@ -20,6 +20,9 @@ pub enum DeclarationModifier {
 /// A function declaration within the AST.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDeclaration {
+    /// The name of the type that owns the function.
+    pub owner_type_name: Option<String>,
+
     /// The name of the function being declared.
     pub name: String,
 
@@ -42,14 +45,15 @@ pub struct FunctionDeclaration {
 impl FunctionDeclaration {
     /// Creates a new [`FunctionDeclaration`].
     pub fn new(
-        name: impl Into<String>,
+        owner_type_name: Option<String>,
+        name: String,
         body: Vec<Statement>,
         parameters: Vec<FunctionParameter>,
         return_type_expr: Option<TypeExpr>,
         return_type: Type,
         modifiers: Vec<DeclarationModifier>,
     ) -> Self {
-        FunctionDeclaration { name: name.into(), body, parameters, return_type_expr, return_type, modifiers }
+        FunctionDeclaration { owner_type_name, name, body, parameters, return_type_expr, return_type, modifiers }
     }
 
     /// Creates a new [`FunctionDeclarationBuilder`].
@@ -68,6 +72,9 @@ impl From<FunctionDeclaration> for StatementKind {
 /// A builder for a [`FunctionDeclaration`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDeclarationBuilder {
+    /// The name of the type that owns the function.
+    owner_type_name: Option<String>,
+
     /// The name of the function.
     name: String,
 
@@ -91,6 +98,7 @@ impl FunctionDeclarationBuilder {
     /// Creates a new [`FunctionDeclarationBuilder`].
     pub fn new(name: impl Into<String>) -> Self {
         Self {
+            owner_type_name: None,
             name: name.into(),
             body: vec![],
             parameters: vec![],
@@ -98,6 +106,12 @@ impl FunctionDeclarationBuilder {
             return_type: Type::Unknown,
             modifiers: Vec::new(),
         }
+    }
+
+    /// Sets the name of the owner type of the function.
+    pub fn owner_type_name(mut self, value: String) -> Self {
+        self.owner_type_name = Some(value);
+        self
     }
 
     /// Adds a statement to the body of the function.
@@ -135,6 +149,7 @@ impl FunctionDeclarationBuilder {
     /// Builds this [`FunctionDeclarationBuilder`] into a [`FunctionDeclaration`].
     pub fn build(self) -> FunctionDeclaration {
         FunctionDeclaration::new(
+            self.owner_type_name,
             self.name,
             self.body,
             self.parameters,

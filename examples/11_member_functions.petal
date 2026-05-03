@@ -1,0 +1,32 @@
+// In the previous example, we declared a point structure which contained an `x` coordinate and a `y` coordinate.
+type Point = struct {
+    x: i32,
+    y: i32,
+};
+
+// You can add member functions to types declared in your own module by prefixing the function name with the type name,
+// followed by a period (`.`).
+func Point.origin() -> Point {
+    return { .x = 0, .y = 0 };
+}
+
+// Member functions have no other special rules, they can take references and have named parameters too!
+//
+// For functions that operate on an existing value of the type, the convention is to have the first parameter be named
+// `this`. The type must be declared explicitly.
+func Point.translate(this: &Point, ~x: i32, ~y: i32) -> bool {
+    // Note: `foo->bar` is syntax sugar for `(@foo).bar`.
+    this->x = this->x + x;
+    this->y = this->y + y;
+
+    return true;
+}
+
+func main() -> i32 {
+    point_a: Point = Point.origin();
+
+    // FIXME: Statements do not support member function calls.
+    result: bool = point_a.translate(x: 5, y: 4);
+
+    return point_a.x + point_a.y;
+}

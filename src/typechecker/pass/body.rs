@@ -42,6 +42,7 @@ use crate::{
     module::ParsedModule,
     typechecker::{
         Typechecker,
+        context::FunctionLookupRequest,
         error::{
             TypecheckerError,
             TypecheckerErrorKind,
@@ -355,21 +356,73 @@ impl<'a> BodyPass<'a> {
 
     /// Checks and resolves the type of the provided [`FunctionCall`].
     fn visit_function_call(&mut self, function_call: &mut FunctionCall, span: Span) -> Result<Type, TypecheckerError> {
-        // FIXME: Support other expressions.
-        let function_name = match &function_call.callee.kind {
-            ExpressionKind::IdentifierReference(identifier) => identifier,
+        let mut is_instance_call = false;
+
+        let function_lookup_request = match &function_call.callee.kind {
+            ExpressionKind::IdentifierReference(identifier) => {
+                FunctionLookupRequest { name: identifier.clone(), owner_type_name: None }
+            }
+
+            ExpressionKind::MemberAccess(member_access) => {
+                // The target of the member access expression must be a plain identifier.
+                let member_access_target_name = match &member_access.target.kind {
+                    ExpressionKind::IdentifierReference(name) => name,
+                    _ => panic!(),
+                };
+
+                let owner_type_name =
+                    if let Ok(variable_type) = self.typechecker.context.get_variable(member_access_target_name, span) {
+                        is_instance_call = true;
+                        match variable_type {
+                            Type::Structure(id) => {
+                                self.typechecker.context.get_declared_structure(id).declared_name.clone()
+                            }
+                            Type::Reference(_) => todo!(),
+
+                            _ => return Err(TypecheckerErrorKind::UnsupportedFunctionCallee.at(span)),
+                        }
+                    } else if let Some(declared_type) =
+                        self.typechecker.context.get_declared_type_by_name(member_access_target_name, span)
+                    {
+                        declared_type.name.clone()
+                    } else {
+                        return Err(TypecheckerErrorKind::UnsupportedFunctionCallee.at(span));
+                    };
+
+                FunctionLookupRequest { owner_type_name: Some(owner_type_name), name: member_access.name.clone() }
+            }
+
             _ => return Err(TypecheckerErrorKind::UnsupportedFunctionCallee.at(span)),
         };
 
         // FIXME: I don't like the clone here.
-        let checked_function = self.typechecker.context.get_checked_function(function_name, span).cloned()?;
+        let checked_function =
+            self.typechecker.context.get_checked_function(&function_lookup_request, span).cloned()?;
+
         function_call.resolved_callee = Some(checked_function.function_id);
+
+        // If the function call is being done on an instance of the receiver type, then we must insert it as the first
+        // parameter to the function (`this`).
+        if is_instance_call {
+            let target = match &function_call.callee.kind {
+                ExpressionKind::MemberAccess(member_access) => member_access.target.clone(),
+                _ => unreachable!(),
+            };
+
+            let receiver_arg = FunctionCallArgument {
+                name: None,
+                value: Expression::new(ExpressionKind::Reference(target), span),
+                span,
+            };
+
+            function_call.arguments.insert(0, receiver_arg);
+        }
 
         // The first check is easy, we just need to ensure that a sufficient number of arguments were passed in the
         // function call.
         if function_call.arguments.len() != checked_function.parameters.len() {
             return Err(TypecheckerErrorKind::FunctionCallArgumentSizeMismatch {
-                name: function_name.clone(),
+                name: function_lookup_request.name.clone(),
                 expected: checked_function.parameters.len(),
                 got: function_call.arguments.len(),
             }
@@ -419,7 +472,7 @@ impl<'a> BodyPass<'a> {
                 .find(|it| it.name.as_ref().map(|it| it == &parameter.name).unwrap_or_default())
                 .ok_or(
                     TypecheckerErrorKind::MissingFunctionCallArgument {
-                        function_name: function_name.clone(),
+                        function_name: function_lookup_request.name.clone(),
                         parameter_name: parameter.name.clone(),
                     }
                     .at(span),

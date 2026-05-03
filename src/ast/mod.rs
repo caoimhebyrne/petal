@@ -99,7 +99,7 @@ impl ASTParser {
     fn parse_statement(&mut self) -> Result<Statement, ASTError> {
         let token = self.peek_expect_any()?;
 
-        let (statement, requires_semicolon) = match token.kind {
+        let (statement, requires_semicolon) = match &token.kind {
             TokenKind::Keyword(Keyword::Return) => (self.parse_return()?, true),
 
             TokenKind::Keyword(Keyword::If) => (self.parse_if()?, false),
@@ -110,10 +110,17 @@ impl ASTParser {
 
             TokenKind::At => (self.parse_variable_assignment()?, true),
 
-            TokenKind::Identifier(_)
+            TokenKind::Identifier(identifier)
                 if self.peek_nth(1).map(|it| it.kind == TokenKind::OpenParen).unwrap_or_default() =>
             {
-                let (function_call, span) = self.parse_function_call()?;
+                let identifier = identifier.clone();
+                let span = token.span;
+
+                self.consume();
+
+                let (function_call, span) =
+                    self.parse_function_call(Expression::new(ExpressionKind::IdentifierReference(identifier), span))?;
+
                 (Statement::new(function_call.into(), span), true)
             }
 
@@ -220,7 +227,13 @@ impl ASTParser {
 
             TokenKind::Identifier(name) => {
                 if self.peek_nth(1).map(|it| it.kind == TokenKind::OpenParen).unwrap_or_default() {
-                    let (function_call, span) = self.parse_function_call()?;
+                    let (function_call, span) = self.parse_function_call(Expression::new(
+                        ExpressionKind::IdentifierReference(name.clone()),
+                        span,
+                    ))?;
+
+                    self.consume();
+
                     Expression::new(function_call.into(), span)
                 } else {
                     let name = name.clone();
@@ -258,6 +271,13 @@ impl ASTParser {
             let span = Span::between(expression.span, member_span);
 
             expression = Expression::new(MemberAccess::new(expression, member_name).into(), span);
+        }
+
+        // After all of that, we can attempt to parse a function call if it is present.
+        if self.peek_is(TokenKind::OpenParen) {
+            // The expression that we have collected up until this point is considered to be the callee of the function call.
+            let (function_call, function_call_span) = self.parse_function_call(expression)?;
+            expression = Expression::new(function_call.into(), function_call_span)
         }
 
         Ok(expression)
@@ -307,6 +327,15 @@ impl ASTParser {
         // All functions must start with the func keyword.
         let func_keyword_span = self.expect_span(TokenKind::Keyword(Keyword::Func))?;
 
+        // Then, the type name of the owner of the function might be specified.
+        let owner_type_name = if self.peek_nth(1).map(|it| it.kind == TokenKind::Period).unwrap_or_default() {
+            let (name, _) = self.expect_identifier()?;
+            self.expect(TokenKind::Period)?;
+            Some(name)
+        } else {
+            None
+        };
+
         // Then, the name of the function must be present.
         let (function_name, _) = self.expect_identifier()?;
 
@@ -314,6 +343,10 @@ impl ASTParser {
 
         if is_public {
             builder = builder.modifier(DeclarationModifier::Public);
+        }
+
+        if let Some(name) = owner_type_name {
+            builder = builder.owner_type_name(name);
         }
 
         // Then parenthesis must surround the parameters to the function.
@@ -419,13 +452,10 @@ impl ASTParser {
     }
 
     /// Attempts to parse a function call from the [ASTParser]'s current position.
-    fn parse_function_call(&mut self) -> Result<(FunctionCall, Span), ASTError> {
-        let (function_name, function_name_span) = self.expect_identifier()?;
+    fn parse_function_call(&mut self, function_callee: Expression) -> Result<(FunctionCall, Span), ASTError> {
+        let function_callee_span = function_callee.span;
 
-        let mut builder = FunctionCall::builder(Expression::new(
-            ExpressionKind::IdentifierReference(function_name),
-            function_name_span,
-        ));
+        let mut builder = FunctionCall::builder(function_callee);
 
         // Then, the arguments of the function will be surrounded by parenthesis.
         self.expect(TokenKind::OpenParen)?;
@@ -456,7 +486,7 @@ impl ASTParser {
 
         let close_paren_span = self.expect_span(TokenKind::CloseParen)?;
 
-        Ok((builder.build(), Span::between(function_name_span, close_paren_span)))
+        Ok((builder.build(), Span::between(function_callee_span, close_paren_span)))
     }
 
     /// Attempts to parse an if statement from the [ASTParser]'s current position.
