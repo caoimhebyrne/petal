@@ -80,6 +80,9 @@ pub enum TokenKind {
     /// Period: .
     Period,
 
+    /// Question mark: ?
+    QuestionMark,
+
     /// An identifier.
     Identifier(String),
 

@@ -116,9 +116,15 @@ impl CBackend {
     ) -> Result<String, CBackendError> {
         let name = variable_declaration.name.clone();
         let r#type = self.compile_type(&variable_declaration.r#type, span)?;
-        let value = self.compile_expression(&variable_declaration.value)?;
 
-        Ok(format!("{type} {name} = {value};"))
+        let mut declaration = format!("{type} {name}");
+
+        if let Some(value) = &variable_declaration.value {
+            declaration.push_str(&format!("= {}", self.compile_expression(value)?));
+        }
+
+        declaration.push(';');
+        Ok(declaration)
     }
 
     /// Compiles a variable assignment into C code.

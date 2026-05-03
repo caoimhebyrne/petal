@@ -3,7 +3,7 @@ use std::fmt::Display;
 use crate::typechecker::context::StructureId;
 
 /// A type as defined by the typechecker.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default, Eq, Hash)]
 pub enum Type {
     /// An unsigned integer.
     UnsignedInteger(u8),
@@ -16,6 +16,9 @@ pub enum Type {
 
     /// The nothing type.
     Void,
+
+    /// An optional wrapping another type.
+    Optional(Box<Type>),
 
     /// A reference to another type.
     Reference(Box<Type>),
@@ -36,6 +39,7 @@ impl Display for Type {
             Self::Boolean => write!(f, "bool"),
             Self::Void => write!(f, "void"),
             Self::Reference(referenced) => write!(f, "&{referenced}"),
+            Self::Optional(wrapped) => write!(f, "?{wrapped}"),
             Self::Structure(id) => write!(f, "<structure {id}>"),
             Self::Unknown => write!(f, "<unknown>"),
         }

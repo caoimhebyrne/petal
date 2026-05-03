@@ -58,6 +58,7 @@ impl<'a> Lexer<'a> {
                 '&' => Token::new(TokenKind::Ampersand, self.span(1)),
                 '@' => Token::new(TokenKind::At, self.span(1)),
                 '.' => Token::new(TokenKind::Period, self.span(1)),
+                '?' => Token::new(TokenKind::QuestionMark, self.span(1)),
 
                 '!' => {
                     if let Some('=') = self.peek() {

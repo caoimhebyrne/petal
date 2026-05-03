@@ -1,5 +1,8 @@
 use std::{
-    collections::HashMap,
+    collections::{
+        HashMap,
+        HashSet,
+    },
     io::Write,
     path::PathBuf,
     process::{
@@ -38,6 +41,9 @@ pub struct CBackend {
 
     /// The functions that were resolved by the type checker for these modules.
     functions: HashMap<FunctionId, CheckedFunction>,
+
+    /// The optional types used by the program.
+    optional_types: HashSet<Type>,
 }
 
 impl CBackend {
@@ -45,8 +51,9 @@ impl CBackend {
     pub fn new(
         structures: HashMap<StructureId, DeclaredStructure>,
         functions: HashMap<FunctionId, CheckedFunction>,
+        optional_types: HashSet<Type>,
     ) -> Self {
-        Self { structures, functions }
+        Self { structures, functions, optional_types }
     }
 
     /// Compiles a [`CheckedModule`] to C code.
@@ -68,6 +75,19 @@ impl CBackend {
         }
 
         if !self.structures.is_empty() {
+            code.push('\n');
+        }
+
+        for optional_type in &self.optional_types {
+            // FIXME: Temporary
+            code.push_str(&format!(
+                "typedef struct {{ bool has_value; {} value; }} Optional_{};",
+                self.compile_type(optional_type, Span::new(modules.first().unwrap().id, 0, 0))?,
+                optional_type,
+            ));
+        }
+
+        if !self.optional_types.is_empty() {
             code.push('\n');
         }
 
@@ -151,6 +171,7 @@ impl CBackend {
                 let structure = self.structures.get(structure_id).unwrap();
                 structure.name.clone()
             }
+            Type::Optional(inner) => format!("Optional_{}", inner),
             Type::Unknown => return Err(CBackendErrorKind::UnknownType.at(span)),
         };
 

@@ -43,6 +43,7 @@ pub enum TypecheckerErrorKind {
     MemberAccessNotSupported,
     TypeDoesNotHaveMember { r#type: Type, name: String },
     UnsupportedFunctionCallee,
+    VariableDeclarationMissingInitialValue,
 }
 
 impl TypecheckerErrorKind {
@@ -153,6 +154,10 @@ impl Display for TypecheckerErrorKind {
             }
 
             Self::UnsupportedFunctionCallee => write!(f, "Unable to resolve function callee"),
+
+            Self::VariableDeclarationMissingInitialValue => {
+                write!(f, "A variable declaration for a non-optional type must have an initial value")
+            }
         }
     }
 }

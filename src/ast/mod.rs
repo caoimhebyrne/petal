@@ -406,20 +406,26 @@ impl ASTParser {
     /// Attempts to parse a variable declaration statement from the [ASTParser]'s current position.
     fn parse_variable_declaration(&mut self) -> Result<Statement, ASTError> {
         // The first token must be the name of the variable.
-        let (name, _) = self.expect_identifier()?;
+        let (name, name_span) = self.expect_identifier()?;
 
         self.expect(TokenKind::Colon)?;
 
         // The next token must be the type of the variable.
         let (type_expr, type_span) = self.parse_type_expr()?;
 
-        // The next token must be an equals.
-        self.expect(TokenKind::Equals)?;
-
         // And finally, there must be an expression.
-        let value = self.parse_expression()?;
+        let (value, span) = if self.peek_is(TokenKind::Semicolon) {
+            (None, Span::between(name_span, type_span))
+        } else {
+            // The next token must be an equals.
+            self.expect(TokenKind::Equals)?;
 
-        let span = Span::between(type_span, value.span);
+            let value = self.parse_expression()?;
+            let span = Span::between(type_span, value.span);
+
+            (Some(value), span)
+        };
+
         Ok(Statement::from(VariableDeclaration::new(name, type_expr, Type::Unknown, value), span))
     }
 
@@ -521,6 +527,14 @@ impl ASTParser {
 
             let (inner, inner_span) = self.parse_type_expr()?;
             return Ok((TypeExpr::reference(inner), Span::between(ampersand_span, inner_span)));
+        }
+
+        // If the first token is a question mark, then this is a optional type.
+        if self.peek_is(TokenKind::QuestionMark) {
+            let ampersand_span = self.expect(TokenKind::QuestionMark)?.span;
+
+            let (inner, inner_span) = self.parse_type_expr()?;
+            return Ok((TypeExpr::Optional(inner.into()), Span::between(ampersand_span, inner_span)));
         }
 
         // If the first token is the `struct` keyword, then we are parsing a structure definition.
@@ -692,6 +706,10 @@ mod tests {
 
             ExpressionKind::MemberAccess(member_access) => {
                 remove_spans(&mut member_access.target);
+            }
+
+            ExpressionKind::OptionalWrap(optional_wrap) => {
+                remove_spans(&mut optional_wrap.inner_value);
             }
 
             // These expressions do not have any children.

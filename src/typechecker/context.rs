@@ -1,5 +1,8 @@
 use std::{
-    collections::HashMap,
+    collections::{
+        HashMap,
+        HashSet,
+    },
     fmt::Display,
 };
 
@@ -67,6 +70,9 @@ pub(crate) struct TypecheckerContext {
 
     /// The structures that have been declared by the user.
     pub(crate) structures: HashMap<StructureId, DeclaredStructure>,
+
+    /// The optional types used during compilation. This is temporary.
+    pub(crate) optional_types: HashSet<Type>,
 }
 
 #[derive(Debug)]

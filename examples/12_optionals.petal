@@ -1,0 +1,25 @@
+// So far, we have always initialized our variables with a value. But sometimes, your variable does not have a value
+// yet.
+//
+// To express the lack of a value, you can use the optional type.
+func main() -> i32 {
+    // We are declaring that `my_variable` is an optional i32. Because it is optional, we don't need to supply an
+    // initial value.
+    my_variable: ?i32;
+
+    // Assigning a value to an optional is the same as assigning a value to any other variable.
+    my_variable = 10;
+
+    // To access the value within an optional, you need to either:
+    // - Be in a scope that guarantees that the optional has a value.
+    // - Assert to the compiler that you acknowledge the risks associated with accessing undefined values.
+    // if my_variable {
+        // The compiler knows that my_variable has a value, we just checked whether it did in the condition above.
+        // We can safely use it as an `i32` without needing to explicitly unwrap the value.
+        //
+        // If we needed to, we could explicitly unwrap the value using the `!` operator, for example: `my_variable!`.
+        // return my_variable;
+    // }
+
+    return 0;
+}

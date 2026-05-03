@@ -20,6 +20,7 @@ use crate::{
                 FunctionCallArgument,
             },
             member_access::MemberAccess,
+            optional_wrap::OptionalWrap,
             structure_initialization::{
                 StructureInitialization,
                 StructureInitializationField,
@@ -142,13 +143,17 @@ impl<'a> BodyPass<'a> {
 
         // The initial value for the variable must have a valid type too, and then that type must be equal to the
         // variable type.
-        let value_type = self.visit_expression(&mut variable_declaration.value, Some(&variable_type))?;
-        if variable_type != value_type {
-            return Err(TypecheckerErrorKind::IncompatibleVariableDeclarationTypes {
-                declared: variable_type,
-                value: value_type,
+        if let Some(value) = variable_declaration.value.as_mut() {
+            let value_type = self.visit_expression(value, Some(&variable_type))?;
+            if variable_type != value_type {
+                return Err(TypecheckerErrorKind::IncompatibleVariableDeclarationTypes {
+                    declared: variable_type,
+                    value: value_type,
+                }
+                .at(span));
             }
-            .at(span));
+        } else if !matches!(variable_type, Type::Optional(_)) {
+            return Err(TypecheckerErrorKind::VariableDeclarationMissingInitialValue.at(span));
         }
 
         variable_declaration.r#type = variable_type;
@@ -167,7 +172,23 @@ impl<'a> BodyPass<'a> {
 
         // The initial value for the variable must have a valid type too, and then that type must be equal to the
         // variable type.
-        let value_type = self.visit_expression(&mut variable_assignment.value, Some(&target_type))?;
+        let mut value_type = self.visit_expression(&mut variable_assignment.value, Some(&target_type))?;
+
+        // If the target type is an optional, and the value is not directly an optional, then we should attempt
+        // to wrap it in one.
+        if matches!(target_type, Type::Optional(_)) && !matches!(value_type, Type::Optional(_)) {
+            // Visiting the optional wrap will re-visit the inner type, which may infer it as something else.
+            //
+            // e.g. if the target_type is `&i32`, and the value is a number literal, then this step will coerce
+            //      the literal into `i32`.
+            variable_assignment.value = Expression::new(
+                OptionalWrap::new(*variable_assignment.value.clone()).into(),
+                variable_assignment.value.span,
+            )
+            .into();
+
+            value_type = self.visit_expression(&mut variable_assignment.value, Some(&target_type))?;
+        }
 
         if target_type != value_type {
             return Err(TypecheckerErrorKind::IncompatibleVariableDeclarationTypes {
@@ -254,6 +275,10 @@ impl<'a> BodyPass<'a> {
             }
 
             ExpressionKind::MemberAccess(member_access) => self.visit_member_access(member_access, expression.span),
+
+            ExpressionKind::OptionalWrap(optional_wrap) => {
+                self.visit_optional_wrap(optional_wrap, type_hint, expression.span)
+            }
         }?;
 
         Ok(r#type)
@@ -601,5 +626,29 @@ impl<'a> BodyPass<'a> {
         })?;
 
         Ok(field.r#type.clone())
+    }
+
+    /// Visits an optional wrap expression.
+    fn visit_optional_wrap(
+        &mut self,
+        optional_wrap: &mut OptionalWrap,
+        type_hint: Option<&Type>,
+        _span: Span,
+    ) -> Result<Type, TypecheckerError> {
+        // The hinted type might be an optional, and if it is, we should get the type it references, and use that as
+        // the type hint for the expression that we are wrapping.
+        let inner_type_hint = match type_hint {
+            Some(Type::Optional(inner)) => Some(inner.as_ref()),
+
+            _ => {
+                trace!("Ignoring type hint '{type_hint:?}' for optional wrap expression");
+                None
+            }
+        };
+
+        let value_type = self.visit_expression(&mut optional_wrap.inner_value, inner_type_hint)?;
+        optional_wrap.inner_type = value_type.clone();
+
+        Ok(Type::Optional(value_type.into()))
     }
 }

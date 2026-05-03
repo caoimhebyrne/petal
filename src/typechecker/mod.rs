@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use std::collections::{
+    HashMap,
+    HashSet,
+};
 
 use crate::{
     ast::type_expr::TypeExpr,
@@ -46,7 +49,12 @@ impl Typechecker {
         &mut self,
         modules: Vec<ParsedModule>,
     ) -> Result<
-        (Vec<CheckedModule>, HashMap<StructureId, DeclaredStructure>, HashMap<FunctionId, CheckedFunction>),
+        (
+            Vec<CheckedModule>,
+            HashMap<StructureId, DeclaredStructure>,
+            HashMap<FunctionId, CheckedFunction>,
+            HashSet<Type>,
+        ),
         TypecheckerError,
     > {
         let mut modules = modules;
@@ -58,6 +66,7 @@ impl Typechecker {
             modules.into_iter().map(|it| CheckedModule::new(it.id, it.ast)).collect(),
             self.context.structures.clone(),
             self.context.functions.clone(),
+            self.context.optional_types.clone(),
         ))
     }
 
@@ -70,6 +79,16 @@ impl Typechecker {
                 // This is referencing another type, we can construct the [`Type`] by resolving the referenced type.
                 let referenced = self.resolve_type_from_expr(referenced_expr, span)?;
                 return Ok(Type::Reference(referenced.into()));
+            }
+
+            TypeExpr::Optional(inner_expr) => {
+                // This is wrapping another type, we can construct the [`Type`] by resolving the referenced type.
+                let inner = self.resolve_type_from_expr(inner_expr, span)?;
+
+                // FIXME: This is temporary.
+                self.context.optional_types.insert(inner.clone());
+
+                return Ok(Type::Optional(inner.into()));
             }
 
             TypeExpr::Structure { .. } => panic!(),

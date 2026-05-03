@@ -3,6 +3,7 @@ use crate::{
         binary_operation::BinaryOperation,
         function_call::FunctionCall,
         member_access::MemberAccess,
+        optional_wrap::OptionalWrap,
         structure_initialization::StructureInitialization,
     },
     core::span::Span,
@@ -11,6 +12,7 @@ use crate::{
 pub mod binary_operation;
 pub mod function_call;
 pub mod member_access;
+pub mod optional_wrap;
 pub mod structure_initialization;
 
 /// An expression node within the abstract syntax tree.
@@ -48,6 +50,9 @@ pub enum ExpressionKind {
 
     /// A dereference expression.
     Dereference(Box<Expression>),
+
+    /// Wraps the provided expression in an optional.
+    OptionalWrap(OptionalWrap),
 
     /// A function call.
     FunctionCall(FunctionCall),

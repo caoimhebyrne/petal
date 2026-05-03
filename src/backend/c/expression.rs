@@ -8,6 +8,7 @@ use crate::{
         },
         function_call::FunctionCall,
         member_access::MemberAccess,
+        optional_wrap::OptionalWrap,
         structure_initialization::StructureInitialization,
     },
     backend::c::{
@@ -45,6 +46,8 @@ impl CBackend {
             ExpressionKind::NumberLiteral(value) => CBackend::compile_number_literal(value, expression.span),
 
             ExpressionKind::IdentifierReference(name) => CBackend::compile_identifier_reference(name, expression.span),
+
+            ExpressionKind::OptionalWrap(inner) => self.compile_optional_wrap(inner, expression.span),
         }
     }
 
@@ -146,5 +149,11 @@ impl CBackend {
     pub fn compile_member_access(&self, member_access: &MemberAccess, _span: Span) -> Result<String, CBackendError> {
         let target = self.compile_expression(&member_access.target)?;
         Ok(format!("({target}).{}", member_access.name))
+    }
+
+    /// Compiles an optional wrapping expression into C code.
+    pub fn compile_optional_wrap(&self, optional_wrap: &OptionalWrap, _span: Span) -> Result<String, CBackendError> {
+        let inner_value = self.compile_expression(&optional_wrap.inner_value)?;
+        Ok(format!("(Optional_{}) {{ .has_value = true, .value = {inner_value} }}", optional_wrap.inner_type))
     }
 }

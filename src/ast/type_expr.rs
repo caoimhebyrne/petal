@@ -12,6 +12,9 @@ pub enum TypeExpr {
     /// A reference to another type.
     Reference(Box<TypeExpr>),
 
+    /// An optional wrapping a type.
+    Optional(Box<TypeExpr>),
+
     /// A structure definition.
     Structure { fields: Vec<StructureField> },
 }
