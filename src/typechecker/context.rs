@@ -269,8 +269,11 @@ pub struct DeclaredStructure {
     /// The module that the structure was declared in.
     pub _module_id: ModuleId,
 
-    /// The name of the structure.
+    /// The internal name of the structure.
     pub name: String,
+
+    /// The name of the structure, as declared by the user.
+    pub declared_name: String,
 
     /// The fields within the structure.
     pub fields: Vec<StructureField>,
@@ -278,7 +281,12 @@ pub struct DeclaredStructure {
 
 impl DeclaredStructure {
     /// Creates a new [`DeclaredStructure`].
-    pub fn new(module_id: ModuleId, name: String, fields: Vec<StructureField>) -> Self {
-        Self { _module_id: module_id, name, fields }
+    pub fn new(module_id: ModuleId, declared_name: String, fields: Vec<StructureField>) -> Self {
+        Self {
+            _module_id: module_id,
+            name: format!("ptl_mod_{module_id}_struct_{declared_name}"),
+            declared_name,
+            fields,
+        }
     }
 }
