@@ -226,21 +226,10 @@ impl ASTParser {
             }
 
             TokenKind::Identifier(name) => {
-                if self.peek_nth(1).map(|it| it.kind == TokenKind::OpenParen).unwrap_or_default() {
-                    let (function_call, span) = self.parse_function_call(Expression::new(
-                        ExpressionKind::IdentifierReference(name.clone()),
-                        span,
-                    ))?;
+                let name = name.clone();
 
-                    self.consume();
-
-                    Expression::new(function_call.into(), span)
-                } else {
-                    let name = name.clone();
-
-                    self.consume();
-                    Expression::new(ExpressionKind::IdentifierReference(name), span)
-                }
+                self.consume();
+                Expression::new(ExpressionKind::IdentifierReference(name), span)
             }
 
             TokenKind::OpenBrace => self.parse_structure_initialization()?,
