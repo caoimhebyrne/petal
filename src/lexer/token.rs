@@ -77,6 +77,9 @@ pub enum TokenKind {
     /// At: @
     At,
 
+    /// Period: .
+    Period,
+
     /// An identifier.
     Identifier(String),
 
@@ -116,6 +119,9 @@ pub enum Keyword {
 
     /// A type declaration.
     Type,
+
+    /// A structure type declaration.
+    Struct,
 }
 
 impl Keyword {
@@ -132,6 +138,7 @@ impl Keyword {
             "import" => Keyword::Import,
             "public" => Keyword::Public,
             "type" => Keyword::Type,
+            "struct" => Keyword::Struct,
 
             _ => return None,
         };

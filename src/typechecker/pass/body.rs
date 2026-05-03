@@ -19,6 +19,10 @@ use crate::{
                 FunctionCall,
                 FunctionCallArgument,
             },
+            structure_initialization::{
+                StructureInitialization,
+                StructureInitializationField,
+            },
         },
         statement::{
             Statement,
@@ -242,6 +246,10 @@ impl<'a> BodyPass<'a> {
             ExpressionKind::Reference(inner) => self.visit_reference(inner, expression.span),
 
             ExpressionKind::Dereference(inner) => self.visit_dereference(inner, expression.span),
+
+            ExpressionKind::StructureInitialization(structure_initialization) => {
+                self.visit_structure_initialization(structure_initialization, type_hint, expression.span)
+            }
         }?;
 
         Ok(r#type)
@@ -457,5 +465,58 @@ impl<'a> BodyPass<'a> {
             Type::Reference(inner) => Ok(*inner),
             r#type => Err(TypecheckerErrorKind::InvalidDereference(r#type).at(span)),
         }
+    }
+
+    /// Checks and resolves any types in the provided structure initialization expression.
+    fn visit_structure_initialization(
+        &mut self,
+        value: &mut StructureInitialization,
+        type_hint: Option<&Type>,
+        span: Span,
+    ) -> Result<Type, TypecheckerError> {
+        let structure_id = match type_hint {
+            Some(Type::Structure(id)) => id,
+
+            _ => {
+                return Err(
+                    TypecheckerErrorKind::StructureInitializationRequiresStructureType(type_hint.cloned()).at(span)
+                );
+            }
+        };
+
+        // FIXME: I don't like this `.clone()`.
+        let structure = self.typechecker.context.get_declared_structure(structure_id).clone();
+
+        // The first check is easy, we just need to ensure that a sufficient number of arguments were passed in the
+        // function call.
+        if value.fields.len() != structure.fields.len() {
+            return Err(TypecheckerErrorKind::StructureInitializationMissingFields {
+                expected: structure.fields.len(),
+                got: value.fields.len(),
+            }
+            .at(span));
+        }
+
+        // We will then rewrite the structure initialization to have its fields ordered in declaration order.
+        let mut ordered_fields: Vec<StructureInitializationField> = Vec::new();
+
+        for (idx, declaration_field) in structure.fields.iter().enumerate() {
+            let initialization_field = value.fields.get_mut(idx).unwrap();
+
+            let value_type = self.visit_expression(&mut initialization_field.value, Some(&declaration_field.r#type))?;
+            if value_type != declaration_field.r#type {
+                return Err(TypecheckerErrorKind::IncompatibleTypes {
+                    expected: declaration_field.r#type.clone(),
+                    got: value_type,
+                }
+                .at(initialization_field.span));
+            }
+
+            ordered_fields.push(initialization_field.clone());
+        }
+
+        value.fields = ordered_fields;
+
+        Ok(Type::Structure(*structure_id))
     }
 }

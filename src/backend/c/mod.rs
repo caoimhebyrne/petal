@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     io::Write,
     path::PathBuf,
     process::{
@@ -15,7 +16,13 @@ use crate::{
     },
     core::span::Span,
     module::CheckedModule,
-    typechecker::r#type::Type,
+    typechecker::{
+        context::{
+            DeclaredStructure,
+            StructureId,
+        },
+        r#type::Type,
+    },
 };
 
 pub mod error;
@@ -23,21 +30,45 @@ pub mod expression;
 pub mod statement;
 
 /// The C codegen backend.
-pub struct CBackend;
+pub struct CBackend {
+    /// The structure types that were resolved by the type checker for these modules.
+    structures: HashMap<StructureId, DeclaredStructure>,
+}
 
 impl CBackend {
+    /// Creates a new [`CBackend`].
+    pub fn new(structures: HashMap<StructureId, DeclaredStructure>) -> Self {
+        Self { structures }
+    }
+
     /// Compiles a [`CheckedModule`] to C code.
-    pub fn emit_code(modules: &Vec<CheckedModule>) -> Result<String, CBackendError> {
+    pub fn emit_code(&self, modules: &Vec<CheckedModule>) -> Result<String, CBackendError> {
         let mut code = String::new();
 
         code.push_str("#include <stdint.h>\n#include <stdbool.h>\n\n");
+
+        debug!("Attempting to generate C code with {} structure(s)", self.structures.len());
+
+        for structure in self.structures.values() {
+            code.push_str("typedef struct {\n");
+
+            for field in &structure.fields {
+                code.push_str(&format!("    {} {};\n", self.compile_type(&field.r#type, field.span)?, field.name));
+            }
+
+            code.push_str(&format!("}} {};\n", structure.name));
+        }
+
+        if !self.structures.is_empty() {
+            code.push('\n');
+        }
 
         // FIXME: It would be nice to introduce passes like the typechecker, but that's not so easy here.
         for module in modules {
             for statement in &module.ast {
                 if let StatementKind::FunctionDeclaration(function_declaration) = &statement.kind {
                     let name = function_declaration.name.clone();
-                    let return_type = CBackend::compile_type(&function_declaration.return_type, statement.span)?;
+                    let return_type = self.compile_type(&function_declaration.return_type, statement.span)?;
 
                     let parameters: String = if function_declaration.parameters.is_empty() {
                         "void".into()
@@ -45,7 +76,7 @@ impl CBackend {
                         function_declaration
                             .parameters
                             .iter()
-                            .map(CBackend::compile_function_parameter)
+                            .map(|it| self.compile_function_parameter(it))
                             .collect::<Result<Vec<String>, CBackendError>>()?
                             .join(", ")
                     };
@@ -59,7 +90,7 @@ impl CBackend {
 
         for module in modules {
             for statement in &module.ast {
-                code.push_str(&CBackend::compile_statement(statement)?);
+                code.push_str(&self.compile_statement(statement)?);
             }
         }
 
@@ -101,13 +132,17 @@ impl CBackend {
     }
 
     /// Converts a [Type] into a C type.
-    fn compile_type(r#type: &Type, span: Span) -> Result<String, CBackendError> {
+    fn compile_type(&self, r#type: &Type, span: Span) -> Result<String, CBackendError> {
         let value = match r#type {
             Type::SignedInteger(size) => format!("int{}_t", size),
             Type::UnsignedInteger(size) => format!("uint{}_t", size),
             Type::Boolean => "bool".into(),
             Type::Void => "void".into(),
-            Type::Reference(referenced) => format!("{}*", CBackend::compile_type(referenced, span)?),
+            Type::Reference(referenced) => format!("{}*", self.compile_type(referenced, span)?),
+            Type::Structure(structure_id) => {
+                let structure = self.structures.get(structure_id).unwrap();
+                structure.name.clone()
+            }
             Type::Unknown => return Err(CBackendErrorKind::UnknownType.at(span)),
         };
 
@@ -143,7 +178,8 @@ mod tests {
 
     fn assert_compiles(kinds: Vec<StatementKind>, compiled: &str) {
         let statements = kinds.into_iter().map(|kind| Statement::from(kind, Span::new(MOCK_MODULE_ID, 0, 0))).collect();
-        assert_eq!(CBackend::emit_code(&vec![CheckedModule::new(MOCK_MODULE_ID, statements)]), Ok(compiled.into()))
+        let backend = CBackend::new(HashMap::new());
+        assert_eq!(backend.emit_code(&vec![CheckedModule::new(MOCK_MODULE_ID, statements)]), Ok(compiled.into()))
     }
 
     #[test]

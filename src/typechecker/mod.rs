@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     ast::type_expr::TypeExpr,
     core::span::Span,
@@ -6,7 +8,11 @@ use crate::{
         ParsedModule,
     },
     typechecker::{
-        context::TypecheckerContext,
+        context::{
+            DeclaredStructure,
+            StructureId,
+            TypecheckerContext,
+        },
         error::{
             TypecheckerError,
             TypecheckerErrorKind,
@@ -34,24 +40,60 @@ pub struct Typechecker {
 
 impl Typechecker {
     /// Checks and resolved any [`Type`]s referenced in the provided [`ParsedModule`].
-    pub fn check(&mut self, modules: Vec<ParsedModule>) -> Result<Vec<CheckedModule>, TypecheckerError> {
+    pub fn check(
+        &mut self,
+        modules: Vec<ParsedModule>,
+    ) -> Result<(Vec<CheckedModule>, HashMap<StructureId, DeclaredStructure>), TypecheckerError> {
         let mut modules = modules;
 
         DeclarationPass::new(self).run(&mut modules)?;
         BodyPass::new(self).run(&mut modules)?;
 
-        Ok(modules.into_iter().map(|it| CheckedModule::new(it.id, it.ast)).collect())
+        Ok((modules.into_iter().map(|it| CheckedModule::new(it.id, it.ast)).collect(), self.context.structures.clone()))
+    }
+
+    /// Resolves the provided [`TypeExpr`] and registers it as a declared type in this [`Typechecker`]'s context.
+    fn resolve_and_declare_type_from_expr(
+        &mut self,
+        name: String,
+        expr: &mut TypeExpr,
+        span: Span,
+    ) -> Result<(), TypecheckerError> {
+        // TODO: If a type already exists with the same name, then we must not declare another.
+
+        // If this is a structure type, then we must assign a structure ID for it.
+        let resolved_type = match expr {
+            TypeExpr::Structure { fields } => {
+                // We must ensure that the fields have a resolvable type.
+                for field in fields.iter_mut() {
+                    field.r#type = self.resolve_type_from_expr(&field.type_expr, field.span)?;
+                }
+
+                // Then, we can register the struct.
+                let structure_id = self.context.insert_declared_structure(name.clone(), fields.clone(), span)?;
+                Type::Structure(structure_id)
+            }
+
+            _ => self.resolve_type_from_expr(expr, span)?,
+        };
+
+        // We have resolved the type, we can insert it into the type declarations.
+        self.context.insert_declared_type(name, resolved_type, span)?;
+        Ok(())
     }
 
     /// Attempts to resolve the provided [`TypeExpr`] into a [`Type`].
-    fn resolve_type_from_expr(&self, expr: &TypeExpr, span: Span) -> Result<Type, TypecheckerError> {
+    fn resolve_type_from_expr(&mut self, expr: &TypeExpr, span: Span) -> Result<Type, TypecheckerError> {
         let name = match expr {
             TypeExpr::Named(value) => value,
+
             TypeExpr::Reference(referenced_expr) => {
                 // This is referencing another type, we can construct the [`Type`] by resolving the referenced type.
                 let referenced = self.resolve_type_from_expr(referenced_expr, span)?;
                 return Ok(Type::Reference(referenced.into()));
             }
+
+            TypeExpr::Structure { .. } => panic!(),
         };
 
         let r#type = match name.as_str() {

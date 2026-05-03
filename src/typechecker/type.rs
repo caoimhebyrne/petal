@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use crate::typechecker::context::StructureId;
+
 /// A type as defined by the typechecker.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum Type {
@@ -18,6 +20,9 @@ pub enum Type {
     /// A reference to another type.
     Reference(Box<Type>),
 
+    /// A structure type.
+    Structure(StructureId),
+
     /// The type has not been resolved for this element yet.
     #[default]
     Unknown,
@@ -31,6 +36,7 @@ impl Display for Type {
             Self::Boolean => write!(f, "bool"),
             Self::Void => write!(f, "void"),
             Self::Reference(referenced) => write!(f, "&{referenced}"),
+            Self::Structure(id) => write!(f, "<structure {id}>"),
             Self::Unknown => write!(f, "<unknown>"),
         }
     }

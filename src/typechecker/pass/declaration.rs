@@ -77,7 +77,10 @@ impl<'a> DeclarationPass<'a> {
     }
 
     /// Checks and resolves any [`Type`]s referenced in the provided [`FunctionParameter`].
-    fn check_function_parameter(&self, function_parameter: &mut FunctionParameter) -> Result<Type, TypecheckerError> {
+    fn check_function_parameter(
+        &mut self,
+        function_parameter: &mut FunctionParameter,
+    ) -> Result<Type, TypecheckerError> {
         let r#type = self.typechecker.resolve_type_from_expr(&function_parameter.type_expr, function_parameter.span)?;
         function_parameter.r#type = r#type.clone();
         Ok(r#type)
@@ -89,10 +92,10 @@ impl<'a> DeclarationPass<'a> {
         type_declaration: &mut TypeDeclaration,
         span: Span,
     ) -> Result<(), TypecheckerError> {
-        // The type expression must be resolvable to an actual type.
-        let r#type = self.typechecker.resolve_type_from_expr(&type_declaration.type_expr, span)?;
-        self.typechecker.context.insert_declared_type(type_declaration.name.clone(), r#type, span)?;
-
-        Ok(())
+        self.typechecker.resolve_and_declare_type_from_expr(
+            type_declaration.name.clone(),
+            &mut type_declaration.type_expr,
+            span,
+        )
     }
 }

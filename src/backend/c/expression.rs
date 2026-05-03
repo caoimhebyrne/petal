@@ -7,6 +7,7 @@ use crate::{
             BinaryOperator,
         },
         function_call::FunctionCall,
+        structure_initialization::StructureInitialization,
     },
     backend::c::{
         CBackend,
@@ -25,6 +26,10 @@ impl CBackend {
 
             ExpressionKind::BinaryOperation(binary_operation) => {
                 CBackend::compile_binary_operation(binary_operation, expression.span)
+            }
+
+            ExpressionKind::StructureInitialization(fields) => {
+                CBackend::compile_structure_initialization(fields, expression.span)
             }
 
             ExpressionKind::Reference(inner) => CBackend::compile_reference(inner, expression.span),
@@ -88,5 +93,23 @@ impl CBackend {
         };
 
         Ok(format!("{left} {operand} {right}"))
+    }
+
+    /// Compiles a structure initialization into C code.
+    pub fn compile_structure_initialization(
+        structure_initialization: &StructureInitialization,
+        _span: Span,
+    ) -> Result<String, CBackendError> {
+        let fields = structure_initialization
+            .fields
+            .iter()
+            .map(|it| -> Result<String, CBackendError> {
+                let value = CBackend::compile_expression(&it.value)?;
+                Ok(format!(".{} = {}", it.name, value))
+            })
+            .collect::<Result<Vec<_>, _>>()?
+            .join(", ");
+
+        Ok(format!("{{ {fields} }}"))
     }
 }

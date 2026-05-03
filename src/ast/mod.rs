@@ -12,6 +12,7 @@ use crate::{
                 BinaryOperator,
             },
             function_call::FunctionCall,
+            structure_initialization::StructureInitialization,
         },
         statement::{
             Statement,
@@ -26,7 +27,10 @@ use crate::{
             variable_assignment::VariableAssignment,
             variable_declaration::VariableDeclaration,
         },
-        type_expr::TypeExpr,
+        type_expr::{
+            StructureField,
+            TypeExpr,
+        },
     },
     core::span::Span,
     lexer::token::{
@@ -227,10 +231,43 @@ impl ASTParser {
                 }
             }
 
+            TokenKind::OpenBrace => self.parse_structure_initialization()?,
+
             _ => return Err(ASTErrorKind::ExpectedExpression(token.kind.clone()).at(token.span)),
         };
 
         Ok(expression)
+    }
+
+    /// Attempts to parse a structure initialization expression.
+    fn parse_structure_initialization(&mut self) -> Result<Expression, ASTError> {
+        let mut builder = StructureInitialization::builder();
+
+        // The first token must be an open brace.
+        let open_brace_span = self.expect_span(TokenKind::OpenBrace)?;
+
+        while !self.peek_is(TokenKind::CloseBrace) {
+            let period_span = self.expect_span(TokenKind::Period)?;
+            let (field_name, _) = self.expect_identifier()?;
+
+            self.expect(TokenKind::Equals)?;
+
+            let value = self.parse_expression()?;
+
+            let span = Span::between(period_span, value.span);
+            builder = builder.field(field_name, value, Span::between(period_span, span));
+
+            if self.peek_is(TokenKind::CloseBrace) {
+                break;
+            }
+
+            self.expect(TokenKind::Comma)?;
+        }
+
+        // The last token must be a closing brace.
+        let close_brace_span = self.expect_span(TokenKind::CloseBrace)?;
+
+        Ok(Expression::new(builder.build().into(), Span::between(open_brace_span, close_brace_span)))
     }
 
     /// Attempts to parse a function declaration from the [ASTParser]'s current position.
@@ -458,6 +495,36 @@ impl ASTParser {
             return Ok((TypeExpr::reference(inner), Span::between(ampersand_span, inner_span)));
         }
 
+        // If the first token is the `struct` keyword, then we are parsing a structure definition.
+        if self.peek_is(TokenKind::Keyword(Keyword::Struct)) {
+            let struct_span = self.expect_span(TokenKind::Keyword(Keyword::Struct))?;
+
+            self.expect(TokenKind::OpenBrace)?;
+
+            let mut fields: Vec<StructureField> = Vec::new();
+
+            while !self.peek_is(TokenKind::CloseBrace) {
+                let (field_name, field_name_span) = self.expect_identifier()?;
+                self.expect(TokenKind::Colon)?;
+                let (field_type, field_type_span) = self.parse_type_expr()?;
+
+                fields.push(StructureField::new(
+                    field_name,
+                    field_type,
+                    Span::between(field_name_span, field_type_span),
+                ));
+
+                if self.peek_is(TokenKind::CloseBrace) {
+                    break;
+                }
+
+                self.expect(TokenKind::Comma)?;
+            }
+
+            let close_brace_span = self.expect_span(TokenKind::CloseBrace)?;
+            return Ok((TypeExpr::Structure { fields }, Span::between(struct_span, close_brace_span)));
+        }
+
         // Otherwise, we can attempt to parse a named type.
         let (name, name_span) = self.expect_identifier()?;
         Ok((TypeExpr::named(name), name_span))
@@ -585,13 +652,19 @@ mod tests {
             ExpressionKind::FunctionCall(function_call) => {
                 for argument in &mut function_call.arguments {
                     remove_spans(&mut argument.value);
-
                     argument.span = Span::new(MOCK_MODULE_ID, 0, 0);
                 }
             }
 
             ExpressionKind::Reference(reference) => {
                 remove_spans(reference);
+            }
+
+            ExpressionKind::StructureInitialization(structure_initialization) => {
+                for field in &mut structure_initialization.fields {
+                    remove_spans(&mut field.value);
+                    field.span = Span::new(MOCK_MODULE_ID, 0, 0);
+                }
             }
 
             // These expressions do not have any children.

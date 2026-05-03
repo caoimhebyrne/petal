@@ -112,11 +112,12 @@ fn main_impl(mut args: Args, module_registry: &mut ModuleRegistry) -> Result<(),
     info!("Checking types");
 
     let mut typechecker = Typechecker::default();
-    let checked_modules = typechecker.check(parsed_modules)?;
+    let (checked_modules, declared_structures) = typechecker.check(parsed_modules)?;
 
     info!("Generating code");
 
-    let code = CBackend::emit_code(&checked_modules)?;
+    let backend = CBackend::new(declared_structures);
+    let code = backend.emit_code(&checked_modules)?;
     if args.emit_code {
         println!("{code}");
     }

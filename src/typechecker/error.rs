@@ -38,6 +38,8 @@ pub enum TypecheckerErrorKind {
     UndeclaredFunction(String),
     UndeclaredVariable(String),
     UnknownType(String),
+    StructureInitializationRequiresStructureType(Option<Type>),
+    StructureInitializationMissingFields { expected: usize, got: usize },
 }
 
 impl TypecheckerErrorKind {
@@ -122,6 +124,21 @@ impl Display for TypecheckerErrorKind {
 
             Self::IncompatibleTypes { expected, got } => {
                 write!(f, "Expected type '{}', but got '{}'", expected, got)
+            }
+
+            Self::StructureInitializationRequiresStructureType(inferred) => {
+                write!(
+                    f,
+                    "A structure initialization expression requires a structure type, but got inferred type '{:?}'",
+                    inferred
+                )
+            }
+
+            Self::StructureInitializationMissingFields { expected, got } => {
+                write!(
+                    f,
+                    "Structure initialization had {got} field(s), but structure declaration has {expected} field(s)"
+                )
             }
         }
     }

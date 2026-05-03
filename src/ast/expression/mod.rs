@@ -2,12 +2,14 @@ use crate::{
     ast::expression::{
         binary_operation::BinaryOperation,
         function_call::FunctionCall,
+        structure_initialization::StructureInitialization,
     },
     core::span::Span,
 };
 
 pub mod binary_operation;
 pub mod function_call;
+pub mod structure_initialization;
 
 /// An expression node within the abstract syntax tree.
 /// This node kind should always emit a value once evaluated.
@@ -50,4 +52,7 @@ pub enum ExpressionKind {
 
     /// A binary operation.
     BinaryOperation(BinaryOperation),
+
+    /// A structure initialization.
+    StructureInitialization(StructureInitialization),
 }

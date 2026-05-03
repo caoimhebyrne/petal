@@ -1,13 +1,19 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    fmt::Display,
+};
 
 use crate::{
-    ast::statement::{
-        function_declaration::{
-            DeclarationModifier,
-            FunctionDeclaration,
-            FunctionParameter,
+    ast::{
+        statement::{
+            function_declaration::{
+                DeclarationModifier,
+                FunctionDeclaration,
+                FunctionParameter,
+            },
+            variable_declaration::VariableDeclaration,
         },
-        variable_declaration::VariableDeclaration,
+        type_expr::StructureField,
     },
     core::span::Span,
     module_registry::ModuleId,
@@ -28,6 +34,16 @@ pub struct FunctionId(usize);
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct DeclaredTypeId(usize);
 
+/// The identifier for a structure type.
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub struct StructureId(usize);
+
+impl Display for StructureId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// The context of a [`Typechecker`].
 #[derive(Default)]
 pub(crate) struct TypecheckerContext {
@@ -42,6 +58,9 @@ pub(crate) struct TypecheckerContext {
 
     /// The types that have been declared by the user in the current scope.
     pub(crate) types: HashMap<DeclaredTypeId, DeclaredType>,
+
+    /// The structures that have been declared by the user.
+    pub(crate) structures: HashMap<StructureId, DeclaredStructure>,
 }
 
 impl TypecheckerContext {
@@ -138,6 +157,25 @@ impl TypecheckerContext {
 
         Ok(type_id)
     }
+
+    /// Retrieves a [`DeclaredStructure`] from this [`TypecheckerContext`] by its ID.
+    pub(crate) fn get_declared_structure(&self, id: &StructureId) -> &DeclaredStructure {
+        self.structures.get(id).expect("structures.get should always succeed")
+    }
+
+    /// Inserts a [`DeclaredStructure`] into this [`TypecheckerContext`].
+    pub(crate) fn insert_declared_structure(
+        &mut self,
+        name: String,
+        fields: Vec<StructureField>,
+        span: Span,
+    ) -> Result<StructureId, TypecheckerError> {
+        let structure_id = StructureId(self.structures.len());
+
+        self.structures.insert(structure_id, DeclaredStructure::new(span.module_id, name, fields));
+
+        Ok(structure_id)
+    }
 }
 
 /// A function which has been verified by the typechecker.
@@ -222,5 +260,25 @@ impl DeclaredType {
     /// By default, all types are private, and can only be accessed by the module that they are defined in.
     pub fn is_visible_to_module(&self, other_module_id: ModuleId) -> bool {
         self.module_id == other_module_id
+    }
+}
+
+/// A structure type which has been declared in the source code.
+#[derive(Debug, Clone)]
+pub struct DeclaredStructure {
+    /// The module that the structure was declared in.
+    pub _module_id: ModuleId,
+
+    /// The name of the structure.
+    pub name: String,
+
+    /// The fields within the structure.
+    pub fields: Vec<StructureField>,
+}
+
+impl DeclaredStructure {
+    /// Creates a new [`DeclaredStructure`].
+    pub fn new(module_id: ModuleId, name: String, fields: Vec<StructureField>) -> Self {
+        Self { _module_id: module_id, name, fields }
     }
 }
