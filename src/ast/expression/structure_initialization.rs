@@ -4,12 +4,16 @@ use crate::{
         ExpressionKind,
     },
     core::span::Span,
+    typechecker::context::StructureId,
 };
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct StructureInitialization {
     /// The fields being initialized.
     pub fields: Vec<StructureInitializationField>,
+
+    /// The ID of the structure type that is being initialized.
+    pub structure_id: Option<StructureId>,
 }
 
 impl StructureInitialization {
@@ -59,6 +63,6 @@ impl StructureInitializationBuilder {
 
     /// Builds this [`StructureInitializationBuilder`] into a [`StructureInitialization`].
     pub fn build(self) -> StructureInitialization {
-        StructureInitialization { fields: self.fields }
+        StructureInitialization { fields: self.fields, structure_id: None }
     }
 }

@@ -1,0 +1,20 @@
+// In previous examples, we have been working with 'primitive' types such as `i32`. Petal also allows you to group
+// related values together into a single type called a 'structure'.
+//
+// A structure can be declared through the `type` keyword, but instead of aliasing an existing type (like the previous
+// example), you can use the `struct` keyword and list the fields that it contains, alongside their types.
+type Point = struct {
+    x: i32,
+    y: i32,
+};
+
+func main() -> i32 {
+    // To create a value of a structure type, you _must_ provide an initial value for each field.
+    //
+    // Note that the structure initialization expression (after the `=`) does not name the structure anywhere; its type
+    // is inferred from the declared type of the variable.
+    point_a: Point = { .x = 5, .y = 4 };
+
+    // The values of fields can be read from a struct using the `.` operator.
+    return point_a.x + point_a.y;
+}

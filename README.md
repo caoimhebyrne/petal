@@ -26,8 +26,8 @@ Cranelift) compiler backend will be added in the future.
   - [x] Name mangling
 - [x] References
 - [x] User defined types (`type CString = &u8`)
-- [ ] Structures
-  - [ ] Member functions
+- [x] Structures
+  - [x] Member functions
 - [ ] Basic generics
 - [ ] Optionals (`type Optional<T> = { is_present: bool, value: T }`)
   - [ ] Short-hand via type modifiers, e.g. `?i32`.

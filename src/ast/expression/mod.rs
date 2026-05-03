@@ -2,6 +2,7 @@ use crate::{
     ast::expression::{
         binary_operation::BinaryOperation,
         function_call::FunctionCall,
+        member_access::MemberAccess,
         structure_initialization::StructureInitialization,
     },
     core::span::Span,
@@ -9,6 +10,7 @@ use crate::{
 
 pub mod binary_operation;
 pub mod function_call;
+pub mod member_access;
 pub mod structure_initialization;
 
 /// An expression node within the abstract syntax tree.
@@ -55,4 +57,7 @@ pub enum ExpressionKind {
 
     /// A structure initialization.
     StructureInitialization(StructureInitialization),
+
+    /// A member access.
+    MemberAccess(MemberAccess),
 }

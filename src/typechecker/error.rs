@@ -40,6 +40,8 @@ pub enum TypecheckerErrorKind {
     UnknownType(String),
     StructureInitializationRequiresStructureType(Option<Type>),
     StructureInitializationMissingFields { expected: usize, got: usize },
+    MemberAccessNotSupported,
+    TypeDoesNotHaveMember { r#type: Type, name: String },
 }
 
 impl TypecheckerErrorKind {
@@ -139,6 +141,14 @@ impl Display for TypecheckerErrorKind {
                     f,
                     "Structure initialization had {got} field(s), but structure declaration has {expected} field(s)"
                 )
+            }
+
+            Self::MemberAccessNotSupported => {
+                write!(f, "Member access expressions are only supported on structure value types at the moment")
+            }
+
+            Self::TypeDoesNotHaveMember { r#type, name } => {
+                write!(f, "Type '{type}' does not have a member named '{name}'")
             }
         }
     }

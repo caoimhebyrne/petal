@@ -27,17 +27,17 @@ impl CBackend {
             }
 
             StatementKind::FunctionCall(function_call) => {
-                Ok(format!("{};", CBackend::compile_function_call(function_call, statement.span)?))
+                Ok(format!("{};", self.compile_function_call(function_call, statement.span)?))
             }
 
-            StatementKind::Return(r#return) => CBackend::compile_return(r#return, statement.span),
+            StatementKind::Return(r#return) => self.compile_return(r#return, statement.span),
 
             StatementKind::VariableDeclaration(variable_declaration) => {
                 self.compile_variable_declaration(variable_declaration, statement.span)
             }
 
             StatementKind::VariableAssignment(variable_assignment) => {
-                CBackend::compile_variable_assignment(variable_assignment, statement.span)
+                self.compile_variable_assignment(variable_assignment, statement.span)
             }
 
             StatementKind::If(r#if) => self.compile_if(r#if, statement.span),
@@ -97,8 +97,8 @@ impl CBackend {
     }
 
     /// Compiles a return statement into C code.
-    pub fn compile_return(r#return: &Return, _span: Span) -> Result<String, CBackendError> {
-        let expression = r#return.value.as_ref().map(CBackend::compile_expression).transpose()?;
+    pub fn compile_return(&self, r#return: &Return, _span: Span) -> Result<String, CBackendError> {
+        let expression = r#return.value.as_ref().map(|it| self.compile_expression(it)).transpose()?;
 
         let string = match expression {
             Some(value) => format!("return {};", value),
@@ -116,24 +116,25 @@ impl CBackend {
     ) -> Result<String, CBackendError> {
         let name = variable_declaration.name.clone();
         let r#type = self.compile_type(&variable_declaration.r#type, span)?;
-        let value = CBackend::compile_expression(&variable_declaration.value)?;
+        let value = self.compile_expression(&variable_declaration.value)?;
 
         Ok(format!("{type} {name} = {value};"))
     }
 
     /// Compiles a variable assignment into C code.
     pub fn compile_variable_assignment(
+        &self,
         variable_assignment: &VariableAssignment,
         _span: Span,
     ) -> Result<String, CBackendError> {
-        let target = CBackend::compile_expression(&variable_assignment.target)?;
-        let value = CBackend::compile_expression(&variable_assignment.value)?;
+        let target = self.compile_expression(&variable_assignment.target)?;
+        let value = self.compile_expression(&variable_assignment.value)?;
         Ok(format!("{target} = {value};"))
     }
 
     /// Compiles an if statement into C code.
     pub fn compile_if(&self, r#if: &If, _span: Span) -> Result<String, CBackendError> {
-        let condition = CBackend::compile_expression(&r#if.condition)?;
+        let condition = self.compile_expression(&r#if.condition)?;
         let mut string = String::new();
 
         string.push_str(&format!("if ({condition}) {{\n"));

@@ -7,6 +7,7 @@ use crate::{
             BinaryOperator,
         },
         function_call::FunctionCall,
+        member_access::MemberAccess,
         structure_initialization::StructureInitialization,
     },
     backend::c::{
@@ -18,24 +19,28 @@ use crate::{
 
 impl CBackend {
     /// Compiles an expression into C code.
-    pub fn compile_expression(expression: &Expression) -> Result<String, CBackendError> {
+    pub fn compile_expression(&self, expression: &Expression) -> Result<String, CBackendError> {
         match &expression.kind {
-            ExpressionKind::FunctionCall(function_call) => {
-                CBackend::compile_function_call(function_call, expression.span)
-            }
+            ExpressionKind::FunctionCall(function_call) => self.compile_function_call(function_call, expression.span),
 
             ExpressionKind::BinaryOperation(binary_operation) => {
-                CBackend::compile_binary_operation(binary_operation, expression.span)
+                self.compile_binary_operation(binary_operation, expression.span)
             }
 
             ExpressionKind::StructureInitialization(fields) => {
-                CBackend::compile_structure_initialization(fields, expression.span)
+                self.compile_structure_initialization(fields, expression.span)
             }
 
-            ExpressionKind::Reference(inner) => CBackend::compile_reference(inner, expression.span),
-            ExpressionKind::Dereference(inner) => CBackend::compile_dereference(inner, expression.span),
+            ExpressionKind::MemberAccess(member_access) => self.compile_member_access(member_access, expression.span),
+
+            ExpressionKind::Reference(inner) => self.compile_reference(inner, expression.span),
+
+            ExpressionKind::Dereference(inner) => self.compile_dereference(inner, expression.span),
+
             ExpressionKind::BooleanLiteral(value) => CBackend::compile_boolean_literal(value, expression.span),
+
             ExpressionKind::NumberLiteral(value) => CBackend::compile_number_literal(value, expression.span),
+
             ExpressionKind::IdentifierReference(name) => CBackend::compile_identifier_reference(name, expression.span),
         }
     }
@@ -56,21 +61,21 @@ impl CBackend {
     }
 
     /// Compiles a reference expression into C code.
-    fn compile_reference(value: &Expression, _span: Span) -> Result<String, CBackendError> {
-        Ok(format!("&({})", CBackend::compile_expression(value)?))
+    fn compile_reference(&self, value: &Expression, _span: Span) -> Result<String, CBackendError> {
+        Ok(format!("&({})", self.compile_expression(value)?))
     }
 
     /// Compiles a dereference expression into C code.
-    fn compile_dereference(value: &Expression, _span: Span) -> Result<String, CBackendError> {
-        Ok(format!("*({})", CBackend::compile_expression(value)?))
+    fn compile_dereference(&self, value: &Expression, _span: Span) -> Result<String, CBackendError> {
+        Ok(format!("*({})", self.compile_expression(value)?))
     }
 
     /// Compiles a function call expression into C code.
-    pub fn compile_function_call(function_call: &FunctionCall, _span: Span) -> Result<String, CBackendError> {
+    pub fn compile_function_call(&self, function_call: &FunctionCall, _span: Span) -> Result<String, CBackendError> {
         let arguments = &function_call
             .arguments
             .iter()
-            .map(|it| CBackend::compile_expression(&it.value))
+            .map(|it| self.compile_expression(&it.value))
             .collect::<Result<Vec<String>, CBackendError>>()?
             .join(", ");
 
@@ -78,10 +83,13 @@ impl CBackend {
     }
 
     /// Compiles a binary operation expression into C code.
-    pub fn compile_binary_operation(binary_operation: &BinaryOperation, _span: Span) -> Result<String, CBackendError> {
-        let left = CBackend::compile_expression(&binary_operation.left)?;
-
-        let right = CBackend::compile_expression(&binary_operation.right)?;
+    pub fn compile_binary_operation(
+        &self,
+        binary_operation: &BinaryOperation,
+        _span: Span,
+    ) -> Result<String, CBackendError> {
+        let left = self.compile_expression(&binary_operation.left)?;
+        let right = self.compile_expression(&binary_operation.right)?;
 
         let operand = match binary_operation.operator {
             BinaryOperator::Add => "+",
@@ -97,19 +105,28 @@ impl CBackend {
 
     /// Compiles a structure initialization into C code.
     pub fn compile_structure_initialization(
+        &self,
         structure_initialization: &StructureInitialization,
         _span: Span,
     ) -> Result<String, CBackendError> {
+        let structure_type = self.structures.get(&structure_initialization.structure_id.unwrap()).unwrap();
+
         let fields = structure_initialization
             .fields
             .iter()
             .map(|it| -> Result<String, CBackendError> {
-                let value = CBackend::compile_expression(&it.value)?;
+                let value = self.compile_expression(&it.value)?;
                 Ok(format!(".{} = {}", it.name, value))
             })
             .collect::<Result<Vec<_>, _>>()?
             .join(", ");
 
-        Ok(format!("{{ {fields} }}"))
+        Ok(format!("({}) {{ {fields} }}", structure_type.name))
+    }
+
+    /// Compiles a member access expression into C code.
+    pub fn compile_member_access(&self, member_access: &MemberAccess, _span: Span) -> Result<String, CBackendError> {
+        let target = self.compile_expression(&member_access.target)?;
+        Ok(format!("({target}).{}", member_access.name))
     }
 }

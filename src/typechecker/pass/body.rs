@@ -19,6 +19,7 @@ use crate::{
                 FunctionCall,
                 FunctionCallArgument,
             },
+            member_access::MemberAccess,
             structure_initialization::{
                 StructureInitialization,
                 StructureInitializationField,
@@ -250,6 +251,8 @@ impl<'a> BodyPass<'a> {
             ExpressionKind::StructureInitialization(structure_initialization) => {
                 self.visit_structure_initialization(structure_initialization, type_hint, expression.span)
             }
+
+            ExpressionKind::MemberAccess(member_access) => self.visit_member_access(member_access, expression.span),
         }?;
 
         Ok(r#type)
@@ -484,6 +487,8 @@ impl<'a> BodyPass<'a> {
             }
         };
 
+        value.structure_id = Some(*structure_id);
+
         // FIXME: I don't like this `.clone()`.
         let structure = self.typechecker.context.get_declared_structure(structure_id).clone();
 
@@ -518,5 +523,26 @@ impl<'a> BodyPass<'a> {
         value.fields = ordered_fields;
 
         Ok(Type::Structure(*structure_id))
+    }
+
+    /// Visits a member access expression.
+    fn visit_member_access(&mut self, value: &mut MemberAccess, span: Span) -> Result<Type, TypecheckerError> {
+        // The target of the access must be resolvable.
+        let target_type = self.visit_expression(&mut value.target, None)?;
+
+        debug!("Parsing member access expression for target type '{}' to member name '{}'", target_type, value.name);
+
+        // We only support accessing members of structures at the moment.
+        let structure_type = match target_type {
+            Type::Structure(structure_id) => self.typechecker.context.get_declared_structure(&structure_id),
+            _ => return Err(TypecheckerErrorKind::MemberAccessNotSupported.at(span)),
+        };
+
+        // The field must exist on the structure.
+        let field = structure_type.fields.iter().find(|it| it.name == value.name).ok_or_else(|| {
+            TypecheckerErrorKind::TypeDoesNotHaveMember { r#type: target_type, name: value.name.clone() }.at(span)
+        })?;
+
+        Ok(field.r#type.clone())
     }
 }

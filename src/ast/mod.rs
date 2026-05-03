@@ -12,6 +12,7 @@ use crate::{
                 BinaryOperator,
             },
             function_call::FunctionCall,
+            member_access::MemberAccess,
             structure_initialization::StructureInitialization,
         },
         statement::{
@@ -109,16 +110,14 @@ impl ASTParser {
 
             TokenKind::At => (self.parse_variable_assignment()?, true),
 
-            TokenKind::Identifier(_) if self.peek_nth(1).map(|it| it.kind == TokenKind::Equals).unwrap_or_default() => {
-                (self.parse_variable_assignment()?, true)
-            }
-
             TokenKind::Identifier(_)
                 if self.peek_nth(1).map(|it| it.kind == TokenKind::OpenParen).unwrap_or_default() =>
             {
                 let (function_call, span) = self.parse_function_call()?;
                 (Statement::new(function_call.into(), span), true)
             }
+
+            TokenKind::Identifier(_) => (self.parse_variable_assignment()?, true),
 
             _ => return Err(ASTErrorKind::ExpectedStatement(token.kind.clone()).at(token.span)),
         };
@@ -184,7 +183,7 @@ impl ASTParser {
         // FIXME: We need to copy the span before attempting to acquire a mutable reference via consume.
         let span = token.span;
 
-        let expression = match &token.kind {
+        let mut expression = match &token.kind {
             TokenKind::Number(value) => {
                 let value = *value;
                 self.consume();
@@ -235,6 +234,31 @@ impl ASTParser {
 
             _ => return Err(ASTErrorKind::ExpectedExpression(token.kind.clone()).at(token.span)),
         };
+
+        loop {
+            let should_dereference_target = if self.peek_is(TokenKind::Period) {
+                self.expect(TokenKind::Period)?;
+                false
+            } else if self.peek_is(TokenKind::Hyphen)
+                && self.peek_nth(1).map(|it| it.kind == TokenKind::RightAngleBracket).unwrap_or_default()
+            {
+                self.expect(TokenKind::Hyphen)?;
+                self.expect(TokenKind::RightAngleBracket)?;
+                true
+            } else {
+                break;
+            };
+
+            if should_dereference_target {
+                let span = expression.span;
+                expression = Expression::new(ExpressionKind::Dereference(expression.into()), span);
+            }
+
+            let (member_name, member_span) = self.expect_identifier()?;
+            let span = Span::between(expression.span, member_span);
+
+            expression = Expression::new(MemberAccess::new(expression, member_name).into(), span);
+        }
 
         Ok(expression)
     }
@@ -665,6 +689,10 @@ mod tests {
                     remove_spans(&mut field.value);
                     field.span = Span::new(MOCK_MODULE_ID, 0, 0);
                 }
+            }
+
+            ExpressionKind::MemberAccess(member_access) => {
+                remove_spans(&mut member_access.target);
             }
 
             // These expressions do not have any children.
