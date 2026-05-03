@@ -1,3 +1,5 @@
+use std::mem;
+
 use crate::{
     ast::{
         statement::{
@@ -50,6 +52,24 @@ impl<'a> DeclarationPass<'a> {
             }
         }
 
+        self.resolve_structure_field_types()?;
+
+        Ok(())
+    }
+
+    /// Attempts to resolve the types of all fields in the [`DeclaredStructure`]s registered in the [`Typechecker`].
+    fn resolve_structure_field_types(&mut self) -> Result<(), TypecheckerError> {
+        // We cannot just iterate over `&mut self.typechecker.context.structures`. We must take ownership of it first,
+        // and then set it back once we are finished.
+        let mut structures = mem::take(&mut self.typechecker.context.structures);
+
+        for structure in structures.values_mut() {
+            for field in &mut structure.fields {
+                field.r#type = self.typechecker.resolve_type_from_expr(&field.type_expr, field.span)?;
+            }
+        }
+
+        self.typechecker.context.structures = structures;
         Ok(())
     }
 
@@ -100,12 +120,8 @@ impl<'a> DeclarationPass<'a> {
         // If this is a structure type, then we must assign a structure ID for it.
         let resolved_type = match &mut type_declaration.type_expr {
             TypeExpr::Structure { fields } => {
-                // We must ensure that the fields have a resolvable type.
-                for field in &mut *fields {
-                    field.r#type = self.typechecker.resolve_type_from_expr(&field.type_expr, field.span)?;
-                }
-
-                // Then, we can register the struct.
+                // All we need to do right now is register the struct. We will do a second pass after all declarations
+                // are run to resolve the types of the structure fields.
                 let structure_id = self.typechecker.context.insert_declared_structure(
                     type_declaration.name.clone(),
                     fields.clone(),
