@@ -145,7 +145,7 @@ fn main_impl(mut args: Args, module_registry: &mut ModuleRegistry) -> Result<(),
         let mut child = Command::new(&executable_file_path).spawn().expect("Failed to launch generated executable");
         let status = child.wait().expect("Failed to wait for child to finish execution");
 
-        if let Err(_) = fs::remove_file(&executable_file_path) {
+        if fs::remove_file(&executable_file_path).is_err() {
             warn!("Failed to clean up temporary executable at '{}'", executable_file_path.to_string_lossy())
         }
 

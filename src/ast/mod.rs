@@ -142,12 +142,7 @@ impl ASTParser {
             self.parse_value()?
         };
 
-        loop {
-            let operator = match self.peek_and_parse_binary_operator() {
-                Some(value) => value,
-                None => break,
-            };
-
+        while let Some(operator) = self.peek_and_parse_binary_operator() {
             if operator.precedence() < precedence {
                 break;
             }
