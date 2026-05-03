@@ -30,6 +30,12 @@ use crate::{
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionId(usize);
 
+impl Display for FunctionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// A unique identifier for a declared type.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct DeclaredTypeId(usize);
@@ -110,6 +116,7 @@ impl TypecheckerContext {
             function_id,
             CheckedFunction::new(
                 span.module_id,
+                function_id,
                 function_declaration.name.clone(),
                 function_declaration.parameters.clone(),
                 function_declaration.return_type.clone(),
@@ -180,9 +187,12 @@ impl TypecheckerContext {
 
 /// A function which has been verified by the typechecker.
 #[derive(Debug, Clone)]
-pub(crate) struct CheckedFunction {
+pub struct CheckedFunction {
     /// The ID of the module that this function belongs to.
     pub module_id: ModuleId,
+
+    /// The unique identifier for this function.
+    pub function_id: FunctionId,
 
     /// The name of the function.
     pub name: String,
@@ -204,6 +214,7 @@ impl CheckedFunction {
     /// Creates a new [`CheckedFunction`].
     pub fn new(
         module_id: ModuleId,
+        function_id: FunctionId,
         declared_name: String,
         parameters: Vec<FunctionParameter>,
         return_type: Type,
@@ -211,6 +222,7 @@ impl CheckedFunction {
     ) -> Self {
         Self {
             module_id,
+            function_id,
             // FIXME: Add a modifier to function declarations which prevents their names from being mangled.
             name: if declared_name == "main" {
                 declared_name.clone()

@@ -355,17 +355,21 @@ impl<'a> BodyPass<'a> {
 
     /// Checks and resolves the type of the provided [`FunctionCall`].
     fn visit_function_call(&mut self, function_call: &mut FunctionCall, span: Span) -> Result<Type, TypecheckerError> {
-        // FIXME: I don't like the clone here.
-        let checked_function = self.typechecker.context.get_checked_function(&function_call.name, span).cloned()?;
+        // FIXME: Support other expressions.
+        let function_name = match &function_call.callee.kind {
+            ExpressionKind::IdentifierReference(identifier) => identifier,
+            _ => return Err(TypecheckerErrorKind::UnsupportedFunctionCallee.at(span)),
+        };
 
-        // We now need to alter the function call to use the generated name of the function, not the name that is defined in the source code.
-        function_call.name = checked_function.name.clone();
+        // FIXME: I don't like the clone here.
+        let checked_function = self.typechecker.context.get_checked_function(function_name, span).cloned()?;
+        function_call.resolved_callee = Some(checked_function.function_id);
 
         // The first check is easy, we just need to ensure that a sufficient number of arguments were passed in the
         // function call.
         if function_call.arguments.len() != checked_function.parameters.len() {
             return Err(TypecheckerErrorKind::FunctionCallArgumentSizeMismatch {
-                name: function_call.name.clone(),
+                name: function_name.clone(),
                 expected: checked_function.parameters.len(),
                 got: function_call.arguments.len(),
             }
@@ -415,7 +419,7 @@ impl<'a> BodyPass<'a> {
                 .find(|it| it.name.as_ref().map(|it| it == &parameter.name).unwrap_or_default())
                 .ok_or(
                     TypecheckerErrorKind::MissingFunctionCallArgument {
-                        function_name: function_call.name.clone(),
+                        function_name: function_name.clone(),
                         parameter_name: parameter.name.clone(),
                     }
                     .at(span),

@@ -42,6 +42,7 @@ pub enum TypecheckerErrorKind {
     StructureInitializationMissingFields { expected: usize, got: usize },
     MemberAccessNotSupported,
     TypeDoesNotHaveMember { r#type: Type, name: String },
+    UnsupportedFunctionCallee,
 }
 
 impl TypecheckerErrorKind {
@@ -150,6 +151,8 @@ impl Display for TypecheckerErrorKind {
             Self::TypeDoesNotHaveMember { r#type, name } => {
                 write!(f, "Type '{type}' does not have a member named '{name}'")
             }
+
+            Self::UnsupportedFunctionCallee => write!(f, "Unable to resolve function callee"),
         }
     }
 }

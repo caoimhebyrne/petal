@@ -9,7 +9,9 @@ use crate::{
     },
     typechecker::{
         context::{
+            CheckedFunction,
             DeclaredStructure,
+            FunctionId,
             StructureId,
             TypecheckerContext,
         },
@@ -43,13 +45,20 @@ impl Typechecker {
     pub fn check(
         &mut self,
         modules: Vec<ParsedModule>,
-    ) -> Result<(Vec<CheckedModule>, HashMap<StructureId, DeclaredStructure>), TypecheckerError> {
+    ) -> Result<
+        (Vec<CheckedModule>, HashMap<StructureId, DeclaredStructure>, HashMap<FunctionId, CheckedFunction>),
+        TypecheckerError,
+    > {
         let mut modules = modules;
 
         DeclarationPass::new(self).run(&mut modules)?;
         BodyPass::new(self).run(&mut modules)?;
 
-        Ok((modules.into_iter().map(|it| CheckedModule::new(it.id, it.ast)).collect(), self.context.structures.clone()))
+        Ok((
+            modules.into_iter().map(|it| CheckedModule::new(it.id, it.ast)).collect(),
+            self.context.structures.clone(),
+            self.context.functions.clone(),
+        ))
     }
 
     /// Attempts to resolve the provided [`TypeExpr`] into a [`Type`].

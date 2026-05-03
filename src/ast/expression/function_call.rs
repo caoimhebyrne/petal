@@ -7,12 +7,16 @@ use crate::{
         statement::StatementKind,
     },
     core::span::Span,
+    typechecker::context::FunctionId,
 };
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionCall {
-    /// The name of the function being called.
-    pub name: String,
+    /// The resolved ID for the calee of this call.
+    pub resolved_callee: Option<FunctionId>,
+
+    /// The expression providing the function to call.
+    pub callee: Box<Expression>,
 
     /// The arguments being passed to the function.
     pub arguments: Vec<FunctionCallArgument>,
@@ -20,13 +24,13 @@ pub struct FunctionCall {
 
 impl FunctionCall {
     /// Creates a new [`FunctionCall`].
-    pub fn new(name: impl Into<String>, arguments: Vec<FunctionCallArgument>) -> Self {
-        Self { name: name.into(), arguments }
+    pub fn new(callee: Expression, arguments: Vec<FunctionCallArgument>) -> Self {
+        Self { resolved_callee: None, callee: callee.into(), arguments }
     }
 
     /// Creates a new [`FunctionCallBuilder`].
-    pub fn builder(name: impl Into<String>) -> FunctionCallBuilder {
-        FunctionCallBuilder::new(name)
+    pub fn builder(function_path: Expression) -> FunctionCallBuilder {
+        FunctionCallBuilder::new(function_path)
     }
 }
 
@@ -57,8 +61,8 @@ impl From<FunctionCall> for StatementKind {
 
 /// A builder for a [`FunctionCall`].
 pub struct FunctionCallBuilder {
-    /// The name of the function being called.
-    name: String,
+    /// The expression providing the function to call.
+    callee: Expression,
 
     /// The arguments being passed to the function
     arguments: Vec<FunctionCallArgument>,
@@ -66,8 +70,8 @@ pub struct FunctionCallBuilder {
 
 impl FunctionCallBuilder {
     /// Creates a new [`FunctionCall`].
-    pub fn new(name: impl Into<String>) -> Self {
-        Self { name: name.into(), arguments: vec![] }
+    pub fn new(callee: Expression) -> Self {
+        Self { callee, arguments: vec![] }
     }
 
     /// Adds an argument to this function call.
@@ -78,6 +82,6 @@ impl FunctionCallBuilder {
 
     /// Builds this [`FunctionCallBuilder`] into a [`FunctionCall`].
     pub fn build(self) -> FunctionCall {
-        FunctionCall::new(self.name, self.arguments)
+        FunctionCall::new(self.callee, self.arguments)
     }
 }

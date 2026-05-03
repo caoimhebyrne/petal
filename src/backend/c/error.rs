@@ -6,7 +6,10 @@ use crate::{
         span::Span,
     },
     typechecker::{
-        context::StructureId,
+        context::{
+            FunctionId,
+            StructureId,
+        },
         r#type::Type,
     },
 };
@@ -26,6 +29,8 @@ pub struct CBackendError {
 pub enum CBackendErrorKind {
     MissingStructureId,
     MissingStructure(StructureId),
+    MissingFunctionId,
+    MissingFunction(FunctionId),
     UnsupportedType(Type),
     UnknownType,
     CompilerInvocationFailed(String),
@@ -61,8 +66,14 @@ impl Display for CBackendErrorKind {
         match self {
             Self::MissingStructureId => write!(f, "Expression was never patched to include a structure ID!"),
 
+            Self::MissingFunctionId => write!(f, "Expression was never patched to include a function ID!"),
+
             Self::MissingStructure(id) => {
                 write!(f, "Structure with ID '{id}' was referenced, but did not find a matching structure definition")
+            }
+
+            Self::MissingFunction(id) => {
+                write!(f, "Function with ID '{id}' was referenced, but could not find a matching definition")
             }
 
             Self::UnsupportedType(r#type) => write!(f, "Unsupported type: '{:?}'", r#type),

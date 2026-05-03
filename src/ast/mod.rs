@@ -420,10 +420,12 @@ impl ASTParser {
 
     /// Attempts to parse a function call from the [ASTParser]'s current position.
     fn parse_function_call(&mut self) -> Result<(FunctionCall, Span), ASTError> {
-        // The first token must be the name of the function.
         let (function_name, function_name_span) = self.expect_identifier()?;
 
-        let mut builder = FunctionCall::builder(function_name);
+        let mut builder = FunctionCall::builder(Expression::new(
+            ExpressionKind::IdentifierReference(function_name),
+            function_name_span,
+        ));
 
         // Then, the arguments of the function will be surrounded by parenthesis.
         self.expect(TokenKind::OpenParen)?;

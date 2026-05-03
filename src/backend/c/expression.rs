@@ -74,7 +74,15 @@ impl CBackend {
     }
 
     /// Compiles a function call expression into C code.
-    pub fn compile_function_call(&self, function_call: &FunctionCall, _span: Span) -> Result<String, CBackendError> {
+    pub fn compile_function_call(&self, function_call: &FunctionCall, span: Span) -> Result<String, CBackendError> {
+        let function_id =
+            function_call.resolved_callee.as_ref().ok_or(CBackendErrorKind::MissingFunctionId.at(span))?;
+
+        let function =
+            self.functions.get(function_id).ok_or(CBackendErrorKind::MissingFunction(*function_id).at(span))?;
+
+        debug!("Function ID '{function_id}' resolves to function named '{}'", function.name);
+
         let arguments = &function_call
             .arguments
             .iter()
@@ -82,7 +90,7 @@ impl CBackend {
             .collect::<Result<Vec<String>, CBackendError>>()?
             .join(", ");
 
-        Ok(format!("{}({arguments})", function_call.name))
+        Ok(format!("{}({arguments})", function.name))
     }
 
     /// Compiles a binary operation expression into C code.

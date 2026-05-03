@@ -18,7 +18,9 @@ use crate::{
     module::CheckedModule,
     typechecker::{
         context::{
+            CheckedFunction,
             DeclaredStructure,
+            FunctionId,
             StructureId,
         },
         r#type::Type,
@@ -33,12 +35,18 @@ pub mod statement;
 pub struct CBackend {
     /// The structure types that were resolved by the type checker for these modules.
     structures: HashMap<StructureId, DeclaredStructure>,
+
+    /// The functions that were resolved by the type checker for these modules.
+    functions: HashMap<FunctionId, CheckedFunction>,
 }
 
 impl CBackend {
     /// Creates a new [`CBackend`].
-    pub fn new(structures: HashMap<StructureId, DeclaredStructure>) -> Self {
-        Self { structures }
+    pub fn new(
+        structures: HashMap<StructureId, DeclaredStructure>,
+        functions: HashMap<FunctionId, CheckedFunction>,
+    ) -> Self {
+        Self { structures, functions }
     }
 
     /// Compiles a [`CheckedModule`] to C code.
@@ -178,7 +186,7 @@ mod tests {
 
     fn assert_compiles(kinds: Vec<StatementKind>, compiled: &str) {
         let statements = kinds.into_iter().map(|kind| Statement::from(kind, Span::new(MOCK_MODULE_ID, 0, 0))).collect();
-        let backend = CBackend::new(HashMap::new());
+        let backend = CBackend::new(HashMap::new(), HashMap::new());
         assert_eq!(backend.emit_code(&vec![CheckedModule::new(MOCK_MODULE_ID, statements)]), Ok(compiled.into()))
     }
 
