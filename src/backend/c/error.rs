@@ -5,7 +5,10 @@ use crate::{
         error::Error,
         span::Span,
     },
-    typechecker::r#type::Type,
+    typechecker::{
+        context::StructureId,
+        r#type::Type,
+    },
 };
 
 /// An error emitted by the C backend.
@@ -21,6 +24,8 @@ pub struct CBackendError {
 /// The different kinds of [`CBackendError`]s that exist.
 #[derive(Debug, PartialEq)]
 pub enum CBackendErrorKind {
+    MissingStructureId,
+    MissingStructure(StructureId),
     UnsupportedType(Type),
     UnknownType,
     CompilerInvocationFailed(String),
@@ -54,10 +59,17 @@ impl Error for CBackendError {
 impl Display for CBackendErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CBackendErrorKind::UnsupportedType(r#type) => write!(f, "Unsupported type: '{:?}'", r#type),
-            CBackendErrorKind::UnknownType => write!(f, "Unresolved/unknown type"),
+            Self::MissingStructureId => write!(f, "Expression was never patched to include a structure ID!"),
 
-            CBackendErrorKind::CompilerInvocationFailed(message) => {
+            Self::MissingStructure(id) => {
+                write!(f, "Structure with ID '{id}' was referenced, but did not find a matching structure definition")
+            }
+
+            Self::UnsupportedType(r#type) => write!(f, "Unsupported type: '{:?}'", r#type),
+
+            Self::UnknownType => write!(f, "Unresolved/unknown type"),
+
+            Self::CompilerInvocationFailed(message) => {
                 write!(f, "Failed to invoke C compiler: '{message}'")
             }
         }

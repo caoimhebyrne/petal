@@ -12,7 +12,10 @@ use crate::{
     },
     backend::c::{
         CBackend,
-        error::CBackendError,
+        error::{
+            CBackendError,
+            CBackendErrorKind,
+        },
     },
     core::span::Span,
 };
@@ -107,9 +110,16 @@ impl CBackend {
     pub fn compile_structure_initialization(
         &self,
         structure_initialization: &StructureInitialization,
-        _span: Span,
+        span: Span,
     ) -> Result<String, CBackendError> {
-        let structure_type = self.structures.get(&structure_initialization.structure_id.unwrap()).unwrap();
+        // The typechecker should have patched in a structure ID. This lets us know the exact type of the structure
+        // that is being initialized.
+        let structure_id =
+            structure_initialization.structure_id.ok_or(CBackendErrorKind::MissingStructureId.at(span))?;
+
+        // A corresponding type must have been declared already.
+        let structure_type =
+            self.structures.get(&structure_id).ok_or(CBackendErrorKind::MissingStructure(structure_id).at(span))?;
 
         let fields = structure_initialization
             .fields
