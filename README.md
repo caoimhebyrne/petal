@@ -27,7 +27,7 @@ Cranelift) compiler backend will be added in the future.
 - [x] References
 - [x] User defined types (`type CString = &u8`)
 - [x] Structures
-  - [ ] Member access
+  - [x] Member access
   - [ ] Member function declarations
   - [ ] Member function calls
 - [ ] Basic generics
