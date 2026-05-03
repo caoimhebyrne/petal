@@ -506,7 +506,7 @@ impl<'a> BodyPass<'a> {
         let mut ordered_fields: Vec<StructureInitializationField> = Vec::new();
 
         for (idx, declaration_field) in structure.fields.iter().enumerate() {
-            let initialization_field = value.fields.get_mut(idx).unwrap();
+            let initialization_field = &mut value.fields[idx];
 
             let value_type = self.visit_expression(&mut initialization_field.value, Some(&declaration_field.r#type))?;
             if value_type != declaration_field.r#type {
