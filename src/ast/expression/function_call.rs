@@ -1,7 +1,10 @@
 use crate::{
-    ast::expression::{
-        Expression,
-        ExpressionKind,
+    ast::{
+        expression::{
+            Expression,
+            ExpressionKind,
+        },
+        statement::StatementKind,
     },
     core::span::Span,
 };
@@ -41,6 +44,12 @@ pub struct FunctionCallArgument {
 }
 
 impl From<FunctionCall> for ExpressionKind {
+    fn from(value: FunctionCall) -> Self {
+        Self::FunctionCall(value)
+    }
+}
+
+impl From<FunctionCall> for StatementKind {
     fn from(value: FunctionCall) -> Self {
         Self::FunctionCall(value)
     }

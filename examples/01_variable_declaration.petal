@@ -5,7 +5,7 @@
 func main() -> i32 {
     // In this example, we're declaring a variable named `my_variable`, with the `i32` type
     // (32-bit integer), and we're setting an initial value of `10`.
-    i32 my_variable = 10;
+    my_variable: i32 = 10;
 
     // Then, we are returning the value in the variable from this function.
     //

@@ -15,7 +15,6 @@ use crate::{
         },
         statement::{
             Statement,
-            StatementKind,
             function_declaration::{
                 DeclarationModifier,
                 FunctionDeclaration,
@@ -100,20 +99,21 @@ impl ASTParser {
 
             TokenKind::Keyword(Keyword::If) => (self.parse_if()?, false),
 
-            TokenKind::Identifier(_) => (
-                if self.peek_nth(1).map(|it| it.kind == TokenKind::Equals).unwrap_or_default() {
-                    self.parse_variable_assignment()?
-                } else if self.peek_nth(1).map(|it| it.kind == TokenKind::OpenParen).unwrap_or_default() {
-                    let (function_call, span) = self.parse_function_call()?;
-                    Statement::new(StatementKind::FunctionCall(function_call), span)
-                } else {
-                    self.parse_variable_declaration()?
-                },
-                true,
-            ),
+            TokenKind::Identifier(_) if self.peek_nth(1).map(|it| it.kind == TokenKind::Colon).unwrap_or_default() => {
+                (self.parse_variable_declaration()?, true)
+            }
 
-            TokenKind::At if self.peek_nth(2).map(|it| it.kind == TokenKind::Equals).unwrap_or_default() => {
+            TokenKind::At => (self.parse_variable_assignment()?, true),
+
+            TokenKind::Identifier(_) if self.peek_nth(1).map(|it| it.kind == TokenKind::Equals).unwrap_or_default() => {
                 (self.parse_variable_assignment()?, true)
+            }
+
+            TokenKind::Identifier(_)
+                if self.peek_nth(1).map(|it| it.kind == TokenKind::OpenParen).unwrap_or_default() =>
+            {
+                let (function_call, span) = self.parse_function_call()?;
+                (Statement::new(function_call.into(), span), true)
             }
 
             _ => return Err(ASTErrorKind::ExpectedStatement(token.kind.clone()).at(token.span)),
@@ -330,11 +330,13 @@ impl ASTParser {
 
     /// Attempts to parse a variable declaration statement from the [ASTParser]'s current position.
     fn parse_variable_declaration(&mut self) -> Result<Statement, ASTError> {
-        // The first token must be the type of the variable.
-        let (type_expr, type_span) = self.parse_type_expr()?;
-
-        // The next token must be the name of the variable.
+        // The first token must be the name of the variable.
         let (name, _) = self.expect_identifier()?;
+
+        self.expect(TokenKind::Colon)?;
+
+        // The next token must be the type of the variable.
+        let (type_expr, type_span) = self.parse_type_expr()?;
 
         // The next token must be an equals.
         self.expect(TokenKind::Equals)?;

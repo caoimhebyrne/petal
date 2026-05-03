@@ -3,6 +3,6 @@ type MyAwesomeInteger = i32;
 
 func main() -> i32 {
     // MyAwesomeInteger is just an alias for `i32`. It can be used interchangeably.
-    MyAwesomeInteger value = 5;
+    value: MyAwesomeInteger = 5;
     return value;
 }

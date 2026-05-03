@@ -3,7 +3,7 @@
 //
 // In this example, we will showcase passing values by reference, and de-referencing values.
 func main() -> i32 {
-    i32 my_variable = 5;
+    my_variable: i32 = 5;
 
     // To allow a function to modify the value, you can pass it by reference. Passing a value by reference requires
     // prefixing the expression with `&`. The function must accept a reference type.
