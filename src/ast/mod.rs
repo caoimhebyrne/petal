@@ -288,10 +288,10 @@ impl ASTParser {
         let mut builder = StructureInitialization::builder();
 
         // The first token must be an open brace.
-        let open_brace_span = self.expect_span(TokenKind::OpenBrace)?;
+        let open_brace_span = self.expect(TokenKind::OpenBrace)?.span;
 
         while !self.peek_is(TokenKind::CloseBrace) {
-            let period_span = self.expect_span(TokenKind::Period)?;
+            let period_span = self.expect(TokenKind::Period)?.span;
             let (field_name, _) = self.expect_identifier()?;
 
             self.expect(TokenKind::Equals)?;
@@ -309,7 +309,7 @@ impl ASTParser {
         }
 
         // The last token must be a closing brace.
-        let close_brace_span = self.expect_span(TokenKind::CloseBrace)?;
+        let close_brace_span = self.expect(TokenKind::CloseBrace)?.span;
 
         Ok(Expression::new(builder.build().into(), Span::between(open_brace_span, close_brace_span)))
     }
@@ -325,7 +325,7 @@ impl ASTParser {
         };
 
         // All functions must start with the func keyword.
-        let func_keyword_span = self.expect_span(TokenKind::Keyword(Keyword::Func))?;
+        let func_keyword_span = self.expect(TokenKind::Keyword(Keyword::Func))?.span;
 
         // Then, the type name of the owner of the function might be specified.
         let owner_type_name = if self.peek_nth(1).map(|it| it.kind == TokenKind::Period).unwrap_or_default() {
@@ -398,14 +398,14 @@ impl ASTParser {
             builder = builder.statement(self.parse_statement()?);
         }
 
-        let closing_brace_span = self.expect_span(TokenKind::CloseBrace)?;
+        let closing_brace_span = self.expect(TokenKind::CloseBrace)?.span;
 
         Ok(Statement::new(builder.build().into(), Span::between(func_keyword_span, closing_brace_span)))
     }
 
     /// Attempts to parse a return statement from the [ASTParser]'s current position.
     fn parse_return(&mut self) -> Result<Statement, ASTError> {
-        let return_keyword_span = self.expect_span(TokenKind::Keyword(Keyword::Return))?;
+        let return_keyword_span = self.expect(TokenKind::Keyword(Keyword::Return))?.span;
 
         if self.peek_is(TokenKind::Semicolon) {
             return Ok(Statement::from(Return::new(None), return_keyword_span));
@@ -484,7 +484,7 @@ impl ASTParser {
             self.expect(TokenKind::Comma)?;
         }
 
-        let close_paren_span = self.expect_span(TokenKind::CloseParen)?;
+        let close_paren_span = self.expect(TokenKind::CloseParen)?.span;
 
         Ok((builder.build(), Span::between(function_callee_span, close_paren_span)))
     }
@@ -492,7 +492,7 @@ impl ASTParser {
     /// Attempts to parse an if statement from the [ASTParser]'s current position.
     fn parse_if(&mut self) -> Result<Statement, ASTError> {
         // The first token must be the if keyword.
-        let if_keyword_span = self.expect_span(TokenKind::Keyword(Keyword::If))?;
+        let if_keyword_span = self.expect(TokenKind::Keyword(Keyword::If))?.span;
 
         // Then there must be a condition.
         let condition = self.parse_expression()?;
@@ -505,20 +505,20 @@ impl ASTParser {
             block.push(self.parse_statement()?);
         }
 
-        let closing_brace_span = self.expect_span(TokenKind::CloseBrace)?;
+        let closing_brace_span = self.expect(TokenKind::CloseBrace)?.span;
         Ok(Statement::from(If::new(condition, block), Span::between(if_keyword_span, closing_brace_span)))
     }
 
     /// Attempts to parse an import statement from the [ASTParser]'s current position.
     fn parse_import(&mut self) -> Result<Statement, ASTError> {
         // The first token must be the import keyword.
-        let import_keyword_span = self.expect_span(TokenKind::Keyword(Keyword::Import))?;
+        let import_keyword_span = self.expect(TokenKind::Keyword(Keyword::Import))?.span;
 
         // Then, there must be the name of the module to import.
         let (name, _) = self.expect_identifier()?;
 
         // And finally, there must be a semicolon.
-        let semicolon_span = self.expect_span(TokenKind::Semicolon)?;
+        let semicolon_span = self.expect(TokenKind::Semicolon)?.span;
 
         Ok(Statement::from(Import::new(name), Span::between(import_keyword_span, semicolon_span)))
     }
@@ -526,7 +526,7 @@ impl ASTParser {
     /// Attempts to parse a type declaration statement from the [ASTParser]'s current position.
     fn parse_type_declaration(&mut self) -> Result<Statement, ASTError> {
         // The first token must be the `type` keyword.
-        let type_keyword_span = self.expect_span(TokenKind::Keyword(Keyword::Type))?;
+        let type_keyword_span = self.expect(TokenKind::Keyword(Keyword::Type))?.span;
 
         // Then, there must be the name of the type.
         let (name, _) = self.expect_identifier()?;
@@ -536,7 +536,7 @@ impl ASTParser {
 
         // And finally, an expression must be present for the type, followed by a semicolon.
         let (type_expr, _) = self.parse_type_expr()?;
-        let semicolon_span = self.expect_span(TokenKind::Semicolon)?;
+        let semicolon_span = self.expect(TokenKind::Semicolon)?.span;
 
         Ok(Statement::from(TypeDeclaration::new(name, type_expr), Span::between(type_keyword_span, semicolon_span)))
     }
@@ -545,7 +545,7 @@ impl ASTParser {
     fn parse_type_expr(&mut self) -> Result<(TypeExpr, Span), ASTError> {
         // If the first token is an ampersand, then this is a reference type.
         if self.peek_is(TokenKind::Ampersand) {
-            let ampersand_span = self.expect_span(TokenKind::Ampersand)?;
+            let ampersand_span = self.expect(TokenKind::Ampersand)?.span;
 
             let (inner, inner_span) = self.parse_type_expr()?;
             return Ok((TypeExpr::reference(inner), Span::between(ampersand_span, inner_span)));
@@ -553,7 +553,7 @@ impl ASTParser {
 
         // If the first token is the `struct` keyword, then we are parsing a structure definition.
         if self.peek_is(TokenKind::Keyword(Keyword::Struct)) {
-            let struct_span = self.expect_span(TokenKind::Keyword(Keyword::Struct))?;
+            let struct_span = self.expect(TokenKind::Keyword(Keyword::Struct))?.span;
 
             self.expect(TokenKind::OpenBrace)?;
 
@@ -577,7 +577,7 @@ impl ASTParser {
                 self.expect(TokenKind::Comma)?;
             }
 
-            let close_brace_span = self.expect_span(TokenKind::CloseBrace)?;
+            let close_brace_span = self.expect(TokenKind::CloseBrace)?.span;
             return Ok((TypeExpr::Structure { fields }, Span::between(struct_span, close_brace_span)));
         }
 
@@ -628,11 +628,6 @@ impl ASTParser {
         }
 
         Ok(token)
-    }
-
-    /// Like [expect], but only returns the matched token's span.
-    fn expect_span(&mut self, kind: TokenKind) -> Result<Span, ASTError> {
-        self.expect(kind).map(|it| it.span)
     }
 
     /// Expects an identifier token to be at the [ASTParser]'s current position, advancing the cursor.
