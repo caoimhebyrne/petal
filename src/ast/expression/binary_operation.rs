@@ -43,7 +43,7 @@ impl BinaryOperator {
         match self {
             Self::Add | Self::Subtract => 1,
             Self::Multiply | Self::Divide => 2,
-            _ => panic!(),
+            Self::Equals | Self::NotEquals => 3,
         }
     }
 }

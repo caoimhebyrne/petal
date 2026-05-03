@@ -29,6 +29,12 @@ pub enum TokenKind {
     /// An equals: =
     Equals,
 
+    /// A double-equals: ==
+    DoubleEquals,
+
+    /// A not-equals: !=
+    NotEquals,
+
     /// A forward slash: /
     ForwardSlash,
 

@@ -45,7 +45,6 @@ impl<'a> Lexer<'a> {
             let token = match character {
                 '(' => Token::new(TokenKind::OpenParen, self.span(1)),
                 ')' => Token::new(TokenKind::CloseParen, self.span(1)),
-                '=' => Token::new(TokenKind::Equals, self.span(1)),
                 '-' => Token::new(TokenKind::Hyphen, self.span(1)),
                 '>' => Token::new(TokenKind::RightAngleBracket, self.span(1)),
                 '{' => Token::new(TokenKind::OpenBrace, self.span(1)),
@@ -56,9 +55,26 @@ impl<'a> Lexer<'a> {
                 '+' => Token::new(TokenKind::Plus, self.span(1)),
                 '*' => Token::new(TokenKind::Asterisk, self.span(1)),
                 '~' => Token::new(TokenKind::Tilda, self.span(1)),
-                '!' => Token::new(TokenKind::ExclamationMark, self.span(1)),
                 '&' => Token::new(TokenKind::Ampersand, self.span(1)),
                 '@' => Token::new(TokenKind::At, self.span(1)),
+
+                '!' => {
+                    if let Some('=') = self.peek() {
+                        self.next();
+                        Token::new(TokenKind::NotEquals, self.span(2))
+                    } else {
+                        Token::new(TokenKind::ExclamationMark, self.span(1))
+                    }
+                }
+
+                '=' => {
+                    if let Some('=') = self.peek() {
+                        self.next();
+                        Token::new(TokenKind::DoubleEquals, self.span(2))
+                    } else {
+                        Token::new(TokenKind::Equals, self.span(1))
+                    }
+                }
 
                 '/' => {
                     // If the next token is also a slash, then this is a comment. We should keep

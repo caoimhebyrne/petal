@@ -164,6 +164,8 @@ impl ASTParser {
             TokenKind::Hyphen => BinaryOperator::Subtract,
             TokenKind::Asterisk => BinaryOperator::Multiply,
             TokenKind::ForwardSlash => BinaryOperator::Divide,
+            TokenKind::DoubleEquals => BinaryOperator::Equals,
+            TokenKind::NotEquals => BinaryOperator::NotEquals,
 
             _ => return None,
         };
