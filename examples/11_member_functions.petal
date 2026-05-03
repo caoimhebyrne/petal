@@ -14,19 +14,15 @@ func Point.origin() -> Point {
 //
 // For functions that operate on an existing value of the type, the convention is to have the first parameter be named
 // `this`. The type must be declared explicitly.
-func Point.translate(this: &Point, ~x: i32, ~y: i32) -> bool {
+func Point.translate(this: &Point, ~x: i32, ~y: i32) {
     // Note: `foo->bar` is syntax sugar for `(@foo).bar`.
     this->x = this->x + x;
     this->y = this->y + y;
-
-    return true;
 }
 
 func main() -> i32 {
     point_a: Point = Point.origin();
-
-    // FIXME: Statements do not support member function calls.
-    result: bool = point_a.translate(x: 5, y: 4);
+    point_a.translate(x: 5, y: 4);
 
     return point_a.x + point_a.y;
 }

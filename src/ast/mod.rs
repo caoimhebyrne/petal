@@ -97,7 +97,7 @@ impl ASTParser {
 
     /// Attempts to parse a statement at the [ASTParser]'s current position.
     fn parse_statement(&mut self) -> Result<Statement, ASTError> {
-        let token = self.peek_expect_any()?;
+        let token = self.peek_expect_any().cloned()?;
 
         let (statement, requires_semicolon) = match &token.kind {
             TokenKind::Keyword(Keyword::Return) => (self.parse_return()?, true),
@@ -108,23 +108,21 @@ impl ASTParser {
                 (self.parse_variable_declaration()?, true)
             }
 
-            TokenKind::At => (self.parse_variable_assignment()?, true),
+            TokenKind::At | TokenKind::Identifier(_) => {
+                let expression = self.parse_expression()?;
 
-            TokenKind::Identifier(identifier)
-                if self.peek_nth(1).map(|it| it.kind == TokenKind::OpenParen).unwrap_or_default() =>
-            {
-                let identifier = identifier.clone();
-                let span = token.span;
+                if self.peek_is(TokenKind::Equals) {
+                    self.expect(TokenKind::Equals)?;
+                    let value = self.parse_expression()?;
 
-                self.consume();
-
-                let (function_call, span) =
-                    self.parse_function_call(Expression::new(ExpressionKind::IdentifierReference(identifier), span))?;
-
-                (Statement::new(function_call.into(), span), true)
+                    let span = Span::between(expression.span, value.span);
+                    (Statement::from(VariableAssignment::new(expression, value), span), true)
+                } else if let ExpressionKind::FunctionCall(function_call) = expression.kind {
+                    (Statement::from(function_call, expression.span), true)
+                } else {
+                    return Err(ASTErrorKind::ExpectedStatement(token.kind.clone()).at(token.span));
+                }
             }
-
-            TokenKind::Identifier(_) => (self.parse_variable_assignment()?, true),
 
             _ => return Err(ASTErrorKind::ExpectedStatement(token.kind.clone()).at(token.span)),
         };
@@ -423,21 +421,6 @@ impl ASTParser {
 
         let span = Span::between(type_span, value.span);
         Ok(Statement::from(VariableDeclaration::new(name, type_expr, Type::Unknown, value), span))
-    }
-
-    /// Attempts to parse a variable assignment statement from the [ASTParser]'s current position.
-    fn parse_variable_assignment(&mut self) -> Result<Statement, ASTError> {
-        // The first token must be the name of the variable.
-        let target = self.parse_expression()?;
-
-        // The next token must be an equals.
-        self.expect(TokenKind::Equals)?;
-
-        // And finally, there must be an expression.
-        let value = self.parse_expression()?;
-
-        let span = Span::between(target.span, value.span);
-        Ok(Statement::from(VariableAssignment::new(target, value), span))
     }
 
     /// Attempts to parse a function call from the [ASTParser]'s current position.
