@@ -117,10 +117,12 @@ impl CBackend {
         let name = variable_declaration.name.clone();
         let r#type = self.compile_type(&variable_declaration.r#type, span)?;
 
-        let mut declaration = format!("{type} {name}");
+        let mut declaration = format!("{type} {name} = ");
 
         if let Some(value) = &variable_declaration.value {
-            declaration.push_str(&format!("= {}", self.compile_expression(value)?));
+            declaration.push_str(&self.compile_expression(value)?);
+        } else {
+            declaration.push_str("{0}");
         }
 
         declaration.push(';');

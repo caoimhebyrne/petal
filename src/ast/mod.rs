@@ -13,6 +13,7 @@ use crate::{
             },
             function_call::FunctionCall,
             member_access::MemberAccess,
+            optional_wrap::OptionalForceUnwrap,
             structure_initialization::StructureInitialization,
         },
         statement::{
@@ -265,6 +266,13 @@ impl ASTParser {
             // The expression that we have collected up until this point is considered to be the callee of the function call.
             let (function_call, function_call_span) = self.parse_function_call(expression)?;
             expression = Expression::new(function_call.into(), function_call_span)
+        }
+
+        // Or, we can attempt to parse a force-unwrap.
+        if self.peek_is(TokenKind::ExclamationMark) {
+            self.expect_any()?;
+            // The expression that we have collected up until this point is considered to be the optional vlaue.
+            expression = Expression::new(OptionalForceUnwrap::new(expression.clone()).into(), expression.span)
         }
 
         Ok(expression)
@@ -710,6 +718,14 @@ mod tests {
 
             ExpressionKind::OptionalWrap(optional_wrap) => {
                 remove_spans(&mut optional_wrap.inner_value);
+            }
+
+            ExpressionKind::OptionalHasValue(optional_has_value) => {
+                remove_spans(&mut optional_has_value.optional_value);
+            }
+
+            ExpressionKind::OptionalForceUnwrap(optional_force_unwrap) => {
+                remove_spans(&mut optional_force_unwrap.optional_value);
             }
 
             // These expressions do not have any children.

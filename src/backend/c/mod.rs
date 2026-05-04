@@ -60,7 +60,11 @@ impl CBackend {
     pub fn emit_code(&self, modules: &Vec<CheckedModule>) -> Result<String, CBackendError> {
         let mut code = String::new();
 
-        code.push_str("#include <stdint.h>\n#include <stdbool.h>\n\n");
+        code.push_str("#include <stdint.h>\n#include <stdbool.h>\n#include <stdio.h>\n#include <stdlib.h>\n\n");
+
+        code.push_str(
+            "_Noreturn static void petal_panic(const char* msg) { fprintf(stderr, \"PANIC: %s\\n\", msg); abort(); }\n\n",
+        );
 
         debug!("Attempting to generate C code with {} structure(s)", self.structures.len());
 

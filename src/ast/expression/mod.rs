@@ -3,7 +3,11 @@ use crate::{
         binary_operation::BinaryOperation,
         function_call::FunctionCall,
         member_access::MemberAccess,
-        optional_wrap::OptionalWrap,
+        optional_wrap::{
+            OptionalForceUnwrap,
+            OptionalHasValue,
+            OptionalWrap,
+        },
         structure_initialization::StructureInitialization,
     },
     core::span::Span,
@@ -53,6 +57,10 @@ pub enum ExpressionKind {
 
     /// Wraps the provided expression in an optional.
     OptionalWrap(OptionalWrap),
+
+    OptionalHasValue(OptionalHasValue),
+
+    OptionalForceUnwrap(OptionalForceUnwrap),
 
     /// A function call.
     FunctionCall(FunctionCall),

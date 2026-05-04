@@ -27,3 +27,47 @@ impl From<OptionalWrap> for ExpressionKind {
         Self::OptionalWrap(value)
     }
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct OptionalHasValue {
+    /// The optional that a value is being checked for on.
+    pub optional_value: Box<Expression>,
+
+    /// The type of the inner value.
+    pub inner_type: Type,
+}
+
+impl OptionalHasValue {
+    /// Creates a new [`OptionalHasValue`].
+    pub fn new(optional_value: Expression) -> Self {
+        Self { optional_value: optional_value.into(), inner_type: Type::Unknown }
+    }
+}
+
+impl From<OptionalHasValue> for ExpressionKind {
+    fn from(value: OptionalHasValue) -> Self {
+        Self::OptionalHasValue(value)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct OptionalForceUnwrap {
+    /// The optional that is being unwrapped.
+    pub optional_value: Box<Expression>,
+
+    /// The type of the inner value.
+    pub inner_type: Type,
+}
+
+impl OptionalForceUnwrap {
+    /// Creates a new [`OptionalForceUnwrap`].
+    pub fn new(optional_value: Expression) -> Self {
+        Self { optional_value: optional_value.into(), inner_type: Type::Unknown }
+    }
+}
+
+impl From<OptionalForceUnwrap> for ExpressionKind {
+    fn from(value: OptionalForceUnwrap) -> Self {
+        Self::OptionalForceUnwrap(value)
+    }
+}

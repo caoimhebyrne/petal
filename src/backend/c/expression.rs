@@ -8,7 +8,11 @@ use crate::{
         },
         function_call::FunctionCall,
         member_access::MemberAccess,
-        optional_wrap::OptionalWrap,
+        optional_wrap::{
+            OptionalForceUnwrap,
+            OptionalHasValue,
+            OptionalWrap,
+        },
         structure_initialization::StructureInitialization,
     },
     backend::c::{
@@ -47,7 +51,15 @@ impl CBackend {
 
             ExpressionKind::IdentifierReference(name) => CBackend::compile_identifier_reference(name, expression.span),
 
-            ExpressionKind::OptionalWrap(inner) => self.compile_optional_wrap(inner, expression.span),
+            ExpressionKind::OptionalWrap(optional_wrap) => self.compile_optional_wrap(optional_wrap, expression.span),
+
+            ExpressionKind::OptionalHasValue(optional_has_value) => {
+                self.compile_optional_has_value(optional_has_value, expression.span)
+            }
+
+            ExpressionKind::OptionalForceUnwrap(optional_force_unwrap) => {
+                self.compile_optional_force_unwrap(optional_force_unwrap, expression.span)
+            }
         }
     }
 
@@ -155,5 +167,26 @@ impl CBackend {
     pub fn compile_optional_wrap(&self, optional_wrap: &OptionalWrap, _span: Span) -> Result<String, CBackendError> {
         let inner_value = self.compile_expression(&optional_wrap.inner_value)?;
         Ok(format!("(Optional_{}) {{ .has_value = true, .value = {inner_value} }}", optional_wrap.inner_type))
+    }
+
+    /// Compiles an optional has value expression into C code.
+    pub fn compile_optional_has_value(
+        &self,
+        optional_has_value: &OptionalHasValue,
+        _span: Span,
+    ) -> Result<String, CBackendError> {
+        Ok(format!("({}).has_value", self.compile_expression(&optional_has_value.optional_value)?))
+    }
+
+    pub fn compile_optional_force_unwrap(
+        &self,
+        optional_force_unwrap: &OptionalForceUnwrap,
+        _span: Span,
+    ) -> Result<String, CBackendError> {
+        let optional_value = self.compile_expression(&optional_force_unwrap.optional_value)?;
+        Ok(format!(
+            "(({}).has_value ? ({}) : (petal_panic(\"Optional of type '{}' had no value\")), ({}).value)",
+            optional_value, optional_value, optional_force_unwrap.inner_type, optional_value,
+        ))
     }
 }

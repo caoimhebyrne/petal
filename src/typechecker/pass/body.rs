@@ -20,7 +20,11 @@ use crate::{
                 FunctionCallArgument,
             },
             member_access::MemberAccess,
-            optional_wrap::OptionalWrap,
+            optional_wrap::{
+                OptionalForceUnwrap,
+                OptionalHasValue,
+                OptionalWrap,
+            },
             structure_initialization::{
                 StructureInitialization,
                 StructureInitializationField,
@@ -262,7 +266,24 @@ impl<'a> BodyPass<'a> {
 
             ExpressionKind::BooleanLiteral(value) => BodyPass::visit_boolean_literal(value, expression.span),
 
-            ExpressionKind::FunctionCall(function_call) => self.visit_function_call(function_call, expression.span),
+            ExpressionKind::FunctionCall(function_call) => {
+                // If the target is a member access for an optional has_value call, then we must re-write the expression.
+                if let ExpressionKind::MemberAccess(member_access) = &mut function_call.callee.kind
+                    && member_access.name == "has_value"
+                {
+                    // The type of the target must be an optional type.
+                    if let Type::Optional(_) = self.visit_expression(&mut member_access.target, None)? {
+                        *expression = Expression::new(
+                            ExpressionKind::OptionalHasValue(OptionalHasValue::new(*member_access.target.clone())),
+                            expression.span,
+                        );
+
+                        return self.visit_expression(expression, None);
+                    }
+                }
+
+                self.visit_function_call(function_call, expression.span)
+            }
 
             ExpressionKind::IdentifierReference(name) => self.visit_identifier_reference(name, expression.span),
 
@@ -278,6 +299,14 @@ impl<'a> BodyPass<'a> {
 
             ExpressionKind::OptionalWrap(optional_wrap) => {
                 self.visit_optional_wrap(optional_wrap, type_hint, expression.span)
+            }
+
+            ExpressionKind::OptionalHasValue(optional_has_value) => {
+                self.visit_optional_has_value(optional_has_value, expression.span)
+            }
+
+            ExpressionKind::OptionalForceUnwrap(optional_force_unwrap) => {
+                self.visit_optional_force_unwrap(optional_force_unwrap, expression.span)
             }
         }?;
 
@@ -650,5 +679,35 @@ impl<'a> BodyPass<'a> {
         optional_wrap.inner_type = value_type.clone();
 
         Ok(Type::Optional(value_type.into()))
+    }
+
+    /// Visits an optional has value expression.
+    fn visit_optional_has_value(
+        &mut self,
+        optional_has_value: &mut OptionalHasValue,
+        _span: Span,
+    ) -> Result<Type, TypecheckerError> {
+        let inner_type = match self.visit_expression(&mut optional_has_value.optional_value, None)? {
+            Type::Optional(inner) => inner,
+            _ => panic!("Expected an optional type"),
+        };
+
+        optional_has_value.inner_type = *inner_type.clone();
+        Ok(Type::Boolean)
+    }
+
+    /// Visits an optional force unwrap expression.
+    fn visit_optional_force_unwrap(
+        &mut self,
+        optional_force_unwrap: &mut OptionalForceUnwrap,
+        _span: Span,
+    ) -> Result<Type, TypecheckerError> {
+        let inner_type = match self.visit_expression(&mut optional_force_unwrap.optional_value, None)? {
+            Type::Optional(inner) => inner,
+            _ => panic!("Expected an optional type"),
+        };
+
+        optional_force_unwrap.inner_type = *inner_type.clone();
+        Ok(*inner_type)
     }
 }
