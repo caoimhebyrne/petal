@@ -168,23 +168,7 @@ impl<'a> BodyPass<'a> {
 
         // The initial value for the variable must have a valid type too, and then that type must be equal to the
         // variable type.
-        let mut value_type = self.visit_expression(&mut variable_assignment.value, Some(&target_type))?;
-
-        // If the target type is an optional, and the value is not directly an optional, then we should attempt
-        // to wrap it in one.
-        if matches!(target_type, Type::Optional(_)) && !matches!(value_type, Type::Optional(_)) {
-            // Visiting the optional wrap will re-visit the inner type, which may infer it as something else.
-            //
-            // e.g. if the target_type is `&i32`, and the value is a number literal, then this step will coerce
-            //      the literal into `i32`.
-            variable_assignment.value = Expression::new(
-                OptionalWrap::new(*variable_assignment.value.clone()).into(),
-                variable_assignment.value.span,
-            )
-            .into();
-
-            value_type = self.visit_expression(&mut variable_assignment.value, Some(&target_type))?;
-        }
+        let value_type = self.visit_expression(&mut variable_assignment.value, Some(&target_type))?;
 
         if target_type != value_type {
             return Err(TypecheckerErrorKind::IncompatibleVariableDeclarationTypes {
@@ -298,6 +282,17 @@ impl<'a> BodyPass<'a> {
                 self.visit_optional_force_unwrap(optional_force_unwrap, expression.span)
             }
         }?;
+
+        // If the target type is an optional, and the value is not directly an optional, then we should attempt
+        // to wrap it in one.
+        if matches!(type_hint, Some(Type::Optional(_))) && !matches!(r#type, Type::Optional(_)) {
+            // Visiting the optional wrap will re-visit the inner type, which may infer it as something else.
+            //
+            // e.g. if the target_type is `&i32`, and the value is a number literal, then this step will coerce
+            //      the literal into `i32`.
+            *expression = Expression::new(OptionalWrap::new(expression.clone()).into(), expression.span).into();
+            return self.visit_expression(expression, type_hint);
+        }
 
         Ok(r#type)
     }

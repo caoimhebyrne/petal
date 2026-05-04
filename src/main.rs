@@ -35,6 +35,9 @@ pub mod module;
 pub mod module_registry;
 pub mod typechecker;
 
+#[cfg(test)]
+pub mod integration_tests;
+
 #[macro_use]
 extern crate log;
 
