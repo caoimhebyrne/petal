@@ -1,9 +1,6 @@
 use std::{
+    self,
     cmp::max,
-    mem::{
-        self,
-        take,
-    },
 };
 
 use crate::{
@@ -112,7 +109,7 @@ impl<'a> BodyPass<'a> {
         function_declaration: &mut FunctionDeclaration,
         _span: Span,
     ) -> Result<(), TypecheckerError> {
-        let previous_variables = take(&mut self.typechecker.context.variables);
+        self.typechecker.context.push_child_scope(function_declaration.return_type.clone());
 
         for parameter in &function_declaration.parameters {
             self.typechecker.context.insert_variable(
@@ -122,16 +119,11 @@ impl<'a> BodyPass<'a> {
             )?;
         }
 
-        // Create a copy of the previous expected return type and variables so that we can restore it later.
-        let previous_return_type = mem::take(&mut self.typechecker.context.expected_return_type);
-        self.typechecker.context.expected_return_type = function_declaration.return_type.clone();
-
         for statement in &mut function_declaration.body {
             self.visit_statement(statement)?;
         }
 
-        self.typechecker.context.expected_return_type = previous_return_type;
-        self.typechecker.context.variables = previous_variables;
+        self.typechecker.context.pop_child_scope();
 
         Ok(())
     }
@@ -207,20 +199,20 @@ impl<'a> BodyPass<'a> {
 
     /// Checks and resolves any [`Type`]s referenced in the provided [`Return`].
     fn visit_return(&mut self, r#return: &mut Return, span: Span) -> Result<(), TypecheckerError> {
+        let result_type = self.typechecker.context.scope.result_type.clone();
+
         let value_type = r#return
             .value
             .as_mut()
-            .map(|it| self.visit_expression(it, Some(&self.typechecker.context.expected_return_type.clone())))
+            .map(|it| self.visit_expression(it, Some(&result_type.clone())))
             .transpose()?
             .unwrap_or(Type::Void);
 
         // The value being returned must have the same return type as the function being parsed.
-        if self.typechecker.context.expected_return_type != value_type {
-            return Err(TypecheckerErrorKind::IncompatibleReturnTypes {
-                declared: self.typechecker.context.expected_return_type.clone(),
-                value: value_type,
-            }
-            .at(span));
+        if result_type != value_type {
+            return Err(
+                TypecheckerErrorKind::IncompatibleReturnTypes { declared: result_type, value: value_type }.at(span)
+            );
         }
 
         Ok(())
@@ -236,14 +228,11 @@ impl<'a> BodyPass<'a> {
         }
 
         // All of the statements within the block must be valid.
-        let previous_variables = take(&mut self.typechecker.context.variables);
-        self.typechecker.context.variables = previous_variables.clone();
-
+        self.typechecker.context.push_child_scope(self.typechecker.context.scope.result_type.clone());
         for statement in &mut r#if.block {
             self.visit_statement(statement)?;
         }
-
-        self.typechecker.context.variables = previous_variables;
+        self.typechecker.context.pop_child_scope();
 
         Ok(())
     }

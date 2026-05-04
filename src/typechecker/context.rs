@@ -4,6 +4,7 @@ use std::{
         HashSet,
     },
     fmt::Display,
+    mem,
 };
 
 use crate::{
@@ -56,14 +57,11 @@ impl Display for StructureId {
 /// The context of a [`Typechecker`].
 #[derive(Default)]
 pub(crate) struct TypecheckerContext {
-    /// The expected return type of the current function.
-    pub(crate) expected_return_type: Type,
-
     /// The functions that have been validated by this [`Typechecker`] instance.
     pub(crate) functions: HashMap<FunctionId, CheckedFunction>,
 
-    /// The variables that have been declared in the current scope.
-    pub(crate) variables: HashMap<String, Type>,
+    /// The current scope. By default, this is the global scope.
+    pub(crate) scope: Scope,
 
     /// The types that have been declared by the user in the current scope.
     pub(crate) types: HashMap<DeclaredTypeId, DeclaredType>,
@@ -73,6 +71,34 @@ pub(crate) struct TypecheckerContext {
 
     /// The optional types used during compilation. This is temporary.
     pub(crate) optional_types: HashSet<Type>,
+}
+
+/// A scope holds the variables that have been declared, and is typically created for each block.
+#[derive(Default, Debug)]
+pub(crate) struct Scope {
+    /// The variables that have been declared in this scope.
+    pub(crate) variables: HashMap<String, Type>,
+
+    /// The parent scope, if this is a child.
+    pub(crate) parent: Option<Box<Scope>>,
+
+    /// The type that "result value" of this scope intends to be.
+    pub(crate) result_type: Type,
+}
+
+impl Scope {
+    /// Creates a new scope which is a child of this scope.
+    pub(crate) fn create_child(self, result_type: Type) -> Self {
+        Self { variables: HashMap::default(), parent: Some(Box::new(self)), result_type }
+    }
+}
+
+impl Scope {
+    /// Attempts to lookup the type of a variable in this scope.
+    /// If the variable could not be found in this scope, the parent scope(s) are searched until one is found.
+    pub(crate) fn lookup_variable(&self, name: &str) -> Option<&Type> {
+        self.variables.get(name).or_else(|| self.parent.as_ref().and_then(|p| p.lookup_variable(name)))
+    }
 }
 
 #[derive(Debug)]
@@ -85,6 +111,17 @@ pub struct FunctionLookupRequest {
 }
 
 impl TypecheckerContext {
+    /// Creates a child of the current scope, and makes it the current scope.
+    pub fn push_child_scope(&mut self, result_type: Type) {
+        self.scope = mem::take(&mut self.scope).create_child(result_type);
+    }
+
+    /// Takes the parent of the current scope, and makes it the current scope.
+    pub fn pop_child_scope(&mut self) {
+        // TODO: Remove the unwrap.
+        self.scope = *self.scope.parent.take().unwrap();
+    }
+
     /// Attempts to get a [`CheckedFunction`] from this [`Typechecker`] by its name.
     pub(crate) fn get_checked_function(
         &self,
@@ -125,7 +162,7 @@ impl TypecheckerContext {
 
     /// Attempts to get a variable from this [`Typechecker`] by its name.
     pub(crate) fn get_variable(&self, name: &str, span: Span) -> Result<&Type, TypecheckerError> {
-        self.variables.get(name).ok_or(TypecheckerErrorKind::UndeclaredVariable(name.into()).at(span))
+        self.scope.lookup_variable(name).ok_or(TypecheckerErrorKind::UndeclaredVariable(name.into()).at(span))
     }
 
     /// Inserts a [`CheckedFunction`] into this [`Typechecker`].
@@ -163,11 +200,11 @@ impl TypecheckerContext {
 
     /// Inserts a variable into this [`Typechecker`].
     pub(crate) fn insert_variable(&mut self, name: String, r#type: Type, span: Span) -> Result<(), TypecheckerError> {
-        if self.variables.contains_key(&name) {
+        if self.get_variable(&name, span).is_ok() {
             return Err(TypecheckerErrorKind::DuplicateVariableDeclaration(name).at(span));
         }
 
-        self.variables.insert(name, r#type);
+        self.scope.variables.insert(name, r#type);
         Ok(())
     }
 
