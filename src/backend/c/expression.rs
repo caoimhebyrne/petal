@@ -60,6 +60,8 @@ impl CBackend {
             ExpressionKind::OptionalForceUnwrap(optional_force_unwrap) => {
                 self.compile_optional_force_unwrap(optional_force_unwrap, expression.span)
             }
+
+            ExpressionKind::NamespaceQualifier(_) => Ok("".into()),
         }
     }
 

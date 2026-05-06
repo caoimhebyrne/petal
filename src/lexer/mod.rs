@@ -50,7 +50,6 @@ impl<'a> Lexer<'a> {
                 '{' => Token::new(TokenKind::OpenBrace, self.span(1)),
                 '}' => Token::new(TokenKind::CloseBrace, self.span(1)),
                 ';' => Token::new(TokenKind::Semicolon, self.span(1)),
-                ':' => Token::new(TokenKind::Colon, self.span(1)),
                 ',' => Token::new(TokenKind::Comma, self.span(1)),
                 '+' => Token::new(TokenKind::Plus, self.span(1)),
                 '*' => Token::new(TokenKind::Asterisk, self.span(1)),
@@ -75,6 +74,15 @@ impl<'a> Lexer<'a> {
                         Token::new(TokenKind::DoubleEquals, self.span(2))
                     } else {
                         Token::new(TokenKind::Equals, self.span(1))
+                    }
+                }
+
+                ':' => {
+                    if let Some(':') = self.peek() {
+                        self.next();
+                        Token::new(TokenKind::DoubleColon, self.span(2))
+                    } else {
+                        Token::new(TokenKind::Colon, self.span(1))
                     }
                 }
 

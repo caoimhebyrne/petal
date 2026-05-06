@@ -108,6 +108,9 @@ pub struct FunctionLookupRequest {
 
     /// The name of the function.
     pub name: String,
+
+    // The namespace that the function is defined in.
+    pub namespace: Option<String>,
 }
 
 impl TypecheckerContext {
@@ -134,15 +137,20 @@ impl TypecheckerContext {
         let function_candidates = self
             .functions
             .values()
-            .filter(|it| it.declared_name == request.name && it.owner_type_name == request.owner_type_name)
+            .filter(|it| {
+                it.declared_name == request.name
+                    && it.owner_type_name == request.owner_type_name
+                    && it.namespace == request.namespace
+            })
             .filter(|it| it.is_visible_to_module(span.module_id))
             .collect::<Vec<_>>();
 
         if function_candidates.len() > 1 {
             debug!(
-                "Lookup for function name '{}' (owned by '{:?}') in module {} has the following candidates: {}",
+                "Lookup for function name '{}' (owned by '{:?}' in namespace '{:?}') in module {} has the following candidates: {}",
                 request.name,
                 request.owner_type_name,
+                request.namespace,
                 span.module_id,
                 function_candidates.iter().map(|it| it.name.clone()).collect::<Vec<_>>().join(", ")
             );
@@ -168,6 +176,7 @@ impl TypecheckerContext {
     /// Inserts a [`CheckedFunction`] into this [`Typechecker`].
     pub(crate) fn insert_checked_function(
         &mut self,
+        namespace: Option<String>,
         function_declaration: &FunctionDeclaration,
         span: Span,
     ) -> Result<FunctionId, TypecheckerError> {
@@ -178,6 +187,7 @@ impl TypecheckerContext {
             CheckedFunction::new(
                 span.module_id,
                 function_id,
+                namespace,
                 function_declaration.owner_type_name.clone(),
                 function_declaration.name.clone(),
                 function_declaration.parameters.clone(),
@@ -216,13 +226,14 @@ impl TypecheckerContext {
     /// Inserts a [`DeclaredType`] into this [`TypecheckerContext`].
     pub(crate) fn insert_declared_type(
         &mut self,
+        namespace: Option<String>,
         name: String,
         r#type: Type,
         span: Span,
     ) -> Result<DeclaredTypeId, TypecheckerError> {
         let type_id = DeclaredTypeId(self.types.len());
 
-        self.types.insert(type_id, DeclaredType::new(span.module_id, name, r#type));
+        self.types.insert(type_id, DeclaredType::new(span.module_id, namespace, name, r#type));
 
         Ok(type_id)
     }
@@ -235,13 +246,14 @@ impl TypecheckerContext {
     /// Inserts a [`DeclaredStructure`] into this [`TypecheckerContext`].
     pub(crate) fn insert_declared_structure(
         &mut self,
+        namespace: Option<String>,
         name: String,
         fields: Vec<StructureField>,
         span: Span,
     ) -> Result<StructureId, TypecheckerError> {
         let structure_id = StructureId(self.structures.len());
 
-        self.structures.insert(structure_id, DeclaredStructure::new(span.module_id, name, fields));
+        self.structures.insert(structure_id, DeclaredStructure::new(span.module_id, namespace, name, fields));
 
         Ok(structure_id)
     }
@@ -255,6 +267,9 @@ pub struct CheckedFunction {
 
     /// The unique identifier for this function.
     pub function_id: FunctionId,
+
+    /// The namespace that the function was declared in. `None` for the root namespace of the module.
+    pub namespace: Option<String>,
 
     /// The name of the type which owns the function.
     pub owner_type_name: Option<String>,
@@ -280,22 +295,36 @@ impl CheckedFunction {
     pub fn new(
         module_id: ModuleId,
         function_id: FunctionId,
+        namespace: Option<String>,
         owner_type_name: Option<String>,
         declared_name: String,
         parameters: Vec<FunctionParameter>,
         return_type: Type,
         modifiers: Vec<DeclarationModifier>,
     ) -> Self {
+        // FIXME: HORRIBLE
+        let namespace_name = namespace.clone().unwrap_or(String::from("root"));
+
         // FIXME: Add a modifier to function declarations which prevents their names from being mangled.
         let name = if declared_name == "main" {
             declared_name.clone()
         } else if let Some(owner_type_name) = &owner_type_name {
-            format!("ptl_mod_{module_id}_fn_{owner_type_name}_{declared_name}")
+            format!("ptl_mod_{module_id}_{namespace_name}_fn_{owner_type_name}_{declared_name}")
         } else {
-            format!("ptl_mod_{module_id}_fn_{declared_name}")
+            format!("ptl_mod_{module_id}_{namespace_name}_fn_{declared_name}")
         };
 
-        Self { module_id, function_id, owner_type_name, name, declared_name, parameters, return_type, modifiers }
+        Self {
+            module_id,
+            function_id,
+            namespace,
+            owner_type_name,
+            name,
+            declared_name,
+            parameters,
+            return_type,
+            modifiers,
+        }
     }
 
     /// Returns whether this [`CheckedFunction`] is visible to the provided module ID.
@@ -317,6 +346,9 @@ pub(crate) struct DeclaredType {
     /// The module that the type was declared in.
     pub module_id: ModuleId,
 
+    /// The namespace that the type was defined in. `None` for the root namespace of its module.
+    pub _namespace: Option<String>,
+
     /// The name of the type.
     pub name: String,
 
@@ -326,8 +358,8 @@ pub(crate) struct DeclaredType {
 
 impl DeclaredType {
     /// Creates a new [`DeclaredType`].
-    pub fn new(module_id: ModuleId, name: String, r#type: Type) -> Self {
-        Self { module_id, name, r#type }
+    pub fn new(module_id: ModuleId, _namespace: Option<String>, name: String, r#type: Type) -> Self {
+        Self { module_id, _namespace, name, r#type }
     }
 
     /// Returns whether this [`DeclaredType`] is visible to the provided module ID.
@@ -355,10 +387,18 @@ pub struct DeclaredStructure {
 
 impl DeclaredStructure {
     /// Creates a new [`DeclaredStructure`].
-    pub fn new(module_id: ModuleId, declared_name: String, fields: Vec<StructureField>) -> Self {
+    pub fn new(
+        module_id: ModuleId,
+        namespace: Option<String>,
+        declared_name: String,
+        fields: Vec<StructureField>,
+    ) -> Self {
+        // FIXME: HORRIBLE
+        let namespace_name = namespace.clone().unwrap_or(String::from("root"));
+
         Self {
             _module_id: module_id,
-            name: format!("ptl_mod_{module_id}_struct_{declared_name}"),
+            name: format!("ptl_mod_{module_id}_{namespace_name}_struct_{declared_name}"),
             declared_name,
             fields,
         }

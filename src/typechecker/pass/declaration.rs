@@ -8,6 +8,7 @@ use crate::{
                 FunctionDeclaration,
                 FunctionParameter,
             },
+            namespace_declaration::NamespaceDeclaration,
             type_declaration::TypeDeclaration,
         },
         type_expr::TypeExpr,
@@ -22,13 +23,16 @@ use crate::{
 };
 
 pub(crate) struct DeclarationPass<'a> {
+    /// The name of the current namespace.
+    current_namespace: Option<String>,
+
     typechecker: &'a mut Typechecker,
 }
 
 impl<'a> DeclarationPass<'a> {
     /// Creates a new [`DeclarationPass`] with the given [`Typechecker]`.
     pub fn new(typechecker: &'a mut Typechecker) -> Self {
-        Self { typechecker }
+        Self { current_namespace: None, typechecker }
     }
 
     /// Runs the declaration pass on the provided [`ParsedModule`]s.
@@ -42,6 +46,10 @@ impl<'a> DeclarationPass<'a> {
 
                     StatementKind::TypeDeclaration(type_declaration) => {
                         self.visit_type_declaration(type_declaration, statement.span)?;
+                    }
+
+                    StatementKind::NamespaceDeclaration(namespace_declaration) => {
+                        self.visit_namespace_declaration(namespace_declaration, statement.span)?
                     }
 
                     // We don't have to do anything at this pass for imports.
@@ -91,7 +99,11 @@ impl<'a> DeclarationPass<'a> {
             self.check_function_parameter(parameter)?;
         }
 
-        let function_id = self.typechecker.context.insert_checked_function(function_declaration, span)?;
+        let function_id = self.typechecker.context.insert_checked_function(
+            self.current_namespace.clone(),
+            function_declaration,
+            span,
+        )?;
 
         // Finally, we need to modify the name of the function that we are generating.
         function_declaration.name = self.typechecker.context.get_checked_function_by_id(function_id).name.clone();
@@ -123,6 +135,7 @@ impl<'a> DeclarationPass<'a> {
                 // All we need to do right now is register the struct. We will do a second pass after all declarations
                 // are run to resolve the types of the structure fields.
                 let structure_id = self.typechecker.context.insert_declared_structure(
+                    self.current_namespace.clone(),
                     type_declaration.name.clone(),
                     fields.clone(),
                     span,
@@ -135,7 +148,41 @@ impl<'a> DeclarationPass<'a> {
         };
 
         // We have resolved the type, we can insert it into the type declarations.
-        self.typechecker.context.insert_declared_type(type_declaration.name.clone(), resolved_type, span)?;
+        self.typechecker.context.insert_declared_type(
+            self.current_namespace.clone(),
+            type_declaration.name.clone(),
+            resolved_type,
+            span,
+        )?;
+
+        Ok(())
+    }
+
+    /// Visits the provided [`NamespaceDeclaration`].
+    fn visit_namespace_declaration(
+        &mut self,
+        namespace_declaration: &mut NamespaceDeclaration,
+        _span: Span,
+    ) -> Result<(), TypecheckerError> {
+        self.current_namespace = Some(namespace_declaration.name.clone());
+
+        for statement in &mut namespace_declaration.body {
+            match &mut statement.kind {
+                StatementKind::FunctionDeclaration(function_declaration) => {
+                    debug!(
+                        "Visiting function declaration for '{}' in namespace '{}'",
+                        function_declaration.name, namespace_declaration.name
+                    );
+                    self.visit_function_declaration(function_declaration, statement.span)?;
+                }
+
+                StatementKind::TypeDeclaration(type_declaration) => {
+                    self.visit_type_declaration(type_declaration, statement.span)?;
+                }
+
+                _ => panic!("Statement '{:?}' not supported at declaration pass", statement.kind),
+            }
+        }
 
         Ok(())
     }

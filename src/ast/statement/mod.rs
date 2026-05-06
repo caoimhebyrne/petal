@@ -5,6 +5,7 @@ use crate::{
             function_declaration::FunctionDeclaration,
             r#if::If,
             import::Import,
+            namespace_declaration::NamespaceDeclaration,
             r#return::Return,
             type_declaration::TypeDeclaration,
             variable_assignment::VariableAssignment,
@@ -17,6 +18,7 @@ use crate::{
 pub mod function_declaration;
 pub mod r#if;
 pub mod import;
+pub mod namespace_declaration;
 pub mod r#return;
 pub mod type_declaration;
 pub mod variable_assignment;
@@ -71,4 +73,7 @@ pub enum StatementKind {
 
     /// A type declaration.
     TypeDeclaration(TypeDeclaration),
+
+    /// A namespace declaration.
+    NamespaceDeclaration(NamespaceDeclaration),
 }

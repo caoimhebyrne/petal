@@ -7,6 +7,7 @@ use crate::{
             FunctionParameter,
         },
         r#if::If,
+        namespace_declaration::NamespaceDeclaration,
         r#return::Return,
         variable_assignment::VariableAssignment,
         variable_declaration::VariableDeclaration,
@@ -41,6 +42,10 @@ impl CBackend {
             }
 
             StatementKind::If(r#if) => self.compile_if(r#if, statement.span),
+
+            StatementKind::NamespaceDeclaration(namespace_declaration) => {
+                self.compile_namespace_declaration(namespace_declaration, statement.span)
+            }
 
             StatementKind::Import(_) => Ok("".into()),
             StatementKind::TypeDeclaration(_) => Ok("".into()),
@@ -148,6 +153,21 @@ impl CBackend {
         string.push_str(&format!("if ({condition}) {{\n"));
         string.push_str(&self.compile_block(&r#if.block)?);
         string.push_str("}\n");
+
+        Ok(string)
+    }
+
+    /// Compiles a namespace declaration into C code.
+    fn compile_namespace_declaration(
+        &self,
+        namespace_declaration: &NamespaceDeclaration,
+        _span: Span,
+    ) -> Result<String, CBackendError> {
+        let mut string = String::new();
+
+        for statement in &namespace_declaration.body {
+            string.push_str(&self.compile_statement(statement)?);
+        }
 
         Ok(string)
     }

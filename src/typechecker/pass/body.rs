@@ -35,6 +35,7 @@ use crate::{
                 FunctionParameter,
             },
             r#if::If,
+            namespace_declaration::NamespaceDeclaration,
             r#return::Return,
             variable_assignment::VariableAssignment,
             variable_declaration::VariableDeclaration,
@@ -99,6 +100,10 @@ impl<'a> BodyPass<'a> {
             StatementKind::FunctionCall(function_call) => {
                 self.visit_function_call(function_call, statement.span)?;
                 Ok(())
+            }
+
+            StatementKind::NamespaceDeclaration(namespace_declaration) => {
+                self.visit_namespace_declaration(namespace_declaration, statement.span)
             }
         }
     }
@@ -281,6 +286,8 @@ impl<'a> BodyPass<'a> {
             ExpressionKind::OptionalForceUnwrap(optional_force_unwrap) => {
                 self.visit_optional_force_unwrap(optional_force_unwrap, expression.span)
             }
+
+            ExpressionKind::NamespaceQualifier(_) => todo!(),
         }?;
 
         // If the target type is an optional, and the value is not directly an optional, then we should attempt
@@ -398,8 +405,14 @@ impl<'a> BodyPass<'a> {
 
         let function_lookup_request = match &function_call.callee.kind {
             ExpressionKind::IdentifierReference(identifier) => {
-                FunctionLookupRequest { name: identifier.clone(), owner_type_name: None }
+                FunctionLookupRequest { name: identifier.clone(), owner_type_name: None, namespace: None }
             }
+
+            ExpressionKind::NamespaceQualifier(namespace_qualifier) => FunctionLookupRequest {
+                name: namespace_qualifier.identifier.clone(),
+                owner_type_name: None,
+                namespace: Some(namespace_qualifier.namespace.clone()),
+            },
 
             ExpressionKind::MemberAccess(member_access) => {
                 // The target of the member access expression must be a plain identifier.
@@ -427,7 +440,11 @@ impl<'a> BodyPass<'a> {
                         return Err(TypecheckerErrorKind::UnsupportedFunctionCallee.at(span));
                     };
 
-                FunctionLookupRequest { owner_type_name: Some(owner_type_name), name: member_access.name.clone() }
+                FunctionLookupRequest {
+                    owner_type_name: Some(owner_type_name),
+                    name: member_access.name.clone(),
+                    namespace: None,
+                }
             }
 
             _ => return Err(TypecheckerErrorKind::UnsupportedFunctionCallee.at(span)),
@@ -693,5 +710,18 @@ impl<'a> BodyPass<'a> {
 
         optional_force_unwrap.inner_type = *inner_type.clone();
         Ok(*inner_type)
+    }
+
+    /// Visits a namespace declaration.
+    fn visit_namespace_declaration(
+        &mut self,
+        namespace_declaration: &mut NamespaceDeclaration,
+        _span: Span,
+    ) -> Result<(), TypecheckerError> {
+        for statement in &mut namespace_declaration.body {
+            self.visit_statement(statement)?;
+        }
+
+        Ok(())
     }
 }

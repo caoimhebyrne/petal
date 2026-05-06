@@ -3,6 +3,7 @@ use crate::{
         binary_operation::BinaryOperation,
         function_call::FunctionCall,
         member_access::MemberAccess,
+        namespace_qualifier::NamespaceQualifier,
         optional_wrap::{
             OptionalForceUnwrap,
             OptionalHasValue,
@@ -16,6 +17,7 @@ use crate::{
 pub mod binary_operation;
 pub mod function_call;
 pub mod member_access;
+pub mod namespace_qualifier;
 pub mod optional_wrap;
 pub mod structure_initialization;
 
@@ -73,4 +75,7 @@ pub enum ExpressionKind {
 
     /// A member access.
     MemberAccess(MemberAccess),
+
+    /// A namespace qualifier.
+    NamespaceQualifier(NamespaceQualifier),
 }

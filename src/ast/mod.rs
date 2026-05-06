@@ -13,6 +13,7 @@ use crate::{
             },
             function_call::FunctionCall,
             member_access::MemberAccess,
+            namespace_qualifier::NamespaceQualifier,
             optional_wrap::OptionalForceUnwrap,
             structure_initialization::StructureInitialization,
         },
@@ -24,6 +25,7 @@ use crate::{
             },
             r#if::If,
             import::Import,
+            namespace_declaration::NamespaceDeclaration,
             r#return::Return,
             type_declaration::TypeDeclaration,
             variable_assignment::VariableAssignment,
@@ -86,6 +88,8 @@ impl ASTParser {
                 TokenKind::Keyword(Keyword::Type) => self.parse_type_declaration()?,
 
                 TokenKind::Keyword(Keyword::Import) => self.parse_import()?,
+
+                TokenKind::Keyword(Keyword::Namespace) => self.parse_namespace_declaration()?,
 
                 _ => return Err(ASTErrorKind::UnexpectedToken(token.kind.clone()).at(token.span)),
             };
@@ -228,7 +232,20 @@ impl ASTParser {
                 let name = name.clone();
 
                 self.consume();
-                Expression::new(ExpressionKind::IdentifierReference(name), span)
+
+                // If an identifier is followed by a double colon, it is a namespace qualifier.
+                if self.peek_is(TokenKind::DoubleColon) {
+                    self.consume();
+
+                    let (identifier, identifier_span) = self.expect_identifier()?;
+
+                    Expression::new(
+                        NamespaceQualifier::new(name, identifier).into(),
+                        Span::between(span, identifier_span),
+                    )
+                } else {
+                    Expression::new(ExpressionKind::IdentifierReference(name), span)
+                }
             }
 
             TokenKind::OpenBrace => self.parse_structure_initialization()?,
@@ -527,6 +544,45 @@ impl ASTParser {
         Ok(Statement::from(TypeDeclaration::new(name, type_expr), Span::between(type_keyword_span, semicolon_span)))
     }
 
+    /// Attempts to parse a namespace declaration at the [`ASTParser`]'s current position.
+    fn parse_namespace_declaration(&mut self) -> Result<Statement, ASTError> {
+        // The first token must be the namespace keyword.
+        let namespace_span = self.expect(TokenKind::Keyword(Keyword::Namespace))?.span;
+
+        // It must be followed by the name of the namespace.
+        let (namespace_name, _) = self.expect_identifier()?;
+
+        // Then, the declarations within the namespace must be surrounded by curly braces.
+        self.expect(TokenKind::OpenBrace)?;
+
+        let mut body: Vec<Statement> = Vec::new();
+
+        while let Some(token) = self.peek() {
+            if token.kind == TokenKind::CloseBrace {
+                break;
+            }
+
+            let statement: Statement = match token.kind {
+                TokenKind::Keyword(Keyword::Public) | TokenKind::Keyword(Keyword::Func) => {
+                    self.parse_function_declaration()?
+                }
+
+                TokenKind::Keyword(Keyword::Type) => self.parse_type_declaration()?,
+
+                _ => return Err(ASTErrorKind::UnexpectedToken(token.kind.clone()).at(token.span)),
+            };
+
+            body.push(statement);
+        }
+
+        let close_brace_span = self.expect(TokenKind::CloseBrace)?.span;
+
+        Ok(Statement::from(
+            NamespaceDeclaration::new(namespace_name, body),
+            Span::between(namespace_span, close_brace_span),
+        ))
+    }
+
     /// Attempts to parse a [`TypeExpr`] from the [`ASTParser`]'s current position.
     fn parse_type_expr(&mut self) -> Result<(TypeExpr, Span), ASTError> {
         // If the first token is an ampersand, then this is a reference type.
@@ -732,6 +788,7 @@ mod tests {
             ExpressionKind::BooleanLiteral(_) => {}
             ExpressionKind::IdentifierReference(_) => {}
             ExpressionKind::NumberLiteral(_) => {}
+            ExpressionKind::NamespaceQualifier(_) => {}
         }
     }
 

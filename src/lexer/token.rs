@@ -56,6 +56,9 @@ pub enum TokenKind {
     /// A colon: :
     Colon,
 
+    /// Two colons: ::
+    DoubleColon,
+
     /// A comma: ,
     Comma,
 
@@ -125,6 +128,9 @@ pub enum Keyword {
 
     /// A structure type declaration.
     Struct,
+
+    /// A namespace declaration.
+    Namespace,
 }
 
 impl Keyword {
@@ -142,6 +148,7 @@ impl Keyword {
             "public" => Keyword::Public,
             "type" => Keyword::Type,
             "struct" => Keyword::Struct,
+            "namespace" => Keyword::Namespace,
 
             _ => return None,
         };
