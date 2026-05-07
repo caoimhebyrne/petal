@@ -1,0 +1,25 @@
+import memory;
+
+namespace stdlib {
+
+    // A non-mutable "view" into a string's data. The data itself is not owned by this struct.
+    //
+    // The data within this view is not null-terminated, meaning it is unsafe to use for interop with C code. To get a
+    // buffer that is compatible with C code, see [StringView.as_c_string].
+    type StringView = struct {
+        data: &u8,
+        length: u64,
+    };
+
+    // Allocates a new memory buffer of size `this->length + 1` bytes, and returns it. The last byte in the returned buffer
+    // is set to the null byte, making it a C-compatible string.
+    //
+    // The caller of this function takes ownership of the returned value, and is responsible for calling `memory::free` on
+    // it.
+    public func StringView.null_terminated_copy(this: &StringView) -> &u8 {
+        buffer: &u8 = memory::allocate(size: this->length + 1);
+        memory::copy(source: this->data, destination: buffer, count: this->length);
+        return buffer;
+    }
+
+}

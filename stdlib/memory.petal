@@ -1,0 +1,29 @@
+// FIXME: Introduce a global allocator protocol that can be set by the application. This would then make this module
+//        not depend on libc at all.
+import libc;
+
+namespace memory {
+
+    /// Allocates a zero-initialized block of memory of [size] bytes.
+    //
+    // FIXME: Once generics are added, we can make this take a generic parameter, like so:
+    //        ```
+    //        public func <T> allocate(~size: u64) -> &T;
+    //        ```
+    public func allocate(~size: u64) -> &u8 {
+        // TODO: If the result is invalid, we should crash.
+        return libc::calloc(n: size, size: 1);
+    }
+
+    // Copies [count] bytes from [source] to [destination].
+    public func copy(~source: &u8, ~destination: &u8, ~count: u64) {
+        libc::memcpy(dst: destination, src: source, n: count);
+    }
+
+    // Frees the memory at [reference].
+    // The [reference] must be a value previously returned by [memory::allocate].
+    public func free(reference: &u8) {
+        libc::free(reference);
+    }
+
+}

@@ -1,0 +1,14 @@
+// Bindings for libc functions to Petal functions.
+namespace libc {
+
+    // Allocates memory for an array of [n] elements of [size] bytes each, and returns a pointer to the allocated memory.
+    public extern func calloc(~n: u64, ~size: u64) -> &u8;
+
+    // Copies [n] bytes from [src] to [dst].
+    public extern func memcpy(~dst: &u8, ~src: &u8, ~n: u64);
+
+    // Frees the memory space pointed to by [ptr], which must have been returned by a previous call to [malloc] or
+    // related functions.
+    public extern func free(ptr: &u8);
+
+}
