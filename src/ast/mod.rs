@@ -81,9 +81,9 @@ impl ASTParser {
 
         while let Some(token) = self.peek() {
             let statement: Statement = match token.kind {
-                TokenKind::Keyword(Keyword::Public) | TokenKind::Keyword(Keyword::Func) => {
-                    self.parse_function_declaration()?
-                }
+                TokenKind::Keyword(Keyword::Public)
+                | TokenKind::Keyword(Keyword::Func)
+                | TokenKind::Keyword(Keyword::Extern) => self.parse_function_declaration()?,
 
                 TokenKind::Keyword(Keyword::Type) => self.parse_type_declaration()?,
 
@@ -336,6 +336,14 @@ impl ASTParser {
             false
         };
 
+        // If an extern keyword is present, then we can add the modifier.
+        let is_extern = if self.peek_is(TokenKind::Keyword(Keyword::Extern)) {
+            self.expect(TokenKind::Keyword(Keyword::Extern))?;
+            true
+        } else {
+            false
+        };
+
         // All functions must start with the func keyword.
         let func_keyword_span = self.expect(TokenKind::Keyword(Keyword::Func))?.span;
 
@@ -355,6 +363,10 @@ impl ASTParser {
 
         if is_public {
             builder = builder.modifier(DeclarationModifier::Public);
+        }
+
+        if is_extern {
+            builder = builder.modifier(DeclarationModifier::Extern);
         }
 
         if let Some(name) = owner_type_name {
@@ -403,16 +415,20 @@ impl ASTParser {
             builder = builder.return_type(return_type, Type::Unknown);
         }
 
-        // And braces must surround the body of the function.
-        self.expect(TokenKind::OpenBrace)?;
+        let closing_span = if is_extern {
+            self.expect(TokenKind::Semicolon)?.span
+        } else {
+            // And braces must surround the body of the function.
+            self.expect(TokenKind::OpenBrace)?;
 
-        while !self.peek_is(TokenKind::CloseBrace) {
-            builder = builder.statement(self.parse_statement()?);
-        }
+            while !self.peek_is(TokenKind::CloseBrace) {
+                builder = builder.statement(self.parse_statement()?);
+            }
 
-        let closing_brace_span = self.expect(TokenKind::CloseBrace)?.span;
+            self.expect(TokenKind::CloseBrace)?.span
+        };
 
-        Ok(Statement::new(builder.build().into(), Span::between(func_keyword_span, closing_brace_span)))
+        Ok(Statement::new(builder.build().into(), Span::between(func_keyword_span, closing_span)))
     }
 
     /// Attempts to parse a return statement from the [ASTParser]'s current position.

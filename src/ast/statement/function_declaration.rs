@@ -15,6 +15,10 @@ use crate::{
 pub enum DeclarationModifier {
     /// This declaration is public and can be accessed by other modules.
     Public,
+
+    /// This declaration's name should not be mangled, as it is provided by other code. It also will have an empty
+    /// body.
+    Extern,
 }
 
 /// A function declaration within the AST.

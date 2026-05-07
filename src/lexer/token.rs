@@ -131,6 +131,9 @@ pub enum Keyword {
 
     /// A namespace declaration.
     Namespace,
+
+    /// An external function declaration.
+    Extern,
 }
 
 impl Keyword {
@@ -149,6 +152,7 @@ impl Keyword {
             "type" => Keyword::Type,
             "struct" => Keyword::Struct,
             "namespace" => Keyword::Namespace,
+            "extern" => Keyword::Extern,
 
             _ => return None,
         };

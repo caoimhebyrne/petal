@@ -305,8 +305,7 @@ impl CheckedFunction {
         // FIXME: HORRIBLE
         let namespace_name = namespace.clone().unwrap_or(String::from("root"));
 
-        // FIXME: Add a modifier to function declarations which prevents their names from being mangled.
-        let name = if declared_name == "main" {
+        let name = if declared_name == "main" || modifiers.contains(&DeclarationModifier::Extern) {
             declared_name.clone()
         } else if let Some(owner_type_name) = &owner_type_name {
             format!("ptl_mod_{module_id}_{namespace_name}_fn_{owner_type_name}_{declared_name}")

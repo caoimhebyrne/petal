@@ -3,6 +3,7 @@ use crate::{
         Statement,
         StatementKind,
         function_declaration::{
+            DeclarationModifier,
             FunctionDeclaration,
             FunctionParameter,
         },
@@ -58,6 +59,11 @@ impl CBackend {
         function_declaration: &FunctionDeclaration,
         span: Span,
     ) -> Result<String, CBackendError> {
+        if function_declaration.modifiers.contains(&DeclarationModifier::Extern) {
+            trace!("Skipping generation of function '{}' as it is marked as external", function_declaration.name);
+            return Ok("".into());
+        }
+
         let mut function = String::new();
 
         let name = function_declaration.name.clone();
