@@ -1,0 +1,13 @@
+import stdlib;
+
+// A string literal can be declared within quotation marks. Because a string literal is immutable, it uses the
+// `StringView` type.
+func main() -> i32 {
+    message: StringView = "Hello, world!";
+
+    // `println` is a function provided by the Petal standard library which lets you print a `StringView` to the
+    // standard output.
+    io::println(message);
+
+    return 0;
+}

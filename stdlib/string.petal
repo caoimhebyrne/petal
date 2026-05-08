@@ -3,9 +3,6 @@ import memory;
 namespace stdlib {
 
     // A non-mutable "view" into a string's data. The data itself is not owned by this struct.
-    //
-    // The data within this view is not null-terminated, meaning it is unsafe to use for interop with C code. To get a
-    // buffer that is compatible with C code, see [StringView.as_c_string].
     public type StringView = struct {
         data: &u8,
         length: u64,
