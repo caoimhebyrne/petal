@@ -31,13 +31,18 @@ pub struct ModuleRegistry {
 
 impl ModuleRegistry {
     /// Creates a new [`Module`] within this [`ModuleRegistry`], assigning it a unique [`ModuleId`].
-    pub fn create_module(&mut self, file_path: PathBuf) -> Result<ModuleId, ModuleError> {
+    pub fn create_module(&mut self, file_path: PathBuf) -> Result<(ModuleId, bool), ModuleError> {
+        // If a module already exists with the provided file path, we must return the existing one.
+        if let Some((module_id, _)) = self.modules.iter().find(|it| it.1.file_path == file_path) {
+            return Ok((*module_id, true));
+        }
+
         let id = ModuleId(self.modules.len());
 
         let module = Module::create(id, file_path)?;
         self.modules.insert(id, module);
 
-        Ok(id)
+        Ok((id, false))
     }
 
     /// Retrieves a [`Module`] from this [`ModuleRegistry`].

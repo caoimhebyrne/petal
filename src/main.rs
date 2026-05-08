@@ -1,5 +1,8 @@
 use std::{
-    env,
+    env::{
+        self,
+        current_dir,
+    },
     fs,
     io::Write,
     path::PathBuf,
@@ -74,14 +77,30 @@ fn create_and_parse_module(
     module_registry: &mut ModuleRegistry,
     file_path: PathBuf,
 ) -> Result<(), Box<dyn Error>> {
-    let module_id = module_registry.create_module(file_path.clone())?;
+    let (module_id, already_created) = module_registry.create_module(file_path.clone())?;
+    if already_created {
+        trace!("Module at path '{}' has already been registered (ID = {})", file_path.display(), module_id);
+        return Ok(());
+    }
+
     let parsed_module = module_registry.get_module(module_id).parse()?;
 
     for statement in &parsed_module.ast {
         // If this is an import statement, then we must be able to find a module with the imported name in the
         // same directory.
         if let StatementKind::Import(import) = &statement.kind {
-            let imported_module_path = file_path.with_file_name(import.name.clone()).with_extension("petal");
+            // If the name of the imported module is `stdlib`, it must be next to the compiler's current working
+            // directory.
+            //
+            // TODO: `PETAL_STDLIB_PATH` environment variable?
+            let imported_module_path = if import.name == "stdlib" {
+                let mut path = current_dir().expect("current_dir");
+                path.push("stdlib");
+                path.push("main.petal");
+                path
+            } else {
+                file_path.with_file_name(import.name.clone()).with_extension("petal")
+            };
 
             debug!(
                 "Module {} imports '{}', which resolves to path '{}'",
