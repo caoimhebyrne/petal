@@ -80,7 +80,22 @@ impl CBackend {
             .find(|it| it.1.declared_name == "StringView" && it.1.namespace == Some("stdlib".into()))
             .unwrap();
 
-        Ok(format!("({}){{ .data = (uint8_t*) \"{}\", .length = {} }}", string_view_struct.name, value, value.len()))
+        // Sequences like `\n` will be treated as their literal value by the C compiler, as they are not escaped.
+        // `value.len()` would return `2`, whereas `decoded_byte_length` would equal `1` in this case.
+        let mut string_bytes = value.bytes();
+        let mut decoded_byte_length = 0;
+        while let Some(byte) = string_bytes.next() {
+            if byte == b'\\' {
+                string_bytes.next();
+            }
+
+            decoded_byte_length += 1;
+        }
+
+        Ok(format!(
+            "({}){{ .data = (uint8_t*) \"{}\", .length = {} }}",
+            string_view_struct.name, value, decoded_byte_length
+        ))
     }
 
     /// Compiles a boolean literal expression into C code.
