@@ -80,7 +80,7 @@ impl CBackend {
             .find(|it| it.1.declared_name == "StringView" && it.1.namespace == Some("stdlib".into()))
             .unwrap();
 
-        Ok(format!("({}){{ .data = \"{}\", .length = {} }}", string_view_struct.name, value, value.len()))
+        Ok(format!("({}){{ .data = (uint8_t*) \"{}\", .length = {} }}", string_view_struct.name, value, value.len()))
     }
 
     /// Compiles a boolean literal expression into C code.
