@@ -5,17 +5,12 @@ namespace io {
 
     // Prints a [StringView], followed by a new-line, to the standard output.
     public func println(string_view: StringView) {
-        // TODO: `libc::printf` overload for format arguments.
-        string_view_c: &u8 = string_view.null_terminated_copy();
-        libc::printf(string_view_c);
+        // FIXME: FD 1 on POSIX is `stdout`.
+        stdout_fd: i32 = 1;
+        newline: StringView = "\n";
 
-        new_line_string: StringView = "\n";
-        new_line_string_c: &u8 = new_line_string.null_terminated_copy();
-        libc::printf(new_line_string.null_terminated_copy());
-
-        memory::free(string_view_c);
-        memory::free(new_line_string_c);
+        libc::write(filedes: stdout_fd, buf: string_view.data, nbyte: string_view.length);
+        libc::write(filedes: stdout_fd, buf: newline.data,     nbyte: newline.length);
     }
-
 
 }

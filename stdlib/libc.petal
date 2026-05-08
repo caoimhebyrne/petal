@@ -11,7 +11,10 @@ namespace libc {
     // related functions.
     public extern func free(ptr: &u8);
 
-    // Writes output according to the provided [format] to standard output.
-    public extern func printf(format: &u8);
+    // Attempts to write [nbyte] of data to the object referenced by the descriptor [filedesc] from the buffer pointed
+    // to by [buf].
+    //
+    // Upon successful completion the number of bytes which were written is returned.
+    public extern func write(~filedes: i32, ~buf: &u8, ~nbyte: u64) -> u64;
 
 }
