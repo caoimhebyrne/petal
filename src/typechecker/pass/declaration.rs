@@ -152,6 +152,7 @@ impl<'a> DeclarationPass<'a> {
             self.current_namespace.clone(),
             type_declaration.name.clone(),
             resolved_type,
+            type_declaration.modifiers.clone(),
             span,
         )?;
 

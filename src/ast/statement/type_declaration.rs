@@ -1,5 +1,8 @@
 use crate::ast::{
-    statement::StatementKind,
+    statement::{
+        StatementKind,
+        function_declaration::DeclarationModifier,
+    },
     type_expr::TypeExpr,
 };
 
@@ -10,12 +13,15 @@ pub struct TypeDeclaration {
 
     /// The type being declared.
     pub type_expr: TypeExpr,
+
+    /// The modifiers of this declaration.
+    pub modifiers: Vec<DeclarationModifier>,
 }
 
 impl TypeDeclaration {
     /// Creates a new [`TypeDeclaration`].
-    pub fn new(name: String, type_expr: TypeExpr) -> Self {
-        Self { name, type_expr }
+    pub fn new(name: String, type_expr: TypeExpr, modifiers: Vec<DeclarationModifier>) -> Self {
+        Self { name, type_expr, modifiers }
     }
 }
 

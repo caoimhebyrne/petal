@@ -81,11 +81,19 @@ impl ASTParser {
 
         while let Some(token) = self.peek() {
             let statement: Statement = match token.kind {
-                TokenKind::Keyword(Keyword::Public)
-                | TokenKind::Keyword(Keyword::Func)
-                | TokenKind::Keyword(Keyword::Extern) => self.parse_function_declaration()?,
+                TokenKind::Keyword(Keyword::Public) | TokenKind::Keyword(Keyword::Extern) => {
+                    let modifiers = self.parse_declaration_modifiers();
 
-                TokenKind::Keyword(Keyword::Type) => self.parse_type_declaration()?,
+                    let token = self.peek_expect_any()?;
+                    match token.kind {
+                        TokenKind::Keyword(Keyword::Func) => self.parse_function_declaration(modifiers)?,
+                        TokenKind::Keyword(Keyword::Type) => self.parse_type_declaration(modifiers)?,
+                        _ => return Err(ASTErrorKind::UnexpectedToken(token.kind.clone()).at(token.span)),
+                    }
+                }
+
+                TokenKind::Keyword(Keyword::Func) => self.parse_function_declaration(vec![])?,
+                TokenKind::Keyword(Keyword::Type) => self.parse_type_declaration(vec![])?,
 
                 TokenKind::Keyword(Keyword::Import) => self.parse_import()?,
 
@@ -333,23 +341,7 @@ impl ASTParser {
     }
 
     /// Attempts to parse a function declaration from the [ASTParser]'s current position.
-    fn parse_function_declaration(&mut self) -> Result<Statement, ASTError> {
-        // If a public keyword is present, then we can add the modifier.
-        let is_public = if self.peek_is(TokenKind::Keyword(Keyword::Public)) {
-            self.expect(TokenKind::Keyword(Keyword::Public))?;
-            true
-        } else {
-            false
-        };
-
-        // If an extern keyword is present, then we can add the modifier.
-        let is_extern = if self.peek_is(TokenKind::Keyword(Keyword::Extern)) {
-            self.expect(TokenKind::Keyword(Keyword::Extern))?;
-            true
-        } else {
-            false
-        };
-
+    fn parse_function_declaration(&mut self, modifiers: Vec<DeclarationModifier>) -> Result<Statement, ASTError> {
         // All functions must start with the func keyword.
         let func_keyword_span = self.expect(TokenKind::Keyword(Keyword::Func))?.span;
 
@@ -367,12 +359,8 @@ impl ASTParser {
 
         let mut builder = FunctionDeclaration::builder(function_name);
 
-        if is_public {
-            builder = builder.modifier(DeclarationModifier::Public);
-        }
-
-        if is_extern {
-            builder = builder.modifier(DeclarationModifier::Extern);
+        for modifier in &modifiers {
+            builder = builder.modifier(*modifier);
         }
 
         if let Some(name) = owner_type_name {
@@ -421,7 +409,7 @@ impl ASTParser {
             builder = builder.return_type(return_type, Type::Unknown);
         }
 
-        let closing_span = if is_extern {
+        let closing_span = if modifiers.contains(&DeclarationModifier::Extern) {
             self.expect(TokenKind::Semicolon)?.span
         } else {
             // And braces must surround the body of the function.
@@ -549,7 +537,7 @@ impl ASTParser {
     }
 
     /// Attempts to parse a type declaration statement from the [ASTParser]'s current position.
-    fn parse_type_declaration(&mut self) -> Result<Statement, ASTError> {
+    fn parse_type_declaration(&mut self, modifiers: Vec<DeclarationModifier>) -> Result<Statement, ASTError> {
         // The first token must be the `type` keyword.
         let type_keyword_span = self.expect(TokenKind::Keyword(Keyword::Type))?.span;
 
@@ -563,7 +551,10 @@ impl ASTParser {
         let (type_expr, _) = self.parse_type_expr()?;
         let semicolon_span = self.expect(TokenKind::Semicolon)?.span;
 
-        Ok(Statement::from(TypeDeclaration::new(name, type_expr), Span::between(type_keyword_span, semicolon_span)))
+        Ok(Statement::from(
+            TypeDeclaration::new(name, type_expr, modifiers),
+            Span::between(type_keyword_span, semicolon_span),
+        ))
     }
 
     /// Attempts to parse a namespace declaration at the [`ASTParser`]'s current position.
@@ -585,11 +576,20 @@ impl ASTParser {
             }
 
             let statement: Statement = match token.kind {
-                TokenKind::Keyword(Keyword::Public) | TokenKind::Keyword(Keyword::Func) => {
-                    self.parse_function_declaration()?
+                TokenKind::Keyword(Keyword::Public) | TokenKind::Keyword(Keyword::Extern) => {
+                    let modifiers = self.parse_declaration_modifiers();
+
+                    let token = self.peek_expect_any()?;
+                    match token.kind {
+                        TokenKind::Keyword(Keyword::Func) => self.parse_function_declaration(modifiers)?,
+                        TokenKind::Keyword(Keyword::Type) => self.parse_type_declaration(modifiers)?,
+                        _ => return Err(ASTErrorKind::UnexpectedToken(token.kind.clone()).at(token.span)),
+                    }
                 }
 
-                TokenKind::Keyword(Keyword::Type) => self.parse_type_declaration()?,
+                TokenKind::Keyword(Keyword::Func) => self.parse_function_declaration(vec![])?,
+
+                TokenKind::Keyword(Keyword::Type) => self.parse_type_declaration(vec![])?,
 
                 _ => return Err(ASTErrorKind::UnexpectedToken(token.kind.clone()).at(token.span)),
             };
@@ -603,6 +603,24 @@ impl ASTParser {
             NamespaceDeclaration::new(namespace_name, body),
             Span::between(namespace_span, close_brace_span),
         ))
+    }
+
+    /// Attempts to parse a collection of [`DeclarationModifier`]s from the [`ASTParser`]'s current position.
+    fn parse_declaration_modifiers(&mut self) -> Vec<DeclarationModifier> {
+        let mut modifiers: Vec<DeclarationModifier> = Vec::new();
+
+        while let Some(token) = self.peek() {
+            let modifier = match token.kind {
+                TokenKind::Keyword(Keyword::Public) => DeclarationModifier::Public,
+                TokenKind::Keyword(Keyword::Extern) => DeclarationModifier::Extern,
+                _ => break,
+            };
+
+            self.consume();
+            modifiers.push(modifier)
+        }
+
+        modifiers
     }
 
     /// Attempts to parse a [`TypeExpr`] from the [`ASTParser`]'s current position.

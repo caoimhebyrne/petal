@@ -220,7 +220,7 @@ impl TypecheckerContext {
 
     /// Retrieves a [`DeclaredType`] from this [`TypecheckerContext`] by its name.
     pub(crate) fn get_declared_type_by_name(&self, name: &str, span: Span) -> Option<&DeclaredType> {
-        self.types.values().find(|it| it.name == name /*&& it.is_visible_to_module(span.module_id)*/)
+        self.types.values().find(|it| it.name == name && it.is_visible_to_module(span.module_id))
     }
 
     /// Inserts a [`DeclaredType`] into this [`TypecheckerContext`].
@@ -229,11 +229,12 @@ impl TypecheckerContext {
         namespace: Option<String>,
         name: String,
         r#type: Type,
+        modifiers: Vec<DeclarationModifier>,
         span: Span,
     ) -> Result<DeclaredTypeId, TypecheckerError> {
         let type_id = DeclaredTypeId(self.types.len());
 
-        self.types.insert(type_id, DeclaredType::new(span.module_id, namespace, name, r#type));
+        self.types.insert(type_id, DeclaredType::new(span.module_id, namespace, name, r#type, modifiers));
 
         Ok(type_id)
     }
@@ -353,17 +354,30 @@ pub(crate) struct DeclaredType {
 
     /// The actual [`Type`].
     pub r#type: Type,
+
+    /// The modifiers of the type declaration.
+    pub modifiers: Vec<DeclarationModifier>,
 }
 
 impl DeclaredType {
     /// Creates a new [`DeclaredType`].
-    pub fn new(module_id: ModuleId, namespace: Option<String>, name: String, r#type: Type) -> Self {
-        Self { module_id, namespace, name, r#type }
+    pub fn new(
+        module_id: ModuleId,
+        namespace: Option<String>,
+        name: String,
+        r#type: Type,
+        modifiers: Vec<DeclarationModifier>,
+    ) -> Self {
+        Self { module_id, namespace, name, r#type, modifiers }
     }
 
     /// Returns whether this [`DeclaredType`] is visible to the provided module ID.
     /// By default, all types are private, and can only be accessed by the module that they are defined in.
     pub fn is_visible_to_module(&self, other_module_id: ModuleId) -> bool {
+        if self.modifiers.contains(&DeclarationModifier::Public) {
+            return true;
+        }
+
         self.module_id == other_module_id
     }
 }
