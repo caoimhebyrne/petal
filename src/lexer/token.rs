@@ -86,6 +86,9 @@ pub enum TokenKind {
     /// Question mark: ?
     QuestionMark,
 
+    /// A string literal.
+    String(String),
+
     /// An identifier.
     Identifier(String),
 

@@ -11,4 +11,7 @@ namespace libc {
     // related functions.
     public extern func free(ptr: &u8);
 
+    // Writes output according to the provided [format] to standard output.
+    public extern func printf(format: &u8);
+
 }

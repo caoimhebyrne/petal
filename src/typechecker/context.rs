@@ -220,7 +220,7 @@ impl TypecheckerContext {
 
     /// Retrieves a [`DeclaredType`] from this [`TypecheckerContext`] by its name.
     pub(crate) fn get_declared_type_by_name(&self, name: &str, span: Span) -> Option<&DeclaredType> {
-        self.types.values().find(|it| it.name == name && it.is_visible_to_module(span.module_id))
+        self.types.values().find(|it| it.name == name /*&& it.is_visible_to_module(span.module_id)*/)
     }
 
     /// Inserts a [`DeclaredType`] into this [`TypecheckerContext`].
@@ -346,7 +346,7 @@ pub(crate) struct DeclaredType {
     pub module_id: ModuleId,
 
     /// The namespace that the type was defined in. `None` for the root namespace of its module.
-    pub _namespace: Option<String>,
+    pub namespace: Option<String>,
 
     /// The name of the type.
     pub name: String,
@@ -357,8 +357,8 @@ pub(crate) struct DeclaredType {
 
 impl DeclaredType {
     /// Creates a new [`DeclaredType`].
-    pub fn new(module_id: ModuleId, _namespace: Option<String>, name: String, r#type: Type) -> Self {
-        Self { module_id, _namespace, name, r#type }
+    pub fn new(module_id: ModuleId, namespace: Option<String>, name: String, r#type: Type) -> Self {
+        Self { module_id, namespace, name, r#type }
     }
 
     /// Returns whether this [`DeclaredType`] is visible to the provided module ID.
@@ -373,6 +373,9 @@ impl DeclaredType {
 pub struct DeclaredStructure {
     /// The module that the structure was declared in.
     pub _module_id: ModuleId,
+
+    /// The namespace that the type was defined in. `None` for the root namespace of its module.
+    pub namespace: Option<String>,
 
     /// The internal name of the structure.
     pub name: String,
@@ -397,6 +400,7 @@ impl DeclaredStructure {
 
         Self {
             _module_id: module_id,
+            namespace,
             name: format!("ptl_mod_{module_id}_{namespace_name}_struct_{declared_name}"),
             declared_name,
             fields,

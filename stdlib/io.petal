@@ -1,0 +1,21 @@
+import string;
+import libc;
+
+namespace io {
+
+    // Prints a [StringView], followed by a new-line, to the standard output.
+    public func println(string_view: StringView) {
+        // TODO: `libc::printf` overload for format arguments.
+        string_view_c: &u8 = string_view.null_terminated_copy();
+        libc::printf(string_view_c);
+
+        new_line_string: StringView = "\n";
+        new_line_string_c: &u8 = new_line_string.null_terminated_copy();
+        libc::printf(new_line_string.null_terminated_copy());
+
+        memory::free(string_view_c);
+        memory::free(new_line_string_c);
+    }
+
+
+}

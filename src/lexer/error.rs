@@ -21,8 +21,18 @@ pub enum LexerErrorKind {
     /// A number literal is invalid.
     InvalidNumberLiteral(String),
 
+    /// Unterminated string literal.
+    UnterminatedStringLiteral,
+
     /// A character was reached that is unrecognized.
     UnrecognizedCharacter(char),
+}
+
+impl LexerErrorKind {
+    /// Creates a new [`LexerError`] from the provided [`LexerErrorKind`].
+    pub fn at(self, span: Span) -> LexerError {
+        LexerError::new(self, span)
+    }
 }
 
 impl LexerError {
@@ -43,6 +53,7 @@ impl Display for LexerErrorKind {
         match self {
             LexerErrorKind::InvalidNumberLiteral(value) => write!(f, "Invalid number literal: '{}'", value),
             LexerErrorKind::UnrecognizedCharacter(char) => write!(f, "Unrecognized character: '{}'", char),
+            LexerErrorKind::UnterminatedStringLiteral => write!(f, "Unterminated string literal"),
         }
     }
 }

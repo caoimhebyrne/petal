@@ -1,6 +1,7 @@
 use std::{
     self,
     cmp::max,
+    ops::Deref,
 };
 
 use crate::{
@@ -238,6 +239,8 @@ impl<'a> BodyPass<'a> {
         let r#type = match &mut expression.kind {
             ExpressionKind::NumberLiteral(value) => BodyPass::visit_number_literal(value, type_hint, expression.span),
 
+            ExpressionKind::StringLiteral(value) => self.visit_string_literal(value, expression.span),
+
             ExpressionKind::BinaryOperation(binary_operation) => {
                 self.visit_binary_operation(binary_operation, type_hint, expression.span)
             }
@@ -368,6 +371,17 @@ impl<'a> BodyPass<'a> {
         Ok(Type::Boolean)
     }
 
+    /// Checks and resolves the type of the provided string literal.
+    fn visit_string_literal(&self, _value: &str, span: Span) -> Result<Type, TypecheckerError> {
+        let declared_type = self
+            .typechecker
+            .context
+            .get_declared_type_by_name("StringView", span)
+            .expect("get_declared_type_by_name(StringView)");
+
+        Ok(declared_type.r#type.clone())
+    }
+
     /// Checks and resolves the type of the provided [`BinaryOperation`].
     fn visit_binary_operation(
         &mut self,
@@ -421,21 +435,27 @@ impl<'a> BodyPass<'a> {
                     _ => panic!(),
                 };
 
-                let owner_type_name =
+                let (owner_type_name, namespace) =
                     if let Ok(variable_type) = self.typechecker.context.get_variable(member_access_target_name, span) {
                         is_instance_call = true;
                         match variable_type {
                             Type::Structure(id) => {
-                                self.typechecker.context.get_declared_structure(id).declared_name.clone()
+                                let structure = self.typechecker.context.get_declared_structure(id);
+                                (structure.declared_name.clone(), structure.namespace.clone())
                             }
-                            Type::Reference(_) => todo!(),
+
+                            Type::Reference(inner) if matches!(inner.deref(), Type::Structure(_)) => {
+                                let Type::Structure(id) = inner.deref() else { unreachable!() };
+                                let structure = self.typechecker.context.get_declared_structure(id);
+                                (structure.declared_name.clone(), structure.namespace.clone())
+                            }
 
                             _ => return Err(TypecheckerErrorKind::UnsupportedFunctionCallee.at(span)),
                         }
                     } else if let Some(declared_type) =
                         self.typechecker.context.get_declared_type_by_name(member_access_target_name, span)
                     {
-                        declared_type.name.clone()
+                        (declared_type.name.clone(), declared_type.namespace.clone())
                     } else {
                         return Err(TypecheckerErrorKind::UnsupportedFunctionCallee.at(span));
                     };
@@ -443,7 +463,7 @@ impl<'a> BodyPass<'a> {
                 FunctionLookupRequest {
                     owner_type_name: Some(owner_type_name),
                     name: member_access.name.clone(),
-                    namespace: None,
+                    namespace: namespace,
                 }
             }
 
@@ -464,13 +484,12 @@ impl<'a> BodyPass<'a> {
                 _ => unreachable!(),
             };
 
-            let receiver_arg = FunctionCallArgument {
-                name: None,
-                value: Expression::new(ExpressionKind::Reference(target), span),
-                span,
+            let reference_target = match self.visit_expression(target.clone().as_mut(), None)? {
+                Type::Reference(_) => *target,
+                _ => Expression::new(ExpressionKind::Reference(target), span),
             };
 
-            function_call.arguments.insert(0, receiver_arg);
+            function_call.arguments.insert(0, FunctionCallArgument { name: None, value: reference_target, span });
         }
 
         // The first check is easy, we just need to ensure that a sufficient number of arguments were passed in the

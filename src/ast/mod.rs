@@ -200,6 +200,12 @@ impl ASTParser {
                 Expression::new(ExpressionKind::NumberLiteral(value), span)
             }
 
+            TokenKind::String(value) => {
+                let value = value.clone();
+                self.consume();
+                Expression::new(ExpressionKind::StringLiteral(value), span)
+            }
+
             TokenKind::Keyword(Keyword::True) => {
                 self.consume();
                 Expression::new(ExpressionKind::BooleanLiteral(true), span)
@@ -801,6 +807,7 @@ mod tests {
             }
 
             // These expressions do not have any children.
+            ExpressionKind::StringLiteral(_) => {}
             ExpressionKind::BooleanLiteral(_) => {}
             ExpressionKind::IdentifierReference(_) => {}
             ExpressionKind::NumberLiteral(_) => {}

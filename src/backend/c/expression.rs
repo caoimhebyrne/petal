@@ -49,6 +49,8 @@ impl CBackend {
 
             ExpressionKind::NumberLiteral(value) => CBackend::compile_number_literal(value, expression.span),
 
+            ExpressionKind::StringLiteral(value) => self.compile_string_literal(value, expression.span),
+
             ExpressionKind::IdentifierReference(name) => CBackend::compile_identifier_reference(name, expression.span),
 
             ExpressionKind::OptionalWrap(optional_wrap) => self.compile_optional_wrap(optional_wrap, expression.span),
@@ -68,6 +70,17 @@ impl CBackend {
     /// Compiles a number literal expression into C code.
     pub fn compile_number_literal(value: &f64, _span: Span) -> Result<String, CBackendError> {
         Ok(value.to_string())
+    }
+
+    /// Compiles a string literal expression into C code.
+    pub fn compile_string_literal(&self, value: &str, _span: Span) -> Result<String, CBackendError> {
+        let (_, string_view_struct) = self
+            .structures
+            .iter()
+            .find(|it| it.1.declared_name == "StringView" && it.1.namespace == Some("stdlib".into()))
+            .unwrap();
+
+        Ok(format!("({}){{ .data = \"{}\", .length = {} }}", string_view_struct.name, value, value.len()))
     }
 
     /// Compiles a boolean literal expression into C code.

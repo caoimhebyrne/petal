@@ -45,6 +45,9 @@ pub enum ExpressionKind {
     /// A number literal.
     NumberLiteral(f64),
 
+    /// A string literal.
+    StringLiteral(String),
+
     /// A boolean literal.
     BooleanLiteral(bool),
 

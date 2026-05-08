@@ -1,0 +1,16 @@
+// Petal provides a standard library which includes many useful types and functions.
+// It can be imported by importing the `stdlib` module.
+import stdlib;
+
+func main() -> i32 {
+    // A string literal can be declared between quotation marks. Because a string literal is immutable, its type is
+    // considered to be a `StringView`.
+    //
+    // To learn more about `StringView`s, you can read `../stdlib/string.petal`.
+    message: StringView = "Hello, world!";
+
+    // `println` is a function provided by the Petal standard library which lets you print a `StringView` to the
+    // standard output.
+    io::println(message);
+    return 0;
+}

@@ -101,6 +101,8 @@ impl<'a> Lexer<'a> {
                     }
                 }
 
+                '"' => self.parse_string_literal()?,
+
                 ' ' | '\n' => continue,
 
                 _ => {
@@ -136,6 +138,25 @@ impl<'a> Lexer<'a> {
             .map_err(|_| LexerError::new(LexerErrorKind::InvalidNumberLiteral(number_string), token_span))?;
 
         Ok(Token::new(TokenKind::Number(value), token_span))
+    }
+
+    /// Attempts to parse a string literal token at the [`Lexer`]'s current position.
+    fn parse_string_literal(&mut self) -> Result<Token, LexerError> {
+        let mut string: String = "".into();
+
+        self.consume_while(&mut string, |char| char != '"' && char != '\n');
+
+        let mut span = self.span(string.len());
+        span.location.start -= 1;
+        span.location.length += 1;
+
+        // If the string is not terminated with a closing quote, then we must throw an error.
+        if self.next().map(|it| it == '"').is_none() {
+            return Err(LexerErrorKind::UnterminatedStringLiteral.at(span));
+        }
+
+        span.location.length += 1;
+        Ok(Token::new(TokenKind::String(string.clone()), span))
     }
 
     /// Attempts to parse an identifier at the start of the [`Lexer`]'s current position, taking
