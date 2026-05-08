@@ -1,9 +1,9 @@
 import stdlib;
 
-// A string literal can be declared within quotation marks. Because a string literal is immutable, it uses the
-// `StringView` type.
+// A string literal can be declared within quotation marks. Because a string literal is immutable, it uses the `str`
+// type provided by the compiler.
 func main() -> i32 {
-    message: StringView = "Hello, world!";
+    message: str = "Hello, world!";
 
     // `println` is a function provided by the Petal standard library which lets you print a `StringView` to the
     // standard output.

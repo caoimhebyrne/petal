@@ -12,6 +12,7 @@ use crate::{
     },
     typechecker::{
         context::{
+            BuiltinTypes,
             CheckedFunction,
             DeclaredStructure,
             FunctionId,
@@ -54,6 +55,7 @@ impl Typechecker {
             HashMap<StructureId, DeclaredStructure>,
             HashMap<FunctionId, CheckedFunction>,
             HashSet<Type>,
+            BuiltinTypes,
         ),
         TypecheckerError,
     > {
@@ -67,6 +69,7 @@ impl Typechecker {
             self.context.structures.clone(),
             self.context.functions.clone(),
             self.context.optional_types.clone(),
+            self.context.builtin_types.clone(),
         ))
     }
 
@@ -107,6 +110,11 @@ impl Typechecker {
 
             "bool" => Type::Boolean,
             "void" => Type::Void,
+
+            "str" => {
+                // `string::CompileTimeStr` should resolve to this.
+                self.resolve_type_from_expr(&TypeExpr::named("CompileTimeStr"), span)?
+            }
 
             // The built in types do not match, we can try to check for any user-defined types.
             _ => self

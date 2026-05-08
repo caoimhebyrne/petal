@@ -21,6 +21,7 @@ use crate::{
     module::CheckedModule,
     typechecker::{
         context::{
+            BuiltinTypes,
             CheckedFunction,
             DeclaredStructure,
             FunctionId,
@@ -44,6 +45,9 @@ pub struct CBackend {
 
     /// The optional types used by the program.
     optional_types: HashSet<Type>,
+
+    /// The built-in types provided by the program.
+    builtin_types: BuiltinTypes,
 }
 
 impl CBackend {
@@ -52,8 +56,9 @@ impl CBackend {
         structures: HashMap<StructureId, DeclaredStructure>,
         functions: HashMap<FunctionId, CheckedFunction>,
         optional_types: HashSet<Type>,
+        builtin_types: BuiltinTypes,
     ) -> Self {
-        Self { structures, functions, optional_types }
+        Self { structures, functions, optional_types, builtin_types }
     }
 
     /// Compiles a [`CheckedModule`] to C code.

@@ -74,11 +74,7 @@ impl CBackend {
 
     /// Compiles a string literal expression into C code.
     pub fn compile_string_literal(&self, value: &str, _span: Span) -> Result<String, CBackendError> {
-        let (_, string_view_struct) = self
-            .structures
-            .iter()
-            .find(|it| it.1.declared_name == "StringView" && it.1.namespace == Some("stdlib".into()))
-            .unwrap();
+        let str_struct = &self.structures[&self.builtin_types.compile_time_str.unwrap()];
 
         // Sequences like `\n` will be treated as their literal value by the C compiler, as they are not escaped.
         // `value.len()` would return `2`, whereas `decoded_byte_length` would equal `1` in this case.
@@ -92,10 +88,7 @@ impl CBackend {
             decoded_byte_length += 1;
         }
 
-        Ok(format!(
-            "({}){{ .data = (uint8_t*) \"{}\", .length = {} }}",
-            string_view_struct.name, value, decoded_byte_length
-        ))
+        Ok(format!("({}){{ .data = (uint8_t*) \"{}\", .length = {} }}", str_struct.name, value, decoded_byte_length))
     }
 
     /// Compiles a boolean literal expression into C code.

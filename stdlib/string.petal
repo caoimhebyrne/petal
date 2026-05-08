@@ -1,10 +1,15 @@
-import memory;
+namespace string {
 
-namespace stdlib {
-
-    // A non-mutable "view" into a string's data. The data itself is not owned by this struct.
-    public type StringView = struct {
+    // A fat-pointer to a string that has been defined at compile time. The alias for this structure provided by the
+    // compiler is `str`.
+    //
+    // FIXME: Add an annotation to bind this structure to the `str` built-in, e.g:
+    // @BuiltinType(name: "str")
+    public type CompileTimeStr = struct {
+        // A reference to the first byte in the string.
         data: &u8,
+
+        // The number of bytes in the string.
         length: u64,
     };
 

@@ -54,6 +54,13 @@ impl Display for StructureId {
     }
 }
 
+/// The built-in types that should be discovered from the standard library during compilation.
+#[derive(Default, Clone)]
+pub struct BuiltinTypes {
+    /// str (string::CompileTimeStr)
+    pub compile_time_str: Option<StructureId>,
+}
+
 /// The context of a [`Typechecker`].
 #[derive(Default)]
 pub(crate) struct TypecheckerContext {
@@ -71,6 +78,9 @@ pub(crate) struct TypecheckerContext {
 
     /// The optional types used during compilation. This is temporary.
     pub(crate) optional_types: HashSet<Type>,
+
+    /// The built-in types discovered during compilation.
+    pub(crate) builtin_types: BuiltinTypes,
 }
 
 /// A scope holds the variables that have been declared, and is typically created for each block.

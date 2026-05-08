@@ -372,14 +372,8 @@ impl<'a> BodyPass<'a> {
     }
 
     /// Checks and resolves the type of the provided string literal.
-    fn visit_string_literal(&self, _value: &str, span: Span) -> Result<Type, TypecheckerError> {
-        let declared_type = self
-            .typechecker
-            .context
-            .get_declared_type_by_name("StringView", span)
-            .expect("get_declared_type_by_name(StringView)");
-
-        Ok(declared_type.r#type.clone())
+    fn visit_string_literal(&self, _value: &str, _span: Span) -> Result<Type, TypecheckerError> {
+        Ok(Type::Structure(self.typechecker.context.builtin_types.compile_time_str.unwrap()))
     }
 
     /// Checks and resolves the type of the provided [`BinaryOperation`].

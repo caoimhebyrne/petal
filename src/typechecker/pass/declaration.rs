@@ -141,6 +141,10 @@ impl<'a> DeclarationPass<'a> {
                     span,
                 )?;
 
+                if self.current_namespace == Some("string".into()) && type_declaration.name == "CompileTimeStr" {
+                    self.typechecker.context.builtin_types.compile_time_str = Some(structure_id);
+                }
+
                 Type::Structure(structure_id)
             }
 

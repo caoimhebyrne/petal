@@ -1,16 +1,15 @@
-import string;
 import libc;
 
 namespace io {
 
-    // Prints a [StringView], followed by a new-line, to the standard output.
-    public func println(string_view: StringView) {
+    // Prints a [string], followed by a new-line, to the standard output.
+    public func println(string: str) {
         // FIXME: FD 1 on POSIX is `stdout`.
         stdout_fd: i32 = 1;
-        newline: StringView = "\n";
+        newline_string: str = "\n";
 
-        libc::write(filedes: stdout_fd, buf: string_view.data, nbyte: string_view.length);
-        libc::write(filedes: stdout_fd, buf: newline.data,     nbyte: newline.length);
+        libc::write(filedes: stdout_fd, buf: string.data,    nbyte: string.length);
+        libc::write(filedes: stdout_fd, buf: newline_string.data, nbyte: newline_string.length);
     }
 
 }
