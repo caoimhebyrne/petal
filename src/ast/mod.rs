@@ -14,7 +14,10 @@ use crate::{
             function_call::FunctionCall,
             member_access::MemberAccess,
             namespace_qualifier::NamespaceQualifier,
-            optional_wrap::OptionalForceUnwrap,
+            optional_wrap::{
+                OptionalEmpty,
+                OptionalForceUnwrap,
+            },
             structure_initialization::StructureInitialization,
         },
         statement::{
@@ -450,15 +453,18 @@ impl ASTParser {
 
         // And finally, there must be an expression.
         let (value, span) = if self.peek_is(TokenKind::Semicolon) {
-            (None, Span::between(name_span, type_span))
+            // If there is no expression, we can insert an `OptionalEmpty`.
+            // TODO: Is this the right place?
+            let span = Span::between(name_span, type_span);
+            let value = Expression::new(OptionalEmpty::default().into(), span);
+            (value, span)
         } else {
             // The next token must be an equals.
             self.expect(TokenKind::Equals)?;
 
             let value = self.parse_expression()?;
             let span = Span::between(type_span, value.span);
-
-            (Some(value), span)
+            (value, span)
         };
 
         Ok(Statement::from(VariableDeclaration::new(name, type_expr, Type::Unknown, value), span))
@@ -830,6 +836,7 @@ mod tests {
             ExpressionKind::IdentifierReference(_) => {}
             ExpressionKind::NumberLiteral(_) => {}
             ExpressionKind::NamespaceQualifier(_) => {}
+            ExpressionKind::OptionalEmpty(_) => {}
         }
     }
 

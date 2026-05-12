@@ -20,12 +20,12 @@ pub struct VariableDeclaration {
     pub r#type: Type,
 
     /// The initial value being assigned to the variable.
-    pub value: Option<Expression>,
+    pub value: Expression,
 }
 
 impl VariableDeclaration {
     /// Creates a new [`VariableDeclaration`].
-    pub fn new(name: impl Into<String>, type_expr: TypeExpr, r#type: Type, value: Option<Expression>) -> Self {
+    pub fn new(name: impl Into<String>, type_expr: TypeExpr, r#type: Type, value: Expression) -> Self {
         Self { name: name.into(), type_expr, r#type, value }
     }
 }

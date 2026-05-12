@@ -5,6 +5,7 @@ use crate::{
         member_access::MemberAccess,
         namespace_qualifier::NamespaceQualifier,
         optional_wrap::{
+            OptionalEmpty,
             OptionalForceUnwrap,
             OptionalHasValue,
             OptionalWrap,
@@ -59,6 +60,9 @@ pub enum ExpressionKind {
 
     /// A dereference expression.
     Dereference(Box<Expression>),
+
+    /// Creates an empty optional.
+    OptionalEmpty(OptionalEmpty),
 
     /// Wraps the provided expression in an optional.
     OptionalWrap(OptionalWrap),

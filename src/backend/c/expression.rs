@@ -9,6 +9,7 @@ use crate::{
         function_call::FunctionCall,
         member_access::MemberAccess,
         optional_wrap::{
+            OptionalEmpty,
             OptionalForceUnwrap,
             OptionalHasValue,
             OptionalWrap,
@@ -52,6 +53,10 @@ impl CBackend {
             ExpressionKind::StringLiteral(value) => self.compile_string_literal(value, expression.span),
 
             ExpressionKind::IdentifierReference(name) => CBackend::compile_identifier_reference(name, expression.span),
+
+            ExpressionKind::OptionalEmpty(optional_empty) => {
+                self.compile_optional_empty(optional_empty, expression.span)
+            }
 
             ExpressionKind::OptionalWrap(optional_wrap) => self.compile_optional_wrap(optional_wrap, expression.span),
 
@@ -190,6 +195,11 @@ impl CBackend {
     pub fn compile_optional_wrap(&self, optional_wrap: &OptionalWrap, _span: Span) -> Result<String, CBackendError> {
         let inner_value = self.compile_expression(&optional_wrap.inner_value)?;
         Ok(format!("(Optional_{}) {{ .has_value = true, .value = {inner_value} }}", optional_wrap.inner_type))
+    }
+
+    /// Compiles an optional empty expression into C code.
+    pub fn compile_optional_empty(&self, optional_empty: &OptionalEmpty, _span: Span) -> Result<String, CBackendError> {
+        Ok(format!("(Optional_{}) {{0}}", optional_empty.inner_type))
     }
 
     /// Compiles an optional has value expression into C code.

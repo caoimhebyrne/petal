@@ -19,6 +19,7 @@ use crate::{
             },
             member_access::MemberAccess,
             optional_wrap::{
+                OptionalEmpty,
                 OptionalForceUnwrap,
                 OptionalHasValue,
                 OptionalWrap,
@@ -143,19 +144,23 @@ impl<'a> BodyPass<'a> {
         // The type of the variable must be resolved.
         let variable_type = self.typechecker.resolve_type_from_expr(&variable_declaration.type_expr, span)?;
 
+        // If the variable type is non-optional, but the expression is of the `OptionalEmpty` kind, then the variable
+        // does not have an appropriate default value.
+        if !matches!(variable_type, Type::Optional(_))
+            && matches!(variable_declaration.value.kind, ExpressionKind::OptionalEmpty(_))
+        {
+            return Err(TypecheckerErrorKind::VariableDeclarationMissingInitialValue.at(span));
+        }
+
         // The initial value for the variable must have a valid type too, and then that type must be equal to the
         // variable type.
-        if let Some(value) = variable_declaration.value.as_mut() {
-            let value_type = self.visit_expression(value, Some(&variable_type))?;
-            if variable_type != value_type {
-                return Err(TypecheckerErrorKind::IncompatibleVariableDeclarationTypes {
-                    declared: variable_type,
-                    value: value_type,
-                }
-                .at(span));
+        let value_type = self.visit_expression(&mut variable_declaration.value, Some(&variable_type))?;
+        if variable_type != value_type {
+            return Err(TypecheckerErrorKind::IncompatibleVariableDeclarationTypes {
+                declared: variable_type,
+                value: value_type,
             }
-        } else if !matches!(variable_type, Type::Optional(_)) {
-            return Err(TypecheckerErrorKind::VariableDeclarationMissingInitialValue.at(span));
+            .at(span));
         }
 
         variable_declaration.r#type = variable_type;
@@ -280,6 +285,10 @@ impl<'a> BodyPass<'a> {
 
             ExpressionKind::OptionalWrap(optional_wrap) => {
                 self.visit_optional_wrap(optional_wrap, type_hint, expression.span)
+            }
+
+            ExpressionKind::OptionalEmpty(optional_empty) => {
+                self.visit_optional_empty(optional_empty, type_hint, expression.span)
             }
 
             ExpressionKind::OptionalHasValue(optional_has_value) => {
@@ -693,6 +702,24 @@ impl<'a> BodyPass<'a> {
         optional_wrap.inner_type = value_type.clone();
 
         Ok(Type::Optional(value_type.into()))
+    }
+
+    /// Visits an optional empty expression.
+    fn visit_optional_empty(
+        &mut self,
+        optional_wrap: &mut OptionalEmpty,
+        type_hint: Option<&Type>,
+        _span: Span,
+    ) -> Result<Type, TypecheckerError> {
+        // The hinted type might be an optional, and if it is, we should get the type it references, and use that as
+        // the type hint for the expression that we are wrapping.
+        let inner_type_hint = match type_hint {
+            Some(Type::Optional(inner)) => inner.as_ref(),
+            _ => return Ok(Type::Optional(Type::Unknown.into())),
+        };
+
+        optional_wrap.inner_type = inner_type_hint.clone();
+        Ok(Type::Optional(inner_type_hint.clone().into()))
     }
 
     /// Visits an optional has value expression.

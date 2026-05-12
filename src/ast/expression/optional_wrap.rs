@@ -28,6 +28,18 @@ impl From<OptionalWrap> for ExpressionKind {
     }
 }
 
+#[derive(Default, Debug, Clone, PartialEq)]
+pub struct OptionalEmpty {
+    /// The type of the inner value.
+    pub inner_type: Type,
+}
+
+impl From<OptionalEmpty> for ExpressionKind {
+    fn from(value: OptionalEmpty) -> Self {
+        Self::OptionalEmpty(value)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct OptionalHasValue {
     /// The optional that a value is being checked for on.
