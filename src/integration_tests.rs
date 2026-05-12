@@ -277,6 +277,39 @@ mod structures {
         );
     }
 
+    // https://github.com/caoimhebyrne/petal/issues/1
+    #[test]
+    fn compiles_struct_with_uninitalized_optional_member() {
+        compile_expecting_success(
+            r#"
+            type Foo = struct {
+                bar: i32,
+                baz: ?i32,
+            };
+
+            func main() {
+                foo: Foo = { .bar = 4 };
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn compiles_struct_with_initalized_optional_member() {
+        compile_expecting_success(
+            r#"
+            type Foo = struct {
+                bar: i32,
+                baz: ?i32,
+            };
+
+            func main() {
+                foo: Foo = { .bar = 4, .baz = 2 };
+            }
+            "#,
+        );
+    }
+
     #[test]
     fn compiles_struct_with_nested_struct() {
         compile_expecting_success(
@@ -327,6 +360,22 @@ mod structures {
             }
             "#,
             "Expected type '<structure 0>', but got 'u8'",
+        );
+    }
+
+    #[test]
+    fn doesnt_compile_with_field_mismatch() {
+        compile_expecting_error(
+            r#"
+            type Foo = struct {
+                bar: i32,
+            };
+
+            func main() {
+                foo: Foo = { .bar = 1, .baz = 2 };
+            }
+            "#,
+            "Structure initialization had 2 field(s), but structure declaration has 1 field(s)",
         );
     }
 }

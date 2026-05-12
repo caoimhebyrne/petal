@@ -611,6 +611,8 @@ impl<'a> BodyPass<'a> {
         type_hint: Option<&Type>,
         span: Span,
     ) -> Result<Type, TypecheckerError> {
+        dbg!(&value);
+
         let structure_id = match type_hint {
             Some(Type::Structure(id)) => id,
 
@@ -626,11 +628,12 @@ impl<'a> BodyPass<'a> {
         // FIXME: I don't like this `.clone()`.
         let structure = self.typechecker.context.get_declared_structure(structure_id).clone();
 
-        // The first check is easy, we just need to ensure that a sufficient number of arguments were passed in the
-        // function call.
-        if value.fields.len() != structure.fields.len() {
+        // The structure initialization must have as many fields as the non-optional field count of the structure.
+        let required_fields =
+            structure.fields.iter().filter(|it| !matches!(it.r#type, Type::Optional(_))).collect::<Vec<_>>();
+        if value.fields.len() < required_fields.len() || value.fields.len() > structure.fields.len() {
             return Err(TypecheckerErrorKind::StructureInitializationMissingFields {
-                expected: structure.fields.len(),
+                expected: required_fields.len(),
                 got: value.fields.len(),
             }
             .at(span));
@@ -640,7 +643,18 @@ impl<'a> BodyPass<'a> {
         let mut ordered_fields: Vec<StructureInitializationField> = Vec::new();
 
         for (idx, declaration_field) in structure.fields.iter().enumerate() {
-            let initialization_field = &mut value.fields[idx];
+            // If there is not initialization field, then we can add our own field _if_ the type of the declaration is
+            // an optional one.
+            let mut initialization_field = match declaration_field.r#type {
+                Type::Optional(_) => StructureInitializationField::new(
+                    declaration_field.name.clone(),
+                    Expression::new(OptionalEmpty::default().into(), span),
+                    span,
+                ),
+
+                // TODO: Is this correct? I don't think it is. https://github.com/caoimhebyrne/petal/issues/2
+                _ => value.fields[idx].clone(),
+            };
 
             let value_type = self.visit_expression(&mut initialization_field.value, Some(&declaration_field.r#type))?;
             if value_type != declaration_field.r#type {
@@ -651,7 +665,7 @@ impl<'a> BodyPass<'a> {
                 .at(initialization_field.span));
             }
 
-            ordered_fields.push(initialization_field.clone());
+            ordered_fields.push(initialization_field);
         }
 
         value.fields = ordered_fields;
