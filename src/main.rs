@@ -127,6 +127,15 @@ fn main_impl(mut args: Args, module_registry: &mut ModuleRegistry) -> Result<(),
 
     let mut parsed_modules: Vec<ParsedModule> = Vec::new();
 
+    // Before parsing any user code, we must import the prelude module.
+    {
+        let mut path = current_dir().expect("current_dir");
+        path.push("prelude");
+        path.push("main.petal");
+
+        create_and_parse_module(&mut parsed_modules, module_registry, path)?;
+    }
+
     for file_path in &args.input {
         create_and_parse_module(&mut parsed_modules, module_registry, PathBuf::from(file_path))?;
     }

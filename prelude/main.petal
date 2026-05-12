@@ -1,4 +1,4 @@
-namespace string {
+namespace prelude {
 
     // A fat-pointer to a string that has been defined at compile time. The alias for this structure provided by the
     // compiler is `str`.

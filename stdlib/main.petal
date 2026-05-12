@@ -1,3 +1,2 @@
-import string; // FIXME: This needs to be declared before the modules that use it.
 import io;
 import memory;
