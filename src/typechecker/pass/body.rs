@@ -611,8 +611,6 @@ impl<'a> BodyPass<'a> {
         type_hint: Option<&Type>,
         span: Span,
     ) -> Result<Type, TypecheckerError> {
-        dbg!(&value);
-
         let structure_id = match type_hint {
             Some(Type::Structure(id)) => id,
 
