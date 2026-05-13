@@ -1,4 +1,4 @@
-![Logo](./assets/petal-logo.svg)
+![Logo](./assets/petal-logo.svg){height=100}
 
 # `petal` 🌸
 
