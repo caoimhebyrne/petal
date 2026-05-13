@@ -1,7 +1,3 @@
-// FIXME: Introduce a global allocator protocol that can be set by the application. This would then make this module
-//        not depend on libc at all.
-import libc;
-
 namespace memory {
 
     /// Allocates a zero-initialized block of memory of [size] bytes.

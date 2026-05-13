@@ -22,11 +22,20 @@ use log::Level;
 use pretty_env_logger::env_logger::fmt::Color;
 
 use crate::{
-    ast::statement::StatementKind,
+    ast::statement::{
+        StatementKind,
+        import::Import,
+    },
     backend::c::CBackend,
     core::error::Error,
-    module::ParsedModule,
-    module_registry::ModuleRegistry,
+    module::{
+        ModuleError,
+        ParsedModule,
+    },
+    module_registry::{
+        ModuleId,
+        ModuleRegistry,
+    },
     typechecker::Typechecker,
 };
 
@@ -72,15 +81,107 @@ struct Args {
     input: Vec<String>,
 }
 
+fn handle_module_import(
+    parsed_modules: &mut Vec<ParsedModule>,
+    module_registry: &mut ModuleRegistry,
+    current_module: &ParsedModule,
+    current_path: &PathBuf,
+    import: &Import,
+) -> Result<(), Box<dyn Error>> {
+    // If the name of the imported module is `stdlib`, it must be next to the compiler's current working
+    // directory.
+    //
+    // Otherwise, we could either be:
+    // - Importing a directory module
+    // - Importing a file module
+    let mut path = if import.name == "stdlib" {
+        // TODO: `PETAL_STDLIB_PATH` environment variable?
+        current_dir().map_err(|e| ModuleError::IOError { path: current_path.clone(), error: e })?.join("stdlib")
+    } else {
+        current_path.with_file_name(&import.name)
+    };
+
+    // If something exists for the module path, then we can assume it is the directory (as we have not appended)
+    // the `.petal` extension yet.
+    let path_exists = fs::exists(&path).map_err(|e| ModuleError::IOError { path: path.clone(), error: e })?;
+    let path_is_dir = fs::metadata(&path).map(|it| it.is_dir()).unwrap_or_default();
+    if path_exists && path_is_dir {
+        trace!(
+            "Module {} imports '{}', which resolves to path '{}', which is a directory module",
+            current_module.id,
+            import.name,
+            path.display()
+        );
+
+        import_directory_module(parsed_modules, module_registry, &path)?;
+    } else {
+        // A directory does not exist with the provided name. Our last resort is to try to find a `.petal` file with
+        // the same name.
+        path.set_extension("petal");
+
+        trace!(
+            "Module {} imports '{}', which resolves to path '{}', which is a single-file module",
+            current_module.id,
+            import.name,
+            path.display()
+        );
+
+        let module_id = create_and_parse_module(parsed_modules, module_registry, &path)?;
+        trace!("Module at path '{}' resolves to module ID {}", path.display(), module_id);
+    }
+
+    Ok(())
+}
+
+fn import_directory_module(
+    parsed_modules: &mut Vec<ParsedModule>,
+    module_registry: &mut ModuleRegistry,
+    directory_path: &PathBuf,
+) -> Result<(), Box<dyn Error>> {
+    // The caller ensures that the directory exists, so we just need to read it & iterate over its children.
+    for entry in
+        fs::read_dir(&directory_path).map_err(|e| ModuleError::IOError { path: directory_path.clone(), error: e })?
+    {
+        let entry = entry.map_err(|e| ModuleError::IOError { path: directory_path.clone(), error: e })?;
+        if entry.path().extension().map(|it| it != "petal").unwrap_or_default() {
+            trace!(
+                "Ignoring directory entry '{}' for directory import as it does not contain the petal extension",
+                entry.path().display()
+            );
+
+            continue;
+        }
+
+        if entry.metadata().map_err(|e| ModuleError::IOError { path: directory_path.clone(), error: e })?.is_dir() {
+            warn!(
+                "Directory entry '{}' is being ignored as it is a subdirectory of a module that is being imported",
+                entry.path().display()
+            );
+            continue;
+        }
+
+        // TODO: Nested directories?
+
+        let module_id = create_and_parse_module(parsed_modules, module_registry, &entry.path())?;
+        trace!(
+            "  - Module at relative path '{}' resolves to module ID {}",
+            entry.path().strip_prefix(directory_path).unwrap().display(),
+            module_id
+        );
+    }
+
+    Ok(())
+}
+
 fn create_and_parse_module(
     parsed_modules: &mut Vec<ParsedModule>,
     module_registry: &mut ModuleRegistry,
-    file_path: PathBuf,
-) -> Result<(), Box<dyn Error>> {
+    file_path: &PathBuf,
+) -> Result<ModuleId, Box<dyn Error>> {
     let (module_id, already_created) = module_registry.create_module(file_path.clone())?;
     if already_created {
         trace!("Module at path '{}' has already been registered (ID = {})", file_path.display(), module_id);
-        return Ok(());
+        return Ok(module_id);
     }
 
     let parsed_module = module_registry.get_module(module_id).parse()?;
@@ -89,32 +190,12 @@ fn create_and_parse_module(
         // If this is an import statement, then we must be able to find a module with the imported name in the
         // same directory.
         if let StatementKind::Import(import) = &statement.kind {
-            // If the name of the imported module is `stdlib`, it must be next to the compiler's current working
-            // directory.
-            //
-            // TODO: `PETAL_STDLIB_PATH` environment variable?
-            let imported_module_path = if import.name == "stdlib" {
-                let mut path = current_dir().expect("current_dir");
-                path.push("stdlib");
-                path.push("main.petal");
-                path
-            } else {
-                file_path.with_file_name(import.name.clone()).with_extension("petal")
-            };
-
-            debug!(
-                "Module {} imports '{}', which resolves to path '{}'",
-                module_id,
-                import.name,
-                imported_module_path.to_string_lossy()
-            );
-
-            create_and_parse_module(parsed_modules, module_registry, imported_module_path)?;
+            handle_module_import(parsed_modules, module_registry, &parsed_module, &file_path, import)?;
         }
     }
 
     parsed_modules.push(parsed_module);
-    Ok(())
+    Ok(module_id)
 }
 
 fn main_impl(mut args: Args, module_registry: &mut ModuleRegistry) -> Result<(), Box<dyn Error>> {
@@ -131,13 +212,15 @@ fn main_impl(mut args: Args, module_registry: &mut ModuleRegistry) -> Result<(),
     {
         let mut path = current_dir().expect("current_dir");
         path.push("prelude");
-        path.push("main.petal");
 
-        create_and_parse_module(&mut parsed_modules, module_registry, path)?;
+        trace!("Importing prelude module from path '{}'", path.display());
+        import_directory_module(&mut parsed_modules, module_registry, &path)?;
     }
 
-    for file_path in &args.input {
-        create_and_parse_module(&mut parsed_modules, module_registry, PathBuf::from(file_path))?;
+    for file_path_string in &args.input {
+        let file_path = PathBuf::from(file_path_string);
+        let module_id = create_and_parse_module(&mut parsed_modules, module_registry, &file_path)?;
+        trace!("Module {} created from compiler arguments, resolves to path '{}'", module_id, file_path.display());
     }
 
     info!("Checking types");

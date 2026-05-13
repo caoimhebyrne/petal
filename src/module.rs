@@ -33,6 +33,7 @@ pub struct Module {
 }
 
 /// A module that has been parsed into an AST.
+#[derive(Debug)]
 pub struct ParsedModule {
     /// The unique identifier for this [`ParsedModule`]. This is inherited from its parent [`Module`].
     pub id: ModuleId,
