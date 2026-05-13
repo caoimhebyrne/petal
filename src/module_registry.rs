@@ -60,4 +60,13 @@ impl ModuleRegistry {
 /// This must exclusively be used by tests that require a [`ModuleId`], but do not interact with the
 /// [`ModuleRegistry`].
 #[cfg(test)]
-pub const MOCK_MODULE_ID: ModuleId = ModuleId(0);
+pub const MOCK_MODULE_ID: ModuleId = create_mock_module_id(0);
+
+/// Creates a fake [`ModuleId`] not registered with any [`ModuleRegistry`], similarly to [`MOCK_MODULE_ID`].
+///
+/// This must exclusively be used by tests that require a [`ModuleId`], but do not interact with the
+/// [`ModuleRegistry`].
+#[cfg(test)]
+pub const fn create_mock_module_id(value: usize) -> ModuleId {
+    ModuleId(value)
+}

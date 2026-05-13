@@ -3,20 +3,34 @@ use crate::{
     core::error::Error,
     lexer::Lexer,
     module::ParsedModule,
-    module_registry::MOCK_MODULE_ID,
+    module_registry::create_mock_module_id,
     typechecker::Typechecker,
 };
 
 fn compile(src: &str) -> Result<(), Box<dyn Error>> {
-    let mut lexer = Lexer::new(MOCK_MODULE_ID, src);
-    let tokens = lexer.parse()?;
+    let mut parsed_modules: Vec<ParsedModule> = vec![];
 
-    let statements = ASTParser::new_and_parse(MOCK_MODULE_ID, tokens)?;
-    let parsed_module = ParsedModule::new(MOCK_MODULE_ID, statements);
+    // Prelude module
+    {
+        let module_id = create_mock_module_id(0);
+        let mut lexer = Lexer::new(module_id, include_str!("../prelude/str.petal"));
+        let tokens = lexer.parse()?;
 
-    let mut typechecker = Typechecker::default();
-    typechecker.check(vec![parsed_module])?;
+        let statements = ASTParser::new_and_parse(module_id, tokens)?;
+        parsed_modules.push(ParsedModule::new(module_id, statements));
+    }
 
+    // Source code
+    {
+        let module_id = create_mock_module_id(1);
+        let mut lexer = Lexer::new(module_id, src);
+        let tokens = lexer.parse()?;
+
+        let statements = ASTParser::new_and_parse(module_id, tokens)?;
+        parsed_modules.push(ParsedModule::new(module_id, statements));
+    }
+
+    Typechecker::default().check(parsed_modules)?;
     Ok(())
 }
 
@@ -376,7 +390,7 @@ mod structures {
                 bar: Bar = { .foo = 0 };
             }
             "#,
-            "Expected type '<structure 0>', but got 'u8'",
+            "Expected type '<structure 1>', but got 'u8'",
         );
     }
 
