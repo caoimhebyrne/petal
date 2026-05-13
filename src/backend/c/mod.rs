@@ -13,7 +13,10 @@ use std::{
 };
 
 use crate::{
-    ast::statement::StatementKind,
+    ast::{
+        statement::StatementKind,
+        type_expr::GenericTypeArgument,
+    },
     backend::c::{
         error::{
             CBackendError,
@@ -28,11 +31,18 @@ use crate::{
         context::{
             CheckedFunction,
             DeclaredStructure,
+            DeclaredType,
+            DeclaredTypeId,
             FunctionId,
+            SpecializedStructure,
+            SpecializedStructureId,
             StructureId,
             SyntheticType,
         },
-        r#type::Type,
+        r#type::{
+            StructureReference,
+            Type,
+        },
     },
 };
 
@@ -46,11 +56,17 @@ pub struct CBackend {
     /// The built-in types that have been recognized during compilation.
     builtin_types: BuiltinTypes,
 
+    /// The types declared by the user during compilation.
+    declared_types: HashMap<DeclaredTypeId, DeclaredType>,
+
     /// The functions defined in the source code during compilation.
     functions: HashMap<FunctionId, CheckedFunction>,
 
     /// The structures defined in the source code during compilation.
     structures: HashMap<StructureId, DeclaredStructure>,
+
+    /// The specialized structures defined in the source code during compilation.
+    specialized_structures: HashMap<SpecializedStructureId, SpecializedStructure>,
 
     /// The types that have been synthesised during compilation.
     ///
@@ -65,11 +81,21 @@ impl CBackend {
     /// Creates a new [`CBackend`].
     pub fn new(
         builtin_types: BuiltinTypes,
+        declared_types: HashMap<DeclaredTypeId, DeclaredType>,
         functions: HashMap<FunctionId, CheckedFunction>,
         structures: HashMap<StructureId, DeclaredStructure>,
+        specialized_structures: HashMap<SpecializedStructureId, SpecializedStructure>,
         synthetic_types: HashSet<SyntheticType>,
     ) -> Self {
-        Self { builtin_types, functions, structures, synthetic_types, writer: Writer::default() }
+        Self {
+            builtin_types,
+            declared_types,
+            functions,
+            structures,
+            specialized_structures,
+            synthetic_types,
+            writer: Writer::default(),
+        }
     }
 
     /// Compiles a [`CheckedModule`] to C code.
@@ -90,17 +116,36 @@ impl CBackend {
         debug!("Attempting to generate C code with {} structure(s)", self.structures.len());
 
         for structure in self.structures.values() {
+            let declared_type = &self.declared_types[&structure.declared_type_id];
+            if !declared_type.generic_type_parameters.is_empty() {
+                debug!(
+                    "Not generating definition for type '{}' as it is generic, a specialization should cover it",
+                    declared_type.name
+                );
+                continue;
+            }
+
             code.push_str("typedef struct {\n");
 
             for field in &structure.fields {
                 code.push_str(&format!("    {} {};\n", self.compile_type(&field.r#type, field.span)?, field.name));
             }
 
-            code.push_str(&format!("}} {};\n", structure.name));
+            code.push_str(&format!("}} {};\n\n", self.declared_type_name(declared_type, &vec![])?));
         }
 
-        if !self.structures.is_empty() {
-            code.push('\n');
+        for specialized_structure in self.specialized_structures.values() {
+            let declared_type = &self.declared_types[&specialized_structure.generic_type_id];
+            code.push_str("typedef struct {\n");
+
+            for field in &specialized_structure.fields {
+                code.push_str(&format!("    {} {};\n", self.compile_type(&field.r#type, field.span)?, field.name));
+            }
+
+            code.push_str(&format!(
+                "}} {};\n\n",
+                self.declared_type_name(declared_type, &specialized_structure.generic_type_arguments)?
+            ));
         }
 
         for synthetic_type in &self.synthetic_types {
@@ -195,18 +240,67 @@ impl CBackend {
             Type::Boolean => "bool".into(),
             Type::Void => "void".into(),
             Type::Reference(referenced) => format!("{}*", self.compile_type(referenced, span)?),
-            Type::Structure(structure_id) => {
-                let structure = self
-                    .structures
-                    .get(structure_id)
-                    .ok_or(CBackendErrorKind::MissingStructure(*structure_id).at(span))?;
-
-                structure.name.clone()
-            }
-            Type::Optional(inner) => format!("Optional_{}", inner),
-            Type::Unknown => return Err(CBackendErrorKind::UnknownType.at(span)),
+            Type::Optional(_) | Type::Structure(_) => self.identifier_friendly_name(r#type, span)?,
+            Type::GenericType(_) | Type::Unknown => return Err(CBackendErrorKind::UnknownType.at(span)),
         };
 
         Ok(value)
+    }
+
+    /// Generates a name for the provided [`DeclaredType`].
+    fn declared_type_name(
+        &self,
+        declared_type: &DeclaredType,
+        generic_type_arguments: &Vec<GenericTypeArgument>,
+    ) -> Result<String, CBackendError> {
+        let mut name = format!(
+            "ptl_mod_{}_{}_type_{}",
+            declared_type.module_id,
+            declared_type.namespace.clone().unwrap_or_else(|| "root".to_string()),
+            declared_type.name
+        );
+
+        for argument in generic_type_arguments {
+            name.push('_');
+            name.push_str(&self.identifier_friendly_name(&argument.r#type, argument.span)?);
+        }
+
+        Ok(name)
+    }
+
+    /// Returns a name for the provided structure reference type.
+    fn get_name_for_structure_reference(
+        &self,
+        structure_reference: &StructureReference,
+    ) -> Result<String, CBackendError> {
+        match structure_reference {
+            StructureReference::Plain(plain_id) => {
+                let structure = &self.structures[plain_id];
+                let declared_type = &self.declared_types[&structure.declared_type_id];
+                self.declared_type_name(declared_type, &vec![])
+            }
+
+            StructureReference::Specialized(specialized_id) => {
+                let structure = &self.specialized_structures[specialized_id];
+                let declared_type = &self.declared_types[&structure.generic_type_id];
+                self.declared_type_name(declared_type, &structure.generic_type_arguments)
+            }
+        }
+    }
+
+    /// Returns a name for the provided type that is able to be used within an identifier.
+    fn identifier_friendly_name(&self, r#type: &Type, span: Span) -> Result<String, CBackendError> {
+        let name = match r#type {
+            Type::Boolean => "bool".to_string(),
+            Type::Optional(inner) => format!("Optional_{}", self.identifier_friendly_name(inner, span)?),
+            Type::Reference(inner) => format!("Reference_{}", self.identifier_friendly_name(inner, span)?),
+            Type::SignedInteger(size) => format!("int{size}"),
+            Type::Structure(structure_reference) => self.get_name_for_structure_reference(structure_reference)?,
+            Type::UnsignedInteger(size) => format!("uint{size}"),
+            Type::Void => format!("void"),
+            Type::GenericType(_) | Type::Unknown => return Err(CBackendErrorKind::UnknownType.at(span)),
+        };
+
+        Ok(name)
     }
 }

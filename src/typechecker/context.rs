@@ -17,7 +17,11 @@ use crate::{
             },
             variable_declaration::VariableDeclaration,
         },
-        type_expr::StructureField,
+        type_expr::{
+            GenericTypeArgument,
+            GenericTypeParameter,
+            StructureField,
+        },
     },
     core::span::Span,
     module_registry::ModuleId,
@@ -43,6 +47,12 @@ impl Display for FunctionId {
 /// A unique identifier for a declared type.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct DeclaredTypeId(usize);
+
+impl Display for DeclaredTypeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 /// The identifier for a structure type.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
@@ -86,6 +96,9 @@ pub(crate) struct TypecheckerContext {
 
     /// The structures that have been declared by the user.
     pub(crate) structures: HashMap<StructureId, DeclaredStructure>,
+
+    /// The specialized structures that have been generated during compilation.
+    pub(crate) specialized_structures: HashMap<SpecializedStructureId, SpecializedStructure>,
 
     /// The types that have been synthesised during compilation.
     ///
@@ -266,33 +279,76 @@ impl TypecheckerContext {
         name: String,
         r#type: Type,
         modifiers: Vec<DeclarationModifier>,
+        generic_type_parameters: Vec<GenericTypeParameter>,
         span: Span,
     ) -> Result<DeclaredTypeId, TypecheckerError> {
-        let type_id = DeclaredTypeId(self.types.len());
-
-        self.types.insert(type_id, DeclaredType::new(span.module_id, namespace, name, r#type, modifiers));
-
-        Ok(type_id)
+        self.insert_computed_declared_type(namespace, name, modifiers, generic_type_parameters, span, |_, _| r#type)
     }
 
-    /// Retrieves a [`DeclaredStructure`] from this [`TypecheckerContext`] by its ID.
-    pub(crate) fn get_declared_structure(&self, id: &StructureId) -> &DeclaredStructure {
-        self.structures.get(id).expect("structures.get should always succeed")
+    /// Inserts a [`DeclaredType`] into this [`TypecheckerContext`], executing [`type_fn`] with the [`DeclaredTypeId`] to
+    /// get a [`Type`].
+    pub(crate) fn insert_computed_declared_type<TypeFn>(
+        &mut self,
+        namespace: Option<String>,
+        name: String,
+        modifiers: Vec<DeclarationModifier>,
+        generic_type_parameters: Vec<GenericTypeParameter>,
+        span: Span,
+        type_fn: TypeFn,
+    ) -> Result<DeclaredTypeId, TypecheckerError>
+    where
+        TypeFn: FnOnce(&mut Self, DeclaredTypeId) -> Type,
+    {
+        // First, we must evaluate the latest type id.
+        let id = DeclaredTypeId(self.types.len());
+
+        // Then, we can evaluate the type.
+        let r#type = type_fn(self, id);
+
+        // And finally, we can insert the type.
+        self.types.insert(
+            id,
+            DeclaredType { id, module_id: span.module_id, namespace, name, r#type, generic_type_parameters, modifiers },
+        );
+
+        Ok(id)
     }
 
     /// Inserts a [`DeclaredStructure`] into this [`TypecheckerContext`].
     pub(crate) fn insert_declared_structure(
         &mut self,
-        namespace: Option<String>,
-        name: String,
+        declared_type_id: DeclaredTypeId,
         fields: Vec<StructureField>,
-        span: Span,
-    ) -> Result<StructureId, TypecheckerError> {
+        _span: Span,
+    ) -> StructureId {
         let structure_id = StructureId(self.structures.len());
 
-        self.structures.insert(structure_id, DeclaredStructure::new(span.module_id, namespace, name, fields));
+        self.structures.insert(structure_id, DeclaredStructure::new(declared_type_id, fields));
 
-        Ok(structure_id)
+        structure_id
+    }
+
+    /// Creates a [`SpecializedStructure`] from a [`DeclaredtypeId`] which maps to a generic structure.
+    pub(crate) fn insert_specialized_structure(
+        &mut self,
+        generic_type_id: DeclaredTypeId,
+        generic_type_arguments: Vec<GenericTypeArgument>,
+        fields: Vec<StructureField>,
+    ) -> SpecializedStructureId {
+        // If a specialized structure already exists with the same type ID and arguments, then we can return it.
+        if let Some((id, _)) = self.specialized_structures.iter().find(|(_, it)| {
+            it.generic_type_id == generic_type_id && it.generic_type_arguments == generic_type_arguments
+        }) {
+            trace!("A specialized structure ({}) already exists for generic declared type {}", id, generic_type_id);
+            return *id;
+        }
+
+        let id = SpecializedStructureId(self.specialized_structures.len());
+
+        self.specialized_structures
+            .insert(id, SpecializedStructure { generic_type_id, generic_type_arguments, fields });
+
+        id
     }
 }
 
@@ -378,7 +434,10 @@ impl CheckedFunction {
 
 /// A type which has been declared by the user.
 #[derive(Debug, Clone)]
-pub(crate) struct DeclaredType {
+pub struct DeclaredType {
+    /// The ID of this [`DeclaredType`].
+    pub id: DeclaredTypeId,
+
     /// The module that the type was declared in.
     pub module_id: ModuleId,
 
@@ -391,22 +450,14 @@ pub(crate) struct DeclaredType {
     /// The actual [`Type`].
     pub r#type: Type,
 
+    /// The generic type parameters of this type.
+    pub generic_type_parameters: Vec<GenericTypeParameter>,
+
     /// The modifiers of the type declaration.
     pub modifiers: Vec<DeclarationModifier>,
 }
 
 impl DeclaredType {
-    /// Creates a new [`DeclaredType`].
-    pub fn new(
-        module_id: ModuleId,
-        namespace: Option<String>,
-        name: String,
-        r#type: Type,
-        modifiers: Vec<DeclarationModifier>,
-    ) -> Self {
-        Self { module_id, namespace, name, r#type, modifiers }
-    }
-
     /// Returns whether this [`DeclaredType`] is visible to the provided module ID.
     /// By default, all types are private, and can only be accessed by the module that they are defined in.
     pub fn is_visible_to_module(&self, other_module_id: ModuleId) -> bool {
@@ -421,17 +472,8 @@ impl DeclaredType {
 /// A structure type which has been declared in the source code.
 #[derive(Debug, Clone)]
 pub struct DeclaredStructure {
-    /// The module that the structure was declared in.
-    pub _module_id: ModuleId,
-
-    /// The namespace that the type was defined in. `None` for the root namespace of its module.
-    pub namespace: Option<String>,
-
-    /// The internal name of the structure.
-    pub name: String,
-
-    /// The name of the structure, as declared by the user.
-    pub declared_name: String,
+    /// The declared type ID associated with this structure.
+    pub declared_type_id: DeclaredTypeId,
 
     /// The fields within the structure.
     pub fields: Vec<StructureField>,
@@ -439,21 +481,30 @@ pub struct DeclaredStructure {
 
 impl DeclaredStructure {
     /// Creates a new [`DeclaredStructure`].
-    pub fn new(
-        module_id: ModuleId,
-        namespace: Option<String>,
-        declared_name: String,
-        fields: Vec<StructureField>,
-    ) -> Self {
-        // FIXME: HORRIBLE
-        let namespace_name = namespace.clone().unwrap_or(String::from("root"));
+    pub fn new(declared_type_id: DeclaredTypeId, fields: Vec<StructureField>) -> Self {
+        Self { declared_type_id, fields }
+    }
+}
 
-        Self {
-            _module_id: module_id,
-            namespace,
-            name: format!("ptl_mod_{module_id}_{namespace_name}_struct_{declared_name}"),
-            declared_name,
-            fields,
-        }
+/// The identifier for a [`SpecializedStructure`].
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub struct SpecializedStructureId(usize);
+
+/// A structure which has been specialized due to it having generic types.
+#[derive(Debug, Clone)]
+pub struct SpecializedStructure {
+    /// The declared type ID associated with the non-specialized variant of this structure.
+    pub generic_type_id: DeclaredTypeId,
+
+    /// The generic type arguments applied to this specialization.
+    pub generic_type_arguments: Vec<GenericTypeArgument>,
+
+    /// The fields within this structure.
+    pub fields: Vec<StructureField>,
+}
+
+impl Display for SpecializedStructureId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

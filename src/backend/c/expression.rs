@@ -96,10 +96,10 @@ impl CBackend {
             decoded_byte_length += 1;
         }
 
-        Ok(format!(
-            "({}){{ .data = (uint8_t*) \"{}\", .length = {} }}",
-            self.structures[&self.builtin_types.compile_time_str].name, value, decoded_byte_length
-        ))
+        let structure = &self.structures[&self.builtin_types.compile_time_str];
+        let declared_type = &self.declared_types[&structure.declared_type_id];
+
+        Ok(format!("({}){{ .data = (uint8_t*) \"{}\", .length = {} }}", declared_type.name, value, decoded_byte_length))
     }
 
     /// Compiles a boolean literal expression into C code.
@@ -173,15 +173,8 @@ impl CBackend {
     ) -> Result<String, CBackendError> {
         // The typechecker should have patched in a structure ID. This lets us know the exact type of the structure
         // that is being initialized.
-        let structure_id =
-            structure_initialization.structure_id.ok_or(CBackendErrorKind::MissingStructureId.at(span))?;
-
-        // A corresponding type must have been declared already.
-        let structure_type = self
-            .structures
-            .get(&structure_id)
-            .cloned()
-            .ok_or(CBackendErrorKind::MissingStructure(structure_id).at(span))?;
+        let structure_reference =
+            structure_initialization.structure_reference.ok_or(CBackendErrorKind::MissingStructureId.at(span))?;
 
         let fields = structure_initialization
             .fields
@@ -193,7 +186,8 @@ impl CBackend {
             .collect::<Result<Vec<_>, _>>()?
             .join(", ");
 
-        Ok(format!("({}) {{ {fields} }}", structure_type.name))
+        let structure_name = self.get_name_for_structure_reference(&structure_reference)?;
+        Ok(format!("({}) {{ {fields} }}", structure_name))
     }
 
     /// Compiles a member access expression into C code.

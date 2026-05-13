@@ -1,0 +1,32 @@
+// So far, our types have been fairly simple.
+//
+// Petal allows you to specify generic type arguments when declaring a type. This tells the compiler that 'this type is
+// a parameter, and it will be specified by the user later'.
+//
+// Under the hood, Petal performs Monomorphization [1] on these generic types, meaning they have no runtime overhead
+// (unlike Java generics).
+//
+// [1] https://en.wikipedia.org/wiki/Monomorphization
+//
+// In this example, we declare a type: `Wrapper`, which has a value of the generic type `T`.
+type Wrapper<T> = struct {
+    // We can use `T` as if it were any normal type.
+    value: T,
+};
+
+func main() -> i32 {
+    // We can instantiate the struct as normal, but we must specify what `T` is in our variable declaration.
+    // In this case, we say that `T` is an `i32`.
+    //
+    // Internally, the compiler will transform any generic type references to a type generated as part of
+    // monomorphization, for `Wrapper<i32>`, this would look something like this:
+    // ```
+    // type Wrapper_i32 = struct {
+    //     value: i32,
+    // }
+    // ```
+    foo: Wrapper<i32> = { .value = 5 };
+
+    // Then, any further accesses of `foo.value` will yield an `i32`.
+    return foo.value;
+}

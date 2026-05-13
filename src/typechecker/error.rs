@@ -38,6 +38,7 @@ pub(crate) enum TypecheckerErrorKind {
     UndeclaredFunction(String),
     UndeclaredVariable(String),
     UnknownType(String),
+    UnknownOrUnsupportedGenericType(String),
     StructureInitializationRequiresStructureType(Option<Type>),
     StructureInitializationMissingFields { expected: usize, got: usize },
     MemberAccessNotSupported,
@@ -51,6 +52,7 @@ pub(crate) enum TypecheckerErrorKind {
     UnexpectedExpression,
     MissingBuiltinType(String),
     ExpectedParentScope,
+    GenericArgumentSizeMismatch { type_name: String, parameters: usize, arguments: usize },
 }
 
 impl TypecheckerErrorKind {
@@ -77,6 +79,10 @@ impl Display for TypecheckerErrorKind {
             }
 
             Self::UnknownType(name) => write!(f, "Unknown type: '{name}'"),
+
+            Self::UnknownOrUnsupportedGenericType(name) => {
+                write!(f, "A type either does not exist with the name '{name}', or the type does not support generics")
+            }
 
             Self::IncompatibleBinaryOperationTypes { left, right } => {
                 write!(f, "Binary operation has two values of incompatible types: '{}' and '{}'", left, right)
@@ -191,6 +197,13 @@ impl Display for TypecheckerErrorKind {
 
             Self::ExpectedParentScope => {
                 write!(f, "Expected the current scope to have a parent scope, but none was present?")
+            }
+
+            Self::GenericArgumentSizeMismatch { type_name, arguments, parameters } => {
+                write!(
+                    f,
+                    "Generic type '{type_name}' has {parameters} parameter(s), but {arguments} argument(s) were provided"
+                )
             }
         }
     }

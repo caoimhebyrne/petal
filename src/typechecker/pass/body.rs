@@ -47,13 +47,17 @@ use crate::{
     core::span::Span,
     module::ParsedModule,
     typechecker::{
+        TypeResolvingContext,
         Typechecker,
         context::FunctionLookupRequest,
         error::{
             TypecheckerError,
             TypecheckerErrorKind,
         },
-        r#type::Type,
+        r#type::{
+            StructureReference,
+            Type,
+        },
     },
 };
 
@@ -143,7 +147,11 @@ impl<'a> BodyPass<'a> {
         span: Span,
     ) -> Result<(), TypecheckerError> {
         // The type of the variable must be resolved.
-        let variable_type = self.typechecker.resolve_type_from_expr(&variable_declaration.type_expr, span)?;
+        let variable_type = self.typechecker.resolve_type_from_expr(
+            &mut variable_declaration.type_expr,
+            TypeResolvingContext { generic_type_parameters: &vec![] },
+            span,
+        )?;
 
         // If the variable type is non-optional, but the expression is of the `OptionalEmpty` kind, then the variable
         // does not have an appropriate default value.
@@ -424,7 +432,7 @@ impl<'a> BodyPass<'a> {
             .compile_time_str
             .ok_or(TypecheckerErrorKind::MissingBuiltinType("compile_time_str".into()).at(span))?;
 
-        Ok(Type::Structure(structure_id))
+        Ok(Type::Structure(StructureReference::Plain(structure_id)))
     }
 
     /// Checks and resolves the type of the provided [`BinaryOperation`].
@@ -485,15 +493,16 @@ impl<'a> BodyPass<'a> {
                     if let Ok(variable_type) = self.typechecker.context.get_variable(member_access_target_name, span) {
                         is_instance_call = true;
                         match variable_type {
-                            Type::Structure(id) => {
-                                let structure = self.typechecker.context.get_declared_structure(id);
-                                (structure.declared_name.clone(), structure.namespace.clone())
+                            Type::Structure(reference) => {
+                                let declared_type = self.typechecker.get_declared_type_for_structure_ref(reference);
+                                (declared_type.name.clone(), declared_type.namespace.clone())
                             }
 
                             Type::Reference(inner) if matches!(inner.deref(), Type::Structure(_)) => {
-                                let Type::Structure(id) = inner.deref() else { unreachable!() };
-                                let structure = self.typechecker.context.get_declared_structure(id);
-                                (structure.declared_name.clone(), structure.namespace.clone())
+                                let Type::Structure(reference) = inner.deref() else { unreachable!() };
+                                let declared_type = self.typechecker.get_declared_type_for_structure_ref(reference);
+
+                                (declared_type.name.clone(), declared_type.namespace.clone())
                             }
 
                             _ => return Err(TypecheckerErrorKind::UnsupportedFunctionCallee.at(span)),
@@ -654,8 +663,8 @@ impl<'a> BodyPass<'a> {
         type_hint: Option<&Type>,
         span: Span,
     ) -> Result<Type, TypecheckerError> {
-        let structure_id = match type_hint {
-            Some(Type::Structure(id)) => id,
+        let structure_reference = match type_hint {
+            Some(Type::Structure(reference)) => reference,
 
             _ => {
                 return Err(
@@ -664,15 +673,16 @@ impl<'a> BodyPass<'a> {
             }
         };
 
-        value.structure_id = Some(*structure_id);
+        value.structure_reference = Some(*structure_reference);
 
         // FIXME: I don't like this `.clone()`.
-        let structure = self.typechecker.context.get_declared_structure(structure_id).clone();
+        let structure_declared_type = self.typechecker.get_declared_type_for_structure_ref(structure_reference).clone();
+        let structure_fields = self.typechecker.get_structure_fields(structure_reference).clone();
 
         // The structure initialization must have as many fields as the non-optional field count of the structure.
         let required_fields =
-            structure.fields.iter().filter(|it| !matches!(it.r#type, Type::Optional(_))).collect::<Vec<_>>();
-        if value.fields.len() > structure.fields.len() {
+            structure_fields.iter().filter(|it| !matches!(it.r#type, Type::Optional(_))).collect::<Vec<_>>();
+        if value.fields.len() > structure_fields.len() {
             return Err(TypecheckerErrorKind::StructureInitializationMissingFields {
                 expected: required_fields.len(),
                 got: value.fields.len(),
@@ -683,7 +693,7 @@ impl<'a> BodyPass<'a> {
         // We will then rewrite the structure initialization to have its fields ordered in declaration order.
         let mut ordered_fields: Vec<StructureInitializationField> = Vec::new();
 
-        for declaration_field in structure.fields {
+        for declaration_field in structure_fields {
             // If there is not initialization field, then we can add our own field _if_ the type of the declaration is
             // an optional one.
             let mut initialization_field = match declaration_field.r#type {
@@ -696,7 +706,7 @@ impl<'a> BodyPass<'a> {
                 // A field must exist in the initializer with the same name.
                 _ => value.fields.iter().find(|it| it.name == declaration_field.name).cloned().ok_or(
                     TypecheckerErrorKind::MissingStructureInitializationField {
-                        structure_name: structure.declared_name.clone(),
+                        structure_name: structure_declared_type.name.clone(),
                         field_name: declaration_field.name.clone(),
                     }
                     .at(span),
@@ -717,7 +727,7 @@ impl<'a> BodyPass<'a> {
 
         value.fields = ordered_fields;
 
-        Ok(Type::Structure(*structure_id))
+        Ok(Type::Structure(*structure_reference))
     }
 
     /// Visits a member access expression.
@@ -728,13 +738,13 @@ impl<'a> BodyPass<'a> {
         debug!("Parsing member access expression for target type '{}' to member name '{}'", target_type, value.name);
 
         // We only support accessing members of structures at the moment.
-        let structure_type = match target_type {
-            Type::Structure(structure_id) => self.typechecker.context.get_declared_structure(&structure_id),
+        let structure_fields = match &target_type {
+            Type::Structure(reference) => self.typechecker.get_structure_fields(reference),
             _ => return Err(TypecheckerErrorKind::MemberAccessNotSupported.at(span)),
         };
 
         // The field must exist on the structure.
-        let field = structure_type.fields.iter().find(|it| it.name == value.name).ok_or_else(|| {
+        let field = structure_fields.iter().find(|it| it.name == value.name).ok_or_else(|| {
             TypecheckerErrorKind::TypeDoesNotHaveMember { r#type: target_type, name: value.name.clone() }.at(span)
         })?;
 

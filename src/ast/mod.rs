@@ -35,6 +35,8 @@ use crate::{
             variable_declaration::VariableDeclaration,
         },
         type_expr::{
+            GenericTypeArgument,
+            GenericTypeParameter,
             StructureField,
             TypeExpr,
         },
@@ -550,6 +552,9 @@ impl ASTParser {
         // Then, there must be the name of the type.
         let (name, _) = self.expect_identifier()?;
 
+        // There may be generic type parameters.
+        let generic_type_parameters = self.maybe_parse_generic_type_parameters()?;
+
         // Then there must be an equals.
         self.expect(TokenKind::Equals)?;
 
@@ -558,7 +563,7 @@ impl ASTParser {
         let semicolon_span = self.expect(TokenKind::Semicolon)?.span;
 
         Ok(Statement::from(
-            TypeDeclaration::new(name, type_expr, modifiers),
+            TypeDeclaration::new(name, type_expr, modifiers, generic_type_parameters),
             Span::between(type_keyword_span, semicolon_span),
         ))
     }
@@ -679,7 +684,59 @@ impl ASTParser {
 
         // Otherwise, we can attempt to parse a named type.
         let (name, name_span) = self.expect_identifier()?;
-        Ok((TypeExpr::named(name), name_span))
+
+        let generic_type_arguments = self.maybe_parse_generic_type_arguments()?;
+        Ok((TypeExpr::Named { name, generic_type_arguments }, name_span))
+    }
+
+    /// Attempts to parse a set of generic type parameters at the [`ASTParser`]'s current position. It is expected that
+    /// these parameters are surrounded by `<` and `>`.
+    fn maybe_parse_generic_type_parameters(&mut self) -> Result<Vec<GenericTypeParameter>, ASTError> {
+        let mut parameters: Vec<GenericTypeParameter> = vec![];
+
+        if !self.peek_is(TokenKind::LeftAngleBracket) {
+            return Ok(parameters);
+        }
+
+        self.expect(TokenKind::LeftAngleBracket)?;
+
+        while !self.peek_is(TokenKind::RightAngleBracket) {
+            let (generic_name, generic_name_span) = self.expect_identifier()?;
+            parameters.push(GenericTypeParameter::new(generic_name, generic_name_span));
+
+            if !self.peek_is(TokenKind::RightAngleBracket) {
+                self.expect(TokenKind::Comma)?;
+            }
+        }
+
+        self.expect(TokenKind::RightAngleBracket)?;
+
+        Ok(parameters)
+    }
+
+    /// Attempts to parse a set of generic type arguments at the [`ASTParser`]'s current position. It is expected that
+    /// these arguments are surrounded by `<` and `>`.
+    fn maybe_parse_generic_type_arguments(&mut self) -> Result<Vec<GenericTypeArgument>, ASTError> {
+        let mut parameters: Vec<GenericTypeArgument> = vec![];
+
+        if !self.peek_is(TokenKind::LeftAngleBracket) {
+            return Ok(parameters);
+        }
+
+        self.expect(TokenKind::LeftAngleBracket)?;
+
+        while !self.peek_is(TokenKind::RightAngleBracket) {
+            let (r#type, type_span) = self.parse_type_expr()?;
+            parameters.push(GenericTypeArgument::new(r#type, type_span));
+
+            if !self.peek_is(TokenKind::RightAngleBracket) {
+                self.expect(TokenKind::Comma)?;
+            }
+        }
+
+        self.expect(TokenKind::RightAngleBracket)?;
+
+        Ok(parameters)
     }
 
     /// Returns the token at the [ASTParser]'s current position.

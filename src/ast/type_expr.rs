@@ -7,7 +7,13 @@ use crate::{
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeExpr {
     /// A named type, e.g. "i32".
-    Named(String),
+    Named {
+        /// The name of the type.
+        name: String,
+
+        /// The generic arguments passed _to_ the type.
+        generic_type_arguments: Vec<GenericTypeArgument>,
+    },
 
     /// A reference to another type.
     Reference(Box<TypeExpr>),
@@ -21,7 +27,7 @@ pub enum TypeExpr {
 
 impl TypeExpr {
     pub fn named(name: impl Into<String>) -> Self {
-        Self::Named(name.into())
+        Self::Named { name: name.into(), generic_type_arguments: vec![] }
     }
 
     pub fn reference(type_expr: TypeExpr) -> Self {
@@ -48,5 +54,44 @@ impl StructureField {
     /// Creates a new [`StructureField`].
     pub fn new(name: String, type_expr: TypeExpr, span: Span) -> Self {
         Self { name, type_expr, r#type: Type::Unknown, span }
+    }
+}
+
+/// A single generic argument to a generic function or  generic type.
+#[derive(Debug, Clone, PartialEq)]
+pub struct GenericTypeArgument {
+    /// The expression of the argument.
+    pub type_expr: TypeExpr,
+
+    /// The resolved type of the argument.
+    pub r#type: Type,
+
+    /// The span within the source code that the parameter was defined at.
+    pub span: Span,
+}
+
+impl GenericTypeArgument {
+    /// Creates a new [`GenericTypeArgument`].
+    pub fn new(type_expr: TypeExpr, span: Span) -> Self {
+        Self { type_expr, r#type: Type::default(), span }
+    }
+}
+
+/// A single generic parameter to a function or type.
+///
+/// TODO: Constraints
+#[derive(Debug, Clone, PartialEq)]
+pub struct GenericTypeParameter {
+    /// The name of the parameter.
+    pub name: String,
+
+    /// The span within the source code that the parameter was defined at.
+    pub span: Span,
+}
+
+impl GenericTypeParameter {
+    /// Creates a new [`GenericTypeParameter`].
+    pub fn new(name: String, span: Span) -> Self {
+        Self { name, span }
     }
 }

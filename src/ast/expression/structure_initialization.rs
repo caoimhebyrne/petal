@@ -4,7 +4,7 @@ use crate::{
         ExpressionKind,
     },
     core::span::Span,
-    typechecker::context::StructureId,
+    typechecker::r#type::StructureReference,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -13,7 +13,7 @@ pub struct StructureInitialization {
     pub fields: Vec<StructureInitializationField>,
 
     /// The ID of the structure type that is being initialized.
-    pub structure_id: Option<StructureId>,
+    pub structure_reference: Option<StructureReference>,
 }
 
 impl StructureInitialization {
@@ -63,6 +63,6 @@ impl StructureInitializationBuilder {
 
     /// Builds this [`StructureInitializationBuilder`] into a [`StructureInitialization`].
     pub fn build(self) -> StructureInitialization {
-        StructureInitialization { fields: self.fields, structure_id: None }
+        StructureInitialization { fields: self.fields, structure_reference: None }
     }
 }

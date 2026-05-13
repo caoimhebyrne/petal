@@ -231,8 +231,10 @@ fn main_impl(mut args: Args, module_registry: &mut ModuleRegistry) -> Result<(),
 
     let code = CBackend::new(
         checked_program.builtin_types,
+        checked_program.declared_types,
         checked_program.functions,
         checked_program.structures,
+        checked_program.specialized_structures,
         checked_program.synthetic_types,
     )
     .emit_code(&checked_program.modules)?;

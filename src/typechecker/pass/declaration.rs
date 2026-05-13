@@ -16,12 +16,16 @@ use crate::{
     core::span::Span,
     module::ParsedModule,
     typechecker::{
+        TypeResolvingContext,
         Typechecker,
         error::{
             TypecheckerError,
             TypecheckerErrorKind,
         },
-        r#type::Type,
+        r#type::{
+            StructureReference,
+            Type,
+        },
     },
 };
 
@@ -80,8 +84,17 @@ impl<'a> DeclarationPass<'a> {
         let mut structures = mem::take(&mut self.typechecker.context.structures);
 
         for structure in structures.values_mut() {
+            // FIXME: This clone is horrible, but it's required.
+            let declared_type = self.typechecker.context.types[&structure.declared_type_id].clone();
+            let type_resolving_context =
+                TypeResolvingContext { generic_type_parameters: &declared_type.generic_type_parameters };
+
             for field in &mut structure.fields {
-                field.r#type = self.typechecker.resolve_type_from_expr(&field.type_expr, field.span)?;
+                field.r#type = self.typechecker.resolve_type_from_expr(
+                    &mut field.type_expr,
+                    type_resolving_context,
+                    field.span,
+                )?;
             }
         }
 
@@ -98,8 +111,14 @@ impl<'a> DeclarationPass<'a> {
     ) -> Result<(), TypecheckerError> {
         function_declaration.return_type = function_declaration
             .return_type_expr
-            .as_ref()
-            .map(|it| self.typechecker.resolve_type_from_expr(it, span))
+            .as_mut()
+            .map(|it| {
+                self.typechecker.resolve_type_from_expr(
+                    it,
+                    TypeResolvingContext { generic_type_parameters: &vec![] },
+                    span,
+                )
+            })
             .transpose()?
             .unwrap_or(Type::Void);
 
@@ -124,7 +143,11 @@ impl<'a> DeclarationPass<'a> {
         &mut self,
         function_parameter: &mut FunctionParameter,
     ) -> Result<Type, TypecheckerError> {
-        let r#type = self.typechecker.resolve_type_from_expr(&function_parameter.type_expr, function_parameter.span)?;
+        let r#type = self.typechecker.resolve_type_from_expr(
+            &mut function_parameter.type_expr,
+            TypeResolvingContext { generic_type_parameters: &vec![] },
+            function_parameter.span,
+        )?;
         function_parameter.r#type = r#type.clone();
         Ok(r#type)
     }
@@ -135,38 +158,48 @@ impl<'a> DeclarationPass<'a> {
         type_declaration: &mut TypeDeclaration,
         span: Span,
     ) -> Result<(), TypecheckerError> {
-        // TODO: If a type already exists with the same name, then we must not declare another.
-
         // If this is a structure type, then we must assign a structure ID for it.
-        let resolved_type = match &mut type_declaration.type_expr {
+        match &mut type_declaration.type_expr {
             TypeExpr::Structure { fields } => {
-                // All we need to do right now is register the struct. We will do a second pass after all declarations
-                // are run to resolve the types of the structure fields.
-                let structure_id = self.typechecker.context.insert_declared_structure(
+                self.typechecker.context.insert_computed_declared_type(
                     self.current_namespace.clone(),
                     type_declaration.name.clone(),
-                    fields.clone(),
+                    type_declaration.modifiers.clone(),
+                    type_declaration.generic_type_parameters.clone(),
+                    span,
+                    |ctx, declared_type_id| {
+                        // All we need to do right now is register the struct. We will do a second pass after all declarations
+                        // are run to resolve the types of the structure fields.
+                        let structure_id = ctx.insert_declared_structure(declared_type_id, fields.clone(), span);
+
+                        // FIXME: Find a better place for this.
+                        if self.current_namespace == Some("prelude".into()) && type_declaration.name == "CompileTimeStr"
+                        {
+                            ctx.builtin_types.compile_time_str = Some(structure_id);
+                        }
+
+                        Type::Structure(StructureReference::Plain(structure_id))
+                    },
+                )?;
+            }
+
+            expr => {
+                let resolved_type = self.typechecker.resolve_type_from_expr(
+                    expr,
+                    TypeResolvingContext { generic_type_parameters: &type_declaration.generic_type_parameters },
                     span,
                 )?;
 
-                if self.current_namespace == Some("prelude".into()) && type_declaration.name == "CompileTimeStr" {
-                    self.typechecker.context.builtin_types.compile_time_str = Some(structure_id);
-                }
-
-                Type::Structure(structure_id)
+                self.typechecker.context.insert_declared_type(
+                    self.current_namespace.clone(),
+                    type_declaration.name.clone(),
+                    resolved_type,
+                    type_declaration.modifiers.clone(),
+                    type_declaration.generic_type_parameters.clone(),
+                    span,
+                )?;
             }
-
-            expr => self.typechecker.resolve_type_from_expr(expr, span)?,
-        };
-
-        // We have resolved the type, we can insert it into the type declarations.
-        self.typechecker.context.insert_declared_type(
-            self.current_namespace.clone(),
-            type_declaration.name.clone(),
-            resolved_type,
-            type_declaration.modifiers.clone(),
-            span,
-        )?;
+        }
 
         Ok(())
     }

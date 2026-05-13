@@ -33,8 +33,8 @@ Cranelift) compiler backend will be added in the future.
 - [x] Optionals (`type Optional<T> = { is_present: bool, value: T }`)
   - [x] Short-hand via type modifiers, e.g. `?i32`.
   - [x] Smart casting
+- [x] Basic generics
 - [ ] IR
-- [ ] Basic generics
 - [ ] Arrays
 - ...
 - [ ] Website/playground REPL

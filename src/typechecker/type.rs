@@ -1,6 +1,28 @@
 use std::fmt::Display;
 
-use crate::typechecker::context::StructureId;
+use crate::typechecker::context::{
+    SpecializedStructureId,
+    StructureId,
+};
+
+/// The ID corresponding to a user-defined or specialized structure.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum StructureReference {
+    /// A referrence to a user-defined structure.
+    Plain(StructureId),
+
+    /// A reference to a specialized variant of a structure.
+    Specialized(SpecializedStructureId),
+}
+
+impl Display for StructureReference {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Plain(plain) => plain.fmt(f),
+            Self::Specialized(specialized) => specialized.fmt(f),
+        }
+    }
+}
 
 /// A type as defined by the typechecker.
 #[derive(Debug, Clone, PartialEq, Default, Eq, Hash)]
@@ -24,7 +46,10 @@ pub enum Type {
     Reference(Box<Type>),
 
     /// A structure type.
-    Structure(StructureId),
+    Structure(StructureReference),
+
+    /// A generic type that needs to be resolved.
+    GenericType(usize),
 
     /// The type has not been resolved for this element yet.
     #[default]
@@ -41,6 +66,7 @@ impl Display for Type {
             Self::Reference(referenced) => write!(f, "&{referenced}"),
             Self::Optional(wrapped) => write!(f, "?{wrapped}"),
             Self::Structure(id) => write!(f, "<structure {id}>"),
+            Self::GenericType(index) => write!(f, "<generic type @ {index}>"),
             Self::Unknown => write!(f, "<unknown>"),
         }
     }
