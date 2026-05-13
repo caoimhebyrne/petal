@@ -32,7 +32,8 @@ Cranelift) compiler backend will be added in the future.
   - [x] Member function calls
 - [x] Optionals (`type Optional<T> = { is_present: bool, value: T }`)
   - [x] Short-hand via type modifiers, e.g. `?i32`.
-  - [ ] Smart casting
+  - [x] Smart casting
+- [ ] IR
 - [ ] Basic generics
 - [ ] Arrays
 - ...

@@ -11,14 +11,16 @@ func main() -> i32 {
     my_variable = 10;
 
     // To access the value within an optional, you need to either:
-    // - Be in a scope that guarantees that the optional has a value (TODO).
-    // - Assert to the compiler that you acknowledge the risks associated with accessing undefined values.
+    //
+    // a) Be in a scope that guarantees that the optional has a value.
+    //
+    // b) Assert to the compiler that you acknowledge the risks associated with accessing undefined values
+    //    (by using the `!` operator, e.g. `my_variable!`).
+    //
+    // In this case, we are in a block where we already verified that my_variable has some value (via the `if`
+    // statement). The compiler smart-casts `my_variable` (`?i32`) to its inner type, `i32` within this scope.
     if my_variable.has_value() {
-        // The compiler is not yet smart enough to know that our call to `has_value` means that accessing the value
-        // in this scope is safe.
-        //
-        // For now, we can force-unwrap with the `!` operator.
-        return my_variable!;
+        return my_variable;
     }
 
     return 0;

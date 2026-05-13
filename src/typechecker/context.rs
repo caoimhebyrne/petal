@@ -89,6 +89,9 @@ pub(crate) struct Scope {
     /// The variables that have been declared in this scope.
     pub(crate) variables: HashMap<String, Type>,
 
+    /// The smart-casts that have occurred within this scope.
+    pub(crate) smart_casted_variables: HashMap<String, Type>,
+
     /// The parent scope, if this is a child.
     pub(crate) parent: Option<Box<Scope>>,
 
@@ -99,7 +102,12 @@ pub(crate) struct Scope {
 impl Scope {
     /// Creates a new scope which is a child of this scope.
     pub(crate) fn create_child(self, result_type: Type) -> Self {
-        Self { variables: HashMap::default(), parent: Some(Box::new(self)), result_type }
+        Self {
+            variables: HashMap::default(),
+            smart_casted_variables: HashMap::default(),
+            parent: Some(Box::new(self)),
+            result_type,
+        }
     }
 }
 

@@ -8,6 +8,7 @@ use crate::{
             OptionalEmpty,
             OptionalForceUnwrap,
             OptionalHasValue,
+            OptionalUnwrap,
             OptionalWrap,
         },
         structure_initialization::StructureInitialization,
@@ -70,6 +71,7 @@ pub enum ExpressionKind {
     OptionalHasValue(OptionalHasValue),
 
     OptionalForceUnwrap(OptionalForceUnwrap),
+    OptionalUnwrap(OptionalUnwrap),
 
     /// A function call.
     FunctionCall(FunctionCall),

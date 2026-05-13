@@ -830,6 +830,10 @@ mod tests {
                 remove_spans(&mut optional_force_unwrap.optional_value);
             }
 
+            ExpressionKind::OptionalUnwrap(optional_unwrap) => {
+                remove_spans(&mut optional_unwrap.optional_value);
+            }
+
             // These expressions do not have any children.
             ExpressionKind::StringLiteral(_) => {}
             ExpressionKind::BooleanLiteral(_) => {}

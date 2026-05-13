@@ -83,3 +83,25 @@ impl From<OptionalForceUnwrap> for ExpressionKind {
         Self::OptionalForceUnwrap(value)
     }
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct OptionalUnwrap {
+    /// The optional that is being unwrapped.
+    pub optional_value: Box<Expression>,
+
+    /// The type of the inner value.
+    pub inner_type: Type,
+}
+
+impl OptionalUnwrap {
+    /// Creates a new [`OptionalUnwrap`].
+    pub fn new(optional_value: Expression) -> Self {
+        Self { optional_value: optional_value.into(), inner_type: Type::Unknown }
+    }
+}
+
+impl From<OptionalUnwrap> for ExpressionKind {
+    fn from(value: OptionalUnwrap) -> Self {
+        Self::OptionalUnwrap(value)
+    }
+}

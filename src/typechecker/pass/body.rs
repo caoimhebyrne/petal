@@ -22,6 +22,7 @@ use crate::{
                 OptionalEmpty,
                 OptionalForceUnwrap,
                 OptionalHasValue,
+                OptionalUnwrap,
                 OptionalWrap,
             },
             structure_initialization::{
@@ -224,6 +225,19 @@ impl<'a> BodyPass<'a> {
 
         // All of the statements within the block must be valid.
         self.typechecker.context.push_child_scope(self.typechecker.context.scope.result_type.clone());
+
+        // If the condition is a call to `Optional<T>.has_value`, we can assume that the value of the optional is
+        // of its inner type.
+        if let ExpressionKind::OptionalHasValue(optional_has_value) = &r#if.condition.kind
+            && let ExpressionKind::IdentifierReference(identifier) = &optional_has_value.optional_value.kind
+        {
+            self.typechecker
+                .context
+                .scope
+                .smart_casted_variables
+                .insert(identifier.clone(), optional_has_value.inner_type.clone());
+        }
+
         for statement in &mut r#if.block {
             self.visit_statement(statement)?;
         }
@@ -271,7 +285,22 @@ impl<'a> BodyPass<'a> {
                 self.visit_function_call(function_call, expression.span)
             }
 
-            ExpressionKind::IdentifierReference(name) => self.visit_identifier_reference(name, expression.span),
+            ExpressionKind::IdentifierReference(name) => {
+                let variable_type = self.visit_identifier_reference(name, expression.span)?;
+
+                // If the variable is in the smart casts, then we can wrap it in an optional unwrap.
+                if self.typechecker.context.scope.smart_casted_variables.contains_key(name)
+                    && let Type::Optional(inner_type) = variable_type
+                {
+                    let mut optional_unwrap = OptionalUnwrap::new(expression.clone());
+                    optional_unwrap.inner_type = *inner_type.clone();
+
+                    *expression = Expression::new(optional_unwrap.into(), expression.span);
+                    Ok(*inner_type)
+                } else {
+                    Ok(variable_type)
+                }
+            }
 
             ExpressionKind::Reference(inner) => self.visit_reference(inner, expression.span),
 
@@ -297,6 +326,10 @@ impl<'a> BodyPass<'a> {
 
             ExpressionKind::OptionalForceUnwrap(optional_force_unwrap) => {
                 self.visit_optional_force_unwrap(optional_force_unwrap, expression.span)
+            }
+
+            ExpressionKind::OptionalUnwrap(optional_unwrap) => {
+                self.visit_optional_unwrap(optional_unwrap, expression.span)
             }
 
             ExpressionKind::NamespaceQualifier(_) => {
@@ -783,6 +816,24 @@ impl<'a> BodyPass<'a> {
         };
 
         optional_force_unwrap.inner_type = *inner_type.clone();
+        Ok(*inner_type)
+    }
+
+    /// Visits an optional unwrap expression.
+    fn visit_optional_unwrap(
+        &mut self,
+        optional_unwrap: &mut OptionalUnwrap,
+        _span: Span,
+    ) -> Result<Type, TypecheckerError> {
+        let inner_type = match self.visit_expression(&mut optional_unwrap.optional_value, None)? {
+            Type::Optional(inner) => inner,
+            r#type => {
+                return Err(TypecheckerErrorKind::ExpectedOptionalType { got: r#type.clone() }
+                    .at(optional_unwrap.optional_value.span));
+            }
+        };
+
+        optional_unwrap.inner_type = *inner_type.clone();
         Ok(*inner_type)
     }
 

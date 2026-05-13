@@ -12,6 +12,7 @@ use crate::{
             OptionalEmpty,
             OptionalForceUnwrap,
             OptionalHasValue,
+            OptionalUnwrap,
             OptionalWrap,
         },
         structure_initialization::StructureInitialization,
@@ -66,6 +67,10 @@ impl CBackend {
 
             ExpressionKind::OptionalForceUnwrap(optional_force_unwrap) => {
                 self.compile_optional_force_unwrap(optional_force_unwrap, expression.span)
+            }
+
+            ExpressionKind::OptionalUnwrap(optional_unwrap) => {
+                self.compile_optional_unwrap(optional_unwrap, expression.span)
             }
 
             ExpressionKind::NamespaceQualifier(_) => Ok("".into()),
@@ -250,6 +255,15 @@ impl CBackend {
         self.writer.decrease_indent();
         self.writer.append("}");
 
+        Ok(format!("({optional_value}).value"))
+    }
+
+    pub fn compile_optional_unwrap(
+        &mut self,
+        optional_unwrap: &OptionalUnwrap,
+        _span: Span,
+    ) -> Result<String, CBackendError> {
+        let optional_value = self.compile_expression(&optional_unwrap.optional_value)?;
         Ok(format!("({optional_value}).value"))
     }
 }
