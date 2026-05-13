@@ -1,4 +1,5 @@
 use std::{
+    self,
     collections::{
         HashMap,
         HashSet,
@@ -23,12 +24,13 @@ use crate::{
     core::span::Span,
     module::CheckedModule,
     typechecker::{
+        BuiltinTypes,
         context::{
-            BuiltinTypes,
             CheckedFunction,
             DeclaredStructure,
             FunctionId,
             StructureId,
+            SyntheticType,
         },
         r#type::Type,
     },
@@ -41,17 +43,19 @@ mod writer;
 
 /// The C codegen backend.
 pub struct CBackend {
-    /// The structure types that were resolved by the type checker for these modules.
-    structures: HashMap<StructureId, DeclaredStructure>,
+    /// The built-in types that have been recognized during compilation.
+    builtin_types: BuiltinTypes,
 
-    /// The functions that were resolved by the type checker for these modules.
+    /// The functions defined in the source code during compilation.
     functions: HashMap<FunctionId, CheckedFunction>,
 
-    /// The optional types used by the program.
-    optional_types: HashSet<Type>,
+    /// The structures defined in the source code during compilation.
+    structures: HashMap<StructureId, DeclaredStructure>,
 
-    /// The built-in types provided by the program.
-    builtin_types: BuiltinTypes,
+    /// The types that have been synthesised during compilation.
+    ///
+    /// This could include: optional type implementations and generic type implementations.
+    synthetic_types: HashSet<SyntheticType>,
 
     /// The writer to use.
     writer: Writer,
@@ -60,16 +64,16 @@ pub struct CBackend {
 impl CBackend {
     /// Creates a new [`CBackend`].
     pub fn new(
-        structures: HashMap<StructureId, DeclaredStructure>,
-        functions: HashMap<FunctionId, CheckedFunction>,
-        optional_types: HashSet<Type>,
         builtin_types: BuiltinTypes,
+        functions: HashMap<FunctionId, CheckedFunction>,
+        structures: HashMap<StructureId, DeclaredStructure>,
+        synthetic_types: HashSet<SyntheticType>,
     ) -> Self {
-        Self { structures, functions, optional_types, builtin_types, writer: Writer::default() }
+        Self { builtin_types, functions, structures, synthetic_types, writer: Writer::default() }
     }
 
     /// Compiles a [`CheckedModule`] to C code.
-    pub fn emit_code(&mut self, modules: &Vec<CheckedModule>) -> Result<String, CBackendError> {
+    pub fn emit_code(mut self, modules: &Vec<CheckedModule>) -> Result<String, CBackendError> {
         let mut code = String::new();
 
         code.push_str("#include <stdint.h>\n#include <stdbool.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <unistd.h>\n\n");
@@ -99,21 +103,19 @@ impl CBackend {
             code.push('\n');
         }
 
-        for optional_type in &self.optional_types {
-            // FIXME: Temporary
-            code.push_str(&format!(
-                r#"typedef struct {{
-    bool has_value;
-    {} value;
-}} Optional_{};
+        for synthetic_type in &self.synthetic_types {
+            match synthetic_type {
+                SyntheticType::Optional { inner_type } => {
+                    let inner_type_str = self.compile_type(&inner_type, Span::new(modules[0].id, 0, 0))?;
 
-"#,
-                self.compile_type(optional_type, Span::new(modules[0].id, 0, 0))?,
-                optional_type,
-            ));
+                    code.push_str(&format!(
+                        "typedef struct {{ bool has_value; {} value; }} Optional_{};\n\n",
+                        inner_type_str, inner_type
+                    ));
+                }
+            }
         }
 
-        // FIXME: It would be nice to introduce passes like the typechecker, but that's not so easy here.
         for module in modules {
             for statement in &module.ast {
                 if let StatementKind::FunctionDeclaration(function_declaration) = &statement.kind {

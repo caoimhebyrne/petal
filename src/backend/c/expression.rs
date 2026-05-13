@@ -83,13 +83,7 @@ impl CBackend {
     }
 
     /// Compiles a string literal expression into C code.
-    pub fn compile_string_literal(&self, value: &str, span: Span) -> Result<String, CBackendError> {
-        let str_struct_id = self
-            .builtin_types
-            .compile_time_str
-            .as_ref()
-            .ok_or(CBackendErrorKind::MissingBuiltinType("compile_time_str".into()).at(span))?;
-
+    pub fn compile_string_literal(&self, value: &str, _span: Span) -> Result<String, CBackendError> {
         // Sequences like `\n` will be treated as their literal value by the C compiler, as they are not escaped.
         // `value.len()` would return `2`, whereas `decoded_byte_length` would equal `1` in this case.
         let mut string_bytes = value.bytes();
@@ -104,7 +98,7 @@ impl CBackend {
 
         Ok(format!(
             "({}){{ .data = (uint8_t*) \"{}\", .length = {} }}",
-            self.structures[str_struct_id].name, value, decoded_byte_length
+            self.structures[&self.builtin_types.compile_time_str].name, value, decoded_byte_length
         ))
     }
 

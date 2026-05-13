@@ -12,11 +12,12 @@ use crate::{
     },
     typechecker::{
         context::{
-            BuiltinTypes,
             CheckedFunction,
             DeclaredStructure,
             FunctionId,
+            IncompleteBuiltinTypes,
             StructureId,
+            SyntheticType,
             TypecheckerContext,
         },
         error::{
@@ -36,6 +37,42 @@ pub(crate) mod error;
 pub(crate) mod pass;
 pub mod r#type;
 
+/// The result of a typechecker's execution.
+pub struct CheckedProgram {
+    /// The built-in types that have been recognized during compilation.
+    pub builtin_types: BuiltinTypes,
+
+    /// The functions defined in the source code during compilation.
+    pub functions: HashMap<FunctionId, CheckedFunction>,
+
+    /// The modules that have been checked.
+    pub modules: Vec<CheckedModule>,
+
+    /// The structures defined in the source code during compilation.
+    pub structures: HashMap<StructureId, DeclaredStructure>,
+
+    /// The types that have been synthesised during compilation.
+    ///
+    /// This could include: optional type implementations and generic type implementations.
+    pub synthetic_types: HashSet<SyntheticType>,
+}
+
+/// The built-in types resolved during the typechecking process.
+pub struct BuiltinTypes {
+    /// The `str` type.
+    pub compile_time_str: StructureId,
+}
+
+impl BuiltinTypes {
+    fn from(incomplete: IncompleteBuiltinTypes) -> Result<Self, TypecheckerError> {
+        Ok(Self {
+            compile_time_str: incomplete
+                .compile_time_str
+                .ok_or(TypecheckerErrorKind::MissingBuiltinType("compile_time_str".to_string()).without_span())?,
+        })
+    }
+}
+
 /// The typechecker.
 ///
 /// This is responsible for resolving and validating the types within a [`ParsedModule`].
@@ -46,31 +83,21 @@ pub(crate) struct Typechecker {
 
 impl Typechecker {
     /// Checks and resolved any [`Type`]s referenced in the provided [`ParsedModule`].
-    pub fn check(
-        &mut self,
-        modules: Vec<ParsedModule>,
-    ) -> Result<
-        (
-            Vec<CheckedModule>,
-            HashMap<StructureId, DeclaredStructure>,
-            HashMap<FunctionId, CheckedFunction>,
-            HashSet<Type>,
-            BuiltinTypes,
-        ),
-        TypecheckerError,
-    > {
+    pub fn check(mut self, modules: Vec<ParsedModule>) -> Result<CheckedProgram, TypecheckerError> {
         let mut modules = modules;
 
-        DeclarationPass::new(self).run(&mut modules)?;
-        BodyPass::new(self).run(&mut modules)?;
+        DeclarationPass::new(&mut self).run(&mut modules)?;
+        BodyPass::new(&mut self).run(&mut modules)?;
 
-        Ok((
-            modules.into_iter().map(|it| CheckedModule::new(it.id, it.ast)).collect(),
-            self.context.structures.clone(),
-            self.context.functions.clone(),
-            self.context.optional_types.clone(),
-            self.context.builtin_types.clone(),
-        ))
+        let checked_program = CheckedProgram {
+            builtin_types: BuiltinTypes::from(self.context.builtin_types)?,
+            functions: self.context.functions,
+            modules: modules.into_iter().map(|it| CheckedModule::new(it.id, it.ast)).collect(),
+            structures: self.context.structures,
+            synthetic_types: self.context.synthetic_types,
+        };
+
+        Ok(checked_program)
     }
 
     /// Attempts to resolve the provided [`TypeExpr`] into a [`Type`].
@@ -89,7 +116,7 @@ impl Typechecker {
                 let inner = self.resolve_type_from_expr(inner_expr, span)?;
 
                 // FIXME: This is temporary.
-                self.context.optional_types.insert(inner.clone());
+                self.context.insert_synthetic_type(SyntheticType::Optional { inner_type: inner.clone() });
 
                 return Ok(Type::Optional(inner.into()));
             }

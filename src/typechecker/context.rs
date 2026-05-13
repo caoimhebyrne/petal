@@ -56,9 +56,20 @@ impl Display for StructureId {
 
 /// The built-in types that should be discovered from the standard library during compilation.
 #[derive(Default, Clone)]
-pub struct BuiltinTypes {
+pub struct IncompleteBuiltinTypes {
     /// str (string::CompileTimeStr)
     pub compile_time_str: Option<StructureId>,
+}
+
+/// The different kinds of types that can be produced during compilation. They will not directly map to a type in the
+/// source code.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum SyntheticType {
+    /// An optional type.
+    Optional {
+        // The inner value type.
+        inner_type: Type,
+    },
 }
 
 /// The context of a [`Typechecker`].
@@ -76,11 +87,13 @@ pub(crate) struct TypecheckerContext {
     /// The structures that have been declared by the user.
     pub(crate) structures: HashMap<StructureId, DeclaredStructure>,
 
-    /// The optional types used during compilation. This is temporary.
-    pub(crate) optional_types: HashSet<Type>,
+    /// The types that have been synthesised during compilation.
+    ///
+    /// This could include: optional type implementations and generic type implementations.
+    pub(crate) synthetic_types: HashSet<SyntheticType>,
 
     /// The built-in types discovered during compilation.
-    pub(crate) builtin_types: BuiltinTypes,
+    pub(crate) builtin_types: IncompleteBuiltinTypes,
 }
 
 /// A scope holds the variables that have been declared, and is typically created for each block.
@@ -142,6 +155,10 @@ impl TypecheckerContext {
         // TODO: Remove the unwrap.
         self.scope = *self.scope.parent.take().ok_or(TypecheckerErrorKind::ExpectedParentScope.at(span))?;
         Ok(())
+    }
+
+    pub(crate) fn insert_synthetic_type(&mut self, synthetic_type: SyntheticType) {
+        self.synthetic_types.insert(synthetic_type);
     }
 
     /// Attempts to get a [`CheckedFunction`] from this [`Typechecker`] by its name.

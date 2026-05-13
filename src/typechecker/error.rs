@@ -16,7 +16,7 @@ pub(crate) struct TypecheckerError {
     pub kind: TypecheckerErrorKind,
 
     /// The [`Span`] that the error occurred at.
-    pub span: Span,
+    pub span: Option<Span>,
 }
 
 /// The different kinds of [`TypecheckerError`]s that exist.
@@ -56,7 +56,12 @@ pub(crate) enum TypecheckerErrorKind {
 impl TypecheckerErrorKind {
     /// Returns an [TypecheckerError] from this [TypecheckerErrorKind] at the provided [Span].
     pub fn at(self, span: Span) -> TypecheckerError {
-        TypecheckerError { kind: self, span }
+        TypecheckerError { kind: self, span: Some(span) }
+    }
+
+    /// Returns a [TypecheckerError] from this [TypecheckerErrorKind].
+    pub fn without_span(self) -> TypecheckerError {
+        TypecheckerError { kind: self, span: None }
     }
 }
 
@@ -193,7 +198,7 @@ impl Display for TypecheckerErrorKind {
 
 impl Error for TypecheckerError {
     fn span(&self) -> Option<Span> {
-        Some(self.span)
+        self.span
     }
 }
 
