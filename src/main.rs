@@ -148,7 +148,7 @@ fn main_impl(mut args: Args, module_registry: &mut ModuleRegistry) -> Result<(),
 
     info!("Generating code");
 
-    let backend = CBackend::new(declared_structures, declared_functions, optional_types, builtin_types);
+    let mut backend = CBackend::new(declared_structures, declared_functions, optional_types, builtin_types);
     let code = backend.emit_code(&checked_modules)?;
     if args.emit_code {
         println!("{code}");

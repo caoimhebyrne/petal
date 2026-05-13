@@ -28,7 +28,7 @@ use crate::{
 
 impl CBackend {
     /// Compiles an expression into C code.
-    pub fn compile_expression(&self, expression: &Expression) -> Result<String, CBackendError> {
+    pub fn compile_expression(&mut self, expression: &Expression) -> Result<String, CBackendError> {
         match &expression.kind {
             ExpressionKind::FunctionCall(function_call) => self.compile_function_call(function_call, expression.span),
 
@@ -114,24 +114,26 @@ impl CBackend {
     }
 
     /// Compiles a reference expression into C code.
-    fn compile_reference(&self, value: &Expression, _span: Span) -> Result<String, CBackendError> {
+    fn compile_reference(&mut self, value: &Expression, _span: Span) -> Result<String, CBackendError> {
         Ok(format!("&({})", self.compile_expression(value)?))
     }
 
     /// Compiles a dereference expression into C code.
-    fn compile_dereference(&self, value: &Expression, _span: Span) -> Result<String, CBackendError> {
+    fn compile_dereference(&mut self, value: &Expression, _span: Span) -> Result<String, CBackendError> {
         Ok(format!("*({})", self.compile_expression(value)?))
     }
 
     /// Compiles a function call expression into C code.
-    pub fn compile_function_call(&self, function_call: &FunctionCall, span: Span) -> Result<String, CBackendError> {
+    pub fn compile_function_call(&mut self, function_call: &FunctionCall, span: Span) -> Result<String, CBackendError> {
         let function_id =
             function_call.resolved_callee.as_ref().ok_or(CBackendErrorKind::MissingFunctionId.at(span))?;
 
         let function =
             self.functions.get(function_id).ok_or(CBackendErrorKind::MissingFunction(*function_id).at(span))?;
 
-        debug!("Function ID '{function_id}' resolves to function named '{}'", function.name);
+        let function_name = function.name.clone();
+
+        debug!("Function ID '{function_id}' resolves to function named '{}'", function_name);
 
         let arguments = &function_call
             .arguments
@@ -140,12 +142,12 @@ impl CBackend {
             .collect::<Result<Vec<String>, CBackendError>>()?
             .join(", ");
 
-        Ok(format!("{}({arguments})", function.name))
+        Ok(format!("{}({arguments})", function_name))
     }
 
     /// Compiles a binary operation expression into C code.
     pub fn compile_binary_operation(
-        &self,
+        &mut self,
         binary_operation: &BinaryOperation,
         _span: Span,
     ) -> Result<String, CBackendError> {
@@ -166,7 +168,7 @@ impl CBackend {
 
     /// Compiles a structure initialization into C code.
     pub fn compile_structure_initialization(
-        &self,
+        &mut self,
         structure_initialization: &StructureInitialization,
         span: Span,
     ) -> Result<String, CBackendError> {
@@ -176,8 +178,11 @@ impl CBackend {
             structure_initialization.structure_id.ok_or(CBackendErrorKind::MissingStructureId.at(span))?;
 
         // A corresponding type must have been declared already.
-        let structure_type =
-            self.structures.get(&structure_id).ok_or(CBackendErrorKind::MissingStructure(structure_id).at(span))?;
+        let structure_type = self
+            .structures
+            .get(&structure_id)
+            .cloned()
+            .ok_or(CBackendErrorKind::MissingStructure(structure_id).at(span))?;
 
         let fields = structure_initialization
             .fields
@@ -193,25 +198,37 @@ impl CBackend {
     }
 
     /// Compiles a member access expression into C code.
-    pub fn compile_member_access(&self, member_access: &MemberAccess, _span: Span) -> Result<String, CBackendError> {
+    pub fn compile_member_access(
+        &mut self,
+        member_access: &MemberAccess,
+        _span: Span,
+    ) -> Result<String, CBackendError> {
         let target = self.compile_expression(&member_access.target)?;
         Ok(format!("({target}).{}", member_access.name))
     }
 
     /// Compiles an optional wrapping expression into C code.
-    pub fn compile_optional_wrap(&self, optional_wrap: &OptionalWrap, _span: Span) -> Result<String, CBackendError> {
+    pub fn compile_optional_wrap(
+        &mut self,
+        optional_wrap: &OptionalWrap,
+        _span: Span,
+    ) -> Result<String, CBackendError> {
         let inner_value = self.compile_expression(&optional_wrap.inner_value)?;
         Ok(format!("(Optional_{}) {{ .has_value = true, .value = {inner_value} }}", optional_wrap.inner_type))
     }
 
     /// Compiles an optional empty expression into C code.
-    pub fn compile_optional_empty(&self, optional_empty: &OptionalEmpty, _span: Span) -> Result<String, CBackendError> {
+    pub fn compile_optional_empty(
+        &mut self,
+        optional_empty: &OptionalEmpty,
+        _span: Span,
+    ) -> Result<String, CBackendError> {
         Ok(format!("(Optional_{}) {{0}}", optional_empty.inner_type))
     }
 
     /// Compiles an optional has value expression into C code.
     pub fn compile_optional_has_value(
-        &self,
+        &mut self,
         optional_has_value: &OptionalHasValue,
         _span: Span,
     ) -> Result<String, CBackendError> {
@@ -219,14 +236,20 @@ impl CBackend {
     }
 
     pub fn compile_optional_force_unwrap(
-        &self,
+        &mut self,
         optional_force_unwrap: &OptionalForceUnwrap,
         _span: Span,
     ) -> Result<String, CBackendError> {
         let optional_value = self.compile_expression(&optional_force_unwrap.optional_value)?;
-        Ok(format!(
-            "(({}).has_value ? ({}).value : (__ptl_internal_fn_panic(\"Optional of type '{}' had no value\")), ({}).value)",
-            optional_value, optional_value, optional_force_unwrap.inner_type, optional_value,
-        ))
+
+        // FIXME: This should be enforced at a different level. If an unwrap expression is encountered, an if
+        //        statement similar to this should be generated at an AST/IR level.
+        self.writer.append(format!("if (!({optional_value}).has_value) {{"));
+        self.writer.increase_indent();
+        self.writer.append(format!(r#"__ptl_internal_fn_panic("Optional of type '{optional_value}' had no value");"#));
+        self.writer.decrease_indent();
+        self.writer.append("}");
+
+        Ok(format!("({optional_value}).value"))
     }
 }

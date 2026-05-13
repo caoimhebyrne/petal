@@ -22,14 +22,17 @@ use crate::{
 
 impl CBackend {
     /// Compiles a statement into C code.
-    pub fn compile_statement(&self, statement: &Statement) -> Result<String, CBackendError> {
+    pub fn compile_statement(&mut self, statement: &Statement) -> Result<(), CBackendError> {
         match &statement.kind {
             StatementKind::FunctionDeclaration(function_declaration) => {
                 self.compile_function_declaration(function_declaration, statement.span)
             }
 
             StatementKind::FunctionCall(function_call) => {
-                Ok(format!("{};", self.compile_function_call(function_call, statement.span)?))
+                let expression = self.compile_function_call(function_call, statement.span)?;
+                self.writer.append(format!("{expression};",));
+
+                Ok(())
             }
 
             StatementKind::Return(r#return) => self.compile_return(r#return, statement.span),
@@ -48,23 +51,20 @@ impl CBackend {
                 self.compile_namespace_declaration(namespace_declaration, statement.span)
             }
 
-            StatementKind::Import(_) => Ok("".into()),
-            StatementKind::TypeDeclaration(_) => Ok("".into()),
+            StatementKind::TypeDeclaration(_) | StatementKind::Import(_) => Ok(()),
         }
     }
 
     /// Compiles a function declaration into C code.
     pub fn compile_function_declaration(
-        &self,
+        &mut self,
         function_declaration: &FunctionDeclaration,
         span: Span,
-    ) -> Result<String, CBackendError> {
+    ) -> Result<(), CBackendError> {
         if function_declaration.modifiers.contains(&DeclarationModifier::Extern) {
             trace!("Skipping generation of function '{}' as it is marked as external", function_declaration.name);
-            return Ok("".into());
+            return Ok(());
         }
-
-        let mut function = String::new();
 
         let name = function_declaration.name.clone();
 
@@ -81,23 +81,23 @@ impl CBackend {
                 .join(", ")
         };
 
-        function.push_str(&format!("{return_type} {name}({parameters}) {{\n"));
-        function.push_str(&self.compile_block(&function_declaration.body)?);
-        function.push_str("}\n\n");
+        self.writer.append(format!("{return_type} {name}({parameters}) {{"));
+        self.compile_block(&function_declaration.body)?;
+        self.writer.append("}\n");
 
-        Ok(function)
+        Ok(())
     }
 
     /// Compiles a block into C code.
-    fn compile_block(&self, block: &Vec<Statement>) -> Result<String, CBackendError> {
-        let mut string = String::new();
+    fn compile_block(&mut self, block: &Vec<Statement>) -> Result<(), CBackendError> {
+        self.writer.increase_indent();
 
         for statement in block {
-            string.push_str(&self.compile_statement(statement)?);
-            string.push('\n');
+            self.compile_statement(statement)?;
         }
 
-        Ok(string)
+        self.writer.decrease_indent();
+        Ok(())
     }
 
     /// Compiles a function parameter into C code.
@@ -108,67 +108,63 @@ impl CBackend {
     }
 
     /// Compiles a return statement into C code.
-    pub fn compile_return(&self, r#return: &Return, _span: Span) -> Result<String, CBackendError> {
-        let expression = r#return.value.as_ref().map(|it| self.compile_expression(it)).transpose()?;
-
-        let string = match expression {
-            Some(value) => format!("return {};", value),
-            None => "return;".into(),
+    pub fn compile_return(&mut self, r#return: &Return, _span: Span) -> Result<(), CBackendError> {
+        match r#return.value.as_ref().map(|it| self.compile_expression(it)).transpose()? {
+            Some(value) => self.writer.append(format!("return {};", value)),
+            None => self.writer.append("return;"),
         };
 
-        Ok(string)
+        Ok(())
     }
 
     /// Compiles a variable declaration into C code.
     pub fn compile_variable_declaration(
-        &self,
+        &mut self,
         variable_declaration: &VariableDeclaration,
         span: Span,
-    ) -> Result<String, CBackendError> {
+    ) -> Result<(), CBackendError> {
         let name = variable_declaration.name.clone();
         let r#type = self.compile_type(&variable_declaration.r#type, span)?;
+        let value = self.compile_expression(&variable_declaration.value)?;
 
-        let mut declaration = format!("{type} {name} = ");
-        declaration.push_str(&self.compile_expression(&variable_declaration.value)?);
-        declaration.push(';');
-        Ok(declaration)
+        self.writer.append(format!("{type} {name} = {value};"));
+        Ok(())
     }
 
     /// Compiles a variable assignment into C code.
     pub fn compile_variable_assignment(
-        &self,
+        &mut self,
         variable_assignment: &VariableAssignment,
         _span: Span,
-    ) -> Result<String, CBackendError> {
+    ) -> Result<(), CBackendError> {
         let target = self.compile_expression(&variable_assignment.target)?;
         let value = self.compile_expression(&variable_assignment.value)?;
-        Ok(format!("{target} = {value};"))
+
+        self.writer.append(format!("{target} = {value};"));
+        Ok(())
     }
 
     /// Compiles an if statement into C code.
-    pub fn compile_if(&self, r#if: &If, _span: Span) -> Result<String, CBackendError> {
+    pub fn compile_if(&mut self, r#if: &If, _span: Span) -> Result<(), CBackendError> {
         let condition = self.compile_expression(&r#if.condition)?;
-        let mut string = String::new();
 
-        string.push_str(&format!("if ({condition}) {{\n"));
-        string.push_str(&self.compile_block(&r#if.block)?);
-        string.push_str("}\n");
+        self.writer.append(format!("if ({condition}) {{"));
+        self.compile_block(&r#if.block)?;
+        self.writer.append("}");
 
-        Ok(string)
+        Ok(())
     }
 
     /// Compiles a namespace declaration into C code.
     fn compile_namespace_declaration(
-        &self,
+        &mut self,
         namespace_declaration: &NamespaceDeclaration,
         _span: Span,
-    ) -> Result<String, CBackendError> {
-        let mut string = String::new();
-
+    ) -> Result<(), CBackendError> {
         for statement in &namespace_declaration.body {
-            string.push_str(&self.compile_statement(statement)?);
+            self.compile_statement(statement)?;
         }
 
-        Ok(string)
+        Ok(())
     }
 }

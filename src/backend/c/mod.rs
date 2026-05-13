@@ -13,9 +13,12 @@ use std::{
 
 use crate::{
     ast::statement::StatementKind,
-    backend::c::error::{
-        CBackendError,
-        CBackendErrorKind,
+    backend::c::{
+        error::{
+            CBackendError,
+            CBackendErrorKind,
+        },
+        writer::Writer,
     },
     core::span::Span,
     module::CheckedModule,
@@ -34,6 +37,7 @@ use crate::{
 pub mod error;
 pub mod expression;
 pub mod statement;
+mod writer;
 
 /// The C codegen backend.
 pub struct CBackend {
@@ -48,6 +52,9 @@ pub struct CBackend {
 
     /// The built-in types provided by the program.
     builtin_types: BuiltinTypes,
+
+    /// The writer to use.
+    writer: Writer,
 }
 
 impl CBackend {
@@ -58,11 +65,11 @@ impl CBackend {
         optional_types: HashSet<Type>,
         builtin_types: BuiltinTypes,
     ) -> Self {
-        Self { structures, functions, optional_types, builtin_types }
+        Self { structures, functions, optional_types, builtin_types, writer: Writer::default() }
     }
 
     /// Compiles a [`CheckedModule`] to C code.
-    pub fn emit_code(&self, modules: &Vec<CheckedModule>) -> Result<String, CBackendError> {
+    pub fn emit_code(&mut self, modules: &Vec<CheckedModule>) -> Result<String, CBackendError> {
         let mut code = String::new();
 
         code.push_str("#include <stdint.h>\n#include <stdbool.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <unistd.h>\n\n");
@@ -72,6 +79,7 @@ impl CBackend {
     fprintf(stderr, "PANIC: %s\n", msg);
     exit(255);
 }
+
 "#,
         );
 
@@ -94,14 +102,15 @@ impl CBackend {
         for optional_type in &self.optional_types {
             // FIXME: Temporary
             code.push_str(&format!(
-                "typedef struct {{ bool has_value; {} value; }} Optional_{};",
+                r#"typedef struct {{
+    bool has_value;
+    {} value;
+}} Optional_{};
+
+"#,
                 self.compile_type(optional_type, Span::new(modules[0].id, 0, 0))?,
                 optional_type,
             ));
-        }
-
-        if !self.optional_types.is_empty() {
-            code.push('\n');
         }
 
         // FIXME: It would be nice to introduce passes like the typechecker, but that's not so easy here.
@@ -131,10 +140,11 @@ impl CBackend {
 
         for module in modules {
             for statement in &module.ast {
-                code.push_str(&self.compile_statement(statement)?);
+                self.compile_statement(statement)?;
             }
         }
 
+        code.push_str(&self.writer.code);
         Ok(code)
     }
 
