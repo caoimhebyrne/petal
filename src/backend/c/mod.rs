@@ -68,7 +68,11 @@ impl CBackend {
         code.push_str("#include <stdint.h>\n#include <stdbool.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <unistd.h>\n\n");
 
         code.push_str(
-            "_Noreturn static void petal_panic(const char* msg) { fprintf(stderr, \"PANIC: %s\\n\", msg); abort(); }\n\n",
+            r#"_Noreturn static void __ptl_internal_fn_panic(const char* msg) {
+    fprintf(stderr, "PANIC: %s\n", msg);
+    exit(255);
+}
+"#,
         );
 
         debug!("Attempting to generate C code with {} structure(s)", self.structures.len());

@@ -225,7 +225,7 @@ impl CBackend {
     ) -> Result<String, CBackendError> {
         let optional_value = self.compile_expression(&optional_force_unwrap.optional_value)?;
         Ok(format!(
-            "(({}).has_value ? ({}) : (petal_panic(\"Optional of type '{}' had no value\")), ({}).value)",
+            "(({}).has_value ? ({}).value : (__ptl_internal_fn_panic(\"Optional of type '{}' had no value\")), ({}).value)",
             optional_value, optional_value, optional_force_unwrap.inner_type, optional_value,
         ))
     }
