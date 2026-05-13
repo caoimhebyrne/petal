@@ -46,6 +46,7 @@ impl<'a> Lexer<'a> {
                 '(' => Token::new(TokenKind::OpenParen, self.span(1)),
                 ')' => Token::new(TokenKind::CloseParen, self.span(1)),
                 '-' => Token::new(TokenKind::Hyphen, self.span(1)),
+                '<' => Token::new(TokenKind::LeftAngleBracket, self.span(1)),
                 '>' => Token::new(TokenKind::RightAngleBracket, self.span(1)),
                 '{' => Token::new(TokenKind::OpenBrace, self.span(1)),
                 '}' => Token::new(TokenKind::CloseBrace, self.span(1)),

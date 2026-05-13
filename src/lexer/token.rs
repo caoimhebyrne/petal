@@ -41,6 +41,9 @@ pub enum TokenKind {
     /// A hyphen: -
     Hyphen,
 
+    /// A left angle bracket: <
+    LeftAngleBracket,
+
     /// A right angle bracket: >
     RightAngleBracket,
 
