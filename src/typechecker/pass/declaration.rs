@@ -200,6 +200,8 @@ impl<'a> DeclarationPass<'a> {
             }
         }
 
+        self.current_namespace = None;
+
         Ok(())
     }
 }
