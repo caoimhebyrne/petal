@@ -28,6 +28,7 @@ pub enum TypecheckerErrorKind {
     IncompatibleReturnTypes { declared: Type, value: Type },
     FunctionCallArgumentSizeMismatch { name: String, expected: usize, got: usize },
     MissingFunctionCallArgument { function_name: String, parameter_name: String },
+    MissingStructureInitializationField { structure_name: String, field_name: String },
     ExpectedPositionalFunctionCallArgument { parameter_name: String },
     DuplicateFunctionCallArgument(String),
     IncompatibleFunctionCallArgument { parameter_name: String, parameter_type: Type, argument_type: Type },
@@ -157,6 +158,13 @@ impl Display for TypecheckerErrorKind {
 
             Self::VariableDeclarationMissingInitialValue => {
                 write!(f, "A variable declaration for a non-optional type must have an initial value")
+            }
+
+            Self::MissingStructureInitializationField { structure_name, field_name } => {
+                write!(
+                    f,
+                    "The structure type '{structure_name}' has non-optional field '{field_name}' that was not provided in the initializer"
+                )
             }
         }
     }

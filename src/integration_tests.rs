@@ -329,6 +329,23 @@ mod structures {
         );
     }
 
+    // https://github.com/caoimhebyrne/petal/issues/2
+    #[test]
+    fn compiles_struct_initialization_with_out_of_order_fields() {
+        compile_expecting_success(
+            r#"
+            type Foo = struct {
+                bar: bool,
+                baz: u8,
+            };
+
+            func main() {
+                foo: Foo = { .baz = 45, .bar = true };
+            }
+            "#,
+        );
+    }
+
     #[test]
     fn doesnt_compile_with_incomplete_initialization() {
         compile_expecting_error(
@@ -341,7 +358,7 @@ mod structures {
                 foo: Foo = {};
             }
             "#,
-            "Structure initialization had 0 field(s), but structure declaration has 1 field(s)",
+            "The structure type 'Foo' has non-optional field 'bar' that was not provided in the initializer",
         );
     }
 

@@ -629,7 +629,7 @@ impl<'a> BodyPass<'a> {
         // The structure initialization must have as many fields as the non-optional field count of the structure.
         let required_fields =
             structure.fields.iter().filter(|it| !matches!(it.r#type, Type::Optional(_))).collect::<Vec<_>>();
-        if value.fields.len() < required_fields.len() || value.fields.len() > structure.fields.len() {
+        if value.fields.len() > structure.fields.len() {
             return Err(TypecheckerErrorKind::StructureInitializationMissingFields {
                 expected: required_fields.len(),
                 got: value.fields.len(),
@@ -640,7 +640,7 @@ impl<'a> BodyPass<'a> {
         // We will then rewrite the structure initialization to have its fields ordered in declaration order.
         let mut ordered_fields: Vec<StructureInitializationField> = Vec::new();
 
-        for (idx, declaration_field) in structure.fields.iter().enumerate() {
+        for declaration_field in structure.fields {
             // If there is not initialization field, then we can add our own field _if_ the type of the declaration is
             // an optional one.
             let mut initialization_field = match declaration_field.r#type {
@@ -650,8 +650,14 @@ impl<'a> BodyPass<'a> {
                     span,
                 ),
 
-                // TODO: Is this correct? I don't think it is. https://github.com/caoimhebyrne/petal/issues/2
-                _ => value.fields[idx].clone(),
+                // A field must exist in the initializer with the same name.
+                _ => value.fields.iter().find(|it| it.name == declaration_field.name).cloned().ok_or(
+                    TypecheckerErrorKind::MissingStructureInitializationField {
+                        structure_name: structure.declared_name.clone(),
+                        field_name: declaration_field.name.clone(),
+                    }
+                    .at(span),
+                )?,
             };
 
             let value_type = self.visit_expression(&mut initialization_field.value, Some(&declaration_field.r#type))?;
