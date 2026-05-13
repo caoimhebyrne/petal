@@ -17,7 +17,10 @@ use crate::{
     module::ParsedModule,
     typechecker::{
         Typechecker,
-        error::TypecheckerError,
+        error::{
+            TypecheckerError,
+            TypecheckerErrorKind,
+        },
         r#type::Type,
     },
 };
@@ -55,7 +58,12 @@ impl<'a> DeclarationPass<'a> {
                     // We don't have to do anything at this pass for imports.
                     StatementKind::Import(_) => {}
 
-                    _ => panic!("Statement '{:?}' not supported at declaration pass", statement.kind),
+                    _ => {
+                        return Err(TypecheckerErrorKind::StatementNotSupportedAtPass {
+                            pass_name: "declaration".into(),
+                        }
+                        .at(statement.span));
+                    }
                 }
             }
         }
@@ -185,7 +193,10 @@ impl<'a> DeclarationPass<'a> {
                     self.visit_type_declaration(type_declaration, statement.span)?;
                 }
 
-                _ => panic!("Statement '{:?}' not supported at declaration pass", statement.kind),
+                _ => {
+                    return Err(TypecheckerErrorKind::StatementNotSupportedAtPass { pass_name: "declaration".into() }
+                        .at(statement.span));
+                }
             }
         }
 

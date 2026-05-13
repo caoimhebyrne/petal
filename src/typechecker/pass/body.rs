@@ -114,7 +114,7 @@ impl<'a> BodyPass<'a> {
     fn visit_function_declaration(
         &mut self,
         function_declaration: &mut FunctionDeclaration,
-        _span: Span,
+        span: Span,
     ) -> Result<(), TypecheckerError> {
         self.typechecker.context.push_child_scope(function_declaration.return_type.clone());
 
@@ -130,7 +130,7 @@ impl<'a> BodyPass<'a> {
             self.visit_statement(statement)?;
         }
 
-        self.typechecker.context.pop_child_scope();
+        self.typechecker.context.pop_child_scope(span)?;
 
         Ok(())
     }
@@ -214,7 +214,7 @@ impl<'a> BodyPass<'a> {
     }
 
     /// Checks and resolves any [`Type`]s referenced in the provided [`If`].
-    fn visit_if(&mut self, r#if: &mut If, _span: Span) -> Result<(), TypecheckerError> {
+    fn visit_if(&mut self, r#if: &mut If, span: Span) -> Result<(), TypecheckerError> {
         // The type of the condition must be a boolean.
         let condition_type = self.visit_expression(&mut r#if.condition, Some(&Type::Boolean))?;
         if condition_type != Type::Boolean {
@@ -227,7 +227,7 @@ impl<'a> BodyPass<'a> {
         for statement in &mut r#if.block {
             self.visit_statement(statement)?;
         }
-        self.typechecker.context.pop_child_scope();
+        self.typechecker.context.pop_child_scope(span)?;
 
         Ok(())
     }
@@ -299,7 +299,9 @@ impl<'a> BodyPass<'a> {
                 self.visit_optional_force_unwrap(optional_force_unwrap, expression.span)
             }
 
-            ExpressionKind::NamespaceQualifier(_) => todo!(),
+            ExpressionKind::NamespaceQualifier(_) => {
+                return Err(TypecheckerErrorKind::UnexpectedExpression.at(expression.span));
+            }
         }?;
 
         // If the target type is an optional, and the value is not directly an optional, then we should attempt
@@ -309,7 +311,7 @@ impl<'a> BodyPass<'a> {
             //
             // e.g. if the target_type is `&i32`, and the value is a number literal, then this step will coerce
             //      the literal into `i32`.
-            *expression = Expression::new(OptionalWrap::new(expression.clone()).into(), expression.span).into();
+            *expression = Expression::new(OptionalWrap::new(expression.clone()).into(), expression.span);
             return self.visit_expression(expression, type_hint);
         }
 
@@ -381,8 +383,15 @@ impl<'a> BodyPass<'a> {
     }
 
     /// Checks and resolves the type of the provided string literal.
-    fn visit_string_literal(&self, _value: &str, _span: Span) -> Result<Type, TypecheckerError> {
-        Ok(Type::Structure(self.typechecker.context.builtin_types.compile_time_str.unwrap()))
+    fn visit_string_literal(&self, _value: &str, span: Span) -> Result<Type, TypecheckerError> {
+        let structure_id = self
+            .typechecker
+            .context
+            .builtin_types
+            .compile_time_str
+            .ok_or(TypecheckerErrorKind::MissingBuiltinType("compile_time_str".into()).at(span))?;
+
+        Ok(Type::Structure(structure_id))
     }
 
     /// Checks and resolves the type of the provided [`BinaryOperation`].
@@ -433,9 +442,10 @@ impl<'a> BodyPass<'a> {
 
             ExpressionKind::MemberAccess(member_access) => {
                 // The target of the member access expression must be a plain identifier.
-                let member_access_target_name = match &member_access.target.kind {
-                    ExpressionKind::IdentifierReference(name) => name,
-                    _ => panic!(),
+                let ExpressionKind::IdentifierReference(member_access_target_name) = &member_access.target.kind else {
+                    return Err(
+                        TypecheckerErrorKind::UnexpectedMemberAccessTarget(member_access.target.kind.clone()).at(span)
+                    );
                 };
 
                 let (owner_type_name, namespace) =
@@ -466,7 +476,7 @@ impl<'a> BodyPass<'a> {
                 FunctionLookupRequest {
                     owner_type_name: Some(owner_type_name),
                     name: member_access.name.clone(),
-                    namespace: namespace,
+                    namespace,
                 }
             }
 
@@ -748,7 +758,10 @@ impl<'a> BodyPass<'a> {
     ) -> Result<Type, TypecheckerError> {
         let inner_type = match self.visit_expression(&mut optional_has_value.optional_value, None)? {
             Type::Optional(inner) => inner,
-            _ => panic!("Expected an optional type"),
+            r#type => {
+                return Err(TypecheckerErrorKind::ExpectedOptionalType { got: r#type.clone() }
+                    .at(optional_has_value.optional_value.span));
+            }
         };
 
         optional_has_value.inner_type = *inner_type.clone();
@@ -763,7 +776,10 @@ impl<'a> BodyPass<'a> {
     ) -> Result<Type, TypecheckerError> {
         let inner_type = match self.visit_expression(&mut optional_force_unwrap.optional_value, None)? {
             Type::Optional(inner) => inner,
-            _ => panic!("Expected an optional type"),
+            r#type => {
+                return Err(TypecheckerErrorKind::ExpectedOptionalType { got: r#type.clone() }
+                    .at(optional_force_unwrap.optional_value.span));
+            }
         };
 
         optional_force_unwrap.inner_type = *inner_type.clone();

@@ -40,7 +40,7 @@ pub mod r#type;
 ///
 /// This is responsible for resolving and validating the types within a [`ParsedModule`].
 #[derive(Default)]
-pub struct Typechecker {
+pub(crate) struct Typechecker {
     context: TypecheckerContext,
 }
 
@@ -94,7 +94,9 @@ impl Typechecker {
                 return Ok(Type::Optional(inner.into()));
             }
 
-            TypeExpr::Structure { .. } => panic!(),
+            TypeExpr::Structure { .. } => {
+                return Err(TypecheckerErrorKind::UnableToResolveType("Unexpected raw structure type?".into()).at(span));
+            }
         };
 
         let r#type = match name.as_str() {

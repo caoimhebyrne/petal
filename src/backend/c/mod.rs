@@ -91,7 +91,7 @@ impl CBackend {
             // FIXME: Temporary
             code.push_str(&format!(
                 "typedef struct {{ bool has_value; {} value; }} Optional_{};",
-                self.compile_type(optional_type, Span::new(modules.first().unwrap().id, 0, 0))?,
+                self.compile_type(optional_type, Span::new(modules[0].id, 0, 0))?,
                 optional_type,
             ));
         }
@@ -150,7 +150,10 @@ impl CBackend {
         child
             .stdin
             .as_mut()
-            .unwrap()
+            .ok_or(
+                CBackendErrorKind::CompilerInvocationFailed("Failed to open stdin to compiler process".into())
+                    .without_span(),
+            )?
             .write_all(code.as_bytes())
             .map_err(|e| CBackendErrorKind::CompilerInvocationFailed(e.to_string()).without_span())?;
 
@@ -177,7 +180,11 @@ impl CBackend {
             Type::Void => "void".into(),
             Type::Reference(referenced) => format!("{}*", self.compile_type(referenced, span)?),
             Type::Structure(structure_id) => {
-                let structure = self.structures.get(structure_id).unwrap();
+                let structure = self
+                    .structures
+                    .get(structure_id)
+                    .ok_or(CBackendErrorKind::MissingStructure(*structure_id).at(span))?;
+
                 structure.name.clone()
             }
             Type::Optional(inner) => format!("Optional_{}", inner),

@@ -31,6 +31,7 @@ pub enum CBackendErrorKind {
     MissingStructure(StructureId),
     MissingFunctionId,
     MissingFunction(FunctionId),
+    MissingBuiltinType(String),
     UnsupportedType(Type),
     UnknownType,
     CompilerInvocationFailed(String),
@@ -79,6 +80,10 @@ impl Display for CBackendErrorKind {
             Self::UnsupportedType(r#type) => write!(f, "Unsupported type: '{:?}'", r#type),
 
             Self::UnknownType => write!(f, "Unresolved/unknown type"),
+
+            Self::MissingBuiltinType(name) => {
+                write!(f, "Expected built-in type '{name}' to be resolved, but it was not present")
+            }
 
             Self::CompilerInvocationFailed(message) => {
                 write!(f, "Failed to invoke C compiler: '{message}'")

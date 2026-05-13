@@ -78,8 +78,12 @@ impl CBackend {
     }
 
     /// Compiles a string literal expression into C code.
-    pub fn compile_string_literal(&self, value: &str, _span: Span) -> Result<String, CBackendError> {
-        let str_struct = &self.structures[&self.builtin_types.compile_time_str.unwrap()];
+    pub fn compile_string_literal(&self, value: &str, span: Span) -> Result<String, CBackendError> {
+        let str_struct_id = self
+            .builtin_types
+            .compile_time_str
+            .as_ref()
+            .ok_or(CBackendErrorKind::MissingBuiltinType("compile_time_str".into()).at(span))?;
 
         // Sequences like `\n` will be treated as their literal value by the C compiler, as they are not escaped.
         // `value.len()` would return `2`, whereas `decoded_byte_length` would equal `1` in this case.
@@ -93,7 +97,10 @@ impl CBackend {
             decoded_byte_length += 1;
         }
 
-        Ok(format!("({}){{ .data = (uint8_t*) \"{}\", .length = {} }}", str_struct.name, value, decoded_byte_length))
+        Ok(format!(
+            "({}){{ .data = (uint8_t*) \"{}\", .length = {} }}",
+            self.structures[str_struct_id].name, value, decoded_byte_length
+        ))
     }
 
     /// Compiles a boolean literal expression into C code.

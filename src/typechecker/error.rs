@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use crate::{
+    ast::expression::ExpressionKind,
     core::{
         error::Error,
         span::Span,
@@ -10,7 +11,7 @@ use crate::{
 
 /// An AST error.
 #[derive(Debug, PartialEq)]
-pub struct TypecheckerError {
+pub(crate) struct TypecheckerError {
     /// The kind of typechecker error that this is.
     pub kind: TypecheckerErrorKind,
 
@@ -20,7 +21,7 @@ pub struct TypecheckerError {
 
 /// The different kinds of [`TypecheckerError`]s that exist.
 #[derive(Debug, PartialEq)]
-pub enum TypecheckerErrorKind {
+pub(crate) enum TypecheckerErrorKind {
     AmbiguousFunctionCall(String),
     BinaryOperationNotSupported(Type),
     IncompatibleBinaryOperationTypes { left: Type, right: Type },
@@ -30,11 +31,9 @@ pub enum TypecheckerErrorKind {
     MissingFunctionCallArgument { function_name: String, parameter_name: String },
     MissingStructureInitializationField { structure_name: String, field_name: String },
     ExpectedPositionalFunctionCallArgument { parameter_name: String },
-    DuplicateFunctionCallArgument(String),
     IncompatibleFunctionCallArgument { parameter_name: String, parameter_type: Type, argument_type: Type },
     IncompatibleTypes { expected: Type, got: Type },
     InvalidDereference(Type),
-    DuplicateFunctionDeclaration(String),
     DuplicateVariableDeclaration(String),
     UndeclaredFunction(String),
     UndeclaredVariable(String),
@@ -45,19 +44,19 @@ pub enum TypecheckerErrorKind {
     TypeDoesNotHaveMember { r#type: Type, name: String },
     UnsupportedFunctionCallee,
     VariableDeclarationMissingInitialValue,
+    UnableToResolveType(String),
+    UnexpectedMemberAccessTarget(ExpressionKind),
+    ExpectedOptionalType { got: Type },
+    StatementNotSupportedAtPass { pass_name: String },
+    UnexpectedExpression,
+    MissingBuiltinType(String),
+    ExpectedParentScope,
 }
 
 impl TypecheckerErrorKind {
     /// Returns an [TypecheckerError] from this [TypecheckerErrorKind] at the provided [Span].
     pub fn at(self, span: Span) -> TypecheckerError {
         TypecheckerError { kind: self, span }
-    }
-}
-
-impl TypecheckerError {
-    /// Creates a new [`TypecheckerError`].
-    pub fn new(kind: TypecheckerErrorKind, span: Span) -> Self {
-        TypecheckerError { kind, span }
     }
 }
 
@@ -90,10 +89,6 @@ impl Display for TypecheckerErrorKind {
 
             Self::UndeclaredVariable(name) => write!(f, "Variable '{name}' has not been declared yet"),
 
-            Self::DuplicateFunctionCallArgument(name) => {
-                write!(f, "Argument '{name}' has more than one value in this function call, this is not allowed")
-            }
-
             Self::FunctionCallArgumentSizeMismatch { name, expected, got } => write!(
                 f,
                 "Function '{name}' has {expected} parameter(s), but {got} argument(s) passed in function call",
@@ -120,8 +115,6 @@ impl Display for TypecheckerErrorKind {
                 "Parameter '{parameter_name}' has type '{}', but got argument of type '{}'",
                 parameter_type, argument_type
             ),
-
-            Self::DuplicateFunctionDeclaration(name) => write!(f, "A function named '{name}' already exists"),
 
             Self::DuplicateVariableDeclaration(name) => {
                 write!(f, "A variable named '{name}' already exists in this scope")
@@ -165,6 +158,34 @@ impl Display for TypecheckerErrorKind {
                     f,
                     "The structure type '{structure_name}' has non-optional field '{field_name}' that was not provided in the initializer"
                 )
+            }
+
+            Self::UnableToResolveType(message) => {
+                write!(f, "Unable to resolve type: '{message}'")
+            }
+
+            Self::UnexpectedMemberAccessTarget(kind) => {
+                write!(f, "Unexpected member access target expression: '{kind:?}'")
+            }
+
+            Self::ExpectedOptionalType { got } => {
+                write!(f, "Expected an optional type, but got type '{got}'")
+            }
+
+            Self::StatementNotSupportedAtPass { pass_name } => {
+                write!(f, "This statement is not supported at the {pass_name} pass")
+            }
+
+            Self::UnexpectedExpression => {
+                write!(f, "Don't know how to typecheck this expression")
+            }
+
+            Self::MissingBuiltinType(name) => {
+                write!(f, "Expected built-in type '{name}' to be resolved, but it is not available yet")
+            }
+
+            Self::ExpectedParentScope => {
+                write!(f, "Expected the current scope to have a parent scope, but none was present?")
             }
         }
     }

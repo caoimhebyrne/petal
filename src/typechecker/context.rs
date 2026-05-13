@@ -130,9 +130,10 @@ impl TypecheckerContext {
     }
 
     /// Takes the parent of the current scope, and makes it the current scope.
-    pub fn pop_child_scope(&mut self) {
+    pub fn pop_child_scope(&mut self, span: Span) -> Result<(), TypecheckerError> {
         // TODO: Remove the unwrap.
-        self.scope = *self.scope.parent.take().unwrap();
+        self.scope = *self.scope.parent.take().ok_or(TypecheckerErrorKind::ExpectedParentScope.at(span))?;
+        Ok(())
     }
 
     /// Attempts to get a [`CheckedFunction`] from this [`Typechecker`] by its name.
