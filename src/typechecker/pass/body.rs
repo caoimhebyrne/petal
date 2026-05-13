@@ -149,7 +149,7 @@ impl<'a> BodyPass<'a> {
         // The type of the variable must be resolved.
         let variable_type = self.typechecker.resolve_type_from_expr(
             &mut variable_declaration.type_expr,
-            TypeResolvingContext { generic_type_parameters: &vec![] },
+            TypeResolvingContext { generic_type_parameters: &vec![], implicit_this_type: None },
             span,
         )?;
 

@@ -96,6 +96,9 @@ impl BuiltinTypes {
 pub(crate) struct TypeResolvingContext<'a> {
     /// The generic type arguments that are available in this context.
     pub generic_type_parameters: &'a Vec<GenericTypeParameter>,
+
+    /// The type for the implicit 'This' type.
+    pub implicit_this_type: Option<&'a String>,
 }
 
 /// The typechecker.
@@ -146,6 +149,10 @@ impl Typechecker {
                     // If we come across any generic types, then we can fill them in as `GenericType`, they will be
                     // replaced with their specialised types later.
                     Ok(Type::GenericType(index))
+                } else if let Some(this_type_name) = context.implicit_this_type
+                    && name == "This"
+                {
+                    self.resolve_type_by_name(this_type_name, span)
                 } else {
                     self.resolve_type_by_name(name, span)
                 }
@@ -218,7 +225,10 @@ impl Typechecker {
             // We can then resolve the generic type to its argument type.
             let argument_type = self.resolve_type_from_expr(
                 &mut generic_type_arguments[generic_type_index].type_expr,
-                TypeResolvingContext { generic_type_parameters: &declared_type.generic_type_parameters },
+                TypeResolvingContext {
+                    generic_type_parameters: &declared_type.generic_type_parameters,
+                    implicit_this_type: None,
+                },
                 span,
             )?;
 

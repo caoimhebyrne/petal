@@ -115,6 +115,44 @@ mod functions {
     }
 
     #[test]
+    fn compiles_member_function() {
+        compile_expecting_success(
+            r#"
+            type Foo = struct {
+                value: i32,
+            };
+
+            func Foo.bar(this: &Foo) {
+            }
+
+            func baz() {
+                foo: Foo = { .value = 5 };
+                foo.bar();
+            }
+        "#,
+        );
+    }
+
+    #[test]
+    fn compiles_member_function_with_this_type() {
+        compile_expecting_success(
+            r#"
+            type Foo = struct {
+                value: i32,
+            };
+
+            func Foo.bar(this: &This) {
+            }
+
+            func baz() {
+                foo: Foo = { .value = 5 };
+                foo.bar();
+            }
+        "#,
+        );
+    }
+
+    #[test]
     fn doesnt_compile_with_named_parameters_and_positional_args() {
         compile_expecting_error(
             r#"

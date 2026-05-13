@@ -86,8 +86,11 @@ impl<'a> DeclarationPass<'a> {
         for structure in structures.values_mut() {
             // FIXME: This clone is horrible, but it's required.
             let declared_type = self.typechecker.context.types[&structure.declared_type_id].clone();
-            let type_resolving_context =
-                TypeResolvingContext { generic_type_parameters: &declared_type.generic_type_parameters };
+
+            let type_resolving_context = TypeResolvingContext {
+                generic_type_parameters: &declared_type.generic_type_parameters,
+                implicit_this_type: None,
+            };
 
             for field in &mut structure.fields {
                 field.r#type = self.typechecker.resolve_type_from_expr(
@@ -115,7 +118,7 @@ impl<'a> DeclarationPass<'a> {
             .map(|it| {
                 self.typechecker.resolve_type_from_expr(
                     it,
-                    TypeResolvingContext { generic_type_parameters: &vec![] },
+                    TypeResolvingContext { generic_type_parameters: &vec![], implicit_this_type: None },
                     span,
                 )
             })
@@ -123,7 +126,7 @@ impl<'a> DeclarationPass<'a> {
             .unwrap_or(Type::Void);
 
         for parameter in &mut function_declaration.parameters {
-            self.check_function_parameter(parameter)?;
+            self.check_function_parameter(function_declaration.owner_type_name.clone(), parameter)?;
         }
 
         let function_id = self.typechecker.context.insert_checked_function(
@@ -141,11 +144,12 @@ impl<'a> DeclarationPass<'a> {
     /// Checks and resolves any [`Type`]s referenced in the provided [`FunctionParameter`].
     fn check_function_parameter(
         &mut self,
+        owner_type_name: Option<String>,
         function_parameter: &mut FunctionParameter,
     ) -> Result<Type, TypecheckerError> {
         let r#type = self.typechecker.resolve_type_from_expr(
             &mut function_parameter.type_expr,
-            TypeResolvingContext { generic_type_parameters: &vec![] },
+            TypeResolvingContext { generic_type_parameters: &vec![], implicit_this_type: owner_type_name.as_ref() },
             function_parameter.span,
         )?;
         function_parameter.r#type = r#type.clone();
@@ -186,7 +190,10 @@ impl<'a> DeclarationPass<'a> {
             expr => {
                 let resolved_type = self.typechecker.resolve_type_from_expr(
                     expr,
-                    TypeResolvingContext { generic_type_parameters: &type_declaration.generic_type_parameters },
+                    TypeResolvingContext {
+                        generic_type_parameters: &type_declaration.generic_type_parameters,
+                        implicit_this_type: None,
+                    },
                     span,
                 )?;
 

@@ -13,8 +13,9 @@ func Point.origin() -> Point {
 // Member functions have no other special rules, they can take references and have named parameters too!
 //
 // For functions that operate on an existing value of the type, the convention is to have the first parameter be named
-// `this`. The type must be declared explicitly.
-func Point.translate(this: &Point, ~x: i32, ~y: i32) {
+// `this`. The type must be declared explicitly, but `This` can be used as a replacement for the fully qualified type
+// expression.
+func Point.translate(this: &This, ~x: i32, ~y: i32) {
     // Note: `foo->bar` is syntax sugar for `(@foo).bar`.
     this->x = this->x + x;
     this->y = this->y + y;
