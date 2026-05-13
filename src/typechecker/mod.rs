@@ -102,8 +102,8 @@ impl Typechecker {
 
     /// Attempts to resolve the provided [`TypeExpr`] into a [`Type`].
     fn resolve_type_from_expr(&mut self, expr: &TypeExpr, span: Span) -> Result<Type, TypecheckerError> {
-        let name = match expr {
-            TypeExpr::Named(value) => value,
+        match expr {
+            TypeExpr::Named { name, .. } => self.resolve_type_by_name(name, span),
 
             TypeExpr::Reference(referenced_expr) => {
                 // This is referencing another type, we can construct the [`Type`] by resolving the referenced type.
@@ -124,9 +124,11 @@ impl Typechecker {
             TypeExpr::Structure { .. } => {
                 return Err(TypecheckerErrorKind::UnableToResolveType("Unexpected raw structure type?".into()).at(span));
             }
-        };
+        }
+    }
 
-        let r#type = match name.as_str() {
+    fn resolve_type_by_name(&self, name: &str, span: Span) -> Result<Type, TypecheckerError> {
+        let r#type = match name {
             "i8" => Type::SignedInteger(8),
             "i16" => Type::SignedInteger(16),
             "i32" => Type::SignedInteger(32),
@@ -140,17 +142,16 @@ impl Typechecker {
             "bool" => Type::Boolean,
             "void" => Type::Void,
 
-            "str" => {
-                // `string::CompileTimeStr` should resolve to this.
-                self.resolve_type_from_expr(&TypeExpr::named("CompileTimeStr"), span)?
-            }
+            // `prelude::CompileTimeStr` should resolve to this.
+            // TODO: Namespaced types
+            "str" => self.resolve_type_by_name("CompileTimeStr", span)?,
 
             // The built in types do not match, we can try to check for any user-defined types.
             _ => self
                 .context
                 .get_declared_type_by_name(name, span)
                 .map(|it| it.r#type.clone())
-                .ok_or(TypecheckerErrorKind::UnknownType(name.clone()).at(span))?,
+                .ok_or(TypecheckerErrorKind::UnknownType(name.to_string()).at(span))?,
         };
 
         Ok(r#type)
