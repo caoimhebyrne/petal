@@ -58,7 +58,7 @@ impl StructureField {
 }
 
 /// A single generic argument to a generic function or  generic type.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct GenericTypeArgument {
     /// The expression of the argument.
     pub type_expr: TypeExpr,
@@ -74,6 +74,12 @@ impl GenericTypeArgument {
     /// Creates a new [`GenericTypeArgument`].
     pub fn new(type_expr: TypeExpr, span: Span) -> Self {
         Self { type_expr, r#type: Type::default(), span }
+    }
+}
+
+impl PartialEq for GenericTypeArgument {
+    fn eq(&self, other: &Self) -> bool {
+        self.type_expr == other.type_expr && self.r#type == other.r#type
     }
 }
 
