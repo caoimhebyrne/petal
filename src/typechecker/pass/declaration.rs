@@ -1,5 +1,3 @@
-use std::mem;
-
 use crate::{
     ast::{
         statement::{
@@ -72,36 +70,6 @@ impl<'a> DeclarationPass<'a> {
             }
         }
 
-        self.resolve_structure_field_types()?;
-
-        Ok(())
-    }
-
-    /// Attempts to resolve the types of all fields in the [`DeclaredStructure`]s registered in the [`Typechecker`].
-    fn resolve_structure_field_types(&mut self) -> Result<(), TypecheckerError> {
-        // We cannot just iterate over `&mut self.typechecker.context.structures`. We must take ownership of it first,
-        // and then set it back once we are finished.
-        let mut structures = mem::take(&mut self.typechecker.context.structures);
-
-        for structure in structures.values_mut() {
-            // FIXME: This clone is horrible, but it's required.
-            let declared_type = self.typechecker.context.types[&structure.declared_type_id].clone();
-
-            let type_resolving_context = TypeResolvingContext {
-                generic_type_parameters: &declared_type.generic_type_parameters,
-                implicit_this_type: None,
-            };
-
-            for field in &mut structure.fields {
-                field.r#type = self.typechecker.resolve_type_from_expr(
-                    &mut field.type_expr,
-                    type_resolving_context,
-                    field.span,
-                )?;
-            }
-        }
-
-        self.typechecker.context.structures = structures;
         Ok(())
     }
 
@@ -164,6 +132,21 @@ impl<'a> DeclarationPass<'a> {
         // If this is a structure type, then we must assign a structure ID for it.
         match &mut type_declaration.type_expr {
             TypeExpr::Structure { fields } => {
+                // FIXME: Doing this early means that the order which structures are declared in matters. This is
+                //        the case regardless, since the codegen does not do any sorting either.
+                let type_resolving_context = TypeResolvingContext {
+                    generic_type_parameters: &type_declaration.generic_type_parameters,
+                    implicit_this_type: None,
+                };
+
+                for field in &mut *fields {
+                    field.r#type = self.typechecker.resolve_type_from_expr(
+                        &mut field.type_expr,
+                        type_resolving_context,
+                        field.span,
+                    )?;
+                }
+
                 self.typechecker.context.insert_computed_declared_type(
                     self.current_namespace.clone(),
                     type_declaration.name.clone(),
