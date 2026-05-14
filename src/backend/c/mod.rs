@@ -247,7 +247,8 @@ impl CBackend {
             Type::Boolean => "bool".into(),
             Type::Void => "void".into(),
             Type::Reference(referenced) => format!("{}*", self.compile_type(referenced, span)?),
-            Type::Optional(_) | Type::Structure(_) => self.identifier_friendly_name(r#type, span)?,
+            Type::Optional(inner) => format!("Optional_{}", self.identifier_friendly_name(inner, span)?),
+            Type::Structure(_) => self.identifier_friendly_name(r#type, span)?,
             Type::GenericType(_) | Type::Unknown => return Err(CBackendErrorKind::UnknownType.at(span)),
         };
 
