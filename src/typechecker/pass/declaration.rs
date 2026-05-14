@@ -135,8 +135,7 @@ impl<'a> DeclarationPass<'a> {
             span,
         )?;
 
-        // Finally, we need to modify the name of the function that we are generating.
-        function_declaration.name = self.typechecker.context.get_checked_function_by_id(function_id).name.clone();
+        function_declaration.function_id = Some(function_id);
 
         Ok(())
     }

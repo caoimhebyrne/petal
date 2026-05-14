@@ -14,7 +14,10 @@ use std::{
 
 use crate::{
     ast::{
-        statement::StatementKind,
+        statement::{
+            StatementKind,
+            function_declaration::DeclarationModifier,
+        },
         type_expr::GenericTypeArgument,
     },
     backend::c::{
@@ -164,7 +167,11 @@ impl CBackend {
         for module in modules {
             for statement in &module.ast {
                 if let StatementKind::FunctionDeclaration(function_declaration) = &statement.kind {
-                    let name = function_declaration.name.clone();
+                    let function_id = function_declaration
+                        .function_id
+                        .ok_or(CBackendErrorKind::MissingFunctionId.at(statement.span))?;
+
+                    let name = self.function_name(&function_id)?;
                     let return_type = self.compile_type(&function_declaration.return_type, statement.span)?;
 
                     let parameters: String = if function_declaration.parameters.is_empty() {
@@ -268,6 +275,32 @@ impl CBackend {
         Ok(name)
     }
 
+    /// Generates a name for the provided [`FunctionId`].
+    fn function_name(&self, function_id: &FunctionId) -> Result<String, CBackendError> {
+        let checked_function = &self.functions[function_id];
+
+        // If the function is external, then we must not mangle its name.
+        if checked_function.modifiers.contains(&DeclarationModifier::Extern)
+            || (checked_function.namespace.is_none() && checked_function.name == "main")
+        {
+            return Ok(checked_function.name.clone());
+        }
+
+        let mut name = format!(
+            "ptl_mod_{}_{}_fn_{}",
+            checked_function.module_id,
+            checked_function.namespace.clone().unwrap_or_else(|| "root".to_string()),
+            checked_function.name,
+        );
+
+        for parameter in &checked_function.parameters {
+            name.push('_');
+            name.push_str(&self.identifier_friendly_name(&parameter.r#type, parameter.span)?);
+        }
+
+        Ok(name)
+    }
+
     /// Returns a name for the provided structure reference type.
     fn get_name_for_structure_reference(
         &self,
@@ -292,11 +325,11 @@ impl CBackend {
     fn identifier_friendly_name(&self, r#type: &Type, span: Span) -> Result<String, CBackendError> {
         let name = match r#type {
             Type::Boolean => "bool".to_string(),
-            Type::Optional(inner) => format!("Optional_{}", self.identifier_friendly_name(inner, span)?),
-            Type::Reference(inner) => format!("Reference_{}", self.identifier_friendly_name(inner, span)?),
-            Type::SignedInteger(size) => format!("int{size}"),
+            Type::Optional(inner) => format!("{}opt", self.identifier_friendly_name(inner, span)?),
+            Type::Reference(inner) => format!("{}ref", self.identifier_friendly_name(inner, span)?),
+            Type::SignedInteger(size) => format!("i{size}"),
             Type::Structure(structure_reference) => self.get_name_for_structure_reference(structure_reference)?,
-            Type::UnsignedInteger(size) => format!("uint{size}"),
+            Type::UnsignedInteger(size) => format!("u{size}"),
             Type::Void => format!("void"),
             Type::GenericType(_) | Type::Unknown => return Err(CBackendErrorKind::UnknownType.at(span)),
         };

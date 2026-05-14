@@ -7,7 +7,10 @@ use crate::{
         type_expr::TypeExpr,
     },
     core::span::Span,
-    typechecker::r#type::Type,
+    typechecker::{
+        context::FunctionId,
+        r#type::Type,
+    },
 };
 
 /// Modifiers for a function declaration.
@@ -24,6 +27,9 @@ pub enum DeclarationModifier {
 /// A function declaration within the AST.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDeclaration {
+    /// The ID of the function.
+    pub function_id: Option<FunctionId>,
+
     /// The name of the type that owns the function.
     pub owner_type_name: Option<String>,
 
@@ -57,7 +63,16 @@ impl FunctionDeclaration {
         return_type: Type,
         modifiers: Vec<DeclarationModifier>,
     ) -> Self {
-        FunctionDeclaration { owner_type_name, name, body, parameters, return_type_expr, return_type, modifiers }
+        FunctionDeclaration {
+            function_id: None,
+            owner_type_name,
+            name,
+            body,
+            parameters,
+            return_type_expr,
+            return_type,
+            modifiers,
+        }
     }
 
     /// Creates a new [`FunctionDeclarationBuilder`].

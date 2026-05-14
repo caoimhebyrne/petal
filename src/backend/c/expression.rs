@@ -25,6 +25,7 @@ use crate::{
         },
     },
     core::span::Span,
+    typechecker::r#type::StructureReference,
 };
 
 impl CBackend {
@@ -96,10 +97,10 @@ impl CBackend {
             decoded_byte_length += 1;
         }
 
-        let structure = &self.structures[&self.builtin_types.compile_time_str];
-        let declared_type = &self.declared_types[&structure.declared_type_id];
+        let structure_name =
+            self.get_name_for_structure_reference(&StructureReference::Plain(self.builtin_types.compile_time_str))?;
 
-        Ok(format!("({}){{ .data = (uint8_t*) \"{}\", .length = {} }}", declared_type.name, value, decoded_byte_length))
+        Ok(format!("({}){{ .data = (uint8_t*) \"{}\", .length = {} }}", structure_name, value, decoded_byte_length))
     }
 
     /// Compiles a boolean literal expression into C code.
@@ -127,10 +128,7 @@ impl CBackend {
         let function_id =
             function_call.resolved_callee.as_ref().ok_or(CBackendErrorKind::MissingFunctionId.at(span))?;
 
-        let function =
-            self.functions.get(function_id).ok_or(CBackendErrorKind::MissingFunction(*function_id).at(span))?;
-
-        let function_name = function.name.clone();
+        let function_name = self.function_name(function_id)?;
 
         debug!("Function ID '{function_id}' resolves to function named '{}'", function_name);
 
@@ -141,7 +139,7 @@ impl CBackend {
             .collect::<Result<Vec<String>, CBackendError>>()?
             .join(", ");
 
-        Ok(format!("{}({arguments})", function_name))
+        Ok(format!("{function_name}({arguments})"))
     }
 
     /// Compiles a binary operation expression into C code.
@@ -187,7 +185,7 @@ impl CBackend {
             .join(", ");
 
         let structure_name = self.get_name_for_structure_reference(&structure_reference)?;
-        Ok(format!("({}) {{ {fields} }}", structure_name))
+        Ok(format!("({structure_name}) {{ {fields} }}"))
     }
 
     /// Compiles a member access expression into C code.

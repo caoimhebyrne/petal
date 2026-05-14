@@ -15,7 +15,10 @@ use crate::{
     },
     backend::c::{
         CBackend,
-        error::CBackendError,
+        error::{
+            CBackendError,
+            CBackendErrorKind,
+        },
     },
     core::span::Span,
 };
@@ -66,8 +69,8 @@ impl CBackend {
             return Ok(());
         }
 
-        let name = function_declaration.name.clone();
-
+        let function_id = function_declaration.function_id.ok_or(CBackendErrorKind::MissingFunctionId.at(span))?;
+        let name = self.function_name(&function_id)?;
         let return_type = self.compile_type(&function_declaration.return_type, span)?;
 
         let parameters: String = if function_declaration.parameters.is_empty() {

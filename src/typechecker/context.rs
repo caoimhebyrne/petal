@@ -187,7 +187,7 @@ impl TypecheckerContext {
             .functions
             .values()
             .filter(|it| {
-                it.declared_name == request.name
+                it.name == request.name
                     && it.owner_type_name == request.owner_type_name
                     && it.namespace == request.namespace
             })
@@ -210,11 +210,6 @@ impl TypecheckerContext {
             .first()
             .copied()
             .ok_or(TypecheckerErrorKind::UndeclaredFunction(request.name.clone()).at(span))
-    }
-
-    /// Attempts to get a [`CheckedFunction`] from this [`Typechecker`] by its its [`FunctionId`].
-    pub(crate) fn get_checked_function_by_id(&self, id: FunctionId) -> &CheckedFunction {
-        self.functions.get(&id).expect("functions.get should always succeed")
     }
 
     /// Attempts to get a variable from this [`Typechecker`] by its name.
@@ -367,11 +362,8 @@ pub struct CheckedFunction {
     /// The name of the type which owns the function.
     pub owner_type_name: Option<String>,
 
-    /// The name of the function.
-    pub name: String,
-
     /// The declared name of the function.
-    pub declared_name: String,
+    pub name: String,
 
     /// The parameters to the function.
     pub parameters: Vec<FunctionParameter>,
@@ -390,33 +382,12 @@ impl CheckedFunction {
         function_id: FunctionId,
         namespace: Option<String>,
         owner_type_name: Option<String>,
-        declared_name: String,
+        name: String,
         parameters: Vec<FunctionParameter>,
         return_type: Type,
         modifiers: Vec<DeclarationModifier>,
     ) -> Self {
-        // FIXME: HORRIBLE
-        let namespace_name = namespace.clone().unwrap_or(String::from("root"));
-
-        let name = if declared_name == "main" || modifiers.contains(&DeclarationModifier::Extern) {
-            declared_name.clone()
-        } else if let Some(owner_type_name) = &owner_type_name {
-            format!("ptl_mod_{module_id}_{namespace_name}_fn_{owner_type_name}_{declared_name}")
-        } else {
-            format!("ptl_mod_{module_id}_{namespace_name}_fn_{declared_name}")
-        };
-
-        Self {
-            module_id,
-            function_id,
-            namespace,
-            owner_type_name,
-            name,
-            declared_name,
-            parameters,
-            return_type,
-            modifiers,
-        }
+        Self { module_id, function_id, namespace, owner_type_name, name, parameters, return_type, modifiers }
     }
 
     /// Returns whether this [`CheckedFunction`] is visible to the provided module ID.
