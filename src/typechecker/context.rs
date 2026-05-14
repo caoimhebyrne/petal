@@ -100,6 +100,9 @@ pub(crate) struct TypecheckerContext {
     /// The specialized structures that have been generated during compilation.
     pub(crate) specialized_structures: HashMap<SpecializedStructureId, SpecializedStructure>,
 
+    /// The specialized functions that have been generated during compilation.
+    pub(crate) specialized_functions: HashMap<SpecializedFunctionId, SpecializedFunction>,
+
     /// The types that have been synthesised during compilation.
     ///
     /// This could include: optional type implementations and generic type implementations.
@@ -235,6 +238,7 @@ impl TypecheckerContext {
                 function_declaration.owner_type_name.clone(),
                 function_declaration.name.clone(),
                 function_declaration.parameters.clone(),
+                function_declaration.generic_type_parameters.clone(),
                 function_declaration.return_type.clone(),
                 function_declaration.modifiers.clone(),
             ),
@@ -345,6 +349,37 @@ impl TypecheckerContext {
 
         id
     }
+
+    /// Creates a [`SpecializedFunction`] from a [`FunctionId`] which maps to a generic function declaration.
+    pub(crate) fn insert_specialized_function(
+        &mut self,
+        generic_function_id: FunctionId,
+        generic_type_arguments: Vec<GenericTypeArgument>,
+        parameters: Vec<FunctionParameter>,
+        return_type: Type,
+    ) -> SpecializedFunctionId {
+        // If a specialized structure already exists with the same type ID and arguments, then we can return it.
+        if let Some((id, _)) = self.specialized_functions.iter().find(|(_, it)| {
+            it.generic_function_id == generic_function_id
+                && it.generic_type_arguments == generic_type_arguments
+                && it.parameters == parameters
+                && it.return_type == return_type
+        }) {
+            trace!(
+                "A specialized function ({}) already exists for generic function declaration {}",
+                id, generic_function_id
+            );
+
+            return *id;
+        }
+
+        let id = SpecializedFunctionId(self.specialized_functions.len());
+
+        self.specialized_functions
+            .insert(id, SpecializedFunction { generic_function_id, generic_type_arguments, parameters, return_type });
+
+        id
+    }
 }
 
 /// A function which has been verified by the typechecker.
@@ -368,6 +403,9 @@ pub struct CheckedFunction {
     /// The parameters to the function.
     pub parameters: Vec<FunctionParameter>,
 
+    /// The generic type parameters of this function.
+    pub generic_type_parameters: Vec<GenericTypeParameter>,
+
     /// The return type of the function.
     pub return_type: Type,
 
@@ -384,10 +422,21 @@ impl CheckedFunction {
         owner_type_name: Option<String>,
         name: String,
         parameters: Vec<FunctionParameter>,
+        generic_type_parameters: Vec<GenericTypeParameter>,
         return_type: Type,
         modifiers: Vec<DeclarationModifier>,
     ) -> Self {
-        Self { module_id, function_id, namespace, owner_type_name, name, parameters, return_type, modifiers }
+        Self {
+            module_id,
+            function_id,
+            namespace,
+            owner_type_name,
+            name,
+            parameters,
+            generic_type_parameters,
+            return_type,
+            modifiers,
+        }
     }
 
     /// Returns whether this [`CheckedFunction`] is visible to the provided module ID.
@@ -475,6 +524,33 @@ pub struct SpecializedStructure {
 }
 
 impl Display for SpecializedStructureId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+/// The identiifer for a [`SpecializedFunction`].
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub struct SpecializedFunctionId(usize);
+
+/// A function which has been specialized due to it having generic types.
+#[derive(Debug, Clone)]
+pub struct SpecializedFunction {
+    /// The ID of the non-specialized variant of this function.
+    /// This can be used to get the function's module ID, name, modifiers, namespace, etc.
+    pub generic_function_id: FunctionId,
+
+    /// The generic type arguments applied to this specialization.
+    pub generic_type_arguments: Vec<GenericTypeArgument>,
+
+    /// The specialized parameters of this function.
+    pub parameters: Vec<FunctionParameter>,
+
+    /// The specialzied return type of this function.
+    pub return_type: Type,
+}
+
+impl Display for SpecializedFunctionId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }

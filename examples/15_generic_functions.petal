@@ -1,0 +1,17 @@
+// Generic type parameters are not exclusive to types, they can also be used on functions.
+// The same monomorphization process that is applied to types is applied here.
+func <T> magic_function(~value: T) -> T {
+    return value;
+}
+
+func main() -> i32 {
+    // Generic type arguments cannot be inferred yet, they must be explicitly provided.
+    //
+    // In this case, the compiler will generate a specialization of `magic_function` where `T` is `i32`, for example:
+    // ```
+    // func magic_function_i32(~value: i32) -> i32 {
+    //     return value;
+    // }
+    // ```
+    return magic_function<i32>(value: 42);
+}

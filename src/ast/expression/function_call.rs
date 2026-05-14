@@ -5,29 +5,28 @@ use crate::{
             ExpressionKind,
         },
         statement::StatementKind,
+        type_expr::GenericTypeArgument,
     },
     core::span::Span,
-    typechecker::context::FunctionId,
+    typechecker::r#type::FunctionReference,
 };
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionCall {
-    /// The resolved ID for the calee of this call.
-    pub resolved_callee: Option<FunctionId>,
+    /// The resolved reference for the calee of this call.
+    pub resolved_callee: Option<FunctionReference>,
 
     /// The expression providing the function to call.
     pub callee: Box<Expression>,
 
     /// The arguments being passed to the function.
     pub arguments: Vec<FunctionCallArgument>,
+
+    /// The generic type arguments being passed to the function.
+    pub generic_type_arguments: Vec<GenericTypeArgument>,
 }
 
 impl FunctionCall {
-    /// Creates a new [`FunctionCall`].
-    pub fn new(callee: Expression, arguments: Vec<FunctionCallArgument>) -> Self {
-        Self { resolved_callee: None, callee: callee.into(), arguments }
-    }
-
     /// Creates a new [`FunctionCallBuilder`].
     pub fn builder(function_path: Expression) -> FunctionCallBuilder {
         FunctionCallBuilder::new(function_path)
@@ -66,12 +65,15 @@ pub struct FunctionCallBuilder {
 
     /// The arguments being passed to the function
     arguments: Vec<FunctionCallArgument>,
+
+    /// The generic type arguments being passed to the function.
+    generic_type_arguments: Vec<GenericTypeArgument>,
 }
 
 impl FunctionCallBuilder {
     /// Creates a new [`FunctionCall`].
     pub fn new(callee: Expression) -> Self {
-        Self { callee, arguments: vec![] }
+        Self { callee, arguments: vec![], generic_type_arguments: vec![] }
     }
 
     /// Adds an argument to this function call.
@@ -80,8 +82,19 @@ impl FunctionCallBuilder {
         self
     }
 
+    /// Sets the generic type arguments of this function call.
+    pub fn generic_type_arguments(mut self, generic_type_arguments: Vec<GenericTypeArgument>) -> Self {
+        self.generic_type_arguments = generic_type_arguments;
+        self
+    }
+
     /// Builds this [`FunctionCallBuilder`] into a [`FunctionCall`].
     pub fn build(self) -> FunctionCall {
-        FunctionCall::new(self.callee, self.arguments)
+        FunctionCall {
+            resolved_callee: None,
+            callee: self.callee.into(),
+            arguments: self.arguments,
+            generic_type_arguments: self.generic_type_arguments,
+        }
     }
 }

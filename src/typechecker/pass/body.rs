@@ -43,6 +43,7 @@ use crate::{
             variable_assignment::VariableAssignment,
             variable_declaration::VariableDeclaration,
         },
+        type_expr::GenericTypeArgument,
     },
     core::span::Span,
     module::ParsedModule,
@@ -55,6 +56,7 @@ use crate::{
             TypecheckerErrorKind,
         },
         r#type::{
+            FunctionReference,
             StructureReference,
             Type,
         },
@@ -526,10 +528,10 @@ impl<'a> BodyPass<'a> {
         };
 
         // FIXME: I don't like the clone here.
-        let checked_function =
-            self.typechecker.context.get_checked_function(&function_lookup_request, span).cloned()?;
+        let function_reference =
+            self.compute_function_reference(&function_lookup_request, &mut function_call.generic_type_arguments, span)?;
 
-        function_call.resolved_callee = Some(checked_function.function_id);
+        function_call.resolved_callee = Some(function_reference);
 
         // If the function call is being done on an instance of the receiver type, then we must insert it as the first
         // parameter to the function (`this`).
@@ -547,12 +549,15 @@ impl<'a> BodyPass<'a> {
             function_call.arguments.insert(0, FunctionCallArgument { name: None, value: reference_target, span });
         }
 
+        let (function_parameters, function_return_type) =
+            self.typechecker.get_function_parameters_and_return_type(&function_reference);
+
         // The first check is easy, we just need to ensure that a sufficient number of arguments were passed in the
         // function call.
-        if function_call.arguments.len() != checked_function.parameters.len() {
+        if function_call.arguments.len() != function_parameters.len() {
             return Err(TypecheckerErrorKind::FunctionCallArgumentSizeMismatch {
                 name: function_lookup_request.name.clone(),
-                expected: checked_function.parameters.len(),
+                expected: function_parameters.len(),
                 got: function_call.arguments.len(),
             }
             .at(span));
@@ -576,7 +581,7 @@ impl<'a> BodyPass<'a> {
         let mut ordered_arguments: Vec<FunctionCallArgument> = Vec::new();
 
         // Process the positional arguments. Each positional argument must have a matching parameter.
-        for (idx, parameter) in checked_function.parameters.iter().filter(|it| !it.is_named).enumerate() {
+        for (idx, parameter) in function_parameters.iter().filter(|it| !it.is_named).enumerate() {
             // A corresponding argument must exist, we checked the length of the `Vec`s above.
             let argument = &mut function_call.arguments[idx];
             if argument.name.is_some() {
@@ -594,7 +599,7 @@ impl<'a> BodyPass<'a> {
         }
 
         // Process the named arguments.
-        for parameter in checked_function.parameters.iter().filter(|it| it.is_named) {
+        for parameter in function_parameters.iter().filter(|it| it.is_named) {
             let argument = function_call
                 .arguments
                 .iter_mut()
@@ -614,7 +619,76 @@ impl<'a> BodyPass<'a> {
         function_call.arguments = ordered_arguments;
 
         // All arguments have been type checked. The result of this function call is the return type of the function.
-        Ok(checked_function.return_type)
+        Ok(function_return_type)
+    }
+
+    /// Attempts to get a reference to a function from a [`FunctionLookupRequest`].
+    ///
+    /// If the [`FunctionLookupRequest`] yields a generic (non-specialized) function, a specialized variant of it will
+    /// be generated for the appropriate types.
+    fn compute_function_reference(
+        &mut self,
+        request: &FunctionLookupRequest,
+        generic_type_arguments: &mut Vec<GenericTypeArgument>,
+        span: Span,
+    ) -> Result<FunctionReference, TypecheckerError> {
+        // If a non-generic function matches the lookup request, then we can just return its ID.
+        let function = self.typechecker.context.get_checked_function(request, span)?.clone();
+        if function.generic_type_parameters.is_empty() {
+            return Ok(FunctionReference::Plain(function.function_id));
+        }
+
+        // The number of generic parameters on the function must equal the number of generic arguments passed.
+        if function.generic_type_parameters.len() != generic_type_arguments.len() {
+            return Err(TypecheckerErrorKind::GenericArgumentSizeMismatch {
+                type_name: function.name.clone(),
+                parameters: function.generic_type_parameters.len(),
+                arguments: generic_type_arguments.len(),
+            }
+            .at(span));
+        }
+
+        // The function itself should already be checked, but we should iterate over its parameters and return type
+        // again to see if we can resolve any types.
+        let type_resolving_context = TypeResolvingContext {
+            generic_type_parameters: &function.generic_type_parameters,
+            implicit_this_type: None,
+        };
+
+        let mut specialized_return_type = function.return_type;
+        if let Type::GenericType(index) = specialized_return_type {
+            // We know that there is a generic type that needs to be solved, so we must do that.
+            specialized_return_type = self.typechecker.resolve_type_from_expr(
+                &mut generic_type_arguments[index].type_expr,
+                type_resolving_context,
+                span,
+            )?;
+        }
+
+        let mut specialized_parameters = function.parameters;
+
+        for parameter in &mut specialized_parameters {
+            // If any of the parameters have a generic type, we can also attempt to resolve it.
+            let Type::GenericType(index) = parameter.r#type else {
+                continue;
+            };
+
+            // We can then resolve the generic type to its argument type.
+            parameter.r#type = self.typechecker.resolve_type_from_expr(
+                &mut generic_type_arguments[index].type_expr,
+                type_resolving_context,
+                span,
+            )?;
+        }
+
+        let specialized_function_id = self.typechecker.context.insert_specialized_function(
+            function.function_id,
+            generic_type_arguments.clone(),
+            specialized_parameters,
+            specialized_return_type,
+        );
+
+        Ok(FunctionReference::Specialized(specialized_function_id))
     }
 
     /// Checks the type of a [`FunctionArgument`] against its matching [`FunctionParameter`].

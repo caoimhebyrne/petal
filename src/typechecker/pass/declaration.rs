@@ -80,21 +80,20 @@ impl<'a> DeclarationPass<'a> {
         function_declaration: &mut FunctionDeclaration,
         span: Span,
     ) -> Result<(), TypecheckerError> {
+        let type_resolving_context = TypeResolvingContext {
+            generic_type_parameters: &function_declaration.generic_type_parameters,
+            implicit_this_type: function_declaration.owner_type_name.as_ref(),
+        };
+
         function_declaration.return_type = function_declaration
             .return_type_expr
             .as_mut()
-            .map(|it| {
-                self.typechecker.resolve_type_from_expr(
-                    it,
-                    TypeResolvingContext { generic_type_parameters: &vec![], implicit_this_type: None },
-                    span,
-                )
-            })
+            .map(|it| self.typechecker.resolve_type_from_expr(it, type_resolving_context, span))
             .transpose()?
             .unwrap_or(Type::Void);
 
         for parameter in &mut function_declaration.parameters {
-            self.check_function_parameter(function_declaration.owner_type_name.clone(), parameter)?;
+            self.check_function_parameter(parameter, type_resolving_context)?;
         }
 
         let function_id = self.typechecker.context.insert_checked_function(
@@ -111,12 +110,12 @@ impl<'a> DeclarationPass<'a> {
     /// Checks and resolves any [`Type`]s referenced in the provided [`FunctionParameter`].
     fn check_function_parameter(
         &mut self,
-        owner_type_name: Option<String>,
         function_parameter: &mut FunctionParameter,
+        type_resolving_context: TypeResolvingContext,
     ) -> Result<Type, TypecheckerError> {
         let r#type = self.typechecker.resolve_type_from_expr(
             &mut function_parameter.type_expr,
-            TypeResolvingContext { generic_type_parameters: &vec![], implicit_this_type: owner_type_name.as_ref() },
+            type_resolving_context,
             function_parameter.span,
         )?;
         function_parameter.r#type = r#type.clone();

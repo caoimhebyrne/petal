@@ -4,11 +4,14 @@ use std::collections::{
 };
 
 use crate::{
-    ast::type_expr::{
-        GenericTypeArgument,
-        GenericTypeParameter,
-        StructureField,
-        TypeExpr,
+    ast::{
+        statement::function_declaration::FunctionParameter,
+        type_expr::{
+            GenericTypeArgument,
+            GenericTypeParameter,
+            StructureField,
+            TypeExpr,
+        },
     },
     core::span::Span,
     module::{
@@ -23,6 +26,8 @@ use crate::{
             DeclaredTypeId,
             FunctionId,
             IncompleteBuiltinTypes,
+            SpecializedFunction,
+            SpecializedFunctionId,
             SpecializedStructure,
             SpecializedStructureId,
             StructureId,
@@ -38,6 +43,7 @@ use crate::{
             declaration::DeclarationPass,
         },
         r#type::{
+            FunctionReference,
             StructureReference,
             Type,
         },
@@ -65,6 +71,9 @@ pub struct CheckedProgram {
 
     /// The structures defined in the source code during compilation.
     pub structures: HashMap<StructureId, DeclaredStructure>,
+
+    /// The specialized functions defined in the source code during compilation.
+    pub specialized_functions: HashMap<SpecializedFunctionId, SpecializedFunction>,
 
     /// The specialized structures defined in the source code during compilation.
     pub specialized_structures: HashMap<SpecializedStructureId, SpecializedStructure>,
@@ -123,6 +132,7 @@ impl Typechecker {
             functions: self.context.functions,
             modules: modules.into_iter().map(|it| CheckedModule::new(it.id, it.ast)).collect(),
             structures: self.context.structures,
+            specialized_functions: self.context.specialized_functions,
             specialized_structures: self.context.specialized_structures,
             synthetic_types: self.context.synthetic_types,
         };
@@ -294,6 +304,20 @@ impl Typechecker {
             StructureReference::Plain(plain_id) => &self.context.structures[plain_id].fields,
             StructureReference::Specialized(specialized_id) => {
                 &self.context.specialized_structures[specialized_id].fields
+            }
+        }
+    }
+
+    /// Attempts to get a the parameters and return type of a function from a [`FunctionReference`].
+    fn get_function_parameters_and_return_type(&self, reference: &FunctionReference) -> (Vec<FunctionParameter>, Type) {
+        match reference {
+            FunctionReference::Plain(plain_id) => {
+                let function = &self.context.functions[plain_id];
+                (function.parameters.clone(), function.return_type.clone())
+            }
+            FunctionReference::Specialized(specialized_id) => {
+                let function = &self.context.specialized_functions[specialized_id];
+                (function.parameters.clone(), function.return_type.clone())
             }
         }
     }

@@ -4,7 +4,10 @@ use crate::{
             Statement,
             StatementKind,
         },
-        type_expr::TypeExpr,
+        type_expr::{
+            GenericTypeParameter,
+            TypeExpr,
+        },
     },
     core::span::Span,
     typechecker::{
@@ -42,6 +45,9 @@ pub struct FunctionDeclaration {
     /// The parameters of the function.
     pub parameters: Vec<FunctionParameter>,
 
+    /// The generic type parameters of the function.
+    pub generic_type_parameters: Vec<GenericTypeParameter>,
+
     /// The declared return type of the function.
     pub return_type_expr: Option<TypeExpr>,
 
@@ -53,28 +59,6 @@ pub struct FunctionDeclaration {
 }
 
 impl FunctionDeclaration {
-    /// Creates a new [`FunctionDeclaration`].
-    pub fn new(
-        owner_type_name: Option<String>,
-        name: String,
-        body: Vec<Statement>,
-        parameters: Vec<FunctionParameter>,
-        return_type_expr: Option<TypeExpr>,
-        return_type: Type,
-        modifiers: Vec<DeclarationModifier>,
-    ) -> Self {
-        FunctionDeclaration {
-            function_id: None,
-            owner_type_name,
-            name,
-            body,
-            parameters,
-            return_type_expr,
-            return_type,
-            modifiers,
-        }
-    }
-
     /// Creates a new [`FunctionDeclarationBuilder`].
     pub fn builder(name: impl Into<String>) -> FunctionDeclarationBuilder {
         FunctionDeclarationBuilder::new(name)
@@ -103,6 +87,9 @@ pub struct FunctionDeclarationBuilder {
     /// The parameters of the function.
     parameters: Vec<FunctionParameter>,
 
+    /// The generic type parameters of the function.
+    generic_type_parameters: Vec<GenericTypeParameter>,
+
     /// The declared return type of the function.
     return_type_expr: Option<TypeExpr>,
 
@@ -121,6 +108,7 @@ impl FunctionDeclarationBuilder {
             name: name.into(),
             body: vec![],
             parameters: vec![],
+            generic_type_parameters: vec![],
             return_type_expr: None,
             return_type: Type::Unknown,
             modifiers: Vec::new(),
@@ -165,21 +153,29 @@ impl FunctionDeclarationBuilder {
         self
     }
 
+    /// Sets the generic type parameters of this function.
+    pub fn generic_type_parameters(mut self, generic_type_parameters: Vec<GenericTypeParameter>) -> Self {
+        self.generic_type_parameters = generic_type_parameters;
+        self
+    }
+
     /// Builds this [`FunctionDeclarationBuilder`] into a [`FunctionDeclaration`].
     pub fn build(self) -> FunctionDeclaration {
-        FunctionDeclaration::new(
-            self.owner_type_name,
-            self.name,
-            self.body,
-            self.parameters,
-            self.return_type_expr,
-            self.return_type,
-            self.modifiers,
-        )
+        FunctionDeclaration {
+            function_id: None,
+            owner_type_name: self.owner_type_name,
+            name: self.name,
+            body: self.body,
+            parameters: self.parameters,
+            generic_type_parameters: self.generic_type_parameters,
+            return_type_expr: self.return_type_expr,
+            return_type: self.return_type,
+            modifiers: self.modifiers,
+        }
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct FunctionParameter {
     /// The name of the parameter.
     pub name: String,
@@ -201,5 +197,14 @@ impl FunctionParameter {
     /// Creates a new [`FunctionParameter`].
     pub fn new(name: impl Into<String>, type_expr: TypeExpr, r#type: Type, is_named: bool, span: Span) -> Self {
         Self { name: name.into(), type_expr, r#type, is_named, span }
+    }
+}
+
+impl PartialEq for FunctionParameter {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.type_expr == other.type_expr
+            && self.r#type == other.r#type
+            && self.is_named == other.is_named
     }
 }

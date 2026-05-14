@@ -1,6 +1,8 @@
 use std::fmt::Display;
 
 use crate::typechecker::context::{
+    FunctionId,
+    SpecializedFunctionId,
     SpecializedStructureId,
     StructureId,
 };
@@ -16,6 +18,25 @@ pub enum StructureReference {
 }
 
 impl Display for StructureReference {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Plain(plain) => plain.fmt(f),
+            Self::Specialized(specialized) => specialized.fmt(f),
+        }
+    }
+}
+
+/// The ID corresponding to a user-defined or specialized function.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum FunctionReference {
+    /// A reference to a user-defined function.
+    Plain(FunctionId),
+
+    /// A reference to a specialized variant of a function.
+    Specialized(SpecializedFunctionId),
+}
+
+impl Display for FunctionReference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Plain(plain) => plain.fmt(f),

@@ -34,7 +34,8 @@ Cranelift) compiler backend will be added in the future.
   - [x] Short-hand via type modifiers, e.g. `?i32`.
   - [x] Smart casting
 - [x] Basic generics
-  - [ ] Generic functions
+  - [x] Generic functions
+  - [ ] Generic type argument inference
 - [ ] IR
 - [ ] Arrays
 - ...

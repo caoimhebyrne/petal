@@ -37,12 +37,15 @@ use crate::{
             DeclaredType,
             DeclaredTypeId,
             FunctionId,
+            SpecializedFunction,
+            SpecializedFunctionId,
             SpecializedStructure,
             SpecializedStructureId,
             StructureId,
             SyntheticType,
         },
         r#type::{
+            FunctionReference,
             StructureReference,
             Type,
         },
@@ -68,6 +71,9 @@ pub struct CBackend {
     /// The structures defined in the source code during compilation.
     structures: HashMap<StructureId, DeclaredStructure>,
 
+    /// The specialized functions defined in the source code during compilation.
+    specialized_functions: HashMap<SpecializedFunctionId, SpecializedFunction>,
+
     /// The specialized structures defined in the source code during compilation.
     specialized_structures: HashMap<SpecializedStructureId, SpecializedStructure>,
 
@@ -87,6 +93,7 @@ impl CBackend {
         declared_types: HashMap<DeclaredTypeId, DeclaredType>,
         functions: HashMap<FunctionId, CheckedFunction>,
         structures: HashMap<StructureId, DeclaredStructure>,
+        specialized_functions: HashMap<SpecializedFunctionId, SpecializedFunction>,
         specialized_structures: HashMap<SpecializedStructureId, SpecializedStructure>,
         synthetic_types: HashSet<SyntheticType>,
     ) -> Self {
@@ -95,6 +102,7 @@ impl CBackend {
             declared_types,
             functions,
             structures,
+            specialized_functions,
             specialized_structures,
             synthetic_types,
             writer: Writer::default(),
@@ -164,14 +172,40 @@ impl CBackend {
             }
         }
 
+        for (specialized_function_id, specialized_function) in &self.specialized_functions {
+            let name = self.function_name(&FunctionReference::Specialized(*specialized_function_id))?;
+            let return_type = self.compile_type(&specialized_function.return_type, Span::new(modules[0].id, 0, 0))?;
+
+            let parameters: String = if specialized_function.parameters.is_empty() {
+                "void".into()
+            } else {
+                specialized_function
+                    .parameters
+                    .iter()
+                    .map(|it| self.compile_function_parameter(it))
+                    .collect::<Result<Vec<String>, CBackendError>>()?
+                    .join(", ")
+            };
+
+            code.push_str(&format!("{return_type} {name}({parameters});\n"));
+        }
+
         for module in modules {
             for statement in &module.ast {
                 if let StatementKind::FunctionDeclaration(function_declaration) = &statement.kind {
+                    if !function_declaration.generic_type_parameters.is_empty() {
+                        trace!(
+                            "Not generating forward-declaration for function '{}' as it is generic, a specialization should cover it",
+                            function_declaration.name
+                        );
+                        continue;
+                    }
+
                     let function_id = function_declaration
                         .function_id
                         .ok_or(CBackendErrorKind::MissingFunctionId.at(statement.span))?;
 
-                    let name = self.function_name(&function_id)?;
+                    let name = self.function_name(&FunctionReference::Plain(function_id))?;
                     let return_type = self.compile_type(&function_declaration.return_type, statement.span)?;
 
                     let parameters: String = if function_declaration.parameters.is_empty() {
@@ -249,7 +283,7 @@ impl CBackend {
             Type::Reference(referenced) => format!("{}*", self.compile_type(referenced, span)?),
             Type::Optional(inner) => format!("Optional_{}", self.identifier_friendly_name(inner, span)?),
             Type::Structure(_) => self.identifier_friendly_name(r#type, span)?,
-            Type::GenericType(_) | Type::Unknown => return Err(CBackendErrorKind::UnknownType.at(span)),
+            Type::GenericType(_) | Type::Unknown => panic!("Unable to compile type: {type:?}"),
         };
 
         Ok(value)
@@ -277,7 +311,15 @@ impl CBackend {
     }
 
     /// Generates a name for the provided [`FunctionId`].
-    fn function_name(&self, function_id: &FunctionId) -> Result<String, CBackendError> {
+    fn function_name(&self, function_reference: &FunctionReference) -> Result<String, CBackendError> {
+        let function_id = match function_reference {
+            FunctionReference::Plain(id) => id,
+            FunctionReference::Specialized(specialized_id) => {
+                let specialized_function = &self.specialized_functions[&specialized_id];
+                &specialized_function.generic_function_id
+            }
+        };
+
         let checked_function = &self.functions[function_id];
 
         // If the function is external, then we must not mangle its name.
@@ -294,7 +336,15 @@ impl CBackend {
             checked_function.name,
         );
 
-        for parameter in &checked_function.parameters {
+        let function_parameters = match function_reference {
+            FunctionReference::Plain(_) => &checked_function.parameters,
+            FunctionReference::Specialized(specialized_id) => {
+                let specialized_function = &self.specialized_functions[&specialized_id];
+                &specialized_function.parameters
+            }
+        };
+
+        for parameter in function_parameters {
             name.push('_');
             name.push_str(&self.identifier_friendly_name(&parameter.r#type, parameter.span)?);
         }
@@ -332,7 +382,7 @@ impl CBackend {
             Type::Structure(structure_reference) => self.get_name_for_structure_reference(structure_reference)?,
             Type::UnsignedInteger(size) => format!("u{size}"),
             Type::Void => format!("void"),
-            Type::GenericType(_) | Type::Unknown => return Err(CBackendErrorKind::UnknownType.at(span)),
+            Type::GenericType(_) | Type::Unknown => panic!("Unable to compile type: {type:?}"),
         };
 
         Ok(name)

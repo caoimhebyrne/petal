@@ -21,6 +21,10 @@ use crate::{
         },
     },
     core::span::Span,
+    typechecker::r#type::{
+        FunctionReference,
+        Type,
+    },
 };
 
 impl CBackend {
@@ -64,20 +68,56 @@ impl CBackend {
         function_declaration: &FunctionDeclaration,
         span: Span,
     ) -> Result<(), CBackendError> {
+        let function_id = function_declaration.function_id.ok_or(CBackendErrorKind::MissingFunctionId.at(span))?;
+
         if function_declaration.modifiers.contains(&DeclarationModifier::Extern) {
             trace!("Skipping generation of function '{}' as it is marked as external", function_declaration.name);
             return Ok(());
         }
 
-        let function_id = function_declaration.function_id.ok_or(CBackendErrorKind::MissingFunctionId.at(span))?;
-        let name = self.function_name(&function_id)?;
-        let return_type = self.compile_type(&function_declaration.return_type, span)?;
+        if !function_declaration.generic_type_parameters.is_empty() {
+            // If there are any specializations of this function, we should generate them now.
+            // TODO: Remove clone.
+            for (specialized_function_id, specialized_function) in
+                self.specialized_functions.clone().iter().filter(|(_, it)| it.generic_function_id == function_id)
+            {
+                self.compile_some_function_declaration(
+                    &FunctionReference::Specialized(*specialized_function_id),
+                    &specialized_function.parameters,
+                    &specialized_function.return_type,
+                    &function_declaration.body,
+                    span,
+                )?;
+            }
 
-        let parameters: String = if function_declaration.parameters.is_empty() {
+            return Ok(());
+        }
+
+        self.compile_some_function_declaration(
+            &FunctionReference::Plain(function_id),
+            &function_declaration.parameters,
+            &function_declaration.return_type,
+            &function_declaration.body,
+            span,
+        )
+    }
+
+    /// Compiles a function declaration into C code.
+    fn compile_some_function_declaration(
+        &mut self,
+        reference: &FunctionReference,
+        parameters: &Vec<FunctionParameter>,
+        return_type: &Type,
+        body: &Vec<Statement>,
+        span: Span,
+    ) -> Result<(), CBackendError> {
+        let name = self.function_name(reference)?;
+        let return_type = self.compile_type(return_type, span)?;
+
+        let parameters: String = if parameters.is_empty() {
             "void".into()
         } else {
-            function_declaration
-                .parameters
+            parameters
                 .iter()
                 .map(|it| self.compile_function_parameter(it))
                 .collect::<Result<Vec<String>, CBackendError>>()?
@@ -85,7 +125,7 @@ impl CBackend {
         };
 
         self.writer.append(format!("{return_type} {name}({parameters}) {{"));
-        self.compile_block(&function_declaration.body)?;
+        self.compile_block(body)?;
         self.writer.append("}\n");
 
         Ok(())

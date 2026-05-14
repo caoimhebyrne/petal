@@ -125,12 +125,12 @@ impl CBackend {
 
     /// Compiles a function call expression into C code.
     pub fn compile_function_call(&mut self, function_call: &FunctionCall, span: Span) -> Result<String, CBackendError> {
-        let function_id =
+        let function_reference =
             function_call.resolved_callee.as_ref().ok_or(CBackendErrorKind::MissingFunctionId.at(span))?;
 
-        let function_name = self.function_name(function_id)?;
+        let function_name = self.function_name(function_reference)?;
 
-        debug!("Function ID '{function_id}' resolves to function named '{}'", function_name);
+        debug!("Function ID '{function_reference}' resolves to function named '{}'", function_name);
 
         let arguments = &function_call
             .arguments

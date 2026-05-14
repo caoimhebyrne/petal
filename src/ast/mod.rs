@@ -298,7 +298,7 @@ impl ASTParser {
         }
 
         // After all of that, we can attempt to parse a function call if it is present.
-        if self.peek_is(TokenKind::OpenParen) {
+        if self.peek_is(TokenKind::OpenParen) || self.peek_is(TokenKind::LeftAngleBracket) {
             // The expression that we have collected up until this point is considered to be the callee of the function call.
             let (function_call, function_call_span) = self.parse_function_call(expression)?;
             expression = Expression::new(function_call.into(), function_call_span)
@@ -350,8 +350,11 @@ impl ASTParser {
         // All functions must start with the func keyword.
         let func_keyword_span = self.expect(TokenKind::Keyword(Keyword::Func))?.span;
 
+        // There might be generic type parameters.
+        let generic_type_parameters = self.maybe_parse_generic_type_parameters()?;
+
         // Then, the type name of the owner of the function might be specified.
-        let owner_type_name = if self.peek_nth(1).map(|it| it.kind == TokenKind::Period).unwrap_or_default() {
+        let owner_type_name = if !self.peek_nth(1).map(|it| it.kind == TokenKind::OpenParen).unwrap_or_default() {
             let (name, _) = self.expect_identifier()?;
             self.expect(TokenKind::Period)?;
             Some(name)
@@ -362,7 +365,7 @@ impl ASTParser {
         // Then, the name of the function must be present.
         let (function_name, _) = self.expect_identifier()?;
 
-        let mut builder = FunctionDeclaration::builder(function_name);
+        let mut builder = FunctionDeclaration::builder(function_name).generic_type_parameters(generic_type_parameters);
 
         for modifier in &modifiers {
             builder = builder.modifier(*modifier);
@@ -477,6 +480,10 @@ impl ASTParser {
         let function_callee_span = function_callee.span;
 
         let mut builder = FunctionCall::builder(function_callee);
+
+        // There may be some generic type arguments.
+        let generic_type_arguments = self.maybe_parse_generic_type_arguments()?;
+        builder = builder.generic_type_arguments(generic_type_arguments);
 
         // Then, the arguments of the function will be surrounded by parenthesis.
         self.expect(TokenKind::OpenParen)?;
