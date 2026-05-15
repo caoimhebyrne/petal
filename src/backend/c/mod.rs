@@ -15,8 +15,12 @@ use std::{
 use crate::{
     ast::{
         statement::{
+            Statement,
             StatementKind,
-            function_declaration::DeclarationModifier,
+            function_declaration::{
+                DeclarationModifier,
+                FunctionDeclaration,
+            },
         },
         type_expr::GenericTypeArgument,
     },
@@ -209,41 +213,11 @@ impl CBackend {
             code.push_str(&format!("{return_type} {name}({parameters});\n"));
         }
 
-        for module in modules {
-            for statement in &module.ast {
-                if let StatementKind::FunctionDeclaration(function_declaration) = &statement.kind {
-                    if !function_declaration.generic_type_parameters.is_empty() {
-                        trace!(
-                            "Not generating forward-declaration for function '{}' as it is generic, a specialization should cover it",
-                            function_declaration.name
-                        );
-                        continue;
-                    }
-
-                    let function_id = function_declaration
-                        .function_id
-                        .ok_or(CBackendErrorKind::MissingFunctionId.at(statement.span))?;
-
-                    let name = self.function_name(&FunctionReference::Plain(function_id))?;
-                    let return_type = self.compile_type(&function_declaration.return_type, statement.span)?;
-
-                    let parameters: String = if function_declaration.parameters.is_empty() {
-                        "void".into()
-                    } else {
-                        function_declaration
-                            .parameters
-                            .iter()
-                            .map(|it| self.compile_function_parameter(it))
-                            .collect::<Result<Vec<String>, CBackendError>>()?
-                            .join(", ")
-                    };
-
-                    code.push_str(&format!("{return_type} {name}({parameters});\n"));
-                }
-            }
-        }
-
         code.push('\n');
+
+        for module in modules {
+            self.visit_top_level_declarations(&mut code, &module.ast)?;
+        }
 
         for module in modules {
             for statement in &module.ast {
@@ -252,6 +226,74 @@ impl CBackend {
         }
 
         code.push_str(&self.writer.code);
+        Ok(code)
+    }
+
+    fn visit_top_level_declarations(
+        &self,
+        code: &mut String,
+        statements: &Vec<Statement>,
+    ) -> Result<(), CBackendError> {
+        for statement in statements {
+            match &statement.kind {
+                StatementKind::FunctionDeclaration(function_declaration) => {
+                    let forward_declaration =
+                        self.compile_function_forward_declaration(function_declaration, statement.span)?;
+                    code.push_str(&forward_declaration);
+                }
+
+                StatementKind::NamespaceDeclaration(namespace_declaration) => {
+                    self.visit_top_level_declarations(code, &namespace_declaration.body)?;
+                }
+
+                _ => {}
+            }
+        }
+
+        Ok(())
+    }
+
+    fn compile_function_forward_declaration(
+        &self,
+        function_declaration: &FunctionDeclaration,
+        span: Span,
+    ) -> Result<String, CBackendError> {
+        let mut code = String::new();
+
+        if function_declaration.modifiers.contains(&DeclarationModifier::Extern) {
+            trace!(
+                "Skipping generation of forward-declaration for function '{}' as it is marked as external",
+                function_declaration.name
+            );
+
+            return Ok(code);
+        }
+
+        if !function_declaration.generic_type_parameters.is_empty() {
+            trace!(
+                "Not generating forward-declaration for function '{}' as it is generic, a specialization should cover it",
+                function_declaration.name
+            );
+
+            return Ok(code);
+        }
+
+        let function_id = function_declaration.function_id.ok_or(CBackendErrorKind::MissingFunctionId.at(span))?;
+        let name = self.function_name(&FunctionReference::Plain(function_id))?;
+        let return_type = self.compile_type(&function_declaration.return_type, span)?;
+
+        let parameters: String = if function_declaration.parameters.is_empty() {
+            "void".into()
+        } else {
+            function_declaration
+                .parameters
+                .iter()
+                .map(|it| self.compile_function_parameter(it))
+                .collect::<Result<Vec<String>, CBackendError>>()?
+                .join(", ")
+        };
+
+        code.push_str(&format!("{return_type} {name}({parameters});\n\n"));
         Ok(code)
     }
 
