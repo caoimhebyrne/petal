@@ -1,12 +1,10 @@
 use crate::{
     ast::expression::{
         binary_operation::BinaryOperation,
-        enum_variant_access::EnumMemberAccess,
         function_call::FunctionCall,
         member_access::MemberAccess,
         namespace_qualifier::NamespaceQualifier,
         optional_wrap::{
-            OptionalEmpty,
             OptionalForceUnwrap,
             OptionalHasValue,
             OptionalUnwrap,
@@ -18,7 +16,6 @@ use crate::{
 };
 
 pub mod binary_operation;
-pub mod enum_variant_access;
 pub mod function_call;
 pub mod member_access;
 pub mod namespace_qualifier;
@@ -65,7 +62,7 @@ pub enum ExpressionKind {
     Dereference(Box<Expression>),
 
     /// Creates an empty optional.
-    OptionalEmpty(OptionalEmpty),
+    OptionalEmpty,
 
     /// Wraps the provided expression in an optional.
     OptionalWrap(OptionalWrap),
@@ -89,7 +86,4 @@ pub enum ExpressionKind {
 
     /// A namespace qualifier.
     NamespaceQualifier(NamespaceQualifier),
-
-    /// Accessing an enumeration member.
-    EnumMemberAccess(EnumMemberAccess),
 }

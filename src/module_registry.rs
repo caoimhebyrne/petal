@@ -11,7 +11,7 @@ use crate::module::{
 
 /// Each module gets assigned a unique identifier at creation time. This identifier is carried throughout the module's
 /// lifecycle, including when it gets promoted to a [`ParsedModule`] and/or a [`CheckedModule`].
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct ModuleId(usize);
 
 impl Display for ModuleId {

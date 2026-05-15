@@ -1,10 +1,7 @@
-use crate::{
-    ast::{
-        expression::Expression,
-        statement::StatementKind,
-        type_expr::TypeExpr,
-    },
-    typechecker::r#type::Type,
+use crate::ast::{
+    expression::Expression,
+    statement::StatementKind,
+    type_expr::TypeExpr,
 };
 
 /// A variable declaration statement.
@@ -16,17 +13,14 @@ pub struct VariableDeclaration {
     /// The type of the variable being declared.
     pub type_expr: TypeExpr,
 
-    /// The resolved type of the variable being declared.
-    pub r#type: Type,
-
     /// The initial value being assigned to the variable.
     pub value: Expression,
 }
 
 impl VariableDeclaration {
     /// Creates a new [`VariableDeclaration`].
-    pub fn new(name: impl Into<String>, type_expr: TypeExpr, r#type: Type, value: Expression) -> Self {
-        Self { name: name.into(), type_expr, r#type, value }
+    pub fn new(name: impl Into<String>, type_expr: TypeExpr, value: Expression) -> Self {
+        Self { name: name.into(), type_expr, value }
     }
 }
 

@@ -1,7 +1,4 @@
-use crate::{
-    core::span::Span,
-    typechecker::r#type::Type,
-};
+use crate::core::span::Span;
 
 /// A user defined type in the AST.
 #[derive(Debug, Clone, PartialEq)]
@@ -46,9 +43,6 @@ pub struct StructureField {
     /// The declared type of the field.
     pub type_expr: TypeExpr,
 
-    /// The resolved type of the field.
-    pub r#type: Type,
-
     /// The span that this field was defined at in the source code.
     pub span: Span,
 }
@@ -56,7 +50,7 @@ pub struct StructureField {
 impl StructureField {
     /// Creates a new [`StructureField`].
     pub fn new(name: String, type_expr: TypeExpr, span: Span) -> Self {
-        Self { name, type_expr, r#type: Type::Unknown, span }
+        Self { name, type_expr, span }
     }
 }
 
@@ -76,9 +70,6 @@ pub struct GenericTypeArgument {
     /// The expression of the argument.
     pub type_expr: TypeExpr,
 
-    /// The resolved type of the argument.
-    pub r#type: Type,
-
     /// The span within the source code that the parameter was defined at.
     pub span: Span,
 }
@@ -86,7 +77,7 @@ pub struct GenericTypeArgument {
 impl GenericTypeArgument {
     /// Creates a new [`GenericTypeArgument`].
     pub fn new(type_expr: TypeExpr, span: Span) -> Self {
-        Self { type_expr, r#type: Type::default(), span }
+        Self { type_expr, span }
     }
 }
 

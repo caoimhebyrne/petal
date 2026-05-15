@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::ast::expression::{
     Expression,
     ExpressionKind,
@@ -44,6 +46,19 @@ impl BinaryOperator {
             Self::Add | Self::Subtract => 1,
             Self::Multiply | Self::Divide => 2,
             Self::Equals | Self::NotEquals => 3,
+        }
+    }
+}
+
+impl Display for BinaryOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Add => write!(f, "Add"),
+            Self::Divide => write!(f, "Divide"),
+            Self::Equals => write!(f, "Equals"),
+            Self::Multiply => write!(f, "Multiply"),
+            Self::NotEquals => write!(f, "Not Equals"),
+            Self::Subtract => write!(f, "Subtract"),
         }
     }
 }

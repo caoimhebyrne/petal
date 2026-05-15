@@ -4,7 +4,6 @@ use crate::{
     lexer::Lexer,
     module::ParsedModule,
     module_registry::create_mock_module_id,
-    typechecker::Typechecker,
 };
 
 fn compile(src: &str) -> Result<(), Box<dyn Error>> {
@@ -30,7 +29,6 @@ fn compile(src: &str) -> Result<(), Box<dyn Error>> {
         parsed_modules.push(ParsedModule::new(module_id, statements));
     }
 
-    Typechecker::default().check(parsed_modules)?;
     Ok(())
 }
 

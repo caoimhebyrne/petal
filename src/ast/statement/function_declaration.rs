@@ -10,10 +10,6 @@ use crate::{
         },
     },
     core::span::Span,
-    typechecker::{
-        context::FunctionId,
-        r#type::Type,
-    },
 };
 
 /// Modifiers for a function declaration.
@@ -30,9 +26,6 @@ pub enum DeclarationModifier {
 /// A function declaration within the AST.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDeclaration {
-    /// The ID of the function.
-    pub function_id: Option<FunctionId>,
-
     /// The name of the type that owns the function.
     pub owner_type_name: Option<String>,
 
@@ -50,9 +43,6 @@ pub struct FunctionDeclaration {
 
     /// The declared return type of the function.
     pub return_type_expr: Option<TypeExpr>,
-
-    /// The resolved return type.
-    pub return_type: Type,
 
     /// The modifiers applied to this [`FunctionDeclaration`].
     pub modifiers: Vec<DeclarationModifier>,
@@ -93,9 +83,6 @@ pub struct FunctionDeclarationBuilder {
     /// The declared return type of the function.
     return_type_expr: Option<TypeExpr>,
 
-    /// The resolved return type of the function.
-    return_type: Type,
-
     /// The modifiers of this function
     modifiers: Vec<DeclarationModifier>,
 }
@@ -110,7 +97,6 @@ impl FunctionDeclarationBuilder {
             parameters: vec![],
             generic_type_parameters: vec![],
             return_type_expr: None,
-            return_type: Type::Unknown,
             modifiers: Vec::new(),
         }
     }
@@ -128,22 +114,14 @@ impl FunctionDeclarationBuilder {
     }
 
     /// Adds a parameter to the body of the function.
-    pub fn parameter(
-        mut self,
-        name: impl Into<String>,
-        type_expr: TypeExpr,
-        r#type: Type,
-        is_named: bool,
-        span: Span,
-    ) -> Self {
-        self.parameters.push(FunctionParameter::new(name, type_expr, r#type, is_named, span));
+    pub fn parameter(mut self, name: impl Into<String>, type_expr: TypeExpr, is_named: bool, span: Span) -> Self {
+        self.parameters.push(FunctionParameter::new(name, type_expr, is_named, span));
         self
     }
 
     /// Sets the return type of the function.
-    pub fn return_type(mut self, type_expr: TypeExpr, r#type: Type) -> Self {
+    pub fn return_type(mut self, type_expr: TypeExpr) -> Self {
         self.return_type_expr = Some(type_expr);
-        self.return_type = r#type;
         self
     }
 
@@ -162,14 +140,12 @@ impl FunctionDeclarationBuilder {
     /// Builds this [`FunctionDeclarationBuilder`] into a [`FunctionDeclaration`].
     pub fn build(self) -> FunctionDeclaration {
         FunctionDeclaration {
-            function_id: None,
             owner_type_name: self.owner_type_name,
             name: self.name,
             body: self.body,
             parameters: self.parameters,
             generic_type_parameters: self.generic_type_parameters,
             return_type_expr: self.return_type_expr,
-            return_type: self.return_type,
             modifiers: self.modifiers,
         }
     }
@@ -183,9 +159,6 @@ pub struct FunctionParameter {
     /// The declared type of the parameter.
     pub type_expr: TypeExpr,
 
-    /// The resolved type of the parameter.
-    pub r#type: Type,
-
     /// Whether the parameter is a named parameter.
     pub is_named: bool,
 
@@ -195,7 +168,7 @@ pub struct FunctionParameter {
 
 impl FunctionParameter {
     /// Creates a new [`FunctionParameter`].
-    pub fn new(name: impl Into<String>, type_expr: TypeExpr, r#type: Type, is_named: bool, span: Span) -> Self {
-        Self { name: name.into(), type_expr, r#type, is_named, span }
+    pub fn new(name: impl Into<String>, type_expr: TypeExpr, is_named: bool, span: Span) -> Self {
+        Self { name: name.into(), type_expr, is_named, span }
     }
 }

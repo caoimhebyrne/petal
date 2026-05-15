@@ -8,14 +8,10 @@ use crate::{
         type_expr::GenericTypeArgument,
     },
     core::span::Span,
-    typechecker::r#type::FunctionReference,
 };
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionCall {
-    /// The resolved reference for the calee of this call.
-    pub resolved_callee: Option<FunctionReference>,
-
     /// The expression providing the function to call.
     pub callee: Box<Expression>,
 
@@ -91,7 +87,6 @@ impl FunctionCallBuilder {
     /// Builds this [`FunctionCallBuilder`] into a [`FunctionCall`].
     pub fn build(self) -> FunctionCall {
         FunctionCall {
-            resolved_callee: None,
             callee: self.callee.into(),
             arguments: self.arguments,
             generic_type_arguments: self.generic_type_arguments,

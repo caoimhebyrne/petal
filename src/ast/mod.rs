@@ -14,10 +14,7 @@ use crate::{
             function_call::FunctionCall,
             member_access::MemberAccess,
             namespace_qualifier::NamespaceQualifier,
-            optional_wrap::{
-                OptionalEmpty,
-                OptionalForceUnwrap,
-            },
+            optional_wrap::OptionalForceUnwrap,
             structure_initialization::StructureInitialization,
         },
         statement::{
@@ -49,7 +46,6 @@ use crate::{
         TokenKind,
     },
     module_registry::ModuleId,
-    typechecker::r#type::Type,
 };
 
 pub mod error;
@@ -394,7 +390,6 @@ impl ASTParser {
             builder = builder.parameter(
                 parameter_name,
                 parameter_type,
-                Type::default(),
                 is_named,
                 Span::between(parameter_name_span, parameter_type_span),
             );
@@ -415,7 +410,7 @@ impl ASTParser {
 
             let (return_type, _) = self.parse_type_expr()?;
 
-            builder = builder.return_type(return_type, Type::Unknown);
+            builder = builder.return_type(return_type);
         }
 
         let closing_span = if modifiers.contains(&DeclarationModifier::Extern) {
@@ -462,7 +457,7 @@ impl ASTParser {
             // If there is no expression, we can insert an `OptionalEmpty`.
             // TODO: Is this the right place?
             let span = Span::between(name_span, type_span);
-            let value = Expression::new(OptionalEmpty::default().into(), span);
+            let value = Expression::new(ExpressionKind::OptionalEmpty, span);
             (value, span)
         } else {
             // The next token must be an equals.
@@ -473,7 +468,7 @@ impl ASTParser {
             (value, span)
         };
 
-        Ok(Statement::from(VariableDeclaration::new(name, type_expr, Type::Unknown, value), span))
+        Ok(Statement::from(VariableDeclaration::new(name, type_expr, value), span))
     }
 
     /// Attempts to parse a function call from the [ASTParser]'s current position.
@@ -928,8 +923,7 @@ mod tests {
             ExpressionKind::IdentifierReference(_) => {}
             ExpressionKind::NumberLiteral(_) => {}
             ExpressionKind::NamespaceQualifier(_) => {}
-            ExpressionKind::OptionalEmpty(_) => {}
-            ExpressionKind::EnumMemberAccess(_) => {}
+            ExpressionKind::OptionalEmpty => {}
         }
     }
 

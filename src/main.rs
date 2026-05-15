@@ -1,20 +1,12 @@
 use std::{
-    env::{
-        self,
-        current_dir,
-    },
+    env::current_dir,
     fs,
     io::Write,
-    path::PathBuf,
-    process::{
-        Command,
-        ExitCode,
-        exit,
+    path::{
+        Path,
+        PathBuf,
     },
-    time::{
-        SystemTime,
-        UNIX_EPOCH,
-    },
+    process::ExitCode,
 };
 
 use clap::Parser;
@@ -26,7 +18,6 @@ use crate::{
         StatementKind,
         import::Import,
     },
-    backend::c::CBackend,
     core::error::Error,
     module::{
         ModuleError,
@@ -36,16 +27,24 @@ use crate::{
         ModuleId,
         ModuleRegistry,
     },
-    typechecker::Typechecker,
+    typed_ast::{
+        resolver::TypeResolver,
+        visitor::{
+            ProgramVisitor,
+            generic_function_call_visitor::GenericFunctionCallVisitor,
+            generic_type_visitor::GenericTypeVisitor,
+            print::PrintingProgramVisitor,
+        },
+    },
 };
 
 pub mod ast;
-pub mod backend;
+// pub mod backend;
 pub mod core;
 pub mod lexer;
 pub mod module;
 pub mod module_registry;
-pub mod typechecker;
+mod typed_ast;
 
 #[cfg(test)]
 pub mod integration_tests;
@@ -85,7 +84,7 @@ fn handle_module_import(
     parsed_modules: &mut Vec<ParsedModule>,
     module_registry: &mut ModuleRegistry,
     current_module: &ParsedModule,
-    current_path: &PathBuf,
+    current_path: &Path,
     import: &Import,
 ) -> Result<(), Box<dyn Error>> {
     // If the name of the imported module is `stdlib`, it must be next to the compiler's current working
@@ -96,7 +95,7 @@ fn handle_module_import(
     // - Importing a file module
     let mut path = if import.name == "stdlib" {
         // TODO: `PETAL_STDLIB_PATH` environment variable?
-        current_dir().map_err(|e| ModuleError::IOError { path: current_path.clone(), error: e })?.join("stdlib")
+        current_dir().map_err(|e| ModuleError::IOError { path: current_path.to_path_buf(), error: e })?.join("stdlib")
     } else {
         current_path.with_file_name(&import.name)
     };
@@ -140,7 +139,7 @@ fn import_directory_module(
 ) -> Result<(), Box<dyn Error>> {
     // The caller ensures that the directory exists, so we just need to read it & iterate over its children.
     for entry in
-        fs::read_dir(&directory_path).map_err(|e| ModuleError::IOError { path: directory_path.clone(), error: e })?
+        fs::read_dir(directory_path).map_err(|e| ModuleError::IOError { path: directory_path.clone(), error: e })?
     {
         let entry = entry.map_err(|e| ModuleError::IOError { path: directory_path.clone(), error: e })?;
         if entry.path().extension().map(|it| it != "petal").unwrap_or_default() {
@@ -176,9 +175,9 @@ fn import_directory_module(
 fn create_and_parse_module(
     parsed_modules: &mut Vec<ParsedModule>,
     module_registry: &mut ModuleRegistry,
-    file_path: &PathBuf,
+    file_path: &Path,
 ) -> Result<ModuleId, Box<dyn Error>> {
-    let (module_id, already_created) = module_registry.create_module(file_path.clone())?;
+    let (module_id, already_created) = module_registry.create_module(file_path.to_path_buf())?;
     if already_created {
         trace!("Module at path '{}' has already been registered (ID = {})", file_path.display(), module_id);
         return Ok(module_id);
@@ -190,7 +189,7 @@ fn create_and_parse_module(
         // If this is an import statement, then we must be able to find a module with the imported name in the
         // same directory.
         if let StatementKind::Import(import) = &statement.kind {
-            handle_module_import(parsed_modules, module_registry, &parsed_module, &file_path, import)?;
+            handle_module_import(parsed_modules, module_registry, &parsed_module, file_path, import)?;
         }
     }
 
@@ -225,56 +224,74 @@ fn main_impl(mut args: Args, module_registry: &mut ModuleRegistry) -> Result<(),
 
     info!("Checking types");
 
-    let checked_program = Typechecker::default().check(parsed_modules)?;
+    let mut program = TypeResolver::default().resolve(parsed_modules)?;
 
-    info!("Generating code");
-
-    let code = CBackend::new(
-        checked_program.builtin_types,
-        checked_program.declared_types,
-        checked_program.enums,
-        checked_program.functions,
-        checked_program.structures,
-        checked_program.specialized_functions,
-        checked_program.specialized_structures,
-        checked_program.synthetic_types,
-    )
-    .emit_code(&checked_program.modules)?;
-
-    if args.emit_code {
-        println!("{code}");
+    {
+        let mut visitor = GenericTypeVisitor::default();
+        visitor.visit(&mut program);
     }
 
-    // `./path/to/petal/file.petal` -> `file`
-    let executable_file_path = if args.run {
-        let current_timestamp =
-            SystemTime::now().duration_since(UNIX_EPOCH).expect("SystemTime::duration_since should not fail");
-
-        let mut path = env::temp_dir();
-        path.push(format!("petal-{}", current_timestamp.as_millis()));
-        path
-    } else {
-        let path = args.output.unwrap_or_else(|| args.input[0].clone());
-        PathBuf::from(path).with_extension("")
-    };
-
-    if !args.no_emit_binary {
-        info!("Compiling binary ('{}')", executable_file_path.to_string_lossy());
-        CBackend::emit_binary(&code, &executable_file_path)?;
+    {
+        // todo(resolver): this clone sucks
+        let mut visitor = GenericFunctionCallVisitor::new(program.clone());
+        visitor.visit(&mut program);
     }
 
-    if args.run {
-        info!("Running '{}'", executable_file_path.to_string_lossy());
-
-        let mut child = Command::new(&executable_file_path).spawn().expect("Failed to launch generated executable");
-        let status = child.wait().expect("Failed to wait for child to finish execution");
-
-        if fs::remove_file(&executable_file_path).is_err() {
-            warn!("Failed to clean up temporary executable at '{}'", executable_file_path.to_string_lossy())
-        }
-
-        exit(status.code().unwrap_or(-1))
+    {
+        let mut visitor = PrintingProgramVisitor::default();
+        visitor.visit(&mut program);
     }
+
+    // let checked_program = Typechecker::default().check(parsed_modules)?;
+
+    // info!("Generating code");
+
+    // let code = CBackend::new(
+    //     checked_program.builtin_types,
+    //     checked_program.declared_types,
+    //     checked_program.enums,
+    //     checked_program.functions,
+    //     checked_program.structures,
+    //     checked_program.specialized_functions,
+    //     checked_program.specialized_structures,
+    //     checked_program.synthetic_types,
+    // )
+    // .emit_code(&checked_program.modules)?;
+
+    // if args.emit_code {
+    //     println!("{code}");
+    // }
+
+    // // `./path/to/petal/file.petal` -> `file`
+    // let executable_file_path = if args.run {
+    //     let current_timestamp =
+    //         SystemTime::now().duration_since(UNIX_EPOCH).expect("SystemTime::duration_since should not fail");
+
+    //     let mut path = env::temp_dir();
+    //     path.push(format!("petal-{}", current_timestamp.as_millis()));
+    //     path
+    // } else {
+    //     let path = args.output.unwrap_or_else(|| args.input[0].clone());
+    //     PathBuf::from(path).with_extension("")
+    // };
+
+    // if !args.no_emit_binary {
+    //     info!("Compiling binary ('{}')", executable_file_path.to_string_lossy());
+    //     CBackend::emit_binary(&code, &executable_file_path)?;
+    // }
+
+    // if args.run {
+    //     info!("Running '{}'", executable_file_path.to_string_lossy());
+
+    //     let mut child = Command::new(&executable_file_path).spawn().expect("Failed to launch generated executable");
+    //     let status = child.wait().expect("Failed to wait for child to finish execution");
+
+    //     if fs::remove_file(&executable_file_path).is_err() {
+    //         warn!("Failed to clean up temporary executable at '{}'", executable_file_path.to_string_lossy())
+    //     }
+
+    //     exit(status.code().unwrap_or(-1))
+    // }
 
     Ok(())
 }
