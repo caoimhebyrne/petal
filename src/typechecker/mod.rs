@@ -21,9 +21,11 @@ use crate::{
     typechecker::{
         context::{
             CheckedFunction,
+            DeclaredEnum,
             DeclaredStructure,
             DeclaredType,
             DeclaredTypeId,
+            EnumId,
             FunctionId,
             IncompleteBuiltinTypes,
             SpecializedFunction,
@@ -62,6 +64,9 @@ pub struct CheckedProgram {
 
     /// The types that have been declared during compilation.
     pub declared_types: HashMap<DeclaredTypeId, DeclaredType>,
+
+    /// The enums that have been declared during compilation.
+    pub enums: HashMap<EnumId, DeclaredEnum>,
 
     /// The functions defined in the source code during compilation.
     pub functions: HashMap<FunctionId, CheckedFunction>,
@@ -129,6 +134,7 @@ impl Typechecker {
         let checked_program = CheckedProgram {
             builtin_types: BuiltinTypes::from(self.context.builtin_types)?,
             declared_types: self.context.types,
+            enums: self.context.enums,
             functions: self.context.functions,
             modules: modules.into_iter().map(|it| CheckedModule::new(it.id, it.ast)).collect(),
             structures: self.context.structures,
@@ -186,6 +192,10 @@ impl Typechecker {
 
             TypeExpr::Structure { .. } => {
                 return Err(TypecheckerErrorKind::UnableToResolveType("Unexpected raw structure type?".into()).at(span));
+            }
+
+            TypeExpr::Enum { .. } => {
+                return Err(TypecheckerErrorKind::UnableToResolveType("Unexpected raw enum type?".into()).at(span));
             }
         }
     }

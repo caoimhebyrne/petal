@@ -6,6 +6,7 @@ use crate::{
             BinaryOperation,
             BinaryOperator,
         },
+        enum_variant_access::EnumMemberAccess,
         function_call::FunctionCall,
         member_access::MemberAccess,
         optional_wrap::{
@@ -25,7 +26,10 @@ use crate::{
         },
     },
     core::span::Span,
-    typechecker::r#type::StructureReference,
+    typechecker::r#type::{
+        StructureReference,
+        Type,
+    },
 };
 
 impl CBackend {
@@ -72,6 +76,10 @@ impl CBackend {
 
             ExpressionKind::OptionalUnwrap(optional_unwrap) => {
                 self.compile_optional_unwrap(optional_unwrap, expression.span)
+            }
+
+            ExpressionKind::EnumMemberAccess(enum_member_access) => {
+                self.compile_enum_member_access(enum_member_access, expression.span)
             }
 
             ExpressionKind::NamespaceQualifier(_) => Ok("".into()),
@@ -251,5 +259,15 @@ impl CBackend {
     ) -> Result<String, CBackendError> {
         let optional_value = self.compile_expression(&optional_unwrap.optional_value)?;
         Ok(format!("({optional_value}).value"))
+    }
+
+    fn compile_enum_member_access(
+        &mut self,
+        enum_member_access: &EnumMemberAccess,
+        span: Span,
+    ) -> Result<String, CBackendError> {
+        // The variant of an enum type is prefixed with its fully qualified type name.
+        let type_name = self.identifier_friendly_name(&Type::Enum(enum_member_access.enum_id), span)?;
+        Ok(format!("{}_{}", type_name, enum_member_access.variant_index))
     }
 }

@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use crate::typechecker::context::{
+    EnumId,
     FunctionId,
     SpecializedFunctionId,
     SpecializedStructureId,
@@ -69,6 +70,9 @@ pub enum Type {
     /// A structure type.
     Structure(StructureReference),
 
+    /// An enum type.
+    Enum(EnumId),
+
     /// A generic type that needs to be resolved.
     GenericType(usize),
 
@@ -87,6 +91,7 @@ impl Display for Type {
             Self::Reference(referenced) => write!(f, "&{referenced}"),
             Self::Optional(wrapped) => write!(f, "?{wrapped}"),
             Self::Structure(id) => write!(f, "<structure {id}>"),
+            Self::Enum(id) => write!(f, "<enum {id}>"),
             Self::GenericType(index) => write!(f, "<generic type @ {index}>"),
             Self::Unknown => write!(f, "<unknown>"),
         }

@@ -33,9 +33,11 @@ use crate::{
         BuiltinTypes,
         context::{
             CheckedFunction,
+            DeclaredEnum,
             DeclaredStructure,
             DeclaredType,
             DeclaredTypeId,
+            EnumId,
             FunctionId,
             SpecializedFunction,
             SpecializedFunctionId,
@@ -65,6 +67,9 @@ pub struct CBackend {
     /// The types declared by the user during compilation.
     declared_types: HashMap<DeclaredTypeId, DeclaredType>,
 
+    /// The enums declared by the user during compilation.
+    enums: HashMap<EnumId, DeclaredEnum>,
+
     /// The functions defined in the source code during compilation.
     functions: HashMap<FunctionId, CheckedFunction>,
 
@@ -91,6 +96,7 @@ impl CBackend {
     pub fn new(
         builtin_types: BuiltinTypes,
         declared_types: HashMap<DeclaredTypeId, DeclaredType>,
+        enums: HashMap<EnumId, DeclaredEnum>,
         functions: HashMap<FunctionId, CheckedFunction>,
         structures: HashMap<StructureId, DeclaredStructure>,
         specialized_functions: HashMap<SpecializedFunctionId, SpecializedFunction>,
@@ -100,6 +106,7 @@ impl CBackend {
         Self {
             builtin_types,
             declared_types,
+            enums,
             functions,
             structures,
             specialized_functions,
@@ -157,6 +164,18 @@ impl CBackend {
                 "}} {};\n\n",
                 self.declared_type_name(declared_type, &specialized_structure.generic_type_arguments)?
             ));
+        }
+
+        for r#enum in self.enums.values() {
+            let declared_type = &self.declared_types[&r#enum.declared_type_id];
+            let enum_name = self.declared_type_name(declared_type, &vec![])?;
+            code.push_str("typedef enum {\n");
+
+            for (index, variant) in r#enum.variants.iter().enumerate() {
+                code.push_str(&format!("    {enum_name}_{index}, // {}\n", variant.name))
+            }
+
+            code.push_str(&format!("}} {};\n\n", enum_name));
         }
 
         for synthetic_type in &self.synthetic_types {
@@ -282,7 +301,7 @@ impl CBackend {
             Type::Void => "void".into(),
             Type::Reference(referenced) => format!("{}*", self.compile_type(referenced, span)?),
             Type::Optional(inner) => format!("Optional_{}", self.identifier_friendly_name(inner, span)?),
-            Type::Structure(_) => self.identifier_friendly_name(r#type, span)?,
+            Type::Enum(_) | Type::Structure(_) => self.identifier_friendly_name(r#type, span)?,
             Type::GenericType(_) | Type::Unknown => panic!("Unable to compile type: {type:?}"),
         };
 
@@ -379,6 +398,11 @@ impl CBackend {
             Type::Optional(inner) => format!("{}opt", self.identifier_friendly_name(inner, span)?),
             Type::Reference(inner) => format!("{}ref", self.identifier_friendly_name(inner, span)?),
             Type::SignedInteger(size) => format!("i{size}"),
+            Type::Enum(enum_id) => {
+                let r#enum = &self.enums[enum_id];
+                let declared_type = &self.declared_types[&r#enum.declared_type_id];
+                self.declared_type_name(declared_type, &vec![])?
+            }
             Type::Structure(structure_reference) => self.get_name_for_structure_reference(structure_reference)?,
             Type::UnsignedInteger(size) => format!("u{size}"),
             Type::Void => format!("void"),

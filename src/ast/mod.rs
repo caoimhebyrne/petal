@@ -35,6 +35,7 @@ use crate::{
             variable_declaration::VariableDeclaration,
         },
         type_expr::{
+            EnumVariant,
             GenericTypeArgument,
             GenericTypeParameter,
             StructureField,
@@ -687,6 +688,29 @@ impl ASTParser {
 
             let close_brace_span = self.expect(TokenKind::CloseBrace)?.span;
             return Ok((TypeExpr::Structure { fields }, Span::between(struct_span, close_brace_span)));
+        }
+
+        // If this is the `enum` keyword, then we are parsing an enum definition.
+        if self.peek_is(TokenKind::Keyword(Keyword::Enum)) {
+            let keyword_span = self.expect(TokenKind::Keyword(Keyword::Enum))?.span;
+
+            self.expect(TokenKind::OpenBrace)?;
+
+            let mut variants: Vec<EnumVariant> = vec![];
+
+            while !self.peek_is(TokenKind::CloseBrace) {
+                let (name, span) = self.expect_identifier()?;
+                variants.push(EnumVariant { name, span });
+
+                if self.peek_is(TokenKind::CloseBrace) {
+                    break;
+                }
+
+                self.expect(TokenKind::Comma)?;
+            }
+
+            let close_brace_span = self.expect(TokenKind::CloseBrace)?.span;
+            return Ok((TypeExpr::Enum { variants }, Span::between(keyword_span, close_brace_span)));
         }
 
         // Otherwise, we can attempt to parse a named type.

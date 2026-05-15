@@ -18,6 +18,7 @@ use crate::{
             variable_declaration::VariableDeclaration,
         },
         type_expr::{
+            EnumVariant,
             GenericTypeArgument,
             GenericTypeParameter,
             StructureField,
@@ -64,6 +65,16 @@ impl Display for StructureId {
     }
 }
 
+/// The identifier for an enum type.
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub struct EnumId(usize);
+
+impl Display for EnumId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// The built-in types that should be discovered from the standard library during compilation.
 #[derive(Default, Clone)]
 pub struct IncompleteBuiltinTypes {
@@ -87,6 +98,9 @@ pub enum SyntheticType {
 pub(crate) struct TypecheckerContext {
     /// The functions that have been validated by this [`Typechecker`] instance.
     pub(crate) functions: HashMap<FunctionId, CheckedFunction>,
+
+    /// The enums that have been declared during compilation.
+    pub(crate) enums: HashMap<EnumId, DeclaredEnum>,
 
     /// The current scope. By default, this is the global scope.
     pub(crate) scope: Scope,
@@ -380,6 +394,15 @@ impl TypecheckerContext {
 
         id
     }
+
+    /// Creates a [`DeclaredEnum`] and inserts it into this [`TypecheckerContext`].
+    pub(crate) fn insert_enum(&mut self, declared_type_id: DeclaredTypeId, variants: Vec<EnumVariant>) -> EnumId {
+        let id = EnumId(self.enums.len());
+
+        self.enums.insert(id, DeclaredEnum { declared_type_id, variants });
+
+        id
+    }
 }
 
 /// A function which has been verified by the typechecker.
@@ -397,7 +420,7 @@ pub struct CheckedFunction {
     /// The name of the type which owns the function.
     pub owner_type_name: Option<String>,
 
-    /// The declared name of the function.
+    /// The declared name of the function.F
     pub name: String,
 
     /// The parameters to the function.
@@ -554,4 +577,14 @@ impl Display for SpecializedFunctionId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
+}
+
+/// An enum type which has been declared in the source code.
+#[derive(Debug, Clone)]
+pub struct DeclaredEnum {
+    /// The declared type ID associated with this enum.
+    pub declared_type_id: DeclaredTypeId,
+
+    /// The variants within the enum.
+    pub variants: Vec<EnumVariant>,
 }

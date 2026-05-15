@@ -13,6 +13,7 @@ use crate::{
                 BinaryOperation,
                 BinaryOperator,
             },
+            enum_variant_access::EnumMemberAccess,
             function_call::{
                 FunctionCall,
                 FunctionCallArgument,
@@ -320,7 +321,37 @@ impl<'a> BodyPass<'a> {
                 self.visit_structure_initialization(structure_initialization, type_hint, expression.span)
             }
 
-            ExpressionKind::MemberAccess(member_access) => self.visit_member_access(member_access, expression.span),
+            ExpressionKind::MemberAccess(member_access) => {
+                // Before attempting to visit the expression, we should attempt to see if any types exist with the same name.
+                if let ExpressionKind::IdentifierReference(identifier) = &member_access.target.kind {
+                    if let Some(declared_type) =
+                        self.typechecker.context.get_declared_type_by_name(identifier, expression.span)
+                    {
+                        // FIXME: We only support enums on these lookups.
+                        let Type::Enum(enum_id) = declared_type.r#type else {
+                            return Err(TypecheckerErrorKind::MemberAccessNotSupported.at(expression.span));
+                        };
+
+                        let r#enum = &self.typechecker.context.enums[&enum_id];
+
+                        // The enum variant must exist.
+                        let variant_index =
+                            r#enum.variants.iter().position(|it| it.name == member_access.name).ok_or_else(|| {
+                                TypecheckerErrorKind::TypeDoesNotHaveMember {
+                                    r#type: declared_type.r#type.clone(),
+                                    name: member_access.name.clone(),
+                                }
+                                .at(expression.span)
+                            })?;
+
+                        *expression =
+                            Expression::new(EnumMemberAccess { enum_id, variant_index }.into(), expression.span);
+                        return self.visit_expression(expression, type_hint);
+                    }
+                }
+
+                self.visit_member_access(member_access, expression.span)
+            }
 
             ExpressionKind::OptionalWrap(optional_wrap) => {
                 self.visit_optional_wrap(optional_wrap, type_hint, expression.span)
@@ -340,6 +371,10 @@ impl<'a> BodyPass<'a> {
 
             ExpressionKind::OptionalUnwrap(optional_unwrap) => {
                 self.visit_optional_unwrap(optional_unwrap, expression.span)
+            }
+
+            ExpressionKind::EnumMemberAccess(enum_member_access) => {
+                self.visit_enum_member_access(enum_member_access, expression.span)
             }
 
             ExpressionKind::NamespaceQualifier(_) => {
@@ -919,6 +954,15 @@ impl<'a> BodyPass<'a> {
 
         optional_unwrap.inner_type = *inner_type.clone();
         Ok(*inner_type)
+    }
+
+    /// Visits an enum member access.
+    fn visit_enum_member_access(
+        &mut self,
+        enum_member_access: &mut EnumMemberAccess,
+        _span: Span,
+    ) -> Result<Type, TypecheckerError> {
+        Ok(Type::Enum(enum_member_access.enum_id))
     }
 
     /// Visits a namespace declaration.

@@ -23,6 +23,9 @@ pub enum TypeExpr {
 
     /// A structure definition.
     Structure { fields: Vec<StructureField> },
+
+    /// An enumeration definition.
+    Enum { variants: Vec<EnumVariant> },
 }
 
 impl TypeExpr {
@@ -54,6 +57,22 @@ impl StructureField {
     /// Creates a new [`StructureField`].
     pub fn new(name: String, type_expr: TypeExpr, span: Span) -> Self {
         Self { name, type_expr, r#type: Type::Unknown, span }
+    }
+}
+
+/// An enumeration variant.
+#[derive(Debug, Clone)]
+pub struct EnumVariant {
+    /// The name of the variant.
+    pub name: String,
+
+    /// The span that this variant was defined at in the source code.
+    pub span: Span,
+}
+
+impl PartialEq for EnumVariant {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
     }
 }
 

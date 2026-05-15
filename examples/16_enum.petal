@@ -1,0 +1,17 @@
+// An enum type can be declared to express a set of named values.
+type State = enum {
+    Enabled,
+    Disabled,
+};
+
+func main() -> i32 {
+    // A variant of an enum type can be accessed by its name.
+    state: State = State.Enabled;
+
+    // An enum type can be compared against one of its variants.
+    if (state == State.Enabled) {
+        return 1;
+    }
+
+    return 0;
+}

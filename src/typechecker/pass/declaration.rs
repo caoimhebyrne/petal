@@ -168,6 +168,20 @@ impl<'a> DeclarationPass<'a> {
                 )?;
             }
 
+            TypeExpr::Enum { variants } => {
+                self.typechecker.context.insert_computed_declared_type(
+                    self.current_namespace.clone(),
+                    type_declaration.name.clone(),
+                    type_declaration.modifiers.clone(),
+                    type_declaration.generic_type_parameters.clone(),
+                    span,
+                    |ctx, declared_type_id| {
+                        let enum_id = ctx.insert_enum(declared_type_id, variants.clone());
+                        Type::Enum(enum_id)
+                    },
+                )?;
+            }
+
             expr => {
                 let resolved_type = self.typechecker.resolve_type_from_expr(
                     expr,

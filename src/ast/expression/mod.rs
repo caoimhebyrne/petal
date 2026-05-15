@@ -1,6 +1,7 @@
 use crate::{
     ast::expression::{
         binary_operation::BinaryOperation,
+        enum_variant_access::EnumMemberAccess,
         function_call::FunctionCall,
         member_access::MemberAccess,
         namespace_qualifier::NamespaceQualifier,
@@ -17,6 +18,7 @@ use crate::{
 };
 
 pub mod binary_operation;
+pub mod enum_variant_access;
 pub mod function_call;
 pub mod member_access;
 pub mod namespace_qualifier;
@@ -87,4 +89,7 @@ pub enum ExpressionKind {
 
     /// A namespace qualifier.
     NamespaceQualifier(NamespaceQualifier),
+
+    /// Accessing an enumeration member.
+    EnumMemberAccess(EnumMemberAccess),
 }
