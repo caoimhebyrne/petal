@@ -124,7 +124,10 @@ impl<'a> BodyPass<'a> {
         function_declaration: &mut FunctionDeclaration,
         span: Span,
     ) -> Result<(), TypecheckerError> {
-        self.typechecker.context.push_child_scope(function_declaration.return_type.clone());
+        self.typechecker.context.push_child_scope(
+            function_declaration.generic_type_parameters.clone(),
+            function_declaration.return_type.clone(),
+        );
 
         for parameter in &function_declaration.parameters {
             self.typechecker.context.insert_variable(
@@ -150,9 +153,15 @@ impl<'a> BodyPass<'a> {
         span: Span,
     ) -> Result<(), TypecheckerError> {
         // The type of the variable must be resolved.
+        let type_resolving_context = TypeResolvingContext {
+            // FIXME: This clone sucks.
+            generic_type_parameters: &self.typechecker.context.scope.generic_type_parameters.clone(),
+            implicit_this_type: None,
+        };
+
         let variable_type = self.typechecker.resolve_type_from_expr(
             &mut variable_declaration.type_expr,
-            TypeResolvingContext { generic_type_parameters: &vec![], implicit_this_type: None },
+            type_resolving_context,
             span,
         )?;
 
@@ -235,7 +244,10 @@ impl<'a> BodyPass<'a> {
         }
 
         // All of the statements within the block must be valid.
-        self.typechecker.context.push_child_scope(self.typechecker.context.scope.result_type.clone());
+        self.typechecker.context.push_child_scope(
+            self.typechecker.context.scope.generic_type_parameters.clone(),
+            self.typechecker.context.scope.result_type.clone(),
+        );
 
         // If the condition is a call to `Optional<T>.has_value`, we can assume that the value of the optional is
         // of its inner type.

@@ -138,17 +138,21 @@ pub(crate) struct Scope {
     /// The parent scope, if this is a child.
     pub(crate) parent: Option<Box<Scope>>,
 
+    /// The generic type parameters that are available in this scope.
+    pub(crate) generic_type_parameters: Vec<GenericTypeParameter>,
+
     /// The type that "result value" of this scope intends to be.
     pub(crate) result_type: Type,
 }
 
 impl Scope {
     /// Creates a new scope which is a child of this scope.
-    pub(crate) fn create_child(self, result_type: Type) -> Self {
+    pub(crate) fn create_child(self, generic_type_parameters: Vec<GenericTypeParameter>, result_type: Type) -> Self {
         Self {
             variables: HashMap::default(),
             smart_casted_variables: HashMap::default(),
             parent: Some(Box::new(self)),
+            generic_type_parameters,
             result_type,
         }
     }
@@ -176,8 +180,8 @@ pub struct FunctionLookupRequest {
 
 impl TypecheckerContext {
     /// Creates a child of the current scope, and makes it the current scope.
-    pub fn push_child_scope(&mut self, result_type: Type) {
-        self.scope = mem::take(&mut self.scope).create_child(result_type);
+    pub fn push_child_scope(&mut self, generic_type_parameters: Vec<GenericTypeParameter>, result_type: Type) {
+        self.scope = mem::take(&mut self.scope).create_child(generic_type_parameters, result_type);
     }
 
     /// Takes the parent of the current scope, and makes it the current scope.
