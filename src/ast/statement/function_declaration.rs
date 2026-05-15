@@ -175,7 +175,7 @@ impl FunctionDeclarationBuilder {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FunctionParameter {
     /// The name of the parameter.
     pub name: String,
@@ -197,14 +197,5 @@ impl FunctionParameter {
     /// Creates a new [`FunctionParameter`].
     pub fn new(name: impl Into<String>, type_expr: TypeExpr, r#type: Type, is_named: bool, span: Span) -> Self {
         Self { name: name.into(), type_expr, r#type, is_named, span }
-    }
-}
-
-impl PartialEq for FunctionParameter {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && self.type_expr == other.type_expr
-            && self.r#type == other.r#type
-            && self.is_named == other.is_named
     }
 }

@@ -1,13 +1,33 @@
 use crate::module_registry::ModuleId;
 
 /// The location of some text within an original source file.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+///
+/// Note: Even though [`Span`] implements [`PartialEq`], it does not check whether `self` is equal to `other`. This is
+/// due to the fact that equality between two [`Span`]s is never checked directly, and is usually only implicitly
+/// checked due to a type containing a [`Span`] implementing [`PartialEq`].
+///
+/// To check whether two spans are equal, you may use [`Span::span_eq`].
+#[derive(Debug, Copy, Clone)]
 pub struct Span {
     /// The module that the span occurred in.
     pub module_id: ModuleId,
 
     /// The location that the span occurred at.
     pub location: SpanLocation,
+}
+
+impl Span {
+    /// Checks whether the [`self`] [`Span`] is equal to the [`other`] [`Span`].
+    /// See the documentation on the [`Span`] type for why this function exists.
+    pub fn span_eq(&self, other: &Self) -> bool {
+        self.module_id == other.module_id && self.location == other.location
+    }
+}
+
+impl PartialEq for Span {
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
