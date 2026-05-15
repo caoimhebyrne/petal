@@ -929,6 +929,7 @@ mod tests {
             ExpressionKind::NumberLiteral(_) => {}
             ExpressionKind::NamespaceQualifier(_) => {}
             ExpressionKind::OptionalEmpty(_) => {}
+            ExpressionKind::EnumMemberAccess(_) => {}
         }
     }
 
