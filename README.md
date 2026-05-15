@@ -35,7 +35,10 @@ Cranelift) compiler backend will be added in the future.
   - [x] Smart casting
 - [x] Basic generics
   - [x] Generic functions
+  - [ ] Member functions of generic types (`func <T> Foo<T>.bar()`)
   - [ ] Generic type argument inference
+- [x] Enums
+  - [ ] Tagged unions?
 - [ ] IR
 - [ ] Arrays
 - ...
