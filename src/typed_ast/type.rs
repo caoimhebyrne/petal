@@ -16,6 +16,9 @@ pub enum Type {
     /// A signed integer of a certain size (i{x}).
     SignedInteger(u8),
 
+    /// A reference of another type.
+    Reference(TypeId),
+
     /// An unsigned integer of a certain size (u{x}).
     UnsignedInteger(u8),
 

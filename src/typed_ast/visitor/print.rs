@@ -69,6 +69,7 @@ impl<'db> PrintingProgramVisitor<'db> {
                 defined_type.name.clone()
             }
             Type::SignedInteger(bits) => format!("i{bits}"),
+            Type::Reference(inner_type_id) => format!("&{}", self.visit_type_id(inner_type_id)),
             Type::UnsignedInteger(bits) => format!("u{bits}"),
             Type::Generic(_) => "?".to_string(),
             Type::Void => "void".to_string(),

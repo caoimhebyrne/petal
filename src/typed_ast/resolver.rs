@@ -201,6 +201,13 @@ impl TypeResolver {
     ) -> TypecheckerResult<TypeId> {
         match expr {
             TypeExpr::Named { name, .. } => self.resolve_type_by_name(generic_type_parameters, name, span),
+
+            TypeExpr::Reference(inner_type_expr) => {
+                let inner_type_id = self.visit_type_expr(generic_type_parameters, inner_type_expr, span)?;
+                let ty = Type::Reference(inner_type_id);
+                Ok(self.program.type_db.get_or_insert_type(ty))
+            }
+
             _ => todo!(),
         }
     }
