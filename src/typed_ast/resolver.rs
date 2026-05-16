@@ -27,6 +27,9 @@ use crate::{
             TypecheckerErrorKind,
         },
         r#type::{
+            DefinedType,
+            DefinedTypeKind,
+            Structure,
             Type,
             TypeId,
         },
@@ -147,9 +150,13 @@ impl TypeResolver {
                     self.visit_function_declaration(function_declaration, statement.span)?;
                 }
 
+                ast::statement::StatementKind::TypeDeclaration(type_declaration) => {
+                    self.visit_type_declaration(type_declaration, statement.span)?;
+                }
+
                 _ => {
-                    warn!(
-                        "Ignoring unsupported top-level statement ({:?}) at source index {}",
+                    panic!(
+                        "Unsupported top-level statement ({:?}) at source index {}",
                         statement.kind, statement.span.location.start
                     );
                 }
@@ -219,9 +226,11 @@ impl TypeResolver {
             _ => {
                 if let Some(generic_type_parameter) = generic_type_parameters.iter().find(|it| it.name == name) {
                     return Ok(generic_type_parameter.type_id);
+                } else if let Some(defined_type_id) = self.program.type_db.find_defined_type(name) {
+                    Type::Defined(defined_type_id)
+                } else {
+                    return Err(TypecheckerErrorKind::UndeclaredTypeName(name.to_string()).at(span));
                 }
-
-                return Err(TypecheckerErrorKind::UndeclaredTypeName(name.to_string()).at(span));
             }
         };
 
@@ -280,7 +289,7 @@ impl TypeResolver {
 }
 
 impl TypeResolver {
-    /// Visits the provided [`FunctionDeclaration`].
+    /// Visits the provided [`ast::statement::function_declaration::FunctionDeclaration`].
     ///
     /// If the function has generic type parameters, it will not be appended to the [`Program`], and will instead be
     /// stored to undergo monomorphization once a call is made to it. If any references to a generic type parameter are
@@ -371,6 +380,34 @@ impl TypeResolver {
             is_named: parameter.is_named,
             span: parameter.span,
         })
+    }
+}
+
+impl TypeResolver {
+    /// Visits the provided [`ast::statement::type_declaration::TypeDeclaration`].
+    fn visit_type_declaration(
+        &mut self,
+        type_declaration: ast::statement::type_declaration::TypeDeclaration,
+        span: Span,
+    ) -> TypecheckerResult<()> {
+        // todo(resolver): modifiers
+        // todo(resolver): generic type parameters
+
+        let defined_type_kind = TypeResolver::visit_type_expr_on_declaration(&type_declaration.type_expr, span)?;
+        self.program.type_db.insert_defined_type(DefinedType { name: type_declaration.name, kind: defined_type_kind });
+
+        Ok(())
+    }
+
+    /// Visits a [`TypeExpr`] that is part of a type declaration.
+    fn visit_type_expr_on_declaration(type_expr: &TypeExpr, span: Span) -> TypecheckerResult<DefinedTypeKind> {
+        let TypeExpr::Structure { .. } = type_expr else {
+            return Err(TypecheckerErrorKind::ExpectedTypeDefinition.at(span));
+        };
+
+        // todo(resolver): parse structure fields
+
+        Ok(DefinedTypeKind::Structure(Structure))
     }
 }
 

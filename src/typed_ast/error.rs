@@ -31,6 +31,9 @@ pub enum TypecheckerErrorKind {
     /// The number of generic type arguments provided did not equal the number of generic type parameters.
     GenericTypeArgumentCountMismatch { expected: usize, got: usize },
 
+    /// A type expression was provided for a type definition, but the expression was not a definition kind.
+    ExpectedTypeDefinition,
+
     /// A type was referenced by name, but a matching type could not be resolved.
     UndeclaredTypeName(String),
 
@@ -56,6 +59,10 @@ impl Display for TypecheckerErrorKind {
                 got,
                 if *got == 0 { "" } else { "s" }
             ),
+
+            Self::ExpectedTypeDefinition => {
+                write!(f, "Expected any type definition (struct, enum), but got a plain type expression instead")
+            }
 
             Self::UndeclaredTypeName(name) => write!(f, "Cannot find type named '{name}'"),
 

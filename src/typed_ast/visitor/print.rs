@@ -64,6 +64,10 @@ impl<'db> PrintingProgramVisitor<'db> {
         let ty = *self.type_db.get_type(type_id);
 
         match ty {
+            Type::Defined(defined_type_id) => {
+                let defined_type = self.type_db.get_defined_type(defined_type_id);
+                defined_type.name.clone()
+            }
             Type::SignedInteger(bits) => format!("i{bits}"),
             Type::UnsignedInteger(bits) => format!("u{bits}"),
             Type::Generic(_) => "?".to_string(),
