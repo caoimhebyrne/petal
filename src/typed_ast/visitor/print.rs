@@ -10,7 +10,16 @@ use crate::{
             TypeDb,
             TypeId,
         },
-        visitor::ProgramVisitor,
+        visitor::{
+            ProgramVisitor,
+            walk_expression,
+            walk_expression_binary_operation,
+            walk_expression_function_call,
+            walk_function,
+            walk_program,
+            walk_statement_return,
+            walk_statement_variable_declaration,
+        },
     },
 };
 
@@ -32,10 +41,7 @@ impl<'db> PrintingProgramVisitor<'db> {
     /// A convenience method for calling [`Self::new`] and [`Self::visit`].
     pub fn visit(program: &'db mut Program) {
         let mut visitor = Self::new(&program.type_db);
-
-        for (function_key, function) in &mut program.functions {
-            visitor.visit_function(function_key, function);
-        }
+        walk_program(&mut visitor, &mut program.functions);
     }
 
     /// Returns a string containing the amount of padding required before this statement.
@@ -104,15 +110,18 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
 
         self.increase_indentation();
 
-        for statement in &mut function.body {
-            self.visit_statement(statement);
-        }
+        walk_function(self, function);
 
         self.decrease_indentation();
 
         self.decrease_indentation();
 
         debug!("");
+    }
+
+    fn visit_statement_return(&mut self, value: Option<&mut Expression>) {
+        debug!("{}Return", self.indentation_string());
+        walk_statement_return(self, value);
     }
 
     fn visit_statement_variable_declaration(&mut self, name: &str, value: &mut Expression, type_id: &mut TypeId) {
@@ -124,20 +133,12 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
             type_id
         );
 
-        self.visit_expression(value);
-    }
-
-    fn visit_statement_return(&mut self, value: Option<&mut Expression>) {
-        debug!("{}Return", self.indentation_string());
-
-        if let Some(value) = value {
-            self.visit_expression(value);
-        }
+        walk_statement_variable_declaration(self, name, value, type_id);
     }
 
     fn visit_expression(&mut self, expression: &mut Expression) {
         self.increase_indentation();
-        self.visit_expression_kind(&mut expression.kind, &mut expression.type_id);
+        walk_expression(self, expression);
         self.decrease_indentation();
     }
 
@@ -149,9 +150,7 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
         type_id: &mut TypeId,
     ) {
         debug!("{}{} (type = {}, {:?})", self.indentation_string(), operator, self.visit_type_id(*type_id), type_id);
-
-        self.visit_expression(left);
-        self.visit_expression(right);
+        walk_expression_binary_operation(self, left, right, operator, type_id);
     }
 
     fn visit_expression_function_call(
@@ -168,9 +167,7 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
             type_id
         );
 
-        for argument in arguments.iter_mut() {
-            self.visit_expression(argument);
-        }
+        walk_expression_function_call(self, function_key, arguments, type_id);
     }
 
     fn visit_expression_number_literal(&mut self, value: &mut f64, type_id: &mut TypeId) {

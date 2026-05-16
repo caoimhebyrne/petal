@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::{
     ast::expression::binary_operation::BinaryOperator,
     typed_ast::{
@@ -15,58 +17,37 @@ pub(crate) mod generic_type_visitor;
 pub(crate) mod print;
 
 /// Visits a [`Program`] in the typed AST.
-pub trait ProgramVisitor {
+///
+/// Implementers of this trait are encouraged to only override the methods that they need. If you are overriding a
+/// method, you are encouraged to call the `walk_x` free functions provided by this module to continue visiting.
+///
+/// Implementers of this trait must also implement [`Sized`]. This is to allow the trait to be used as a generic type
+/// parameter.
+pub trait ProgramVisitor: Sized {
     /// Visits the provided [`Function`].
+    #[allow(unused_variables)] // not used by this implementation, but may be by others
     fn visit_function(&mut self, key: &FunctionKey, function: &mut Function) {
-        let _ = key;
-        for statement in &mut function.body {
-            self.visit_statement(statement);
-        }
+        walk_function(self, function);
     }
 
     /// Visits the provided [`Statement`].
     fn visit_statement(&mut self, statement: &mut Statement) {
-        match &mut statement.kind {
-            StatementKind::Return(value) => {
-                self.visit_statement_return(value.as_mut());
-            }
+        walk_statement(self, statement);
+    }
 
-            StatementKind::VariableDeclaration { name, value, type_id } => {
-                self.visit_statement_variable_declaration(name, value, type_id);
-            }
-        }
+    /// Visits a return statement.
+    fn visit_statement_return(&mut self, value: Option<&mut Expression>) {
+        walk_statement_return(self, value);
     }
 
     /// Visits a variable declaration statement.
-    fn visit_statement_variable_declaration(&mut self, name: &str, value: &mut Expression, type_id: &mut TypeId);
-
-    /// Visits a return statement.
-    fn visit_statement_return(&mut self, value: Option<&mut Expression>);
+    fn visit_statement_variable_declaration(&mut self, name: &str, value: &mut Expression, type_id: &mut TypeId) {
+        walk_statement_variable_declaration(self, name, value, type_id);
+    }
 
     /// Visits the provided [`Expression`].
     fn visit_expression(&mut self, expression: &mut Expression) {
-        self.visit_expression_kind(&mut expression.kind, &mut expression.type_id);
-    }
-
-    /// Visits the provided [`ExpressionKind`].
-    fn visit_expression_kind(&mut self, kind: &mut ExpressionKind, type_id: &mut TypeId) {
-        match kind {
-            ExpressionKind::BinaryOperation { left, right, operator } => {
-                self.visit_expression_binary_operation(left, right, operator, type_id);
-            }
-
-            ExpressionKind::FunctionCall { function_key, arguments } => {
-                self.visit_expression_function_call(function_key, arguments, type_id);
-            }
-
-            ExpressionKind::NumberLiteral(value) => {
-                self.visit_expression_number_literal(value, type_id);
-            }
-
-            ExpressionKind::VariableReference(variable_name) => {
-                self.visit_variable_reference(variable_name, type_id);
-            }
-        }
+        walk_expression(self, expression);
     }
 
     /// Visits a binary operation expression.
@@ -76,7 +57,9 @@ pub trait ProgramVisitor {
         right: &mut Expression,
         operator: &mut BinaryOperator,
         type_id: &mut TypeId,
-    );
+    ) {
+        walk_expression_binary_operation(self, left, right, operator, type_id);
+    }
 
     /// Visits a function call expression.
     fn visit_expression_function_call(
@@ -84,11 +67,107 @@ pub trait ProgramVisitor {
         function_key: &FunctionKey,
         arguments: &mut [Expression],
         type_id: &mut TypeId,
-    );
+    ) {
+        walk_expression_function_call(self, function_key, arguments, type_id);
+    }
 
     /// Visits a number literal expression.
-    fn visit_expression_number_literal(&mut self, value: &mut f64, type_id: &mut TypeId);
+    #[allow(unused_variables)] // not used by this implementation, but may be by others
+    fn visit_expression_number_literal(&mut self, value: &mut f64, type_id: &mut TypeId) {}
 
     /// Visits a variable reference expression.
-    fn visit_variable_reference(&mut self, variable_name: &mut str, type_id: &mut TypeId);
+    #[allow(unused_variables)] // not used by this implementation, but may be by others
+    fn visit_variable_reference(&mut self, variable_name: &mut str, type_id: &mut TypeId) {}
+}
+
+/// Invokes the `visitor` on any child nodes within a [`Program`].
+///
+/// The individual required fields of the [`Program`] are passed individually. This allows the caller to take
+/// ownership of a reference to any fields that this method is not concerned with (e.g. [`TypeDb`]).
+pub fn walk_program<V: ProgramVisitor>(visitor: &mut V, functions: &mut BTreeMap<FunctionKey, Function>) {
+    for (key, function) in functions {
+        visitor.visit_function(key, function);
+    }
+}
+
+/// Invokes the `visitor` on any child nodes within a [`Function`].
+pub fn walk_function<V: ProgramVisitor>(visitor: &mut V, function: &mut Function) {
+    for statement in &mut function.body {
+        visitor.visit_statement(statement);
+    }
+}
+
+/// Invokes the `visitor`'s specialized methods on the provided [`Statement`].
+fn walk_statement<V: ProgramVisitor>(visitor: &mut V, statement: &mut Statement) {
+    match &mut statement.kind {
+        StatementKind::Return(value) => {
+            visitor.visit_statement_return(value.as_mut());
+        }
+
+        StatementKind::VariableDeclaration { name, value, type_id } => {
+            visitor.visit_statement_variable_declaration(name, value, type_id);
+        }
+    }
+}
+
+/// Invokes the `visitor` on any child nodes within a return statement.
+pub fn walk_statement_return<V: ProgramVisitor>(visitor: &mut V, value: Option<&mut Expression>) {
+    if let Some(expression) = value {
+        visitor.visit_expression(expression);
+    }
+}
+
+/// Invokes the `visitor` on any child nodes within a variable declaration statement.
+pub fn walk_statement_variable_declaration<V: ProgramVisitor>(
+    visitor: &mut V,
+    _name: &str,
+    value: &mut Expression,
+    _type_id: &mut TypeId,
+) {
+    visitor.visit_expression(value);
+}
+
+/// Invokes the `visitor`'s specialized methods on the proivded [`Expression`].
+fn walk_expression<V: ProgramVisitor>(visitor: &mut V, expression: &mut Expression) {
+    match &mut expression.kind {
+        ExpressionKind::BinaryOperation { left, right, operator } => {
+            visitor.visit_expression_binary_operation(left, right, operator, &mut expression.type_id);
+        }
+
+        ExpressionKind::FunctionCall { function_key, arguments } => {
+            visitor.visit_expression_function_call(function_key, arguments, &mut expression.type_id);
+        }
+
+        ExpressionKind::NumberLiteral(value) => {
+            visitor.visit_expression_number_literal(value, &mut expression.type_id);
+        }
+
+        ExpressionKind::VariableReference(variable_name) => {
+            visitor.visit_variable_reference(variable_name, &mut expression.type_id);
+        }
+    }
+}
+
+/// Invokes the `visitor` on any child nodes within a binary operation expression.
+pub fn walk_expression_binary_operation<V: ProgramVisitor>(
+    visitor: &mut V,
+    left: &mut Expression,
+    right: &mut Expression,
+    _operator: &mut BinaryOperator,
+    _type_id: &mut TypeId,
+) {
+    visitor.visit_expression(left);
+    visitor.visit_expression(right);
+}
+
+/// Invokes the `visitor` on any child nodes within a function call expression.
+pub fn walk_expression_function_call<V: ProgramVisitor>(
+    visitor: &mut V,
+    _function_key: &FunctionKey,
+    arguments: &mut [Expression],
+    _type_id: &mut TypeId,
+) {
+    for argument in arguments {
+        visitor.visit_expression(argument);
+    }
 }
