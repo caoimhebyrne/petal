@@ -27,11 +27,13 @@ use crate::{
             TypecheckerErrorKind,
         },
         r#type::{
-            DefinedType,
-            DefinedTypeKind,
-            Structure,
             Type,
-            TypeId,
+            db::TypeId,
+            defined::{
+                DefinedType,
+                DefinedTypeKind,
+                Structure,
+            },
         },
     },
 };

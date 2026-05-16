@@ -7,8 +7,10 @@ use crate::{
         Program,
         r#type::{
             Type,
-            TypeDb,
-            TypeId,
+            db::{
+                TypeDb,
+                TypeId,
+            },
         },
         visitor::{
             ProgramVisitor,

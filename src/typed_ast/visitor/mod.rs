@@ -9,7 +9,7 @@ use crate::{
         FunctionKey,
         Statement,
         StatementKind,
-        r#type::TypeId,
+        r#type::db::TypeId,
     },
 };
 

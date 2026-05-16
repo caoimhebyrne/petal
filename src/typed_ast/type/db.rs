@@ -1,54 +1,17 @@
 use std::collections::BTreeMap;
 
+use crate::typed_ast::r#type::{
+    Type,
+    defined::DefinedType,
+};
+
 /// The ID of a [`Type`].
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TypeId(usize);
 
-/// A type on a node within the typed AST.
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Type {
-    /// A reference to a defined type (e.g. struct, enum).
-    Defined(DefinedTypeId),
-
-    /// A generic type which needs to be substituted for its concrete type when available.
-    Generic(usize),
-
-    /// A signed integer of a certain size (i{x}).
-    SignedInteger(u8),
-
-    /// A reference of another type.
-    Reference(TypeId),
-
-    /// An unsigned integer of a certain size (u{x}).
-    UnsignedInteger(u8),
-
-    /// Unit, typically the result of a function call.
-    Void,
-}
-
 /// The ID of a [`DefinedType`].
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DefinedTypeId(usize);
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct DefinedType {
-    /// The name of the defined type.
-    pub name: String,
-
-    /// The kind of type that was defined.
-    pub kind: DefinedTypeKind,
-}
-
-/// The different kinds of [`DefinedType`]s that exist.
-#[derive(Debug, Clone, PartialEq)]
-pub enum DefinedTypeKind {
-    /// A structure.
-    Structure(Structure),
-}
-
-/// A structure defined within a program by a user.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Structure;
 
 #[derive(Debug, Clone)]
 pub struct TypeDb {

@@ -5,8 +5,10 @@ use crate::typed_ast::{
     Program,
     r#type::{
         Type,
-        TypeDb,
-        TypeId,
+        db::{
+            TypeDb,
+            TypeId,
+        },
     },
     visitor::{
         ProgramVisitor,

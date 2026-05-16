@@ -1,13 +1,12 @@
 #![allow(dead_code)]
 
-/// The typed AST is emitted by the typechecker as it resolves the types involved in the normal AST.
 use std::collections::BTreeMap;
 
 use crate::{
     ast::expression::binary_operation::BinaryOperator,
     core::span::Span,
     module_registry::ModuleId,
-    typed_ast::r#type::{
+    typed_ast::r#type::db::{
         TypeDb,
         TypeId,
     },

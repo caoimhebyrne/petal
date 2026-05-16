@@ -6,7 +6,7 @@ use crate::{
     typed_ast::{
         FunctionParameter,
         Statement,
-        r#type::TypeId,
+        r#type::db::TypeId,
     },
 };
 
