@@ -136,6 +136,15 @@ pub enum StatementKind {
         return_type_id: TypeId,
     },
 
+    /// Assigning a value to a reference.
+    ReferenceValueAssignment {
+        /// The expression which yields the reference to assign the value to.
+        target: Expression,
+
+        /// The value being assigned to the reference.
+        value: Expression,
+    },
+
     /// A return statement.
     /// The value may or may not exist, and if it does, it should match the current function's return type.
     Return(Option<Expression>),
@@ -213,6 +222,9 @@ pub enum ExpressionKind {
 
     /// A number literal. This can be any integer, float, etc.
     NumberLiteral(f64),
+
+    /// Creating a reference to a variable.
+    Reference(Box<Expression>),
 
     /// A reference to a local variable by name.
     VariableReference(String),

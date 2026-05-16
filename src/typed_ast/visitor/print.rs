@@ -15,8 +15,10 @@ use crate::{
             walk_expression,
             walk_expression_binary_operation,
             walk_expression_function_call,
+            walk_expression_reference,
             walk_function,
             walk_program,
+            walk_statement_reference_value_assignment,
             walk_statement_return,
             walk_statement_variable_assignment,
             walk_statement_variable_declaration,
@@ -125,6 +127,11 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
         debug!("");
     }
 
+    fn visit_statement_reference_value_assignment(&mut self, target: &mut Expression, value: &mut Expression) {
+        debug!("{}Reference value assignment", self.indentation_string());
+        walk_statement_reference_value_assignment(self, target, value);
+    }
+
     fn visit_statement_return(&mut self, value: Option<&mut Expression>) {
         debug!("{}Return", self.indentation_string());
         walk_statement_return(self, value);
@@ -198,7 +205,17 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
         );
     }
 
-    fn visit_variable_reference(&mut self, variable_name: &mut str, type_id: &mut TypeId) {
+    fn visit_expression_reference(&mut self, value: &mut Expression) {
+        debug!(
+            "{}Reference (type = {}, {:?})",
+            self.indentation_string(),
+            self.visit_type_id(value.type_id),
+            value.type_id
+        );
+        walk_expression_reference(self, value);
+    }
+
+    fn visit_expression_variable_reference(&mut self, variable_name: &mut str, type_id: &mut TypeId) {
         debug!(
             "{}Variable reference '{}' (type = {}, {:?})",
             self.indentation_string(),

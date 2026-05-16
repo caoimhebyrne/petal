@@ -28,11 +28,14 @@ impl Display for TypecheckerError {
 
 /// The different kinds of [`TypecheckerError`]s that exist.
 pub enum TypecheckerErrorKind {
+    /// A type expression was provided for a type definition, but the expression was not a definition kind.
+    ExpectedTypeDefinition,
+
     /// The number of generic type arguments provided did not equal the number of generic type parameters.
     GenericTypeArgumentCountMismatch { expected: usize, got: usize },
 
-    /// A type expression was provided for a type definition, but the expression was not a definition kind.
-    ExpectedTypeDefinition,
+    /// An expression was the target of an assignment expression, but it wasn't supported.
+    InvalidAssignmentTarget,
 
     /// A type was referenced by name, but a matching type could not be resolved.
     UndeclaredTypeName(String),
@@ -69,6 +72,11 @@ impl Display for TypecheckerErrorKind {
             Self::UnresolvableIdentifierReference(identifier) => {
                 write!(f, "Could not resolve a value for identifier '{identifier}'")
             }
+
+            Self::InvalidAssignmentTarget => write!(
+                f,
+                "The target of this assignment expression is invalid (expected a variable name or a dereference expression)"
+            ),
         }
     }
 }

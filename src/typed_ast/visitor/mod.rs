@@ -35,6 +35,11 @@ pub trait ProgramVisitor: Sized {
         walk_statement(self, statement);
     }
 
+    /// Visits a reference value assignment statement.
+    fn visit_statement_reference_value_assignment(&mut self, target: &mut Expression, value: &mut Expression) {
+        walk_statement_reference_value_assignment(self, target, value);
+    }
+
     /// Visits a return statement.
     fn visit_statement_return(&mut self, value: Option<&mut Expression>) {
         walk_statement_return(self, value);
@@ -85,9 +90,14 @@ pub trait ProgramVisitor: Sized {
     #[allow(unused_variables)] // not used by this implementation, but may be by others
     fn visit_expression_number_literal(&mut self, value: &mut f64, type_id: &mut TypeId) {}
 
+    /// Visits a reference expression.
+    fn visit_expression_reference(&mut self, value: &mut Expression) {
+        walk_expression_reference(self, value);
+    }
+
     /// Visits a variable reference expression.
     #[allow(unused_variables)] // not used by this implementation, but may be by others
-    fn visit_variable_reference(&mut self, variable_name: &mut str, type_id: &mut TypeId) {}
+    fn visit_expression_variable_reference(&mut self, variable_name: &mut str, type_id: &mut TypeId) {}
 }
 
 /// Invokes the `visitor` on any child nodes within a [`Program`].
@@ -114,6 +124,10 @@ fn walk_statement<V: ProgramVisitor>(visitor: &mut V, statement: &mut Statement)
             visitor.visit_expression_function_call(function_key, arguments, return_type_id);
         }
 
+        StatementKind::ReferenceValueAssignment { target, value } => {
+            visitor.visit_statement_reference_value_assignment(target, value);
+        }
+
         StatementKind::Return(value) => {
             visitor.visit_statement_return(value.as_mut());
         }
@@ -126,6 +140,15 @@ fn walk_statement<V: ProgramVisitor>(visitor: &mut V, statement: &mut Statement)
             visitor.visit_statement_variable_declaration(name, value, type_id);
         }
     }
+}
+
+pub fn walk_statement_reference_value_assignment<V: ProgramVisitor>(
+    visitor: &mut V,
+    target: &mut Expression,
+    value: &mut Expression,
+) {
+    visitor.visit_expression(target);
+    visitor.visit_expression(value);
 }
 
 /// Invokes the `visitor` on any child nodes within a return statement.
@@ -170,8 +193,12 @@ fn walk_expression<V: ProgramVisitor>(visitor: &mut V, expression: &mut Expressi
             visitor.visit_expression_number_literal(value, &mut expression.type_id);
         }
 
+        ExpressionKind::Reference(value) => {
+            visitor.visit_expression_reference(value);
+        }
+
         ExpressionKind::VariableReference(variable_name) => {
-            visitor.visit_variable_reference(variable_name, &mut expression.type_id);
+            visitor.visit_expression_variable_reference(variable_name, &mut expression.type_id);
         }
     }
 }
@@ -198,4 +225,9 @@ pub fn walk_expression_function_call<V: ProgramVisitor>(
     for argument in arguments {
         visitor.visit_expression(argument);
     }
+}
+
+/// Invokes the `visitor` on any child nodes within a reference expression.
+pub fn walk_expression_reference<V: ProgramVisitor>(visitor: &mut V, value: &mut Expression) {
+    visitor.visit_expression(value);
 }

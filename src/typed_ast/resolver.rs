@@ -481,19 +481,24 @@ impl TypeResolver {
         &mut self,
         variable_assignment: ast::statement::variable_assignment::VariableAssignment,
     ) -> TypecheckerResult<StatementKind> {
-        let ast::expression::ExpressionKind::IdentifierReference(variable_name) = variable_assignment.target.kind
-        else {
-            todo!("unsupported variable assignment target: '{:?}'", variable_assignment.target);
-        };
-
-        let Some(variable_type_id) = self.scope.get_variable_ty(&variable_name).copied() else {
-            return Err(TypecheckerErrorKind::UnresolvableIdentifierReference(variable_name)
-                .at(variable_assignment.target.span));
-        };
-
         let value = self.visit_expression(*variable_assignment.value)?;
 
-        Ok(StatementKind::VariableAssignment { name: variable_name, value, variable_type_id })
+        match variable_assignment.target.kind {
+            ast::expression::ExpressionKind::IdentifierReference(variable_name) => {
+                let Some(variable_type_id) = self.scope.get_variable_ty(&variable_name).copied() else {
+                    return Err(TypecheckerErrorKind::UnresolvableIdentifierReference(variable_name).at(value.span));
+                };
+
+                Ok(StatementKind::VariableAssignment { name: variable_name, value, variable_type_id })
+            }
+
+            ast::expression::ExpressionKind::Dereference(target_expression) => {
+                let target = self.visit_expression(*target_expression)?;
+                Ok(StatementKind::ReferenceValueAssignment { target, value })
+            }
+
+            _ => Err(TypecheckerErrorKind::InvalidAssignmentTarget.at(variable_assignment.target.span)),
+        }
     }
 
     /// Visits the provided AST [`VariableDeclaration`] statement.
@@ -533,6 +538,8 @@ impl TypeResolver {
             }
 
             ast::expression::ExpressionKind::NumberLiteral(value) => self.visit_expression_number_literal(value),
+
+            ast::expression::ExpressionKind::Reference(value) => self.visit_expression_reference(*value)?,
 
             _ => todo!(),
         };
@@ -635,5 +642,18 @@ impl TypeResolver {
 
         let type_id = self.program.type_db.get_or_insert_type(ty);
         (ExpressionKind::NumberLiteral(value), type_id)
+    }
+
+    // Visits the provided reference expression.
+    fn visit_expression_reference(
+        &mut self,
+        value: ast::expression::Expression,
+    ) -> TypecheckerResult<(ExpressionKind, TypeId)> {
+        let expression = self.visit_expression(value)?;
+
+        // The type of the reference expression is a reference to the expression's type.
+        let type_id = self.program.type_db.get_or_insert_type(Type::Reference(expression.type_id));
+
+        Ok((ExpressionKind::Reference(Box::new(expression)), type_id))
     }
 }
