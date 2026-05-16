@@ -100,6 +100,10 @@ pub fn walk_function<V: ProgramVisitor>(visitor: &mut V, function: &mut Function
 /// Invokes the `visitor`'s specialized methods on the provided [`Statement`].
 fn walk_statement<V: ProgramVisitor>(visitor: &mut V, statement: &mut Statement) {
     match &mut statement.kind {
+        StatementKind::FunctionCall { function_key, arguments, return_type_id } => {
+            visitor.visit_expression_function_call(function_key, arguments, return_type_id);
+        }
+
         StatementKind::Return(value) => {
             visitor.visit_statement_return(value.as_mut());
         }

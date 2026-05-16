@@ -124,6 +124,18 @@ pub struct Statement {
 /// The different kinds of typed [`Statement`]s that exist within the typed AST.
 #[derive(Debug, Clone)]
 pub enum StatementKind {
+    /// A function call.
+    FunctionCall {
+        /// The key of the function being called.
+        function_key: FunctionKey,
+
+        /// The arguments of this function call.
+        arguments: Vec<Expression>,
+
+        /// The expected return type of this function call.
+        return_type_id: TypeId,
+    },
+
     /// A return statement.
     /// The value may or may not exist, and if it does, it should match the current function's return type.
     Return(Option<Expression>),

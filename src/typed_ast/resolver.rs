@@ -427,14 +427,21 @@ impl TypeResolver {
     /// Visits the provided AST [`Statement`]. The returned [`Statement`] will be the typed variant of it.
     fn visit_statement(&mut self, statement: ast::statement::Statement) -> TypecheckerResult<Statement> {
         let kind = match statement.kind {
-            ast::statement::StatementKind::Return(r#return) => self.visit_statement_return(r#return),
+            ast::statement::StatementKind::FunctionCall(function_call) => {
+                let (function_key, arguments, return_type_id) =
+                    self.visit_expression_function_call(function_call, statement.span)?;
+
+                StatementKind::FunctionCall { function_key, arguments, return_type_id }
+            }
+
+            ast::statement::StatementKind::Return(r#return) => self.visit_statement_return(r#return)?,
 
             ast::statement::StatementKind::VariableDeclaration(variable_declaration) => {
-                self.visit_statement_variable_declaration(variable_declaration, statement.span)
+                self.visit_statement_variable_declaration(variable_declaration, statement.span)?
             }
 
             _ => todo!(),
-        }?;
+        };
 
         Ok(kind.at(statement.span))
     }
@@ -474,7 +481,10 @@ impl TypeResolver {
             }
 
             ast::expression::ExpressionKind::FunctionCall(function_call) => {
-                self.visit_expression_function_call(function_call, expression.span)?
+                let (function_key, arguments, type_id) =
+                    self.visit_expression_function_call(function_call, expression.span)?;
+
+                (ExpressionKind::FunctionCall { function_key, arguments }, type_id)
             }
 
             ast::expression::ExpressionKind::IdentifierReference(identifier) => {
@@ -516,7 +526,7 @@ impl TypeResolver {
         &mut self,
         function_call: ast::expression::function_call::FunctionCall,
         span: Span,
-    ) -> TypecheckerResult<(ExpressionKind, TypeId)> {
+    ) -> TypecheckerResult<(FunctionKey, Vec<Expression>, TypeId)> {
         // todo(resolver): resolve_function_callee?
         let ast::expression::ExpressionKind::IdentifierReference(identifier) = function_call.callee.kind else {
             panic!("Unsupported function callee: {function_call:?}");
@@ -541,7 +551,7 @@ impl TypeResolver {
             .map(|it| self.visit_expression(it.value))
             .collect::<TypecheckerResult<_>>()?;
 
-        Ok((ExpressionKind::FunctionCall { function_key, arguments }, function.return_type_id))
+        Ok((function_key, arguments, function.return_type_id))
     }
 
     /// Visits the provided identifier reference expression. An identifier reference will almost always be typed as
