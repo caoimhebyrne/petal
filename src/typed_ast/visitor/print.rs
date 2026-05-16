@@ -4,19 +4,40 @@ use crate::{
         Expression,
         Function,
         FunctionKey,
-        r#type::Ty,
+        Program,
+        r#type::{
+            Type,
+            TypeDb,
+            TypeId,
+        },
         visitor::ProgramVisitor,
     },
 };
 
 /// Prints the state of a [`Program`] to the standard output.
-#[derive(Default)]
-pub struct PrintingProgramVisitor {
+pub struct PrintingProgramVisitor<'db> {
     /// The current indentation level of this visitor.
     indentation_level: usize,
+
+    /// A reference to the [`TypeDb`].
+    type_db: &'db TypeDb,
 }
 
-impl PrintingProgramVisitor {
+impl<'db> PrintingProgramVisitor<'db> {
+    /// Creates a new [`PrintingProgramVisitor`] with the provided [`TypeDb`] reference.
+    pub fn new(type_db: &'db TypeDb) -> Self {
+        Self { indentation_level: 0, type_db }
+    }
+
+    /// A convenience method for calling [`Self::new`] and [`Self::visit`].
+    pub fn visit(program: &'db mut Program) {
+        let mut visitor = Self::new(&program.type_db);
+
+        for (function_key, function) in &mut program.functions {
+            visitor.visit_function(function_key, function);
+        }
+    }
+
     /// Returns a string containing the amount of padding required before this statement.
     fn indentation_string(&self) -> String {
         " ".repeat(self.indentation_level * 4)
@@ -32,22 +53,32 @@ impl PrintingProgramVisitor {
         self.indentation_level -= 1;
     }
 
-    /// Returns a human-readable string for the provided [`Ty`].
-    fn visit_ty(ty: &Ty) -> String {
+    /// Returns a human-readable string for the type referenced by the provided [`TypeId`].
+    fn visit_type_id(&self, type_id: TypeId) -> String {
+        let ty = *self.type_db.get_type(type_id);
+
         match ty {
-            Ty::SignedInteger(bits) => format!("i{bits}"),
-            Ty::UnsignedInteger(bits) => format!("u{bits}"),
-            Ty::Generic(_) => "?".to_string(),
-            Ty::Void => "void".to_string(),
+            Type::SignedInteger(bits) => format!("i{bits}"),
+            Type::UnsignedInteger(bits) => format!("u{bits}"),
+            Type::Generic(_) => "?".to_string(),
+            Type::Void => "void".to_string(),
         }
     }
 }
 
-impl ProgramVisitor for PrintingProgramVisitor {
+impl ProgramVisitor for PrintingProgramVisitor<'_> {
     fn visit_function(&mut self, key: &FunctionKey, function: &mut Function) {
-        debug!("Function '{}' (key = {:?}):", function.name, key);
+        debug!(
+            "Function '{}' -> returns {} ({:?}):",
+            function.name,
+            self.visit_type_id(function.return_type_id),
+            function.return_type_id
+        );
 
         self.increase_indentation();
+
+        debug!("{}{key:?}", self.indentation_string());
+        debug!("");
 
         if !function.parameters.is_empty() {
             debug!("{}Parameters:", self.indentation_string());
@@ -56,10 +87,11 @@ impl ProgramVisitor for PrintingProgramVisitor {
 
             for parameter in &function.parameters {
                 debug!(
-                    "{}{} (ty = {})",
+                    "{}{} (type = {}, {:?})",
                     self.indentation_string(),
                     parameter.name,
-                    PrintingProgramVisitor::visit_ty(&parameter.ty)
+                    self.visit_type_id(parameter.type_id),
+                    parameter.type_id
                 );
             }
 
@@ -83,8 +115,15 @@ impl ProgramVisitor for PrintingProgramVisitor {
         debug!("");
     }
 
-    fn visit_statement_variable_declaration(&mut self, name: &str, value: &mut Expression, ty: &mut Ty) {
-        debug!("{}Variable '{}' (ty = {})", self.indentation_string(), name, PrintingProgramVisitor::visit_ty(ty));
+    fn visit_statement_variable_declaration(&mut self, name: &str, value: &mut Expression, type_id: &mut TypeId) {
+        debug!(
+            "{}Variable '{}' (type = {}, {:?})",
+            self.indentation_string(),
+            name,
+            self.visit_type_id(*type_id),
+            type_id
+        );
+
         self.visit_expression(value);
     }
 
@@ -98,7 +137,7 @@ impl ProgramVisitor for PrintingProgramVisitor {
 
     fn visit_expression(&mut self, expression: &mut Expression) {
         self.increase_indentation();
-        self.visit_expression_kind(&mut expression.kind, &mut expression.ty);
+        self.visit_expression_kind(&mut expression.kind, &mut expression.type_id);
         self.decrease_indentation();
     }
 
@@ -107,9 +146,9 @@ impl ProgramVisitor for PrintingProgramVisitor {
         left: &mut Expression,
         right: &mut Expression,
         operator: &mut BinaryOperator,
-        ty: &mut Ty,
+        type_id: &mut TypeId,
     ) {
-        debug!("{}{} (ty = {})", self.indentation_string(), operator, PrintingProgramVisitor::visit_ty(ty));
+        debug!("{}{} (type = {}, {:?})", self.indentation_string(), operator, self.visit_type_id(*type_id), type_id);
 
         self.visit_expression(left);
         self.visit_expression(right);
@@ -119,13 +158,14 @@ impl ProgramVisitor for PrintingProgramVisitor {
         &mut self,
         function_key: &FunctionKey,
         arguments: &mut [Expression],
-        ty: &mut Ty,
+        type_id: &mut TypeId,
     ) {
         debug!(
-            "{}Function call (key = {:?}, ty = {})",
+            "{}Function call (key = {:?} type = {}, {:?})",
             self.indentation_string(),
             function_key,
-            PrintingProgramVisitor::visit_ty(ty)
+            self.visit_type_id(*type_id),
+            type_id
         );
 
         for argument in arguments.iter_mut() {
@@ -133,16 +173,23 @@ impl ProgramVisitor for PrintingProgramVisitor {
         }
     }
 
-    fn visit_expression_number_literal(&mut self, value: &mut f64, ty: &mut Ty) {
-        debug!("{}Number literal {} (ty = {})", self.indentation_string(), value, PrintingProgramVisitor::visit_ty(ty));
+    fn visit_expression_number_literal(&mut self, value: &mut f64, type_id: &mut TypeId) {
+        debug!(
+            "{}Number literal {} (type = {}, {:?})",
+            self.indentation_string(),
+            value,
+            self.visit_type_id(*type_id),
+            type_id
+        );
     }
 
-    fn visit_variable_reference(&mut self, variable_name: &mut str, ty: &mut Ty) {
+    fn visit_variable_reference(&mut self, variable_name: &mut str, type_id: &mut TypeId) {
         debug!(
-            "{}Variable reference '{}' (ty = {})",
+            "{}Variable reference '{}' (type = {}, {:?})",
             self.indentation_string(),
             variable_name,
-            PrintingProgramVisitor::visit_ty(ty)
+            self.visit_type_id(*type_id),
+            type_id
         );
     }
 }

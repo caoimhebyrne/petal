@@ -1,16 +1,16 @@
 #![allow(dead_code)]
 
 /// The typed AST is emitted by the typechecker as it resolves the types involved in the normal AST.
-use std::collections::{
-    BTreeMap,
-    HashMap,
-};
+use std::collections::BTreeMap;
 
 use crate::{
     ast::expression::binary_operation::BinaryOperator,
     core::span::Span,
     module_registry::ModuleId,
-    typed_ast::r#type::Ty,
+    typed_ast::r#type::{
+        TypeDb,
+        TypeId,
+    },
 };
 
 pub(super) mod context;
@@ -24,6 +24,9 @@ pub(super) mod visitor;
 pub struct Program {
     /// The functions within this program.
     functions: BTreeMap<FunctionKey, Function>,
+
+    /// The [`TypeDb`] containing the [`Type`]s used by this program.
+    type_db: TypeDb,
 }
 
 impl Program {
@@ -71,7 +74,7 @@ pub struct Function {
     pub body: Vec<Statement>,
 
     /// The return type of this function.
-    pub return_ty: Ty,
+    pub return_type_id: TypeId,
 
     /// Information about the generic types within this function, this is typically populated during the
     /// generation of the specialized function, and may be read by later stages.
@@ -84,8 +87,8 @@ pub struct Function {
 /// Information associated with a generic type or function.
 #[derive(Debug, Clone)]
 pub struct GenericInformation {
-    /// A map of generic type names (e.g. `T`) to their generic type argument (e.g. `i32`).
-    pub types: HashMap<String, Ty>,
+    /// A [`Vec`] of [`TypeId`]s, which correspond to the generic type arguments for each generic type parameter.
+    pub types: Vec<TypeId>,
 }
 
 /// A parameter to a [`Function`].
@@ -95,7 +98,7 @@ pub struct FunctionParameter {
     pub name: String,
 
     /// The type of the parameter.
-    pub ty: Ty,
+    pub type_id: TypeId,
 
     /// Whether the parameter is named.
     ///
@@ -135,7 +138,7 @@ pub enum StatementKind {
         value: Expression,
 
         /// The declared type of the variable.
-        ty: Ty,
+        type_id: TypeId,
     },
 }
 
@@ -154,7 +157,7 @@ pub struct Expression {
     pub kind: ExpressionKind,
 
     /// The type that this expression is expected to produce once evaluated.
-    pub ty: Ty,
+    pub type_id: TypeId,
 
     /// The span that this expression occurred at within the source code.
     pub span: Span,

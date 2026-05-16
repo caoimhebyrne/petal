@@ -30,8 +30,6 @@ use crate::{
     typed_ast::{
         resolver::TypeResolver,
         visitor::{
-            ProgramVisitor,
-            generic_function_call_visitor::GenericFunctionCallVisitor,
             generic_type_visitor::GenericTypeVisitor,
             print::PrintingProgramVisitor,
         },
@@ -142,7 +140,7 @@ fn import_directory_module(
         fs::read_dir(directory_path).map_err(|e| ModuleError::IOError { path: directory_path.clone(), error: e })?
     {
         let entry = entry.map_err(|e| ModuleError::IOError { path: directory_path.clone(), error: e })?;
-        if entry.path().extension().map(|it| it != "petal").unwrap_or_default() {
+        if entry.path().extension().is_some_and(|it| it != "petal") {
             trace!(
                 "Ignoring directory entry '{}' for directory import as it does not contain the petal extension",
                 entry.path().display()
@@ -225,22 +223,8 @@ fn main_impl(mut args: Args, module_registry: &mut ModuleRegistry) -> Result<(),
     info!("Checking types");
 
     let mut program = TypeResolver::default().resolve(parsed_modules)?;
-
-    {
-        let mut visitor = GenericTypeVisitor::default();
-        visitor.visit(&mut program);
-    }
-
-    {
-        // todo(resolver): this clone sucks
-        let mut visitor = GenericFunctionCallVisitor::new(program.clone());
-        visitor.visit(&mut program);
-    }
-
-    {
-        let mut visitor = PrintingProgramVisitor::default();
-        visitor.visit(&mut program);
-    }
+    GenericTypeVisitor::visit(&mut program);
+    PrintingProgramVisitor::visit(&mut program);
 
     // let checked_program = Typechecker::default().check(parsed_modules)?;
 
@@ -313,7 +297,6 @@ fn main() -> ExitCode {
                 Level::Debug => Color::Blue,
                 Level::Trace => Color::Magenta,
             });
-
             let level = style.value(format!("{:>5}", record.level()));
             writeln!(buf, "{level}  {}", record.args())
         })

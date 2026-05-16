@@ -6,7 +6,7 @@ use crate::{
     typed_ast::{
         FunctionParameter,
         Statement,
-        r#type::Ty,
+        r#type::TypeId,
     },
 };
 
@@ -49,6 +49,16 @@ pub struct GenericFunctionKey {
     pub module_id: ModuleId,
 }
 
+/// A generic type parameter of a [`GenericFunction`].
+#[derive(Debug, Clone)]
+pub struct GenericTypeParameter {
+    /// The name of this generic type.
+    pub name: String,
+
+    /// The type ID allocated to this generic type.
+    pub type_id: TypeId,
+}
+
 /// A generic function that should not be included in the final program.
 #[derive(Debug)]
 pub struct GenericFunction {
@@ -56,7 +66,7 @@ pub struct GenericFunction {
     pub name: String,
 
     /// The generic type parameters of this function (e.g. `T`).
-    pub generic_type_parameters: Vec<String>,
+    pub generic_type_parameters: Vec<GenericTypeParameter>,
 
     /// The parameters of this function.
     pub parameters: Vec<FunctionParameter>,
@@ -65,7 +75,7 @@ pub struct GenericFunction {
     pub body: Vec<Statement>,
 
     /// The return type of this function.
-    pub return_ty: Ty,
+    pub return_type_id: TypeId,
 
     /// The span that this function was defined at in the source code.
     pub span: Span,

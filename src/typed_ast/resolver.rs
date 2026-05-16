@@ -19,13 +19,17 @@ use crate::{
         StatementKind,
         context::{
             GenericFunction,
+            GenericTypeParameter,
             TypeResolverContext,
         },
         error::{
             TypecheckerError,
             TypecheckerErrorKind,
         },
-        r#type::Ty,
+        r#type::{
+            Type,
+            TypeId,
+        },
     },
 };
 
@@ -35,16 +39,16 @@ type TypecheckerResult<T> = Result<T, TypecheckerError>;
 #[derive(Default)]
 struct Scope {
     /// The generic type parameters that are available in this scope.
-    generic_type_parameters: Vec<String>,
+    generic_type_parameters: Vec<GenericTypeParameter>,
 
     /// The type of parameters available to this scope.
-    parameter_tys: HashMap<String, Ty>,
+    parameter_types: HashMap<String, TypeId>,
 
     /// The parent of this scope, if applicable.
     parent: Option<Box<Scope>>,
 
     /// The type of variables declared within this scope.
-    variable_tys: HashMap<String, Ty>,
+    variable_types: HashMap<String, TypeId>,
 }
 
 impl Scope {
@@ -52,29 +56,34 @@ impl Scope {
     pub fn empty_with_parent(parent: Self) -> Self {
         Self {
             generic_type_parameters: Vec::default(),
-            parameter_tys: HashMap::default(),
+            parameter_types: HashMap::default(),
             parent: Some(Box::new(parent)),
-            variable_tys: HashMap::default(),
+            variable_types: HashMap::default(),
         }
     }
 
     /// Creates a scope with parameters and a parent.
     pub fn function(
-        generic_type_parameters: Vec<String>,
-        parameter_tys: HashMap<String, Ty>,
+        generic_type_parameters: Vec<GenericTypeParameter>,
+        parameter_types: HashMap<String, TypeId>,
         parent: Option<Self>,
     ) -> Self {
-        Self { generic_type_parameters, parameter_tys, parent: parent.map(Box::new), variable_tys: HashMap::default() }
+        Self {
+            generic_type_parameters,
+            parameter_types,
+            parent: parent.map(Box::new),
+            variable_types: HashMap::default(),
+        }
     }
 
     /// Retrieves the type of an identifier by its name from the current scope.
     ///
     /// If a variable or parameter does not exist with the name in this scope, then the parent scope will be checked
     /// (if present). If one could not be found in any of the parent scopes, then [`None`] will be returned.
-    pub fn get_identifier_ty(&self, identifier: &str) -> Option<&Ty> {
-        self.parameter_tys
+    pub fn get_identifier_ty(&self, identifier: &str) -> Option<&TypeId> {
+        self.parameter_types
             .get(identifier)
-            .or_else(|| self.variable_tys.get(identifier))
+            .or_else(|| self.variable_types.get(identifier))
             .or_else(|| self.parent.as_ref().and_then(|it| it.get_identifier_ty(identifier)))
     }
 
@@ -82,13 +91,13 @@ impl Scope {
     ///
     /// This function will return `false` if a variable exists with the same name in this [`Scope`], or any of its
     /// parent [`Scope`]s.
-    pub fn set_variable_ty(&mut self, variable_name: String, ty: Ty) -> bool {
+    pub fn set_variable_ty(&mut self, variable_name: String, type_id: TypeId) -> bool {
         // todo(resolver): what should we do about parameters here?
 
         if self.get_identifier_ty(&variable_name).is_some() {
             false
         } else {
-            self.variable_tys.insert(variable_name, ty);
+            self.variable_types.insert(variable_name, type_id);
             true
         }
     }
@@ -176,38 +185,47 @@ impl TypeResolver {
 }
 
 impl TypeResolver {
-    /// Visits the provided [`TypeExpr`], resolving it into a [`Ty`].
-    // TODO: Should `Span` be on `TypeExpr`?
-    fn visit_type_expr(generic_type_parameters: &[String], expr: &TypeExpr, span: Span) -> TypecheckerResult<Ty> {
+    /// Visits the provided [`TypeExpr`], resolving it into a [`TypeId`].
+    fn visit_type_expr(
+        &mut self,
+        generic_type_parameters: &[GenericTypeParameter],
+        expr: &TypeExpr,
+        span: Span,
+    ) -> TypecheckerResult<TypeId> {
         match expr {
-            TypeExpr::Named { name, .. } => TypeResolver::resolve_ty_by_name(generic_type_parameters, name, span),
+            TypeExpr::Named { name, .. } => self.resolve_type_by_name(generic_type_parameters, name, span),
             _ => todo!(),
         }
     }
 
     /// Attempts to resolve a type by the provided plain name, resolving it into a [`Ty`].
-    fn resolve_ty_by_name(generic_type_parameters: &[String], name: &str, span: Span) -> TypecheckerResult<Ty> {
+    fn resolve_type_by_name(
+        &mut self,
+        generic_type_parameters: &[GenericTypeParameter],
+        name: &str,
+        span: Span,
+    ) -> TypecheckerResult<TypeId> {
         let ty = match name {
-            "i8" => Ty::SignedInteger(8),
-            "i16" => Ty::SignedInteger(16),
-            "i32" => Ty::SignedInteger(32),
-            "i64" => Ty::SignedInteger(64),
+            "i8" => Type::SignedInteger(8),
+            "i16" => Type::SignedInteger(16),
+            "i32" => Type::SignedInteger(32),
+            "i64" => Type::SignedInteger(64),
 
-            "u8" => Ty::UnsignedInteger(8),
-            "u16" => Ty::UnsignedInteger(16),
-            "u32" => Ty::UnsignedInteger(32),
-            "u64" => Ty::UnsignedInteger(64),
+            "u8" => Type::UnsignedInteger(8),
+            "u16" => Type::UnsignedInteger(16),
+            "u32" => Type::UnsignedInteger(32),
+            "u64" => Type::UnsignedInteger(64),
 
             _ => {
-                if let Some(index) = generic_type_parameters.iter().position(|it| it == name) {
-                    Ty::Generic(index)
-                } else {
-                    return Err(TypecheckerErrorKind::UndeclaredTypeName(name.to_string()).at(span));
+                if let Some(generic_type_parameter) = generic_type_parameters.iter().find(|it| it.name == name) {
+                    return Ok(generic_type_parameter.type_id);
                 }
+
+                return Err(TypecheckerErrorKind::UndeclaredTypeName(name.to_string()).at(span));
             }
         };
 
-        Ok(ty)
+        Ok(self.program.type_db.get_or_insert_type(ty))
     }
 }
 
@@ -220,7 +238,7 @@ impl TypeResolver {
     fn compute_function(
         &mut self,
         name: &str,
-        generic_type_arguments: Vec<Ty>,
+        generic_type_arguments: &[TypeId],
         span: Span,
     ) -> TypecheckerResult<(FunctionKey, Function)> {
         // If a function exists that satisfies our restrictions, then we can use it.
@@ -244,16 +262,6 @@ impl TypeResolver {
             .at(span));
         }
 
-        let generic_types = generic_function
-            .generic_type_parameters
-            .iter()
-            .enumerate()
-            .map(|(index, name)| {
-                let generic_type_argument = generic_type_arguments[index];
-                (name.clone(), generic_type_argument)
-            })
-            .collect();
-
         // The specialization that we generate will still have its generic types within its body, parameters, etc.
         // but we will make a note within the function to walk through it and resolve the generic types at a later
         // stage.
@@ -261,8 +269,8 @@ impl TypeResolver {
             name: generic_function.name.clone(),
             parameters: generic_function.parameters.clone(),
             body: generic_function.body.clone(),
-            return_ty: generic_function.return_ty,
-            generic_information: Some(GenericInformation { types: generic_types }),
+            return_type_id: generic_function.return_type_id,
+            generic_information: Some(GenericInformation { types: generic_type_arguments.into() }),
             span: generic_function.span,
         };
 
@@ -286,21 +294,19 @@ impl TypeResolver {
         span: Span,
     ) -> TypecheckerResult<()> {
         let is_generic = !function_declaration.generic_type_parameters.is_empty();
-        if is_generic {
-            trace!(
-                "Function named '{}' is generic. It will not be inserted into the program until monomorphized",
-                function_declaration.name
-            );
-        } else {
-            trace!(
-                "Function named '{}' is not generic. It will be inserted directly into the program",
-                function_declaration.name
-            );
-        }
 
         // todo(resolver): `TypeResolvingContext`
-        let generic_type_parameters =
-            function_declaration.generic_type_parameters.into_iter().map(|it| it.name).collect::<Vec<_>>();
+        let generic_type_parameters = function_declaration
+            .generic_type_parameters
+            .into_iter()
+            .enumerate()
+            .map(|(index, it)| {
+                // Generic types are unique. De-duplication is not performed on them when the type database is
+                // allocating an ID for them. This means that we should pre-compute their IDs.
+                let type_id = self.program.type_db.get_or_insert_type(Type::Generic(index));
+                GenericTypeParameter { name: it.name, type_id }
+            })
+            .collect::<Vec<GenericTypeParameter>>();
 
         let parameters = function_declaration
             .parameters
@@ -308,14 +314,14 @@ impl TypeResolver {
             .map(|it| self.visit_function_parameter(&generic_type_parameters, it))
             .collect::<TypecheckerResult<Vec<_>>>()?;
 
-        let return_ty = function_declaration
+        let return_type_id = function_declaration
             .return_type_expr
-            .map(|it| TypeResolver::visit_type_expr(&generic_type_parameters, &it, span))
+            .map(|it| self.visit_type_expr(&generic_type_parameters, &it, span))
             .transpose()?
-            .unwrap_or(Ty::Void);
+            .unwrap_or(self.program.type_db.void_type_id());
 
         self.set_scope(|current| {
-            let parameter_tys = parameters.iter().map(|it| (it.name.clone(), it.ty)).collect();
+            let parameter_tys = parameters.iter().map(|it| (it.name.clone(), it.type_id)).collect();
             Scope::function(generic_type_parameters.clone(), parameter_tys, Some(current))
         });
 
@@ -330,7 +336,7 @@ impl TypeResolver {
                     name: function_declaration.name,
                     parameters,
                     body,
-                    return_ty,
+                    return_type_id,
                     generic_type_parameters,
                     span,
                 },
@@ -342,7 +348,7 @@ impl TypeResolver {
                     name: function_declaration.name,
                     parameters,
                     body,
-                    return_ty,
+                    return_type_id,
                     generic_information: None,
                     span,
                 },
@@ -356,12 +362,12 @@ impl TypeResolver {
     /// The type declared by the parameter will be resolved, and transformed into a typed [`FunctionParameter`].
     fn visit_function_parameter(
         &mut self,
-        generic_type_parameters: &[String],
+        generic_type_parameters: &[GenericTypeParameter],
         parameter: ast::statement::function_declaration::FunctionParameter,
     ) -> TypecheckerResult<FunctionParameter> {
         Ok(FunctionParameter {
             name: parameter.name,
-            ty: TypeResolver::visit_type_expr(generic_type_parameters, &parameter.type_expr, parameter.span)?,
+            type_id: self.visit_type_expr(generic_type_parameters, &parameter.type_expr, parameter.span)?,
             is_named: parameter.is_named,
             span: parameter.span,
         })
@@ -411,20 +417,21 @@ impl TypeResolver {
         variable_declaration: ast::statement::variable_declaration::VariableDeclaration,
         span: Span,
     ) -> TypecheckerResult<StatementKind> {
-        let ty =
-            TypeResolver::visit_type_expr(&self.scope.generic_type_parameters, &variable_declaration.type_expr, span)?;
+        // FIXME: Remove the clone
+        let generic_type_parameters = &self.scope.generic_type_parameters.clone();
+        let type_id = self.visit_type_expr(generic_type_parameters, &variable_declaration.type_expr, span)?;
+
+        self.scope.set_variable_ty(variable_declaration.name.clone(), type_id);
+
         let value = self.visit_expression(variable_declaration.value)?;
-
-        self.scope.set_variable_ty(variable_declaration.name.clone(), ty);
-
-        Ok(StatementKind::VariableDeclaration { name: variable_declaration.name, value, ty })
+        Ok(StatementKind::VariableDeclaration { name: variable_declaration.name, value, type_id })
     }
 }
 
 impl TypeResolver {
     /// Visits the provided AST [`Expression`]. The returned [`Expression`] will be the typed variant of it.
     fn visit_expression(&mut self, expression: ast::expression::Expression) -> TypecheckerResult<Expression> {
-        let (kind, ty) = match expression.kind {
+        let (kind, type_id) = match expression.kind {
             ast::expression::ExpressionKind::BinaryOperation(binary_operation) => {
                 self.visit_expression_binary_operation(binary_operation)?
             }
@@ -442,20 +449,20 @@ impl TypeResolver {
             _ => todo!(),
         };
 
-        Ok(Expression { kind, ty, span: expression.span })
+        Ok(Expression { kind, type_id, span: expression.span })
     }
 
     /// Visits the provided binary operation expression.
     fn visit_expression_binary_operation(
         &mut self,
         binary_operation: ast::expression::binary_operation::BinaryOperation,
-    ) -> TypecheckerResult<(ExpressionKind, Ty)> {
+    ) -> TypecheckerResult<(ExpressionKind, TypeId)> {
         let left = self.visit_expression(*binary_operation.left)?;
         let right = self.visit_expression(*binary_operation.right)?;
 
         // The type of the expression (for now) will be the type of the expression on the left-hand side.
         // This will be refined and verified at later stages, once we verify that the types are actually compatible with each other.
-        let ty = left.ty;
+        let type_id = left.type_id;
 
         Ok((
             ExpressionKind::BinaryOperation {
@@ -463,7 +470,7 @@ impl TypeResolver {
                 right: Box::new(right),
                 operator: binary_operation.operator,
             },
-            ty,
+            type_id,
         ))
     }
 
@@ -472,7 +479,7 @@ impl TypeResolver {
         &mut self,
         function_call: ast::expression::function_call::FunctionCall,
         span: Span,
-    ) -> TypecheckerResult<(ExpressionKind, Ty)> {
+    ) -> TypecheckerResult<(ExpressionKind, TypeId)> {
         // todo(resolver): resolve_function_callee?
         let ast::expression::ExpressionKind::IdentifierReference(identifier) = function_call.callee.kind else {
             panic!("Unsupported function callee: {function_call:?}");
@@ -482,10 +489,13 @@ impl TypeResolver {
         let generic_type_arguments = function_call
             .generic_type_arguments
             .iter()
-            .map(|it| TypeResolver::visit_type_expr(&self.scope.generic_type_parameters, &it.type_expr, it.span))
-            .collect::<TypecheckerResult<_>>()?;
+            .map(|it| {
+                // FIXME: Remove this clone.
+                self.visit_type_expr(&self.scope.generic_type_parameters.clone(), &it.type_expr, it.span)
+            })
+            .collect::<TypecheckerResult<Vec<TypeId>>>()?;
 
-        let (function_key, function) = self.compute_function(&identifier, generic_type_arguments, span)?;
+        let (function_key, function) = self.compute_function(&identifier, &generic_type_arguments, span)?;
 
         // todo(resolver): named vs positional argumenmts
         let arguments = function_call
@@ -494,7 +504,7 @@ impl TypeResolver {
             .map(|it| self.visit_expression(it.value))
             .collect::<TypecheckerResult<_>>()?;
 
-        Ok((ExpressionKind::FunctionCall { function_key, arguments }, function.return_ty))
+        Ok((ExpressionKind::FunctionCall { function_key, arguments }, function.return_type_id))
     }
 
     /// Visits the provided identifier reference expression. An identifier reference will almost always be typed as
@@ -503,18 +513,18 @@ impl TypeResolver {
         &mut self,
         identifier: String,
         span: Span,
-    ) -> TypecheckerResult<(ExpressionKind, Ty)> {
-        let variable_ty = self
+    ) -> TypecheckerResult<(ExpressionKind, TypeId)> {
+        let variable_type_id = self
             .scope
             .get_identifier_ty(&identifier)
             .ok_or_else(|| TypecheckerErrorKind::UnresolvableIdentifierReference(identifier.clone()).at(span))?;
 
-        Ok((ExpressionKind::VariableReference(identifier), *variable_ty))
+        Ok((ExpressionKind::VariableReference(identifier), *variable_type_id))
     }
 
     /// Visits the provided number literal expression.
     /// The type returned will be the "lowest" possible integer type supported by the literal.
-    fn visit_expression_number_literal(&mut self, value: f64) -> (ExpressionKind, Ty) {
+    fn visit_expression_number_literal(&mut self, value: f64) -> (ExpressionKind, TypeId) {
         let ty = if value < 0.0 {
             let bits = match value {
                 v if v >= f64::from(i8::MIN) => 8,
@@ -523,7 +533,7 @@ impl TypeResolver {
                 _ => 64,
             };
 
-            Ty::SignedInteger(bits)
+            Type::SignedInteger(bits)
         } else {
             let bits = match value {
                 v if v >= f64::from(u8::MIN) => 8,
@@ -532,9 +542,10 @@ impl TypeResolver {
                 _ => 64,
             };
 
-            Ty::UnsignedInteger(bits)
+            Type::UnsignedInteger(bits)
         };
 
-        (ExpressionKind::NumberLiteral(value), ty)
+        let type_id = self.program.type_db.get_or_insert_type(ty);
+        (ExpressionKind::NumberLiteral(value), type_id)
     }
 }
