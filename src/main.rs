@@ -29,10 +29,7 @@ use crate::{
     },
     typed_ast::{
         resolver::TypeResolver,
-        visitor::{
-            generic_type_visitor::GenericTypeVisitor,
-            print::PrintingProgramVisitor,
-        },
+        visitor::print::PrintingProgramVisitor,
     },
 };
 
@@ -223,7 +220,6 @@ fn main_impl(mut args: Args, module_registry: &mut ModuleRegistry) -> Result<(),
     info!("Checking types");
 
     let mut program = TypeResolver::default().resolve(parsed_modules)?;
-    GenericTypeVisitor::visit(&mut program);
     PrintingProgramVisitor::visit(&mut program);
 
     // let checked_program = Typechecker::default().check(parsed_modules)?;

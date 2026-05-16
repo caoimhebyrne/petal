@@ -65,9 +65,9 @@ impl Display for TypecheckerErrorKind {
                 f,
                 "Expected {} type argument{} but got {} argument{}",
                 expected,
-                if *expected == 0 { "" } else { "s" },
+                if *expected == 1 { "" } else { "s" },
                 got,
-                if *got == 0 { "" } else { "s" }
+                if *got == 1 { "" } else { "s" }
             ),
 
             Self::InvalidAssignmentTarget => write!(

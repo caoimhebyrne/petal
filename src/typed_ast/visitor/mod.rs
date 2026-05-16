@@ -13,7 +13,8 @@ use crate::{
     },
 };
 
-pub(crate) mod generic_type_visitor;
+// todo: replace all generic types in function calls and structures with a new type id by visiting each node
+
 pub(crate) mod print;
 
 /// Visits a [`Program`] in the typed AST.
@@ -103,6 +104,10 @@ pub trait ProgramVisitor: Sized {
     /// Visits a variable reference expression.
     #[allow(unused_variables)] // not used by this implementation, but may be by others
     fn visit_expression_variable_reference(&mut self, variable_name: &mut str, type_id: &mut TypeId) {}
+
+    /// Visits a [`TypeId`].
+    #[allow(unused_variables)] // not used by this implementation, but may be by others
+    fn visit_type_id(&mut self, type_id: &mut TypeId) {}
 }
 
 /// Invokes the `visitor` on any child nodes within a [`Program`].
@@ -117,6 +122,12 @@ pub fn walk_program<V: ProgramVisitor>(visitor: &mut V, functions: &mut BTreeMap
 
 /// Invokes the `visitor` on any child nodes within a [`Function`].
 pub fn walk_function<V: ProgramVisitor>(visitor: &mut V, function: &mut Function) {
+    visitor.visit_type_id(&mut function.return_type_id);
+
+    for parameter in &mut function.parameters {
+        visitor.visit_type_id(&mut parameter.type_id);
+    }
+
     for statement in &mut function.body {
         visitor.visit_statement(statement);
     }
@@ -168,8 +179,9 @@ pub fn walk_statement_variable_assignment<V: ProgramVisitor>(
     visitor: &mut V,
     _name: &str,
     value: &mut Expression,
-    _variable_type_id: &mut TypeId,
+    variable_type_id: &mut TypeId,
 ) {
+    visitor.visit_type_id(variable_type_id);
     visitor.visit_expression(value);
 }
 
@@ -178,13 +190,16 @@ pub fn walk_statement_variable_declaration<V: ProgramVisitor>(
     visitor: &mut V,
     _name: &str,
     value: &mut Expression,
-    _type_id: &mut TypeId,
+    type_id: &mut TypeId,
 ) {
+    visitor.visit_type_id(type_id);
     visitor.visit_expression(value);
 }
 
 /// Invokes the `visitor`'s specialized methods on the proivded [`Expression`].
 fn walk_expression<V: ProgramVisitor>(visitor: &mut V, expression: &mut Expression) {
+    visitor.visit_type_id(&mut expression.type_id);
+
     match &mut expression.kind {
         ExpressionKind::BinaryOperation { left, right, operator } => {
             visitor.visit_expression_binary_operation(left, right, operator, &mut expression.type_id);
@@ -218,8 +233,9 @@ pub fn walk_expression_binary_operation<V: ProgramVisitor>(
     left: &mut Expression,
     right: &mut Expression,
     _operator: &mut BinaryOperator,
-    _type_id: &mut TypeId,
+    type_id: &mut TypeId,
 ) {
+    visitor.visit_type_id(type_id);
     visitor.visit_expression(left);
     visitor.visit_expression(right);
 }
@@ -234,8 +250,10 @@ pub fn walk_expression_function_call<V: ProgramVisitor>(
     visitor: &mut V,
     _function_key: &FunctionKey,
     arguments: &mut [Expression],
-    _type_id: &mut TypeId,
+    type_id: &mut TypeId,
 ) {
+    visitor.visit_type_id(type_id);
+
     for argument in arguments {
         visitor.visit_expression(argument);
     }

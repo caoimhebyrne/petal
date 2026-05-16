@@ -19,6 +19,7 @@ use crate::{
         StatementKind,
         context::{
             GenericFunction,
+            GenericType,
             GenericTypeParameter,
             TypeResolverContext,
         },
@@ -33,6 +34,7 @@ use crate::{
                 DefinedType,
                 DefinedTypeKind,
                 Structure,
+                StructureField,
             },
         },
     },
@@ -212,7 +214,20 @@ impl TypeResolver {
         span: Span,
     ) -> TypecheckerResult<TypeId> {
         match expr {
-            TypeExpr::Named { name, .. } => self.resolve_type_by_name(generic_type_parameters, name, span),
+            TypeExpr::Named { name, generic_type_arguments } => {
+                // If the type corresponds with a generic type parameter available in this scope, then it should take
+                // precedence over all other types.
+                if let Some(generic_type_parameter) = generic_type_parameters.iter().find(|it| &it.name == name) {
+                    return Ok(generic_type_parameter.type_id);
+                }
+
+                let generic_type_arguments = generic_type_arguments
+                    .iter()
+                    .map(|it| self.visit_type_expr(generic_type_parameters, &it.type_expr, it.span))
+                    .collect::<TypecheckerResult<Vec<TypeId>>>()?;
+
+                self.resolve_type_by_name(&generic_type_arguments, generic_type_parameters, name, span)
+            }
 
             TypeExpr::Reference(inner_type_expr) => {
                 let inner_type_id = self.visit_type_expr(generic_type_parameters, inner_type_expr, span)?;
@@ -227,6 +242,7 @@ impl TypeResolver {
     /// Attempts to resolve a type by the provided plain name, resolving it into a [`Ty`].
     fn resolve_type_by_name(
         &mut self,
+        generic_type_arguments: &[TypeId],
         generic_type_parameters: &[GenericTypeParameter],
         name: &str,
         span: Span,
@@ -242,18 +258,50 @@ impl TypeResolver {
             "u32" => Type::UnsignedInteger(32),
             "u64" => Type::UnsignedInteger(64),
 
-            _ => {
-                if let Some(generic_type_parameter) = generic_type_parameters.iter().find(|it| it.name == name) {
-                    return Ok(generic_type_parameter.type_id);
-                } else if let Some(defined_type_id) = self.program.type_db.find_defined_type(name) {
-                    Type::Defined(defined_type_id)
-                } else {
-                    return Err(TypecheckerErrorKind::UndeclaredTypeName(name.to_string()).at(span));
-                }
-            }
+            _ => return self.compute_defined_type(name, generic_type_arguments, span),
         };
 
         Ok(self.program.type_db.get_or_insert_type(ty))
+    }
+
+    /// Attempts to find a defined type given its name and generic information.
+    fn compute_defined_type(
+        &mut self,
+        name: &str,
+        generic_type_arguments: &[TypeId],
+        span: Span,
+    ) -> TypecheckerResult<TypeId> {
+        if let Some(defined_type_id) = self.program.type_db.find_defined_type(name) {
+            let type_id = self.program.type_db.get_or_insert_type(Type::Defined(defined_type_id));
+            return Ok(type_id);
+        }
+
+        // If there is no defined type, then we can attempt to create a specialization of a generic type.
+        let Some(generic_type_key) = self.context.find_generic_type(name) else {
+            return Err(TypecheckerErrorKind::UndeclaredTypeName(name.to_string()).at(span));
+        };
+
+        let generic_type = self.context.get_generic_type(generic_type_key);
+
+        // The number of generic type arguments provided must equal the number of parameters on the type.
+        if generic_type.generic_type_parameters.len() != generic_type_arguments.len() {
+            return Err(TypecheckerErrorKind::GenericTypeArgumentCountMismatch {
+                expected: generic_type.generic_type_parameters.len(),
+                got: generic_type_arguments.len(),
+            }
+            .at(span));
+        }
+
+        dbg!(&generic_type);
+
+        // We can then create a specialization of the defined type for these parameters.
+        let defined_type_id = self.program.type_db.insert_defined_type(DefinedType {
+            kind: generic_type.kind.clone(),
+            name: generic_type.name.clone(),
+            span: generic_type.span,
+        });
+
+        Ok(self.program.type_db.get_or_insert_type(Type::Defined(defined_type_id)))
     }
 }
 
@@ -270,7 +318,7 @@ impl TypeResolver {
         span: Span,
     ) -> TypecheckerResult<(FunctionKey, Function)> {
         // If a function exists that satisfies our restrictions, then we can use it.
-        if let Some(tuple) = self.program.find_function(name) {
+        if let Some(tuple) = self.program.find_function(name, generic_type_arguments) {
             return Ok((*tuple.0, tuple.1.clone()));
         }
 
@@ -410,23 +458,59 @@ impl TypeResolver {
         span: Span,
     ) -> TypecheckerResult<()> {
         // todo(resolver): modifiers
-        // todo(resolver): generic type parameters
 
-        let defined_type_kind = TypeResolver::visit_type_expr_on_declaration(&type_declaration.type_expr, span)?;
-        self.program.type_db.insert_defined_type(DefinedType { name: type_declaration.name, kind: defined_type_kind });
+        // todo(resolver): `TypeResolvingContext`
+        let generic_type_parameters = type_declaration
+            .generic_type_parameters
+            .into_iter()
+            .enumerate()
+            .map(|(index, it)| {
+                // Generic types are unique. De-duplication is not performed on them when the type database is
+                // allocating an ID for them. This means that we should pre-compute their IDs.
+                let type_id = self.program.type_db.get_or_insert_type(Type::Generic(index));
+                GenericTypeParameter { name: it.name, type_id }
+            })
+            .collect::<Vec<GenericTypeParameter>>();
+
+        let defined_type_kind =
+            self.visit_type_expr_on_declaration(&generic_type_parameters, type_declaration.type_expr, span)?;
+
+        if generic_type_parameters.is_empty() {
+            self.program.type_db.insert_defined_type(DefinedType {
+                name: type_declaration.name,
+                kind: defined_type_kind,
+                span,
+            });
+        } else {
+            self.context.insert_generic_type(
+                span.module_id,
+                GenericType { name: type_declaration.name, generic_type_parameters, kind: defined_type_kind, span },
+            );
+        }
 
         Ok(())
     }
 
     /// Visits a [`TypeExpr`] that is part of a type declaration.
-    fn visit_type_expr_on_declaration(type_expr: &TypeExpr, span: Span) -> TypecheckerResult<DefinedTypeKind> {
-        let TypeExpr::Structure { .. } = type_expr else {
+    fn visit_type_expr_on_declaration(
+        &mut self,
+        generic_type_parameters: &[GenericTypeParameter],
+        type_expr: TypeExpr,
+        span: Span,
+    ) -> TypecheckerResult<DefinedTypeKind> {
+        let TypeExpr::Structure { fields } = type_expr else {
             return Err(TypecheckerErrorKind::ExpectedTypeDefinition.at(span));
         };
 
-        // todo(resolver): parse structure fields
+        let fields = fields
+            .into_iter()
+            .map(|it| {
+                let type_id = self.visit_type_expr(generic_type_parameters, &it.type_expr, it.span)?;
+                Ok(StructureField { name: it.name, span: it.span, type_id })
+            })
+            .collect::<TypecheckerResult<Vec<StructureField>>>()?;
 
-        Ok(DefinedTypeKind::Structure(Structure))
+        Ok(DefinedTypeKind::Structure(Structure { fields }))
     }
 }
 

@@ -30,12 +30,24 @@ pub struct Program {
 
 impl Program {
     /// Finds a [`Function`] given its name.
-    pub fn find_function(&self, name: &str) -> Option<(&FunctionKey, &Function)> {
+    pub fn find_function(&self, name: &str, generic_type_arguments: &[TypeId]) -> Option<(&FunctionKey, &Function)> {
         // todo(resolver): find function request
         // todo(resolver): module id
         // todo(resolver): namespace
         // todo(resolver): etc
-        self.functions.iter().find(|(_, it)| it.name == name)
+        self.functions.iter().find(|(_, it)| {
+            if let Some(generic_information) = &it.generic_information {
+                if generic_type_arguments.is_empty() {
+                    return false;
+                }
+
+                if generic_information.types != generic_type_arguments {
+                    return false;
+                }
+            }
+
+            it.name == name
+        })
     }
 
     /// Inserts a [`Function`] into this [`Program`].
