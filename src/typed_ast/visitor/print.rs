@@ -14,6 +14,7 @@ use crate::{
             ProgramVisitor,
             walk_expression,
             walk_expression_binary_operation,
+            walk_expression_dereference,
             walk_expression_function_call,
             walk_expression_reference,
             walk_function,
@@ -176,6 +177,11 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
     ) {
         debug!("{}{} (type = {}, {:?})", self.indentation_string(), operator, self.visit_type_id(*type_id), type_id);
         walk_expression_binary_operation(self, left, right, operator, type_id);
+    }
+
+    fn visit_expression_dereference(&mut self, reference: &mut Expression) {
+        debug!("{}Dereference", self.indentation_string());
+        walk_expression_dereference(self, reference);
     }
 
     fn visit_expression_function_call(

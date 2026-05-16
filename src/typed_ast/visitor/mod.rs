@@ -76,6 +76,11 @@ pub trait ProgramVisitor: Sized {
         walk_expression_binary_operation(self, left, right, operator, type_id);
     }
 
+    /// Visits a dereference expression.
+    fn visit_expression_dereference(&mut self, reference: &mut Expression) {
+        walk_expression_dereference(self, reference);
+    }
+
     /// Visits a function call expression.
     fn visit_expression_function_call(
         &mut self,
@@ -185,6 +190,10 @@ fn walk_expression<V: ProgramVisitor>(visitor: &mut V, expression: &mut Expressi
             visitor.visit_expression_binary_operation(left, right, operator, &mut expression.type_id);
         }
 
+        ExpressionKind::Dereference(reference) => {
+            visitor.visit_expression_dereference(reference);
+        }
+
         ExpressionKind::FunctionCall { function_key, arguments } => {
             visitor.visit_expression_function_call(function_key, arguments, &mut expression.type_id);
         }
@@ -213,6 +222,11 @@ pub fn walk_expression_binary_operation<V: ProgramVisitor>(
 ) {
     visitor.visit_expression(left);
     visitor.visit_expression(right);
+}
+
+/// Invokes the `visitor` on any child nodes within a dereference expression.
+pub fn walk_expression_dereference<V: ProgramVisitor>(visitor: &mut V, reference: &mut Expression) {
+    visitor.visit_expression(reference);
 }
 
 /// Invokes the `visitor` on any child nodes within a function call expression.

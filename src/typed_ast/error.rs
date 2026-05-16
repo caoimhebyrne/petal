@@ -37,6 +37,9 @@ pub enum TypecheckerErrorKind {
     /// An expression was the target of an assignment expression, but it wasn't supported.
     InvalidAssignmentTarget,
 
+    /// A dereference expression was encountered, where the target of the expression was not a reference.
+    InvalidDereferenceTarget,
+
     /// A type was referenced by name, but a matching type could not be resolved.
     UndeclaredTypeName(String),
 
@@ -54,6 +57,10 @@ impl TypecheckerErrorKind {
 impl Display for TypecheckerErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::ExpectedTypeDefinition => {
+                write!(f, "Expected any type definition (struct, enum), but got a plain type expression instead")
+            }
+
             Self::GenericTypeArgumentCountMismatch { expected, got } => write!(
                 f,
                 "Expected {} type argument{} but got {} argument{}",
@@ -63,8 +70,13 @@ impl Display for TypecheckerErrorKind {
                 if *got == 0 { "" } else { "s" }
             ),
 
-            Self::ExpectedTypeDefinition => {
-                write!(f, "Expected any type definition (struct, enum), but got a plain type expression instead")
+            Self::InvalidAssignmentTarget => write!(
+                f,
+                "The target of this assignment expression is invalid (expected a variable name or a dereference expression)"
+            ),
+
+            Self::InvalidDereferenceTarget => {
+                write!(f, "You cannot dereference this expression type, it must be a reference type")
             }
 
             Self::UndeclaredTypeName(name) => write!(f, "Cannot find type named '{name}'"),
@@ -72,11 +84,6 @@ impl Display for TypecheckerErrorKind {
             Self::UnresolvableIdentifierReference(identifier) => {
                 write!(f, "Could not resolve a value for identifier '{identifier}'")
             }
-
-            Self::InvalidAssignmentTarget => write!(
-                f,
-                "The target of this assignment expression is invalid (expected a variable name or a dereference expression)"
-            ),
         }
     }
 }

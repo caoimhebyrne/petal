@@ -526,6 +526,8 @@ impl TypeResolver {
                 self.visit_expression_binary_operation(binary_operation)?
             }
 
+            ast::expression::ExpressionKind::Dereference(reference) => self.visit_expression_dereference(*reference)?,
+
             ast::expression::ExpressionKind::FunctionCall(function_call) => {
                 let (function_key, arguments, type_id) =
                     self.visit_expression_function_call(function_call, expression.span)?;
@@ -567,6 +569,21 @@ impl TypeResolver {
             },
             type_id,
         ))
+    }
+
+    /// Visits the provided dereference expression.
+    fn visit_expression_dereference(
+        &mut self,
+        expression: ast::expression::Expression,
+    ) -> TypecheckerResult<(ExpressionKind, TypeId)> {
+        let reference = self.visit_expression(expression)?;
+
+        // The type of the reference expression must be a reference type.
+        let Type::Reference(inner_type_id) = *self.program.type_db.get_type(reference.type_id) else {
+            return Err(TypecheckerErrorKind::InvalidDereferenceTarget.at(reference.span));
+        };
+
+        Ok((ExpressionKind::Dereference(Box::new(reference)), inner_type_id))
     }
 
     /// Visits the provided function call expression.

@@ -211,6 +211,9 @@ pub enum ExpressionKind {
         operator: BinaryOperator,
     },
 
+    /// Reading the value within a reference.
+    Dereference(Box<Expression>),
+
     /// A function call.
     FunctionCall {
         /// The key of the function being called.
