@@ -40,6 +40,16 @@ pub trait ProgramVisitor: Sized {
         walk_statement_return(self, value);
     }
 
+    /// Visits a variable assignment statement.
+    fn visit_statement_variable_assignment(
+        &mut self,
+        name: &str,
+        value: &mut Expression,
+        variable_type_id: &mut TypeId,
+    ) {
+        walk_statement_variable_assignment(self, name, value, variable_type_id);
+    }
+
     /// Visits a variable declaration statement.
     fn visit_statement_variable_declaration(&mut self, name: &str, value: &mut Expression, type_id: &mut TypeId) {
         walk_statement_variable_declaration(self, name, value, type_id);
@@ -108,6 +118,10 @@ fn walk_statement<V: ProgramVisitor>(visitor: &mut V, statement: &mut Statement)
             visitor.visit_statement_return(value.as_mut());
         }
 
+        StatementKind::VariableAssignment { name, value, variable_type_id } => {
+            visitor.visit_statement_variable_assignment(name, value, variable_type_id);
+        }
+
         StatementKind::VariableDeclaration { name, value, type_id } => {
             visitor.visit_statement_variable_declaration(name, value, type_id);
         }
@@ -119,6 +133,16 @@ pub fn walk_statement_return<V: ProgramVisitor>(visitor: &mut V, value: Option<&
     if let Some(expression) = value {
         visitor.visit_expression(expression);
     }
+}
+
+/// Invokes the `visitor` on any child nodes within a variable assignment statement.
+pub fn walk_statement_variable_assignment<V: ProgramVisitor>(
+    visitor: &mut V,
+    _name: &str,
+    value: &mut Expression,
+    _variable_type_id: &mut TypeId,
+) {
+    visitor.visit_expression(value);
 }
 
 /// Invokes the `visitor` on any child nodes within a variable declaration statement.

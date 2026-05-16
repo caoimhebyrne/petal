@@ -90,6 +90,16 @@ impl Scope {
             .or_else(|| self.parent.as_ref().and_then(|it| it.get_identifier_ty(identifier)))
     }
 
+    /// Retrieves the type of a variable by its name from the current scope.
+    ///
+    /// If a variable does not exist with the name in this scope, then the parent scope will be checked
+    /// (if present). If one could not be found in any of the parent scopes, then [`None`] will be returned.
+    pub fn get_variable_ty(&self, variable_name: &str) -> Option<&TypeId> {
+        self.variable_types
+            .get(variable_name)
+            .or_else(|| self.parent.as_ref().and_then(|it| it.get_identifier_ty(variable_name)))
+    }
+
     /// Inserts the type of a variable into the current scope, returning `true` if successful.
     ///
     /// This function will return `false` if a variable exists with the same name in this [`Scope`], or any of its
@@ -443,6 +453,10 @@ impl TypeResolver {
 
             ast::statement::StatementKind::Return(r#return) => self.visit_statement_return(r#return)?,
 
+            ast::statement::StatementKind::VariableAssignment(variable_assignment) => {
+                self.visit_statement_variable_assignment(variable_assignment)?
+            }
+
             ast::statement::StatementKind::VariableDeclaration(variable_declaration) => {
                 self.visit_statement_variable_declaration(variable_declaration, statement.span)?
             }
@@ -460,6 +474,26 @@ impl TypeResolver {
     ) -> TypecheckerResult<StatementKind> {
         let value = r#return.value.map(|it| self.visit_expression(it)).transpose()?;
         Ok(StatementKind::Return(value))
+    }
+
+    /// Visits the provided AST [`VariableAssignment`] statement.
+    fn visit_statement_variable_assignment(
+        &mut self,
+        variable_assignment: ast::statement::variable_assignment::VariableAssignment,
+    ) -> TypecheckerResult<StatementKind> {
+        let ast::expression::ExpressionKind::IdentifierReference(variable_name) = variable_assignment.target.kind
+        else {
+            todo!("unsupported variable assignment target: '{:?}'", variable_assignment.target);
+        };
+
+        let Some(variable_type_id) = self.scope.get_variable_ty(&variable_name).copied() else {
+            return Err(TypecheckerErrorKind::UnresolvableIdentifierReference(variable_name)
+                .at(variable_assignment.target.span));
+        };
+
+        let value = self.visit_expression(*variable_assignment.value)?;
+
+        Ok(StatementKind::VariableAssignment { name: variable_name, value, variable_type_id })
     }
 
     /// Visits the provided AST [`VariableDeclaration`] statement.

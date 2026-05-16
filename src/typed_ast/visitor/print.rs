@@ -18,6 +18,7 @@ use crate::{
             walk_function,
             walk_program,
             walk_statement_return,
+            walk_statement_variable_assignment,
             walk_statement_variable_declaration,
         },
     },
@@ -129,9 +130,21 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
         walk_statement_return(self, value);
     }
 
+    fn visit_statement_variable_assignment(&mut self, name: &str, value: &mut Expression, type_id: &mut TypeId) {
+        debug!(
+            "{}Assign variable '{}' (type = {}, {:?})",
+            self.indentation_string(),
+            name,
+            self.visit_type_id(*type_id),
+            type_id
+        );
+
+        walk_statement_variable_assignment(self, name, value, type_id);
+    }
+
     fn visit_statement_variable_declaration(&mut self, name: &str, value: &mut Expression, type_id: &mut TypeId) {
         debug!(
-            "{}Variable '{}' (type = {}, {:?})",
+            "{}Declare variable '{}' (type = {}, {:?})",
             self.indentation_string(),
             name,
             self.visit_type_id(*type_id),

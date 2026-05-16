@@ -140,6 +140,18 @@ pub enum StatementKind {
     /// The value may or may not exist, and if it does, it should match the current function's return type.
     Return(Option<Expression>),
 
+    /// A variable assignment.
+    VariableAssignment {
+        /// The name of the variable being assigned to.
+        name: String,
+
+        /// The value being assigned to the variable.
+        value: Expression,
+
+        /// The type of the variable.
+        variable_type_id: TypeId,
+    },
+
     /// A variable declaration.
     /// The identifier provided must not already be assigned to a variable.
     VariableDeclaration {
