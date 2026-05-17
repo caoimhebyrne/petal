@@ -226,7 +226,7 @@ impl TypeResolver {
                     .map(|it| self.visit_type_expr(generic_type_parameters, &it.type_expr, it.span))
                     .collect::<TypecheckerResult<Vec<TypeId>>>()?;
 
-                self.resolve_type_by_name(&generic_type_arguments, generic_type_parameters, name, span)
+                self.resolve_type_by_name(&generic_type_arguments, name, span)
             }
 
             TypeExpr::Reference(inner_type_expr) => {
@@ -243,7 +243,6 @@ impl TypeResolver {
     fn resolve_type_by_name(
         &mut self,
         generic_type_arguments: &[TypeId],
-        generic_type_parameters: &[GenericTypeParameter],
         name: &str,
         span: Span,
     ) -> TypecheckerResult<TypeId> {
@@ -316,10 +315,10 @@ impl TypeResolver {
         name: &str,
         generic_type_arguments: &[TypeId],
         span: Span,
-    ) -> TypecheckerResult<(FunctionKey, Function)> {
+    ) -> TypecheckerResult<FunctionKey> {
         // If a function exists that satisfies our restrictions, then we can use it.
         if let Some(tuple) = self.program.find_function(name, generic_type_arguments) {
-            return Ok((*tuple.0, tuple.1.clone()));
+            return Ok(*tuple.0);
         }
 
         // Otherwise, we can attempt to find a generic function with the same/similar signature, and create a
@@ -351,7 +350,7 @@ impl TypeResolver {
         };
 
         let function_key = self.program.insert_function(span.module_id, function.clone());
-        Ok((function_key, function))
+        Ok(function_key)
     }
 }
 
@@ -693,7 +692,7 @@ impl TypeResolver {
             })
             .collect::<TypecheckerResult<Vec<TypeId>>>()?;
 
-        let (function_key, function) = self.compute_function(&identifier, &generic_type_arguments, span)?;
+        let function_key = self.compute_function(&identifier, &generic_type_arguments, span)?;
 
         // todo(resolver): named vs positional argumenmts
         let arguments = function_call
@@ -702,6 +701,7 @@ impl TypeResolver {
             .map(|it| self.visit_expression(it.value))
             .collect::<TypecheckerResult<_>>()?;
 
+        let function = self.program.get_function(&function_key);
         Ok((function_key, arguments, function.return_type_id))
     }
 

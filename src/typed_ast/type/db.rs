@@ -1,9 +1,6 @@
-use std::{
-    collections::{
-        BTreeMap,
-        btree_map::Keys,
-    },
-    slice::Iter,
+use std::collections::{
+    BTreeMap,
+    btree_map::Keys,
 };
 
 use crate::typed_ast::r#type::{

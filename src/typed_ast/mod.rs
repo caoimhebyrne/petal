@@ -29,6 +29,11 @@ pub struct Program {
 }
 
 impl Program {
+    /// Retrieves a reference to a [`Function`] from its [`FunctionKey`].
+    pub fn get_function(&self, function_key: &FunctionKey) -> &Function {
+        &self.functions[function_key]
+    }
+
     /// Finds a [`Function`] given its name.
     pub fn find_function(&self, name: &str, generic_type_arguments: &[TypeId]) -> Option<(&FunctionKey, &Function)> {
         // todo(resolver): find function request
