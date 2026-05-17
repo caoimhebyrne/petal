@@ -8,9 +8,11 @@ use crate::{
         r#type::{
             Type,
             db::{
+                DefinedTypeId,
                 TypeDb,
                 TypeId,
             },
+            defined::DefinedTypeKind,
         },
         visitor::{
             ProgramVisitor,
@@ -47,7 +49,46 @@ impl<'db> PrintingProgramVisitor<'db> {
     /// A convenience method for calling [`Self::new`] and [`Self::visit`].
     pub fn visit(program: &'db mut Program) {
         let mut visitor = Self::new(&program.type_db);
+
+        for defined_type_id in program.type_db.iter_defined_types() {
+            visitor.visit_defined_type_id(*defined_type_id);
+        }
+
         walk_program(&mut visitor, &mut program.functions);
+    }
+
+    /// Visits the provide [`DefinedTypeId`].
+    fn visit_defined_type_id(&mut self, defined_type_id: DefinedTypeId) {
+        let defined_type = self.type_db.get_defined_type(defined_type_id);
+
+        match &defined_type.kind {
+            DefinedTypeKind::Structure(structure) => {
+                debug!("{}Structure '{}'", self.indentation_string(), defined_type.name);
+
+                self.increase_indentation();
+
+                debug!("{}{:?}", self.indentation_string(), defined_type_id);
+                debug!("");
+                debug!("{}Fields:", self.indentation_string());
+
+                self.increase_indentation();
+
+                for field in &structure.fields {
+                    debug!(
+                        "{} {} (type = {}, {:?})",
+                        self.indentation_string(),
+                        field.name,
+                        self.print_type_id(field.type_id),
+                        field.type_id
+                    );
+                }
+
+                self.decrease_indentation();
+                self.decrease_indentation();
+            }
+        }
+
+        debug!("");
     }
 
     /// Returns a string containing the amount of padding required before this statement.

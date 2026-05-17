@@ -1,4 +1,10 @@
-use std::collections::BTreeMap;
+use std::{
+    collections::{
+        BTreeMap,
+        btree_map::Keys,
+    },
+    slice::Iter,
+};
 
 use crate::typed_ast::r#type::{
     Type,
@@ -60,6 +66,11 @@ impl TypeDb {
         let id = DefinedTypeId(self.defined_types.len());
         self.defined_types.insert(id, defined_type);
         id
+    }
+
+    /// Returns an [`Iter`] of [`DefinedTypeId`]s present in this [`TypeDb`].
+    pub fn iter_defined_types(&self) -> Keys<'_, DefinedTypeId, DefinedType> {
+        self.defined_types.keys()
     }
 }
 
