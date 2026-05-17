@@ -398,7 +398,12 @@ impl TypeResolver {
                 parameters,
                 body,
                 return_type_id,
-                generic_information: Some(GenericInformation { parameters: generic_type_parameters.into() }),
+                // If no generic type parameters were provided, then we should not attach any generic information.
+                generic_information: if generic_type_parameters.is_empty() {
+                    None
+                } else {
+                    Some(GenericInformation { parameters: generic_type_parameters.into() })
+                },
                 span,
             },
         );
@@ -454,7 +459,12 @@ impl TypeResolver {
         let defined_type_id = self.program.type_db.insert_defined_type(DefinedType {
             name: type_declaration.name,
             kind: defined_type_kind,
-            generic_information: Some(GenericInformation { parameters: generic_type_parameters.into() }),
+            // If no generic type parameters were provided, then we should not attach any generic information.
+            generic_information: if generic_type_parameters.is_empty() {
+                None
+            } else {
+                Some(GenericInformation { parameters: generic_type_parameters.into() })
+            },
             span,
         });
 
