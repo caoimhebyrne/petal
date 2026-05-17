@@ -520,7 +520,7 @@ impl TypeResolver {
             ast::statement::StatementKind::Return(r#return) => self.visit_statement_return(r#return)?,
 
             ast::statement::StatementKind::VariableAssignment(variable_assignment) => {
-                self.visit_statement_variable_assignment(variable_assignment)?
+                self.visit_statement_variable_assignment(variable_assignment, statement.span)?
             }
 
             ast::statement::StatementKind::VariableDeclaration(variable_declaration) => {
@@ -538,7 +538,8 @@ impl TypeResolver {
         &mut self,
         r#return: ast::statement::r#return::Return,
     ) -> TypecheckerResult<StatementKind> {
-        let value = r#return.value.map(|it| self.visit_expression(it)).transpose()?;
+        // todo: self.scope.return_type
+        let value = r#return.value.map(|it| self.visit_expression(it, None)).transpose()?;
         Ok(StatementKind::Return(value))
     }
 
@@ -546,20 +547,21 @@ impl TypeResolver {
     fn visit_statement_variable_assignment(
         &mut self,
         variable_assignment: ast::statement::variable_assignment::VariableAssignment,
+        span: Span,
     ) -> TypecheckerResult<StatementKind> {
-        let value = self.visit_expression(*variable_assignment.value)?;
-
         match variable_assignment.target.kind {
             ast::expression::ExpressionKind::IdentifierReference(variable_name) => {
                 let Some(variable_type_id) = self.scope.get_variable_ty(&variable_name).copied() else {
-                    return Err(TypecheckerErrorKind::UnresolvableIdentifierReference(variable_name).at(value.span));
+                    return Err(TypecheckerErrorKind::UnresolvableIdentifierReference(variable_name).at(span));
                 };
 
+                let value = self.visit_expression(*variable_assignment.value, Some(variable_type_id))?;
                 Ok(StatementKind::VariableAssignment { name: variable_name, value, variable_type_id })
             }
 
             ast::expression::ExpressionKind::Dereference(target_expression) => {
-                let target = self.visit_expression(*target_expression)?;
+                let target = self.visit_expression(*target_expression, None)?;
+                let value = self.visit_expression(*variable_assignment.value, None)?;
                 Ok(StatementKind::ReferenceValueAssignment { target, value })
             }
 
@@ -579,14 +581,18 @@ impl TypeResolver {
 
         self.scope.set_variable_ty(variable_declaration.name.clone(), type_id);
 
-        let value = self.visit_expression(variable_declaration.value)?;
+        let value = self.visit_expression(variable_declaration.value, Some(type_id))?;
         Ok(StatementKind::VariableDeclaration { name: variable_declaration.name, value, type_id })
     }
 }
 
 impl TypeResolver {
     /// Visits the provided AST [`Expression`]. The returned [`Expression`] will be the typed variant of it.
-    fn visit_expression(&mut self, expression: ast::expression::Expression) -> TypecheckerResult<Expression> {
+    fn visit_expression(
+        &mut self,
+        expression: ast::expression::Expression,
+        expected_type_id: Option<TypeId>,
+    ) -> TypecheckerResult<Expression> {
         let (kind, type_id) = match expression.kind {
             ast::expression::ExpressionKind::BinaryOperation(binary_operation) => {
                 self.visit_expression_binary_operation(binary_operation)?
@@ -609,6 +615,13 @@ impl TypeResolver {
 
             ast::expression::ExpressionKind::Reference(value) => self.visit_expression_reference(*value)?,
 
+            ast::expression::ExpressionKind::StructureInitialization(structure_initialization) => self
+                .visit_expression_structure_initialization(
+                    &structure_initialization,
+                    expected_type_id,
+                    expression.span,
+                )?,
+
             _ => todo!(),
         };
 
@@ -620,8 +633,8 @@ impl TypeResolver {
         &mut self,
         binary_operation: ast::expression::binary_operation::BinaryOperation,
     ) -> TypecheckerResult<(ExpressionKind, TypeId)> {
-        let left = self.visit_expression(*binary_operation.left)?;
-        let right = self.visit_expression(*binary_operation.right)?;
+        let left = self.visit_expression(*binary_operation.left, None)?;
+        let right = self.visit_expression(*binary_operation.right, Some(left.type_id))?;
 
         // The type of the expression (for now) will be the type of the expression on the left-hand side.
         // This will be refined and verified at later stages, once we verify that the types are actually compatible with each other.
@@ -642,7 +655,8 @@ impl TypeResolver {
         &mut self,
         expression: ast::expression::Expression,
     ) -> TypecheckerResult<(ExpressionKind, TypeId)> {
-        let reference = self.visit_expression(expression)?;
+        // todo: get a reference of the expected type id
+        let reference = self.visit_expression(expression, None)?;
 
         // The type of the reference expression must be a reference type.
         let Type::Reference(inner_type_id) = *self.program.type_db.get_type(reference.type_id) else {
@@ -679,7 +693,8 @@ impl TypeResolver {
         let arguments = function_call
             .arguments
             .into_iter()
-            .map(|it| self.visit_expression(it.value))
+            // todo: expected type id
+            .map(|it| self.visit_expression(it.value, None))
             .collect::<TypecheckerResult<_>>()?;
 
         let function = self.program.get_function(&function_key);
@@ -733,11 +748,59 @@ impl TypeResolver {
         &mut self,
         value: ast::expression::Expression,
     ) -> TypecheckerResult<(ExpressionKind, TypeId)> {
-        let expression = self.visit_expression(value)?;
+        // todo(resolver): get a de-reference from the expected type id
+        let expression = self.visit_expression(value, None)?;
 
         // The type of the reference expression is a reference to the expression's type.
         let type_id = self.program.type_db.get_or_insert_type(Type::Reference(expression.type_id));
 
         Ok((ExpressionKind::Reference(Box::new(expression)), type_id))
+    }
+
+    /// Visits the provided [`ast::expression::structure_initialization::StructureInitialization`] expression.
+    ///
+    /// The [`expected_type`] must be a structure type for this visit method to succeed. Otherwise, there is not enough
+    /// information available to know which structure is being initialized.
+    fn visit_expression_structure_initialization(
+        &mut self,
+        structure_initialization: &ast::expression::structure_initialization::StructureInitialization,
+        expected_type_id: Option<TypeId>,
+        span: Span,
+    ) -> TypecheckerResult<(ExpressionKind, TypeId)> {
+        let Some(expected_type_id) = expected_type_id else {
+            panic!("visit_expression_structure_initialization did not get an `expected_type_id`");
+        };
+
+        let Type::Defined(defined_type_id) = self.program.type_db.get_type(expected_type_id) else {
+            return Err(TypecheckerErrorKind::ExpectedStructureType.at(span));
+        };
+
+        let defined_type = self.program.type_db.get_defined_type(*defined_type_id);
+        let DefinedTypeKind::Structure(structure) = &defined_type.kind.clone(); // todo: remove this clone
+
+        // The initialization's fields may not be in order, we need to find them individually based on their name.
+        let mut field_values: Vec<Expression> = Vec::new();
+
+        for field in &structure.fields {
+            // A corresponding initialization field must exist.
+            let initialization_field =
+                structure_initialization.fields.iter().find(|it| it.name == field.name).ok_or_else(|| {
+                    TypecheckerErrorKind::MissingStructureFieldInInitializer(field.name.clone()).at(span)
+                })?;
+
+            let field_value = self.visit_expression(*initialization_field.value.clone(), Some(field.type_id))?;
+            field_values.push(field_value);
+        }
+
+        // The number of fields on the structure initialization must match the number of values passed.
+        if structure.fields.len() != field_values.len() {
+            return Err(TypecheckerErrorKind::GenericTypeArgumentCountMismatch {
+                expected: structure.fields.len(),
+                got: field_values.len(),
+            }
+            .at(span));
+        }
+
+        Ok((ExpressionKind::StructureInitialization { field_values }, expected_type_id))
     }
 }

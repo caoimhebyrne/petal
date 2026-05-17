@@ -21,6 +21,7 @@ use crate::{
             walk_expression_dereference,
             walk_expression_function_call,
             walk_expression_reference,
+            walk_expression_structure_initialization,
             walk_function,
             walk_program,
             walk_statement_reference_value_assignment,
@@ -155,6 +156,12 @@ impl<'db> PrintingProgramVisitor<'db> {
 }
 
 impl ProgramVisitor for PrintingProgramVisitor<'_> {
+    fn visit_expression_structure_initialization(&mut self, field_values: &mut Vec<Expression>) {
+        debug!("{}Structure initialization", self.indentation_string());
+
+        walk_expression_structure_initialization(self, field_values);
+    }
+
     fn visit_function(&mut self, key: &FunctionKey, function: &mut Function) {
         debug!(
             "Function '{}' -> returns {} (id = {:?}):",

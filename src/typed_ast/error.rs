@@ -31,6 +31,9 @@ pub enum TypecheckerErrorKind {
     /// A type expression was provided for a type definition, but the expression was not a definition kind.
     ExpectedTypeDefinition,
 
+    /// A structure type was expected, but another type kind was received.
+    ExpectedStructureType,
+
     /// The number of generic type arguments provided did not equal the number of generic type parameters.
     GenericTypeArgumentCountMismatch { expected: usize, got: usize },
 
@@ -39,6 +42,12 @@ pub enum TypecheckerErrorKind {
 
     /// A dereference expression was encountered, where the target of the expression was not a reference.
     InvalidDereferenceTarget,
+
+    /// A field was not provided in a structure initialization expression.
+    MissingStructureFieldInInitializer(String),
+
+    /// The number of field initializers provided did not equal the number of fields on the structure type.
+    StructureInitializationFieldCountMismatch { expected: usize, got: usize },
 
     /// A type was referenced by name, but a matching type could not be resolved.
     UndeclaredTypeName(String),
@@ -61,6 +70,10 @@ impl Display for TypecheckerErrorKind {
                 write!(f, "Expected any type definition (struct, enum), but got a plain type expression instead")
             }
 
+            Self::ExpectedStructureType => {
+                write!(f, "Expected a structure type for a structure initialization expression, but got another type")
+            }
+
             Self::GenericTypeArgumentCountMismatch { expected, got } => write!(
                 f,
                 "Expected {} type argument{} but got {} argument{}",
@@ -78,6 +91,19 @@ impl Display for TypecheckerErrorKind {
             Self::InvalidDereferenceTarget => {
                 write!(f, "You cannot dereference this expression type, it must be a reference type")
             }
+
+            Self::MissingStructureFieldInInitializer(name) => {
+                write!(f, "A value was not provided for field '{name}' in the structure initializer")
+            }
+
+            Self::StructureInitializationFieldCountMismatch { expected, got } => write!(
+                f,
+                "Expected {} field initializer{} but got {} field initializer{}",
+                expected,
+                if *expected == 1 { "" } else { "s" },
+                got,
+                if *got == 1 { "" } else { "s" }
+            ),
 
             Self::UndeclaredTypeName(name) => write!(f, "Cannot find type named '{name}'"),
 

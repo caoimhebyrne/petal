@@ -256,6 +256,12 @@ pub enum ExpressionKind {
     /// Creating a reference to a variable.
     Reference(Box<Expression>),
 
+    /// An initialization of a structure typed value.
+    StructureInitialization {
+        /// An ordered [`Vec`] of field values, one for each field within the structure.
+        field_values: Vec<Expression>,
+    },
+
     /// A reference to a local variable by name.
     VariableReference(String),
 }
