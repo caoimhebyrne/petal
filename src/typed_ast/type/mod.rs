@@ -12,9 +12,6 @@ pub enum Type {
     /// A reference to a defined type (e.g. struct, enum).
     Defined(DefinedTypeId),
 
-    /// A generic type which needs to be substituted for its concrete type when available.
-    Generic(usize),
-
     /// A signed integer of a certain size (i{x}).
     SignedInteger(u8),
 

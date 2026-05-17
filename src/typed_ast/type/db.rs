@@ -54,8 +54,35 @@ impl TypeDb {
     }
 
     /// Finds a [`DefinedTypeId`] for the [`DefinedType`] which has a matching `name`.
-    pub fn find_defined_type(&self, name: &str) -> Option<DefinedTypeId> {
-        self.defined_types.iter().find(|(_, it)| it.name == name).map(|it| *it.0)
+    pub fn find_defined_type(&self, name: &str, generic_type_arguments: &[TypeId]) -> Option<DefinedTypeId> {
+        self.defined_types
+            .iter()
+            .find(|(_, it)| {
+                if it.name != name {
+                    return false;
+                }
+
+                if let Some(generic_information) = &it.generic_information {
+                    if generic_type_arguments.is_empty() {
+                        return false;
+                    }
+
+                    if generic_type_arguments.len() != generic_information.parameters.len() {
+                        return false;
+                    }
+
+                    for (parameter, argument_type_id) in
+                        generic_information.parameters.iter().zip(generic_type_arguments)
+                    {
+                        if parameter.type_id != *argument_type_id {
+                            return false;
+                        }
+                    }
+                }
+
+                true
+            })
+            .map(|it| *it.0)
     }
 
     /// Allocates a new [`DefinedTypeId`] for the provided [`DefinedType`].
@@ -77,11 +104,6 @@ impl TypeDb {
         self.types.get(&type_id).expect("self.types.get should return `Some(_)`")
     }
 
-    /// Retrieves a mutable reference to a [`Type`] from the provided [`TypeId`].
-    pub fn get_type_mut(&mut self, type_id: TypeId) -> &mut Type {
-        self.types.get_mut(&type_id).expect("self.types.get_mut should return `Some(_)`")
-    }
-
     /// Allocates a new [`TypeId`] for the provided [`Type`].
     /// If a [`Type`] already exists, its existing ID will be returned and a new [`TypeId`] will not be allocated.
     pub fn get_or_insert_type(&mut self, ty: Type) -> TypeId {
@@ -89,19 +111,8 @@ impl TypeDb {
     }
 
     /// Allocates a new [`TypeId`] in the provided [`BTreeMap`] for the provided [`Type`].
-    ///
     /// If a [`Type`] already exists, its existing ID will be returned and a new [`TypeId`] will not be allocated.
-    ///
-    /// The only exception to the rule above is [`Type::Generic`]s. A new type ID will _always_ be allocated for those.
-    /// This is because a [`Type::Generic`] is only identified by the index of its generic parameter, and its variant
-    /// does not have any unique information which ties it to the function.
     fn get_or_insert_type_into_map(types: &mut BTreeMap<TypeId, Type>, ty: Type) -> TypeId {
-        if !matches!(ty, Type::Generic(_))
-            && let Some((type_id, _)) = types.iter().find(|(_, it)| *it == &ty)
-        {
-            return *type_id;
-        }
-
         let type_id = TypeId(types.len());
         types.insert(type_id, ty);
         type_id

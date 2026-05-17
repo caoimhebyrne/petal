@@ -1,22 +1,23 @@
-#![allow(dead_code)]
-
 use std::collections::BTreeMap;
 
 use crate::{
     ast::expression::binary_operation::BinaryOperator,
     core::span::Span,
     module_registry::ModuleId,
-    typed_ast::r#type::db::{
-        TypeDb,
-        TypeId,
+    typed_ast::{
+        context::GenericTypeParameter,
+        r#type::db::{
+            TypeDb,
+            TypeId,
+        },
     },
 };
 
-pub(super) mod context;
-pub(super) mod error;
-pub(super) mod resolver;
-pub(super) mod r#type;
-pub(super) mod visitor;
+mod context;
+pub(crate) mod error;
+pub(crate) mod resolver;
+pub(crate) mod r#type;
+pub(crate) mod visitor;
 
 /// A program is the "output" of the typed AST. It contains all of the functions and types that are used.
 #[derive(Default, Debug, Clone)]
@@ -41,17 +42,27 @@ impl Program {
         // todo(resolver): namespace
         // todo(resolver): etc
         self.functions.iter().find(|(_, it)| {
+            if it.name != name {
+                return false;
+            }
+
             if let Some(generic_information) = &it.generic_information {
                 if generic_type_arguments.is_empty() {
                     return false;
                 }
 
-                if generic_information.types != generic_type_arguments {
+                if generic_type_arguments.len() != generic_information.parameters.len() {
                     return false;
+                }
+
+                for (parameter, argument_type_id) in generic_information.parameters.iter().zip(generic_type_arguments) {
+                    if parameter.type_id != *argument_type_id {
+                        return false;
+                    }
                 }
             }
 
-            it.name == name
+            true
         })
     }
 
@@ -103,8 +114,8 @@ pub struct Function {
 /// Information associated with a generic type or function.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GenericInformation {
-    /// A [`Vec`] of [`TypeId`]s, which correspond to the generic type arguments for each generic type parameter.
-    pub types: Vec<TypeId>,
+    /// The generic type parameters used when defining this type or function.
+    pub parameters: Vec<GenericTypeParameter>,
 }
 
 /// A parameter to a [`Function`].

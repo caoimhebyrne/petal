@@ -74,13 +74,13 @@ impl<'db> PrintingProgramVisitor<'db> {
                     debug!("{}Generic type arguments:", self.indentation_string());
                     self.increase_indentation();
 
-                    for (index, type_id) in generic_information.types.iter().enumerate() {
+                    for generic_type_parameter in &generic_information.parameters {
                         debug!(
                             "{}{} (type = {}, {:?})",
                             self.indentation_string(),
-                            index,
-                            self.print_type_id(*type_id),
-                            type_id
+                            generic_type_parameter.name,
+                            self.print_type_id(generic_type_parameter.type_id),
+                            generic_type_parameter.type_id
                         );
                     }
 
@@ -132,12 +132,23 @@ impl<'db> PrintingProgramVisitor<'db> {
         match ty {
             Type::Defined(defined_type_id) => {
                 let defined_type = self.type_db.get_defined_type(defined_type_id);
-                defined_type.name.clone()
+
+                if let Some(generic_information) = &defined_type.generic_information {
+                    let generic_type_arguments = generic_information
+                        .parameters
+                        .iter()
+                        .map(|it| format!("{} = {}", it.name, self.print_type_id(it.type_id)))
+                        .collect::<Vec<_>>()
+                        .join(",");
+
+                    format!("{}<{}>", defined_type.name, generic_type_arguments)
+                } else {
+                    defined_type.name.clone()
+                }
             }
             Type::SignedInteger(bits) => format!("i{bits}"),
             Type::Reference(inner_type_id) => format!("&{}", self.print_type_id(inner_type_id)),
             Type::UnsignedInteger(bits) => format!("u{bits}"),
-            Type::Generic(_) => "?".to_string(),
             Type::Void => "void".to_string(),
         }
     }
@@ -146,7 +157,7 @@ impl<'db> PrintingProgramVisitor<'db> {
 impl ProgramVisitor for PrintingProgramVisitor<'_> {
     fn visit_function(&mut self, key: &FunctionKey, function: &mut Function) {
         debug!(
-            "Function '{}' -> returns {} ({:?}):",
+            "Function '{}' -> returns {} (id = {:?}):",
             function.name,
             self.print_type_id(function.return_type_id),
             function.return_type_id
@@ -164,7 +175,7 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
 
             for parameter in &function.parameters {
                 debug!(
-                    "{}{} (type = {}, {:?})",
+                    "{}{} (type = {}, id = {:?})",
                     self.indentation_string(),
                     parameter.name,
                     self.print_type_id(parameter.type_id),
@@ -202,7 +213,7 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
 
     fn visit_statement_variable_assignment(&mut self, name: &str, value: &mut Expression, type_id: &mut TypeId) {
         debug!(
-            "{}Assign variable '{}' (type = {}, {:?})",
+            "{}Assign variable '{}' (type = {}, id = {:?})",
             self.indentation_string(),
             name,
             self.print_type_id(*type_id),
@@ -214,7 +225,7 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
 
     fn visit_statement_variable_declaration(&mut self, name: &str, value: &mut Expression, type_id: &mut TypeId) {
         debug!(
-            "{}Declare variable '{}' (type = {}, {:?})",
+            "{}Declare variable '{}' (type = {}, id = {:?})",
             self.indentation_string(),
             name,
             self.print_type_id(*type_id),
@@ -237,7 +248,13 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
         operator: &mut BinaryOperator,
         type_id: &mut TypeId,
     ) {
-        debug!("{}{} (type = {}, {:?})", self.indentation_string(), operator, self.print_type_id(*type_id), type_id);
+        debug!(
+            "{}{} (type = {}, id = {:?})",
+            self.indentation_string(),
+            operator,
+            self.print_type_id(*type_id),
+            type_id
+        );
         walk_expression_binary_operation(self, left, right, operator, type_id);
     }
 
@@ -253,7 +270,7 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
         type_id: &mut TypeId,
     ) {
         debug!(
-            "{}Function call (key = {:?} type = {}, {:?})",
+            "{}Function call (key = {:?} type = {}, id = {:?})",
             self.indentation_string(),
             function_key,
             self.print_type_id(*type_id),
@@ -265,7 +282,7 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
 
     fn visit_expression_number_literal(&mut self, value: &mut f64, type_id: &mut TypeId) {
         debug!(
-            "{}Number literal {} (type = {}, {:?})",
+            "{}Number literal {} (type = {}, id = {:?})",
             self.indentation_string(),
             value,
             self.print_type_id(*type_id),
@@ -275,7 +292,7 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
 
     fn visit_expression_reference(&mut self, value: &mut Expression) {
         debug!(
-            "{}Reference (type = {}, {:?})",
+            "{}Reference (type = {}, id = {:?})",
             self.indentation_string(),
             self.print_type_id(value.type_id),
             value.type_id
@@ -285,7 +302,7 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
 
     fn visit_expression_variable_reference(&mut self, variable_name: &mut str, type_id: &mut TypeId) {
         debug!(
-            "{}Variable reference '{}' (type = {}, {:?})",
+            "{}Variable reference '{}' (type = {}, id = {:?})",
             self.indentation_string(),
             variable_name,
             self.print_type_id(*type_id),

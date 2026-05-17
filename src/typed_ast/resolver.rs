@@ -18,8 +18,6 @@ use crate::{
         Statement,
         StatementKind,
         context::{
-            GenericFunction,
-            GenericType,
             GenericTypeParameter,
             TypeResolverContext,
         },
@@ -29,7 +27,10 @@ use crate::{
         },
         r#type::{
             Type,
-            db::TypeId,
+            db::{
+                DefinedTypeId,
+                TypeId,
+            },
             defined::{
                 DefinedType,
                 DefinedTypeKind,
@@ -194,7 +195,7 @@ impl TypeResolver {
     }
 
     /// Sets the [`Scope`] to an empty one, making it a child of the current [`Scope`].
-    fn push_scope(&mut self) {
+    fn push_empty_scope(&mut self) {
         self.set_scope(Scope::empty_with_parent);
     }
 
@@ -270,34 +271,38 @@ impl TypeResolver {
         generic_type_arguments: &[TypeId],
         span: Span,
     ) -> TypecheckerResult<TypeId> {
-        if let Some(defined_type_id) = self.program.type_db.find_defined_type(name) {
+        if let Some(defined_type_id) = self.program.type_db.find_defined_type(name, generic_type_arguments) {
             let type_id = self.program.type_db.get_or_insert_type(Type::Defined(defined_type_id));
             return Ok(type_id);
         }
 
         // If there is no defined type, then we can attempt to create a specialization of a generic type.
-        let Some(generic_type_key) = self.context.find_generic_type(name) else {
+        let Some(generic_type_declaration) = self.context.find_generic_type_declaration(name) else {
             return Err(TypecheckerErrorKind::UndeclaredTypeName(name.to_string()).at(span));
         };
 
-        let generic_type = self.context.get_generic_type(generic_type_key);
-
         // The number of generic type arguments provided must equal the number of parameters on the type.
-        if generic_type.generic_type_parameters.len() != generic_type_arguments.len() {
+        if generic_type_declaration.generic_type_parameters.len() != generic_type_arguments.len() {
             return Err(TypecheckerErrorKind::GenericTypeArgumentCountMismatch {
-                expected: generic_type.generic_type_parameters.len(),
+                expected: generic_type_declaration.generic_type_parameters.len(),
                 got: generic_type_arguments.len(),
             }
             .at(span));
         }
 
-        // We can then create a specialization of the defined type for these parameters.
-        let defined_type_id = self.program.type_db.insert_defined_type(DefinedType {
-            kind: generic_type.kind.clone(),
-            name: generic_type.name.clone(),
-            generic_information: Some(GenericInformation { types: generic_type_arguments.into() }),
-            span: generic_type.span,
-        });
+        // todo(resolver): `TypeResolvingContext`
+        let generic_type_parameters = generic_type_declaration
+            .generic_type_parameters
+            .iter()
+            .zip(generic_type_arguments)
+            .map(|(parameter, argument_type_id)| GenericTypeParameter {
+                name: parameter.name.clone(),
+                type_id: *argument_type_id,
+            })
+            .collect::<Vec<GenericTypeParameter>>();
+
+        let defined_type_id =
+            self.compile_type_declaration(generic_type_declaration.clone(), &generic_type_parameters, span)?;
 
         Ok(self.program.type_db.get_or_insert_type(Type::Defined(defined_type_id)))
     }
@@ -322,34 +327,32 @@ impl TypeResolver {
 
         // Otherwise, we can attempt to find a generic function with the same/similar signature, and create a
         // specialization of it to be used.
-        let Some((_, generic_function)) = self.context.find_generic_function(name) else {
+        let Some(generic_function_declaration) = self.context.find_generic_function_declaration(name) else {
             return Err(TypecheckerErrorKind::UnresolvableIdentifierReference(name.to_string()).at(span));
         };
 
         // The number of generic type arguments must equal the number of generic type parameters in the function. At a
         // later point in time, we may be able to infer these.
-        if generic_type_arguments.len() != generic_function.generic_type_parameters.len() {
+        if generic_type_arguments.len() != generic_function_declaration.generic_type_parameters.len() {
             return Err(TypecheckerErrorKind::GenericTypeArgumentCountMismatch {
-                expected: generic_function.generic_type_parameters.len(),
+                expected: generic_function_declaration.generic_type_parameters.len(),
                 got: generic_type_arguments.len(),
             }
             .at(span));
         }
 
-        // The specialization that we generate will still have its generic types within its body, parameters, etc.
-        // but we will make a note within the function to walk through it and resolve the generic types at a later
-        // stage.
-        let function = Function {
-            name: generic_function.name.clone(),
-            parameters: generic_function.parameters.clone(),
-            body: generic_function.body.clone(),
-            return_type_id: generic_function.return_type_id,
-            generic_information: Some(GenericInformation { types: generic_type_arguments.into() }),
-            span: generic_function.span,
-        };
+        // todo(resolver): `TypeResolvingContext`
+        let generic_type_parameters = generic_function_declaration
+            .generic_type_parameters
+            .iter()
+            .zip(generic_type_arguments)
+            .map(|(parameter, argument_type_id)| GenericTypeParameter {
+                name: parameter.name.clone(),
+                type_id: *argument_type_id,
+            })
+            .collect::<Vec<GenericTypeParameter>>();
 
-        let function_key = self.program.insert_function(span.module_id, function.clone());
-        Ok(function_key)
+        self.compile_function_declaration(generic_function_declaration.clone(), &generic_type_parameters, span)
     }
 }
 
@@ -357,79 +360,65 @@ impl TypeResolver {
     /// Visits the provided [`ast::statement::function_declaration::FunctionDeclaration`].
     ///
     /// If the function has generic type parameters, it will not be appended to the [`Program`], and will instead be
-    /// stored to undergo monomorphization once a call is made to it. If any references to a generic type parameter are
-    /// found within the function's declaration (parameter types, return type, body), then they will be stubbed with a
-    /// generic type reference.
+    /// stored to undergo monomorphization once a call is made to it.
     ///
-    /// If the function does not have generic type parameters, the function will be appended to the [`Program`].
+    /// If the function does not have generic type parameters, [`compile_function_declaration`] will be called.
     fn visit_function_declaration(
         &mut self,
         function_declaration: ast::statement::function_declaration::FunctionDeclaration,
         span: Span,
     ) -> TypecheckerResult<()> {
-        let is_generic = !function_declaration.generic_type_parameters.is_empty();
+        if !function_declaration.generic_type_parameters.is_empty() {
+            // The function is generic, we can store it for safe-keeping until it is referenced later.
+            self.context.insert_generic_function_declaration(function_declaration);
+            return Ok(());
+        }
 
-        // todo(resolver): `TypeResolvingContext`
-        let generic_type_parameters = function_declaration
-            .generic_type_parameters
-            .into_iter()
-            .enumerate()
-            .map(|(index, it)| {
-                // Generic types are unique. De-duplication is not performed on them when the type database is
-                // allocating an ID for them. This means that we should pre-compute their IDs.
-                let type_id = self.program.type_db.get_or_insert_type(Type::Generic(index));
-                GenericTypeParameter { name: it.name, type_id }
-            })
-            .collect::<Vec<GenericTypeParameter>>();
+        self.compile_function_declaration(function_declaration, &[], span)?;
+        Ok(())
+    }
 
+    /// Compiles the provided [`ast::statement::function_declaration::FunctionDeclaration`].
+    fn compile_function_declaration(
+        &mut self,
+        function_declaration: ast::statement::function_declaration::FunctionDeclaration,
+        generic_type_parameters: &[GenericTypeParameter],
+        span: Span,
+    ) -> TypecheckerResult<FunctionKey> {
         let parameters = function_declaration
             .parameters
             .into_iter()
-            .map(|it| self.visit_function_parameter(&generic_type_parameters, it))
+            .map(|it| self.visit_function_parameter(generic_type_parameters, it))
             .collect::<TypecheckerResult<Vec<_>>>()?;
 
         let return_type_id = function_declaration
             .return_type_expr
-            .map(|it| self.visit_type_expr(&generic_type_parameters, &it, span))
+            .map(|it| self.visit_type_expr(generic_type_parameters, &it, span))
             .transpose()?
             .unwrap_or(self.program.type_db.void_type_id());
 
         self.set_scope(|current| {
             let parameter_tys = parameters.iter().map(|it| (it.name.clone(), it.type_id)).collect();
-            Scope::function(generic_type_parameters.clone(), parameter_tys, Some(current))
+            Scope::function(generic_type_parameters.into(), parameter_tys, Some(current))
         });
 
         let body = self.visit_statements(function_declaration.body)?;
 
         self.pop_scope();
 
-        if is_generic {
-            self.context.insert_generic_function(
-                span.module_id,
-                GenericFunction {
-                    name: function_declaration.name,
-                    parameters,
-                    body,
-                    return_type_id,
-                    generic_type_parameters,
-                    span,
-                },
-            );
-        } else {
-            self.program.insert_function(
-                span.module_id,
-                Function {
-                    name: function_declaration.name,
-                    parameters,
-                    body,
-                    return_type_id,
-                    generic_information: None,
-                    span,
-                },
-            );
-        }
+        let function_key = self.program.insert_function(
+            span.module_id,
+            Function {
+                name: function_declaration.name,
+                parameters,
+                body,
+                return_type_id,
+                generic_information: Some(GenericInformation { parameters: generic_type_parameters.into() }),
+                span,
+            },
+        );
 
-        Ok(())
+        Ok(function_key)
     }
 
     /// Visits the provided [`ast::statement::function_declaration::FunctionParameter`].
@@ -455,39 +444,36 @@ impl TypeResolver {
         type_declaration: ast::statement::type_declaration::TypeDeclaration,
         span: Span,
     ) -> TypecheckerResult<()> {
-        // todo(resolver): modifiers
-
-        // todo(resolver): `TypeResolvingContext`
-        let generic_type_parameters = type_declaration
-            .generic_type_parameters
-            .into_iter()
-            .enumerate()
-            .map(|(index, it)| {
-                // Generic types are unique. De-duplication is not performed on them when the type database is
-                // allocating an ID for them. This means that we should pre-compute their IDs.
-                let type_id = self.program.type_db.get_or_insert_type(Type::Generic(index));
-                GenericTypeParameter { name: it.name, type_id }
-            })
-            .collect::<Vec<GenericTypeParameter>>();
-
-        let defined_type_kind =
-            self.visit_type_expr_on_declaration(&generic_type_parameters, type_declaration.type_expr, span)?;
-
-        if generic_type_parameters.is_empty() {
-            self.program.type_db.insert_defined_type(DefinedType {
-                name: type_declaration.name,
-                kind: defined_type_kind,
-                generic_information: None,
-                span,
-            });
-        } else {
-            self.context.insert_generic_type(
-                span.module_id,
-                GenericType { name: type_declaration.name, generic_type_parameters, kind: defined_type_kind, span },
-            );
+        if !type_declaration.generic_type_parameters.is_empty() {
+            // The type is generic, we can store it for safe-keeping until it is referenced later.
+            self.context.insert_generic_type_declaration(type_declaration);
+            return Ok(());
         }
 
+        self.compile_type_declaration(type_declaration, &[], span)?;
         Ok(())
+    }
+
+    /// Compiles the provided.
+    fn compile_type_declaration(
+        &mut self,
+        type_declaration: ast::statement::type_declaration::TypeDeclaration,
+        generic_type_parameters: &[GenericTypeParameter],
+        span: Span,
+    ) -> TypecheckerResult<DefinedTypeId> {
+        // todo(resolver): modifiers
+
+        let defined_type_kind =
+            self.visit_type_expr_on_declaration(generic_type_parameters, type_declaration.type_expr, span)?;
+
+        let defined_type_id = self.program.type_db.insert_defined_type(DefinedType {
+            name: type_declaration.name,
+            kind: defined_type_kind,
+            generic_information: Some(GenericInformation { parameters: generic_type_parameters.into() }),
+            span,
+        });
+
+        Ok(defined_type_id)
     }
 
     /// Visits a [`TypeExpr`] that is part of a type declaration.
