@@ -60,16 +60,6 @@ struct Scope {
 }
 
 impl Scope {
-    /// Creates an empty scope with a parent.
-    pub fn empty_with_parent(parent: Self) -> Self {
-        Self {
-            generic_type_parameters: Vec::default(),
-            parameter_types: HashMap::default(),
-            parent: Some(Box::new(parent)),
-            variable_types: HashMap::default(),
-        }
-    }
-
     /// Creates a scope with parameters and a parent.
     pub fn function(
         generic_type_parameters: Vec<GenericTypeParameter>,
@@ -192,11 +182,6 @@ impl TypeResolver {
         // todo(threading): Is this thread safe?
         let current_scope = std::mem::take(&mut self.scope);
         self.scope = supplier(current_scope);
-    }
-
-    /// Sets the [`Scope`] to an empty one, making it a child of the current [`Scope`].
-    fn push_empty_scope(&mut self) {
-        self.set_scope(Scope::empty_with_parent);
     }
 
     /// Sets the [`Scope`] to the parent of the current [`Scope`].
