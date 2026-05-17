@@ -291,12 +291,11 @@ impl TypeResolver {
             .at(span));
         }
 
-        dbg!(&generic_type);
-
         // We can then create a specialization of the defined type for these parameters.
         let defined_type_id = self.program.type_db.insert_defined_type(DefinedType {
             kind: generic_type.kind.clone(),
             name: generic_type.name.clone(),
+            generic_information: Some(GenericInformation { types: generic_type_arguments.into() }),
             span: generic_type.span,
         });
 
@@ -478,6 +477,7 @@ impl TypeResolver {
             self.program.type_db.insert_defined_type(DefinedType {
                 name: type_declaration.name,
                 kind: defined_type_kind,
+                generic_information: None,
                 span,
             });
         } else {

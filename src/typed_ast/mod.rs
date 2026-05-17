@@ -101,7 +101,7 @@ pub struct Function {
 }
 
 /// Information associated with a generic type or function.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GenericInformation {
     /// A [`Vec`] of [`TypeId`]s, which correspond to the generic type arguments for each generic type parameter.
     pub types: Vec<TypeId>,

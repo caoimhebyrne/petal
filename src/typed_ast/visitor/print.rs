@@ -69,6 +69,25 @@ impl<'db> PrintingProgramVisitor<'db> {
 
                 debug!("{}{:?}", self.indentation_string(), defined_type_id);
                 debug!("");
+
+                if let Some(generic_information) = &defined_type.generic_information {
+                    debug!("{}Generic type arguments:", self.indentation_string());
+                    self.increase_indentation();
+
+                    for (index, type_id) in generic_information.types.iter().enumerate() {
+                        debug!(
+                            "{}{} (type = {}, {:?})",
+                            self.indentation_string(),
+                            index,
+                            self.print_type_id(*type_id),
+                            type_id
+                        );
+                    }
+
+                    self.decrease_indentation();
+                    debug!("");
+                }
+
                 debug!("{}Fields:", self.indentation_string());
 
                 self.increase_indentation();

@@ -1,6 +1,9 @@
 use crate::{
     core::span::Span,
-    typed_ast::r#type::db::TypeId,
+    typed_ast::{
+        GenericInformation,
+        r#type::db::TypeId,
+    },
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -10,6 +13,10 @@ pub struct DefinedType {
 
     /// The kind of type that was defined.
     pub kind: DefinedTypeKind,
+
+    /// Information about the generic types within this type, this is typically populated during the
+    /// generation of the specialized type, and may be read by later stages.
+    pub generic_information: Option<GenericInformation>,
 
     /// The location in the source code that this type was defined at.
     pub span: Span,
