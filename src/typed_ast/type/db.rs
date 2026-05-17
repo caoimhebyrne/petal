@@ -113,6 +113,10 @@ impl TypeDb {
     /// Allocates a new [`TypeId`] in the provided [`BTreeMap`] for the provided [`Type`].
     /// If a [`Type`] already exists, its existing ID will be returned and a new [`TypeId`] will not be allocated.
     fn get_or_insert_type_into_map(types: &mut BTreeMap<TypeId, Type>, ty: Type) -> TypeId {
+        if let Some(tuple) = types.iter().find(|it| it.1 == &ty) {
+            return *tuple.0;
+        }
+
         let type_id = TypeId(types.len());
         types.insert(type_id, ty);
         type_id
