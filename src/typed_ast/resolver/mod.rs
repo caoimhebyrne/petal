@@ -367,7 +367,7 @@ impl TypeResolver {
 
         self.set_scope(|current| {
             let parameter_tys = parameters.iter().map(|it| (it.name.clone(), it.type_id)).collect();
-            Scope::function(generic_type_parameters.into(), parameter_tys, Some(current))
+            Scope::function(generic_type_parameters.into(), parameter_tys, Some(current), return_type_id)
         });
 
         let body = self.visit_statements(function_declaration.body)?;
@@ -532,8 +532,7 @@ impl TypeResolver {
         &mut self,
         r#return: ast::statement::r#return::Return,
     ) -> TypecheckerResult<StatementKind> {
-        // todo: self.scope.return_type
-        let value = r#return.value.map(|it| self.visit_expression(it, None)).transpose()?;
+        let value = r#return.value.map(|it| self.visit_expression(it, self.scope.get_return_type_id())).transpose()?;
         Ok(StatementKind::Return(value))
     }
 

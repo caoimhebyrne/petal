@@ -17,6 +17,9 @@ pub struct Scope {
     /// The parent of this scope, if applicable.
     pub parent: Option<Box<Scope>>,
 
+    /// The return type of this scope, if applicable.
+    return_type_id: Option<TypeId>,
+
     /// The type of variables declared within this scope.
     variable_types: HashMap<String, TypeId>,
 }
@@ -27,11 +30,13 @@ impl Scope {
         generic_type_parameters: Vec<GenericTypeParameter>,
         parameter_types: HashMap<String, TypeId>,
         parent: Option<Self>,
+        return_type_id: TypeId,
     ) -> Self {
         Self {
             generic_type_parameters,
             parameter_types,
             parent: parent.map(Box::new),
+            return_type_id: Some(return_type_id),
             variable_types: HashMap::default(),
         }
     }
@@ -70,5 +75,11 @@ impl Scope {
             self.variable_types.insert(variable_name, type_id);
             true
         }
+    }
+
+    /// Gets the [`TypeId`] for the return type of this scope, calling to the `parent` if one is not explicitly set
+    /// for this scope.
+    pub fn get_return_type_id(&self) -> Option<TypeId> {
+        self.return_type_id.or_else(|| self.parent.as_ref().and_then(|it| it.get_return_type_id()))
     }
 }
