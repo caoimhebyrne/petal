@@ -1,9 +1,6 @@
-use crate::{
-    ast::statement::{
-        function_declaration::FunctionDeclaration,
-        type_declaration::TypeDeclaration,
-    },
-    typed_ast::r#type::db::TypeId,
+use crate::ast::statement::{
+    function_declaration::FunctionDeclaration,
+    type_declaration::TypeDeclaration,
 };
 
 /// The context associated with the entire type-checking process.
@@ -36,14 +33,4 @@ impl TypeResolverContext {
     pub fn insert_generic_type_declaration(&mut self, generic_type_declaration: TypeDeclaration) {
         self.generic_type_declarations.push(generic_type_declaration);
     }
-}
-
-/// A generic type parameter of a [`GenericType`].
-#[derive(Debug, Clone, PartialEq)]
-pub struct GenericTypeParameter {
-    /// The name of this generic type.
-    pub name: String,
-
-    /// The type ID allocated to this generic type.
-    pub type_id: TypeId,
 }

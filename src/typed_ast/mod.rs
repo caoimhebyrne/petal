@@ -4,16 +4,12 @@ use crate::{
     ast::expression::binary_operation::BinaryOperator,
     core::span::Span,
     module_registry::ModuleId,
-    typed_ast::{
-        context::GenericTypeParameter,
-        r#type::db::{
-            TypeDb,
-            TypeId,
-        },
+    typed_ast::r#type::db::{
+        TypeDb,
+        TypeId,
     },
 };
 
-mod context;
 pub(crate) mod error;
 pub(crate) mod resolver;
 pub(crate) mod r#type;
@@ -109,6 +105,16 @@ pub struct Function {
 
     /// The span that this function was defined at in the source code.
     pub span: Span,
+}
+
+/// A type parameter associated with a generic type or function.
+#[derive(Debug, Clone, PartialEq)]
+pub struct GenericTypeParameter {
+    /// The name of this generic type.
+    pub name: String,
+
+    /// The type ID allocated to this generic type.
+    pub type_id: TypeId,
 }
 
 /// Information associated with a generic type or function.
