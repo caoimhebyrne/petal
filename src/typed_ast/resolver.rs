@@ -794,7 +794,7 @@ impl TypeResolver {
 
         // The number of fields on the structure initialization must match the number of values passed.
         if structure.fields.len() != field_values.len() {
-            return Err(TypecheckerErrorKind::GenericTypeArgumentCountMismatch {
+            return Err(TypecheckerErrorKind::StructureInitializationFieldCountMismatch {
                 expected: structure.fields.len(),
                 got: field_values.len(),
             }
