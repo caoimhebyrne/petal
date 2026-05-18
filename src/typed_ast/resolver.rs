@@ -313,7 +313,7 @@ impl TypeResolver {
         // Otherwise, we can attempt to find a generic function with the same/similar signature, and create a
         // specialization of it to be used.
         let Some(generic_function_declaration) = self.context.find_generic_function_declaration(name) else {
-            return Err(TypecheckerErrorKind::UnresolvableIdentifierReference(name.to_string()).at(span));
+            return Err(TypecheckerErrorKind::UndeclaredFunction(name.to_string()).at(span));
         };
 
         // The number of generic type arguments must equal the number of generic type parameters in the function. At a

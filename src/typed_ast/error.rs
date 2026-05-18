@@ -49,6 +49,9 @@ pub enum TypecheckerErrorKind {
     /// The number of field initializers provided did not equal the number of fields on the structure type.
     StructureInitializationFieldCountMismatch { expected: usize, got: usize },
 
+    /// A function call was made, but a matching function could not be found.
+    UndeclaredFunction(String),
+
     /// A type was referenced by name, but a matching type could not be resolved.
     UndeclaredTypeName(String),
 
@@ -104,6 +107,8 @@ impl Display for TypecheckerErrorKind {
                 got,
                 if *got == 1 { "" } else { "s" }
             ),
+
+            Self::UndeclaredFunction(name) => write!(f, "Cannot find function named '{name}'"),
 
             Self::UndeclaredTypeName(name) => write!(f, "Cannot find type named '{name}'"),
 
