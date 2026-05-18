@@ -66,11 +66,48 @@ pub struct TypeResolver {
 impl TypeResolver {
     /// Attempts to resolve any basic types within the provided [`Vec`] of [`ParsedModule`]s.
     pub fn resolve(mut self, modules: Vec<ParsedModule>) -> TypecheckerResult<Program> {
+        // We first need to note all of the functions that exist in the module.
+        for module in &modules {
+            self.pre_visit_top_level_declaration_statements(&module.ast)?;
+        }
+
+        // Then, we can use that function information to visit their bodies and attempt to compile them.
         for module in modules {
             self.visit_top_level_declaration_statements(module.ast)?;
         }
 
         Ok(self.program)
+    }
+
+    /// Registers any top-level declarations in the [`TypeResolverContext`] to be used when visiting their body later.
+    fn pre_visit_top_level_declaration_statements(
+        &mut self,
+        statements: &Vec<ast::statement::Statement>,
+    ) -> TypecheckerResult<()> {
+        for statement in statements {
+            match &statement.kind {
+                ast::statement::StatementKind::NamespaceDeclaration(namespace_declaration) => {
+                    self.pre_visit_top_level_declaration_statements(&namespace_declaration.body)?;
+                }
+
+                ast::statement::StatementKind::FunctionDeclaration(function_declaration) => {
+                    self.pre_visit_function_declaration(function_declaration);
+                }
+
+                ast::statement::StatementKind::TypeDeclaration(type_declaration) => {
+                    self.pre_visit_type_declaration(type_declaration);
+                }
+
+                _ => {
+                    panic!(
+                        "Unsupported top-level statement ({:?}) at source index {}",
+                        statement.kind, statement.span.location.start
+                    );
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Visits any valid top-level declarations in the provided [`Vec`] of [`ast::statement::Statement`]s.
@@ -195,8 +232,9 @@ impl TypeResolver {
             return Ok(type_id);
         }
 
-        // If there is no defined type, then we can attempt to create a specialization of a generic type.
-        let Some(generic_type_declaration) = self.context.find_generic_type_declaration(name) else {
+        // If there is no defined type, then we must insert one. This could be a generic type, or it coudl be a type
+        // that was declared after this one in the source code.
+        let Some(generic_type_declaration) = self.context.find_type_declaration(name) else {
             return Err(TypecheckerErrorKind::UndeclaredTypeName(name.to_string()).at(span));
         };
 
@@ -229,10 +267,7 @@ impl TypeResolver {
 
 impl TypeResolver {
     /// Attempts to find a function given its name, parameters, and expected return type.
-    ///
-    /// If a non-generic function cannot be found, a generic function will be resolved and specialized for the generic
-    /// type parameters.
-    // FIXME: Should return references
+    /// If one does not exist, a function will be cloned from the context and compiled via [`compile_function`].
     fn compute_function(
         &mut self,
         name: &str,
@@ -244,24 +279,23 @@ impl TypeResolver {
             return Ok(*tuple.0);
         }
 
-        // Otherwise, we can attempt to find a generic function with the same/similar signature, and create a
-        // specialization of it to be used.
-        let Some(generic_function_declaration) = self.context.find_generic_function_declaration(name) else {
+        // We can attempt to find an existing function declaration. This may or may not be generic.
+        let Some(function_declaration) = self.context.find_function_declaration(name) else {
             return Err(TypecheckerErrorKind::UndeclaredFunction(name.to_string()).at(span));
         };
 
         // The number of generic type arguments must equal the number of generic type parameters in the function. At a
         // later point in time, we may be able to infer these.
-        if generic_type_arguments.len() != generic_function_declaration.generic_type_parameters.len() {
+        if generic_type_arguments.len() != function_declaration.generic_type_parameters.len() {
             return Err(TypecheckerErrorKind::GenericTypeArgumentCountMismatch {
-                expected: generic_function_declaration.generic_type_parameters.len(),
+                expected: function_declaration.generic_type_parameters.len(),
                 got: generic_type_arguments.len(),
             }
             .at(span));
         }
 
         // todo(resolver): `TypeResolvingContext`
-        let generic_type_parameters = generic_function_declaration
+        let generic_type_parameters = function_declaration
             .generic_type_parameters
             .iter()
             .zip(generic_type_arguments)
@@ -271,11 +305,22 @@ impl TypeResolver {
             })
             .collect::<Vec<GenericTypeParameter>>();
 
-        self.compile_function_declaration(generic_function_declaration.clone(), &generic_type_parameters, span)
+        self.compile_function_declaration(function_declaration.clone(), &generic_type_parameters, span)
     }
 }
 
 impl TypeResolver {
+    /// Visits the provided [`ast::statement::function_declaration::FunctionDeclaration`], and inserts it into the
+    /// [`TypeResolverContext`].
+    ///
+    /// This insertion will later be used when we visit the body of the function.
+    fn pre_visit_function_declaration(
+        &mut self,
+        function_declaration: &ast::statement::function_declaration::FunctionDeclaration,
+    ) {
+        self.context.insert_function_declaration(function_declaration.clone());
+    }
+
     /// Visits the provided [`ast::statement::function_declaration::FunctionDeclaration`].
     ///
     /// If the function has generic type parameters, it will not be appended to the [`Program`], and will instead be
@@ -288,11 +333,16 @@ impl TypeResolver {
         span: Span,
     ) -> TypecheckerResult<()> {
         if !function_declaration.generic_type_parameters.is_empty() {
-            // The function is generic, we can store it for safe-keeping until it is referenced later.
-            self.context.insert_generic_function_declaration(function_declaration);
+            // This is a generic function, we don't want to generate code for it until someone calls it.
             return Ok(());
         }
 
+        // The function might have already been compiled, so if one already exists in the program: we can exit.
+        if self.program.find_function(&function_declaration.name, &[]).is_some() {
+            return Ok(());
+        }
+
+        // Otherwise, we can compile the function as normal.
         self.compile_function_declaration(function_declaration, &[], span)?;
         Ok(())
     }
@@ -362,6 +412,12 @@ impl TypeResolver {
 }
 
 impl TypeResolver {
+    /// Visits the provided reference to a [`ast::statement::type_declaration::TypeDeclaration`], registering it with
+    /// the context to be compiled later.
+    fn pre_visit_type_declaration(&mut self, type_declaration: &ast::statement::type_declaration::TypeDeclaration) {
+        self.context.insert_type_declaration(type_declaration.clone());
+    }
+
     /// Visits the provided [`ast::statement::type_declaration::TypeDeclaration`].
     fn visit_type_declaration(
         &mut self,
@@ -369,8 +425,13 @@ impl TypeResolver {
         span: Span,
     ) -> TypecheckerResult<()> {
         if !type_declaration.generic_type_parameters.is_empty() {
-            // The type is generic, we can store it for safe-keeping until it is referenced later.
-            self.context.insert_generic_type_declaration(type_declaration);
+            // The type is generic, we will not insert it directly into the program. Instead, it will be compiled
+            // into the program via a generic type use.
+            return Ok(());
+        }
+
+        // The type declaration might have already been compiled, so if one already exists in the program: we can exit.
+        if self.program.type_db.find_defined_type(&type_declaration.name, &[]).is_some() {
             return Ok(());
         }
 
