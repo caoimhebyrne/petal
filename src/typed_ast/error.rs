@@ -74,7 +74,7 @@ impl Display for TypecheckerErrorKind {
             }
 
             Self::ExpectedStructureType => {
-                write!(f, "Expected a structure type for a structure initialization expression, but got another type")
+                write!(f, "Expected a structure type to be the target of this expression, but got some other type")
             }
 
             Self::GenericTypeArgumentCountMismatch { expected, got } => write!(

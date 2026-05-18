@@ -605,6 +605,10 @@ impl TypeResolver {
                 self.visit_expression_identifier_reference(identifier, expression.span)?
             }
 
+            ast::expression::ExpressionKind::MemberAccess(member_access) => {
+                self.visit_expression_member_access(member_access, expression.span)?
+            }
+
             ast::expression::ExpressionKind::NumberLiteral(value) => self.visit_expression_number_literal(value),
 
             ast::expression::ExpressionKind::Reference(value) => self.visit_expression_reference(*value)?,
@@ -708,6 +712,33 @@ impl TypeResolver {
             .ok_or_else(|| TypecheckerErrorKind::UnresolvableIdentifierReference(identifier.clone()).at(span))?;
 
         Ok((ExpressionKind::VariableReference(identifier), *variable_type_id))
+    }
+
+    /// Visits the provided member access expression.
+    fn visit_expression_member_access(
+        &mut self,
+        member_access: ast::expression::member_access::MemberAccess,
+        span: Span,
+    ) -> TypecheckerResult<(ExpressionKind, TypeId)> {
+        // The type of the target must be a structure type. Anything else is not supported at the moment.
+        let target = self.visit_expression(*member_access.target, None)?;
+        let target_type_id = target.type_id;
+
+        let Type::Defined(defined_type_id) = *self.program.type_db.get_type(target_type_id) else {
+            return Err(TypecheckerErrorKind::ExpectedStructureType.at(span));
+        };
+
+        // The structure type must have a field with the provided name
+        let DefinedTypeKind::Structure(structure) = &self.program.type_db.get_defined_type(defined_type_id).kind;
+
+        let (field_index, field) = structure
+            .fields
+            .iter()
+            .enumerate()
+            .find(|(_, it)| it.name == member_access.name)
+            .ok_or_else(|| TypecheckerErrorKind::UnresolvableIdentifierReference(member_access.name).at(span))?;
+
+        Ok((ExpressionKind::StructureFieldReference { target: Box::new(target), field_index }, field.type_id))
     }
 
     /// Visits the provided number literal expression.

@@ -101,6 +101,11 @@ pub trait ProgramVisitor: Sized {
         walk_expression_reference(self, value);
     }
 
+    /// Visits a structure field reference.
+    fn visit_expression_structure_field_reference(&mut self, target: &mut Expression, field_index: &mut usize) {
+        walk_expression_structure_field_reference(self, target, field_index);
+    }
+
     /// Visits a structure initialization expression.
     fn visit_expression_structure_initialization(&mut self, field_values: &mut Vec<Expression>) {
         walk_expression_structure_initialization(self, field_values);
@@ -226,6 +231,10 @@ fn walk_expression<V: ProgramVisitor>(visitor: &mut V, expression: &mut Expressi
             visitor.visit_expression_reference(value);
         }
 
+        ExpressionKind::StructureFieldReference { target, field_index } => {
+            visitor.visit_expression_structure_field_reference(target, field_index);
+        }
+
         ExpressionKind::StructureInitialization { field_values } => {
             visitor.visit_expression_structure_initialization(field_values);
         }
@@ -271,6 +280,15 @@ pub fn walk_expression_function_call<V: ProgramVisitor>(
 /// Invokes the `visitor` on any child nodes within a reference expression.
 pub fn walk_expression_reference<V: ProgramVisitor>(visitor: &mut V, value: &mut Expression) {
     visitor.visit_expression(value);
+}
+
+/// Invokes the `visitor` on any child nodes within a structure field reference expression.
+pub fn walk_expression_structure_field_reference<V: ProgramVisitor>(
+    visitor: &mut V,
+    expression: &mut Expression,
+    _field_index: &mut usize,
+) {
+    visitor.visit_expression(expression);
 }
 
 /// Invokes the `visitor` on any child nodes within a structure initialization expression.

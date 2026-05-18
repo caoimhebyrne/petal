@@ -262,6 +262,15 @@ pub enum ExpressionKind {
     /// Creating a reference to a variable.
     Reference(Box<Expression>),
 
+    /// A reference to a field on a structure type.
+    StructureFieldReference {
+        /// The expression providing the structure value.
+        target: Box<Expression>,
+
+        /// The index of the field being accessed,
+        field_index: usize,
+    },
+
     /// An initialization of a structure typed value.
     StructureInitialization {
         /// An ordered [`Vec`] of field values, one for each field within the structure.
