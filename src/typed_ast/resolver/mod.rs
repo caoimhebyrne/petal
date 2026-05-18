@@ -234,21 +234,21 @@ impl TypeResolver {
 
         // If there is no defined type, then we must insert one. This could be a generic type, or it coudl be a type
         // that was declared after this one in the source code.
-        let Some(generic_type_declaration) = self.context.find_type_declaration(name) else {
+        let Some(type_declaration) = self.context.find_type_declaration(name).cloned() else {
             return Err(TypecheckerErrorKind::UndeclaredTypeName(name.to_string()).at(span));
         };
 
         // The number of generic type arguments provided must equal the number of parameters on the type.
-        if generic_type_declaration.generic_type_parameters.len() != generic_type_arguments.len() {
+        if type_declaration.generic_type_parameters.len() != generic_type_arguments.len() {
             return Err(TypecheckerErrorKind::GenericTypeArgumentCountMismatch {
-                expected: generic_type_declaration.generic_type_parameters.len(),
+                expected: type_declaration.generic_type_parameters.len(),
                 got: generic_type_arguments.len(),
             }
             .at(span));
         }
 
         // todo(resolver): `TypeResolvingContext`
-        let generic_type_parameters = generic_type_declaration
+        let generic_type_parameters = type_declaration
             .generic_type_parameters
             .iter()
             .zip(generic_type_arguments)
@@ -258,8 +258,7 @@ impl TypeResolver {
             })
             .collect::<Vec<GenericTypeParameter>>();
 
-        let defined_type_id =
-            self.compile_type_declaration(generic_type_declaration.clone(), &generic_type_parameters, span)?;
+        let defined_type_id = self.compile_type_declaration(type_declaration, &generic_type_parameters, span)?;
 
         Ok(self.program.type_db.get_or_insert_type(Type::Defined(defined_type_id)))
     }
