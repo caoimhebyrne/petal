@@ -46,6 +46,16 @@ pub trait ProgramVisitor: Sized {
         walk_statement_return(self, value);
     }
 
+    /// Visits a structure field assignment statement.
+    fn visit_statement_structure_field_assignment(
+        &mut self,
+        target: &mut Expression,
+        field_index: &mut usize,
+        value: &mut Expression,
+    ) {
+        walk_statement_structure_field_assignment(self, target, field_index, value);
+    }
+
     /// Visits a variable assignment statement.
     fn visit_statement_variable_assignment(
         &mut self,
@@ -158,6 +168,10 @@ fn walk_statement<V: ProgramVisitor>(visitor: &mut V, statement: &mut Statement)
             visitor.visit_statement_return(value.as_mut());
         }
 
+        StatementKind::StructureFieldAssignment { target, field_index, value } => {
+            visitor.visit_statement_structure_field_assignment(target, field_index, value);
+        }
+
         StatementKind::VariableAssignment { name, value, variable_type_id } => {
             visitor.visit_statement_variable_assignment(name, value, variable_type_id);
         }
@@ -182,6 +196,17 @@ pub fn walk_statement_return<V: ProgramVisitor>(visitor: &mut V, value: Option<&
     if let Some(expression) = value {
         visitor.visit_expression(expression);
     }
+}
+
+/// Invokes the `visitor` on any child nodes within a structure field assignment.
+pub fn walk_statement_structure_field_assignment<V: ProgramVisitor>(
+    visitor: &mut V,
+    target: &mut Expression,
+    _field_index: &mut usize,
+    value: &mut Expression,
+) {
+    visitor.visit_expression(target);
+    visitor.visit_expression(value);
 }
 
 /// Invokes the `visitor` on any child nodes within a variable assignment statement.

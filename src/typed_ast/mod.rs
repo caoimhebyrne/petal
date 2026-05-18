@@ -182,6 +182,18 @@ pub enum StatementKind {
     /// The value may or may not exist, and if it does, it should match the current function's return type.
     Return(Option<Expression>),
 
+    /// Setting the value of a field on a structure type.
+    StructureFieldAssignment {
+        /// The expression providing the structure value.
+        target: Box<Expression>,
+
+        /// The index of the field being set.
+        field_index: usize,
+
+        /// The value to assign to the field.
+        value: Box<Expression>,
+    },
+
     /// A variable assignment.
     VariableAssignment {
         /// The name of the variable being assigned to.

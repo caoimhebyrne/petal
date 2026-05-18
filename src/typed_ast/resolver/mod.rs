@@ -543,6 +543,12 @@ impl TypeResolver {
         span: Span,
     ) -> TypecheckerResult<StatementKind> {
         match variable_assignment.target.kind {
+            ast::expression::ExpressionKind::Dereference(target_expression) => {
+                let target = self.visit_expression(*target_expression, None)?;
+                let value = self.visit_expression(*variable_assignment.value, None)?;
+                Ok(StatementKind::ReferenceValueAssignment { target, value })
+            }
+
             ast::expression::ExpressionKind::IdentifierReference(variable_name) => {
                 let Some(variable_type_id) = self.scope.get_variable_ty(&variable_name).copied() else {
                     return Err(TypecheckerErrorKind::UnresolvableIdentifierReference(variable_name).at(span));
@@ -552,13 +558,35 @@ impl TypeResolver {
                 Ok(StatementKind::VariableAssignment { name: variable_name, value, variable_type_id })
             }
 
-            ast::expression::ExpressionKind::Dereference(target_expression) => {
-                let target = self.visit_expression(*target_expression, None)?;
-                let value = self.visit_expression(*variable_assignment.value, None)?;
-                Ok(StatementKind::ReferenceValueAssignment { target, value })
+            ast::expression::ExpressionKind::MemberAccess(member_access) => {
+                // The target of the member access expression must be a structure type.
+                let target = self.visit_expression(*member_access.target, None)?;
+
+                let Type::Defined(defined_type_id) = *self.program.type_db.get_type(target.type_id) else {
+                    return Err(TypecheckerErrorKind::ExpectedStructureType.at(span));
+                };
+
+                let DefinedTypeKind::Structure(structure) =
+                    &self.program.type_db.get_defined_type(defined_type_id).kind;
+
+                let (field_index, field) =
+                    structure.fields.iter().enumerate().find(|(_, it)| it.name == member_access.name).ok_or_else(
+                        || TypecheckerErrorKind::UnresolvableIdentifierReference(member_access.name).at(span),
+                    )?;
+
+                let value = self.visit_expression(*variable_assignment.value, Some(field.type_id))?;
+
+                Ok(StatementKind::StructureFieldAssignment {
+                    target: Box::new(target),
+                    field_index,
+                    value: Box::new(value),
+                })
             }
 
-            _ => Err(TypecheckerErrorKind::InvalidAssignmentTarget.at(variable_assignment.target.span)),
+            _ => {
+                trace!("Encountered invalid assignment target: '{:?}'", variable_assignment.target.kind);
+                Err(TypecheckerErrorKind::InvalidAssignmentTarget.at(variable_assignment.target.span))
+            }
         }
     }
 

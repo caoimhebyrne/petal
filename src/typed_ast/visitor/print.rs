@@ -27,6 +27,7 @@ use crate::{
             walk_program,
             walk_statement_reference_value_assignment,
             walk_statement_return,
+            walk_statement_structure_field_assignment,
             walk_statement_variable_assignment,
             walk_statement_variable_declaration,
         },
@@ -211,6 +212,16 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
     fn visit_statement_return(&mut self, value: Option<&mut Expression>) {
         debug!("{}Return", self.indentation_string());
         walk_statement_return(self, value);
+    }
+
+    fn visit_statement_structure_field_assignment(
+        &mut self,
+        target: &mut Expression,
+        field_index: &mut usize,
+        value: &mut Expression,
+    ) {
+        debug!("{} Structure field assignment (index = {})", self.indentation_string(), field_index);
+        walk_statement_structure_field_assignment(self, target, field_index, value);
     }
 
     fn visit_statement_variable_assignment(&mut self, name: &str, value: &mut Expression, type_id: &mut TypeId) {
