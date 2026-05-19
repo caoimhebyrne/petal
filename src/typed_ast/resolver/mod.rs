@@ -98,6 +98,8 @@ impl TypeResolver {
                     self.pre_visit_type_declaration(type_declaration);
                 }
 
+                ast::statement::StatementKind::Import(_) => {}
+
                 _ => {
                     panic!(
                         "Unsupported top-level statement ({:?}) at source index {}",
@@ -129,6 +131,8 @@ impl TypeResolver {
                 ast::statement::StatementKind::TypeDeclaration(type_declaration) => {
                     self.visit_type_declaration(type_declaration, statement.span)?;
                 }
+
+                ast::statement::StatementKind::Import(_) => {}
 
                 _ => {
                     panic!(
