@@ -278,6 +278,9 @@ pub enum ExpressionKind {
     /// Creating a reference to a variable.
     Reference(Box<Expression>),
 
+    /// A string literal.
+    StringLiteral(String),
+
     /// A reference to a field on a structure type.
     StructureFieldReference {
         /// The expression providing the structure value.

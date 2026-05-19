@@ -111,6 +111,10 @@ pub trait ProgramVisitor: Sized {
         walk_expression_reference(self, value);
     }
 
+    /// Visits a string literal expression.
+    #[allow(unused_variables)] // not used by this implementation, but may be by others
+    fn visit_expression_string_literal(&mut self, value: &mut String) {}
+
     /// Visits a structure field reference.
     fn visit_expression_structure_field_reference(&mut self, target: &mut Expression, field_index: &mut usize) {
         walk_expression_structure_field_reference(self, target, field_index);
@@ -254,6 +258,10 @@ fn walk_expression<V: ProgramVisitor>(visitor: &mut V, expression: &mut Expressi
 
         ExpressionKind::Reference(value) => {
             visitor.visit_expression_reference(value);
+        }
+
+        ExpressionKind::StringLiteral(value) => {
+            visitor.visit_expression_string_literal(value);
         }
 
         ExpressionKind::StructureFieldReference { target, field_index } => {

@@ -314,6 +314,10 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
         walk_expression_reference(self, value);
     }
 
+    fn visit_expression_string_literal(&mut self, value: &mut String) {
+        debug!("{}String literal '{}'", self.indentation_string(), value);
+    }
+
     fn visit_expression_structure_field_reference(&mut self, target: &mut Expression, field_index: &mut usize) {
         debug!("{}Structure field reference (index = {field_index})", self.indentation_string());
         walk_expression_structure_field_reference(self, target, field_index);

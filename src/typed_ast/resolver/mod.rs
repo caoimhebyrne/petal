@@ -669,6 +669,10 @@ impl TypeResolver {
 
             ast::expression::ExpressionKind::Reference(value) => self.visit_expression_reference(*value)?,
 
+            ast::expression::ExpressionKind::StringLiteral(value) => {
+                self.visit_expression_string_literal(value, expression.span)?
+            }
+
             ast::expression::ExpressionKind::StructureInitialization(structure_initialization) => self
                 .visit_expression_structure_initialization(
                     &structure_initialization,
@@ -836,6 +840,24 @@ impl TypeResolver {
         let type_id = self.program.type_db.get_or_insert_type(Type::Reference(expression.type_id));
 
         Ok((ExpressionKind::Reference(Box::new(expression)), type_id))
+    }
+
+    /// Visits the provided [`ast::expression::ExpressionKind::StringLiteral`] expression.
+    fn visit_expression_string_literal(
+        &mut self,
+        value: String,
+        span: Span,
+    ) -> TypecheckerResult<(ExpressionKind, TypeId)> {
+        // FIXME: `str` is an alias for `CompileTimeStr`.
+        let type_id = self.visit_type_expr(
+            &[],
+            &TypeExpr::Named { name: "CompileTimeStr".to_string(), generic_type_arguments: vec![] },
+            span,
+        )?;
+
+        // TODO: Program data section where we have a structure initialization that references it?
+        // Ok(ExpressionKind::StructureInitialization { field_values: [ExpressionKind::DataReference(0), ExpressionKind::NumberLiteral(string_len)] })
+        Ok((ExpressionKind::StringLiteral(value), type_id))
     }
 
     /// Visits the provided [`ast::expression::structure_initialization::StructureInitialization`] expression.
