@@ -99,6 +99,10 @@ pub struct Function {
     /// The return type of this function.
     pub return_type_id: TypeId,
 
+    /// The ID of the type that "owns" this function. This means that the type is used to qualify the method call,
+    /// either through an instance method call, or a static method call.
+    pub owner_type_id: Option<TypeId>,
+
     /// Information about the generic types within this function, this is typically populated during the
     /// generation of the specialized function, and may be read by later stages.
     pub generic_information: Option<GenericInformation>,

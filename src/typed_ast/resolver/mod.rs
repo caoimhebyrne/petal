@@ -353,21 +353,39 @@ impl TypeResolver {
         generic_type_parameters: &[GenericTypeParameter],
         span: Span,
     ) -> TypecheckerResult<FunctionKey> {
+        // TODO: `owner_type_name` -> `owner_type_expr`
+        let owner_type_id = function_declaration
+            .owner_type_name
+            .map(|it| {
+                self.visit_type_expr(
+                    generic_type_parameters,
+                    &TypeExpr::Named { name: it, generic_type_arguments: vec![] },
+                    span,
+                )
+            })
+            .transpose()?;
+
+        // If the function has an owner type, its type becomes an implicit 'This' generic type parameter.
+        let mut generic_type_parameters: Vec<GenericTypeParameter> = generic_type_parameters.into();
+        if let Some(type_id) = owner_type_id {
+            generic_type_parameters.insert(0, GenericTypeParameter { name: "This".to_string(), type_id });
+        }
+
         let parameters = function_declaration
             .parameters
             .into_iter()
-            .map(|it| self.visit_function_parameter(generic_type_parameters, it))
+            .map(|it| self.visit_function_parameter(&generic_type_parameters, it))
             .collect::<TypecheckerResult<Vec<_>>>()?;
 
         let return_type_id = function_declaration
             .return_type_expr
-            .map(|it| self.visit_type_expr(generic_type_parameters, &it, span))
+            .map(|it| self.visit_type_expr(&generic_type_parameters, &it, span))
             .transpose()?
             .unwrap_or(self.program.type_db.void_type_id());
 
         self.set_scope(|current| {
             let parameter_tys = parameters.iter().map(|it| (it.name.clone(), it.type_id)).collect();
-            Scope::function(generic_type_parameters.into(), parameter_tys, Some(current), return_type_id)
+            Scope::function(generic_type_parameters.clone(), parameter_tys, Some(current), return_type_id)
         });
 
         let body = self.visit_statements(function_declaration.body)?;
@@ -381,11 +399,12 @@ impl TypeResolver {
                 parameters,
                 body,
                 return_type_id,
+                owner_type_id,
                 // If no generic type parameters were provided, then we should not attach any generic information.
                 generic_information: if generic_type_parameters.is_empty() {
                     None
                 } else {
-                    Some(GenericInformation { parameters: generic_type_parameters.into() })
+                    Some(GenericInformation { parameters: generic_type_parameters })
                 },
                 span,
             },
