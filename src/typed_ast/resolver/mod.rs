@@ -218,6 +218,12 @@ impl TypeResolver {
             "u32" => Type::UnsignedInteger(32),
             "u64" => Type::UnsignedInteger(64),
 
+            "bool" => Type::Boolean,
+            "void" => Type::Void,
+
+            // FIXME: "str" is an alias for "CompileTimeStr" from the prelude.
+            "str" => return self.compute_defined_type("CompileTimeStr", &[], span),
+
             _ => return self.compute_defined_type(name, generic_type_arguments, span),
         };
 

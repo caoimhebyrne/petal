@@ -133,6 +133,7 @@ impl<'db> PrintingProgramVisitor<'db> {
         let ty = *self.type_db.get_type(type_id);
 
         match ty {
+            Type::Boolean => "boolean".to_string(),
             Type::Defined(defined_type_id) => {
                 let defined_type = self.type_db.get_defined_type(defined_type_id);
 

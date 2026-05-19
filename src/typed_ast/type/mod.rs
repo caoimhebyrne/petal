@@ -9,6 +9,9 @@ pub(super) mod defined;
 /// A type on a node within the typed AST.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Type {
+    /// A boolean (true/false).
+    Boolean,
+
     /// A reference to a defined type (e.g. struct, enum).
     Defined(DefinedTypeId),
 
