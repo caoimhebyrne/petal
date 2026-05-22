@@ -26,8 +26,8 @@ pub enum DeclarationModifier {
 /// A function declaration within the AST.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDeclaration {
-    /// The name of the type that owns the function.
-    pub owner_type_name: Option<String>,
+    /// The expression providing the type that owns the function.
+    pub owner_type_expr: Option<TypeExpr>,
 
     /// The name of the function being declared.
     pub name: String,
@@ -66,7 +66,7 @@ impl From<FunctionDeclaration> for StatementKind {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDeclarationBuilder {
     /// The name of the type that owns the function.
-    owner_type_name: Option<String>,
+    owner_type_expr: Option<TypeExpr>,
 
     /// The name of the function.
     name: String,
@@ -91,7 +91,7 @@ impl FunctionDeclarationBuilder {
     /// Creates a new [`FunctionDeclarationBuilder`].
     pub fn new(name: impl Into<String>) -> Self {
         Self {
-            owner_type_name: None,
+            owner_type_expr: None,
             name: name.into(),
             body: vec![],
             parameters: vec![],
@@ -102,8 +102,8 @@ impl FunctionDeclarationBuilder {
     }
 
     /// Sets the name of the owner type of the function.
-    pub fn owner_type_name(mut self, value: String) -> Self {
-        self.owner_type_name = Some(value);
+    pub fn owner_type_expr(mut self, value: TypeExpr) -> Self {
+        self.owner_type_expr = Some(value);
         self
     }
 
@@ -140,7 +140,7 @@ impl FunctionDeclarationBuilder {
     /// Builds this [`FunctionDeclarationBuilder`] into a [`FunctionDeclaration`].
     pub fn build(self) -> FunctionDeclaration {
         FunctionDeclaration {
-            owner_type_name: self.owner_type_name,
+            owner_type_expr: self.owner_type_expr,
             name: self.name,
             body: self.body,
             parameters: self.parameters,

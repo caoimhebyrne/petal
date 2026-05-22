@@ -351,12 +351,12 @@ impl ASTParser {
         let generic_type_parameters = self.maybe_parse_generic_type_parameters()?;
 
         // Then, the type name of the owner of the function might be specified.
-        let owner_type_name = if !self.peek_nth(1).map(|it| it.kind == TokenKind::OpenParen).unwrap_or_default() {
-            let (name, _) = self.expect_identifier()?;
-            self.expect(TokenKind::Period)?;
-            Some(name)
-        } else {
+        let owner_type_expr = if self.peek_nth(1).is_some_and(|it| it.kind == TokenKind::OpenParen) {
             None
+        } else {
+            let (expr, _) = self.parse_type_expr()?;
+            self.expect(TokenKind::Period)?;
+            Some(expr)
         };
 
         // Then, the name of the function must be present.
@@ -368,8 +368,8 @@ impl ASTParser {
             builder = builder.modifier(*modifier);
         }
 
-        if let Some(name) = owner_type_name {
-            builder = builder.owner_type_name(name);
+        if let Some(expr) = owner_type_expr {
+            builder = builder.owner_type_expr(expr);
         }
 
         // Then parenthesis must surround the parameters to the function.

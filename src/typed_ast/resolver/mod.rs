@@ -363,16 +363,9 @@ impl TypeResolver {
         generic_type_parameters: &[GenericTypeParameter],
         span: Span,
     ) -> TypecheckerResult<FunctionKey> {
-        // TODO: `owner_type_name` -> `owner_type_expr`
         let owner_type_id = function_declaration
-            .owner_type_name
-            .map(|it| {
-                self.visit_type_expr(
-                    generic_type_parameters,
-                    &TypeExpr::Named { name: it, generic_type_arguments: vec![] },
-                    span,
-                )
-            })
+            .owner_type_expr
+            .map(|it| self.visit_type_expr(generic_type_parameters, &it, span))
             .transpose()?;
 
         // If the function has an owner type, its type becomes an implicit 'This' generic type parameter.
