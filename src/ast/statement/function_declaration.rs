@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::{
     ast::{
         statement::{
@@ -21,6 +23,15 @@ pub enum DeclarationModifier {
     /// This declaration's name should not be mangled, as it is provided by other code. It also will have an empty
     /// body.
     Extern,
+}
+
+impl Display for DeclarationModifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DeclarationModifier::Extern => write!(f, "Extern"),
+            DeclarationModifier::Public => write!(f, "Public"),
+        }
+    }
 }
 
 /// A function declaration within the AST.

@@ -1,4 +1,5 @@
 use crate::{
+    ast::statement::function_declaration::DeclarationModifier,
     core::span::Span,
     typed_ast::{
         GenericInformation,
@@ -8,6 +9,9 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DefinedType {
+    /// The modifiers applied to the type definition.
+    pub modifiers: Vec<DeclarationModifier>,
+
     /// The name of the defined type.
     pub name: String,
 

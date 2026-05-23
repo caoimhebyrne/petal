@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    ast::expression::binary_operation::BinaryOperator,
+    ast::{
+        expression::binary_operation::BinaryOperator,
+        statement::function_declaration::DeclarationModifier,
+    },
     core::span::Span,
     module_registry::ModuleId,
     typed_ast::r#type::db::{
@@ -87,6 +90,9 @@ pub struct FunctionKey {
 /// A function within a typed AST.
 #[derive(Debug, Clone)]
 pub struct Function {
+    /// The modifiers applied to the function definition.
+    pub modifiers: Vec<DeclarationModifier>,
+
     /// The namespace that the function was defined in.
     pub namespace: Option<String>,
 

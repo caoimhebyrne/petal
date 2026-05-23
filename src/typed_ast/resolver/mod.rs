@@ -418,6 +418,7 @@ impl TypeResolver {
         let function_key = self.program.insert_function(
             span.module_id,
             Function {
+                modifiers: function_declaration.modifiers,
                 namespace,
                 name: function_declaration.name,
                 parameters,
@@ -488,12 +489,11 @@ impl TypeResolver {
         generic_type_parameters: &[GenericTypeParameter],
         span: Span,
     ) -> TypecheckerResult<DefinedTypeId> {
-        // todo(resolver): modifiers
-
         let defined_type_kind =
             self.visit_type_expr_on_declaration(generic_type_parameters, type_declaration.type_expr, span)?;
 
         let defined_type_id = self.program.type_db.insert_defined_type(DefinedType {
+            modifiers: type_declaration.modifiers,
             name: type_declaration.name,
             kind: defined_type_kind,
             // If no generic type parameters were provided, then we should not attach any generic information.
