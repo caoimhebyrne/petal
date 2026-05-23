@@ -180,13 +180,14 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
         debug!("{}{key:?}", self.indentation_string());
         debug!("");
 
-        log::log!(
-            log::Level::Debug,
-            "{}Modifiers: {}",
-            self.indentation_string(),
-            function.modifiers.iter().map(std::string::ToString::to_string).collect::<Vec<_>>().join(", ")
-        );
-        debug!("");
+        if !function.modifiers.is_empty() {
+            debug!(
+                "{}Modifiers: {}",
+                self.indentation_string(),
+                function.modifiers.iter().map(std::string::ToString::to_string).collect::<Vec<_>>().join(", ")
+            );
+            debug!("");
+        }
 
         if !function.parameters.is_empty() {
             debug!("{}Parameters:", self.indentation_string());
@@ -213,11 +214,12 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
 
             self.increase_indentation();
 
-            walk_function(self, function);
+            for statement in &mut function.body {
+                self.visit_statement(statement);
+                debug!("");
+            }
 
             self.decrease_indentation();
-
-            debug!("");
         }
 
         self.decrease_indentation();

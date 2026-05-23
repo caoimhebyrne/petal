@@ -9,6 +9,7 @@ use crate::{
         Expression,
         ExpressionKind,
         Function,
+        FunctionCallTarget,
         FunctionKey,
         FunctionParameter,
         GenericInformation,
@@ -289,19 +290,52 @@ impl TypeResolver {
     /// If one does not exist, a function will be cloned from the context and compiled via [`compile_function`].
     fn compute_function(
         &mut self,
-        name: &str,
+        target: &FunctionCallTarget,
         generic_type_arguments: &[TypeId],
         span: Span,
     ) -> TypecheckerResult<FunctionKey> {
         // If a function exists that satisfies our restrictions, then we can use it.
-        if let Some(tuple) = self.program.find_function(name, generic_type_arguments) {
+        if let Some(tuple) = self.program.find_function(target, generic_type_arguments) {
             return Ok(*tuple.0);
         }
 
+        trace!(
+            "Function call target '{target:?}' does not yet have a matching function declaration, checking for an unresolved one...",
+        );
+
         // We can attempt to find an existing function declaration. This may or may not be generic.
-        let Some(function) = self.context.find_function_declaration(name) else {
-            return Err(TypecheckerErrorKind::UndeclaredFunction(name.to_string()).at(span));
-        };
+        let mut candidates = self.context.find_function_declaration(target);
+        if candidates.is_empty() {
+            return Err(TypecheckerErrorKind::UndeclaredFunction(target.plain_name().to_string()).at(span));
+        }
+
+        if candidates.len() > 1 {
+            candidates.retain(|it| {
+                // If the target of the function call does not have an associated type ID, then we don't need to filter
+                // the candidates any further.
+                let receiver_type_id = match target {
+                    FunctionCallTarget::Associated { type_id, .. } => type_id,
+                    FunctionCallTarget::Function { .. } => return true,
+                    FunctionCallTarget::Method { receiver, .. } => &receiver.type_id,
+                };
+
+                let Some(owner_type_expr) = it.declaration.owner_type_expr.as_ref() else { return false };
+
+                // TODO: What should we do if an error occurs here?
+                let owner_type_id = self.visit_type_expr(&[], owner_type_expr, span).expect("visit_type_expr");
+                receiver_type_id == &owner_type_id
+            });
+        }
+
+        // If there are still multiple candidates, then we must return an error: this function call is ambiguous and
+        // we cannot narrow it down any more.
+        if candidates.len() > 1 {
+            return Err(TypecheckerErrorKind::AmbiguousFunctionCall(candidates.len()).at(span));
+        }
+
+        let function = candidates
+            .first()
+            .ok_or_else(|| TypecheckerErrorKind::UndeclaredFunction(target.plain_name().to_string()).at(span))?;
 
         // The number of generic type arguments must equal the number of generic type parameters in the function. At a
         // later point in time, we may be able to infer these.
@@ -366,7 +400,17 @@ impl TypeResolver {
         }
 
         // The function might have already been compiled, so if one already exists in the program: we can exit.
-        if self.program.find_function(&function_declaration.name, &[]).is_some() {
+        if self
+            .program
+            .find_function(
+                &FunctionCallTarget::Function {
+                    namespace: self.namespace.clone(),
+                    name: function_declaration.name.clone(),
+                },
+                &[],
+            )
+            .is_some()
+        {
             return Ok(());
         }
 
@@ -744,12 +788,6 @@ impl TypeResolver {
         function_call: ast::expression::function_call::FunctionCall,
         span: Span,
     ) -> TypecheckerResult<(FunctionKey, Vec<Expression>, TypeId)> {
-        // todo(resolver): resolve_function_callee?
-        let ast::expression::ExpressionKind::IdentifierReference(identifier) = function_call.callee.kind else {
-            panic!("Unsupported function callee: {function_call:?}");
-        };
-
-        // todo(resolver): inference based on type?
         let generic_type_arguments = function_call
             .generic_type_arguments
             .iter()
@@ -759,18 +797,76 @@ impl TypeResolver {
             })
             .collect::<TypecheckerResult<Vec<TypeId>>>()?;
 
-        let function_key = self.compute_function(&identifier, &generic_type_arguments, span)?;
+        let call_target = self.resolve_function_call_target(*function_call.callee, &generic_type_arguments, span)?;
+        let function_key = self.compute_function(&call_target, &generic_type_arguments, span)?;
+
+        let mut arguments = Vec::with_capacity(function_call.arguments.len());
+
+        // If the function call target is a method, then we need to provide a reference to the receiver as the first
+        // argument.
+        if let FunctionCallTarget::Method { receiver, .. } = call_target {
+            let type_id = self.program.type_db.get_or_insert_type(Type::Reference(receiver.type_id));
+            let span = receiver.span;
+
+            arguments.push(Expression { kind: ExpressionKind::Reference(Box::new(receiver)), span, type_id });
+        }
 
         // todo(resolver): named vs positional argumenmts
-        let arguments = function_call
-            .arguments
-            .into_iter()
-            // todo: expected type id
-            .map(|it| self.visit_expression(it.value, None))
-            .collect::<TypecheckerResult<_>>()?;
+        arguments.extend(
+            function_call
+                .arguments
+                .into_iter()
+                .map(|it| self.visit_expression(it.value, None))
+                .collect::<TypecheckerResult<Vec<_>>>()?,
+        );
 
         let function = self.program.get_function(&function_key);
         Ok((function_key, arguments, function.return_type_id))
+    }
+
+    /// Attempts to resolve a callee from the provided [`ast::expression::Expression`].
+    fn resolve_function_call_target(
+        &mut self,
+        expression: ast::expression::Expression,
+        generic_type_arguments: &[TypeId],
+        span: Span,
+    ) -> TypecheckerResult<FunctionCallTarget> {
+        let callee = match expression.kind {
+            // If the callee is a plain identifier reference, then this is a regular function call (with no receiver
+            // or associated type).
+            ast::expression::ExpressionKind::IdentifierReference(identifier) => {
+                FunctionCallTarget::Function { namespace: None, name: identifier }
+            }
+
+            // If the callee is a member access, then the function could either be:
+            // - An instance method, if the target of the member access is a variable,
+            // - or, an associated method, if the target of the member access is an identifier which matches the name
+            //   of a defined type.
+            ast::expression::ExpressionKind::MemberAccess(member_access) => {
+                if let ast::expression::ExpressionKind::IdentifierReference(identifier) = &member_access.target.kind
+                    && let Some(defined_type_id) =
+                        self.program.type_db.find_defined_type(identifier, generic_type_arguments)
+                {
+                    // The function call is associated with a specific type.
+                    let type_id = self.program.type_db.get_or_insert_type(Type::Defined(defined_type_id));
+                    FunctionCallTarget::Associated { type_id, name: member_access.name }
+                } else {
+                    // The function call is not associated with a specific type, we can assume that this is an instance call.
+                    let receiver = self.visit_expression(*member_access.target, None)?;
+                    FunctionCallTarget::Method { receiver, name: member_access.name }
+                }
+            }
+
+            // If the callee is a namespace qualifier, then this is a regular function call.
+            ast::expression::ExpressionKind::NamespaceQualifier(namespace_qualifier) => FunctionCallTarget::Function {
+                namespace: Some(namespace_qualifier.namespace),
+                name: namespace_qualifier.identifier,
+            },
+
+            _ => return Err(TypecheckerErrorKind::InvalidFunctionCallTarget.at(span)),
+        };
+
+        Ok(callee)
     }
 
     /// Visits the provided identifier reference expression. An identifier reference will almost always be typed as

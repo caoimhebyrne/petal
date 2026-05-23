@@ -35,26 +35,46 @@ impl Program {
     }
 
     /// Finds a [`Function`] given its name.
-    pub fn find_function(&self, name: &str, generic_type_arguments: &[TypeId]) -> Option<(&FunctionKey, &Function)> {
-        // todo(resolver): find function request
+    pub fn find_function(
+        &self,
+        target: &FunctionCallTarget,
+        generic_type_arguments: &[TypeId],
+    ) -> Option<(&FunctionKey, &Function)> {
         // todo(resolver): module id
-        // todo(resolver): namespace
-        // todo(resolver): etc
         self.functions.iter().find(|(_, it)| {
-            if it.name != name {
+            if it.name != target.plain_name() {
+                return false;
+            }
+
+            // If this is a namespaced function, then the function must be in the same namespace.
+            if let FunctionCallTarget::Function { namespace, .. } = target
+                && namespace != &it.namespace
+            {
+                return false;
+            }
+
+            // If this is a function call which has a specific type receiver, then this function must be owned by that
+            // type.
+            let receiver_type_id = match target {
+                FunctionCallTarget::Associated { type_id, .. } => Some(*type_id),
+                FunctionCallTarget::Function { .. } => None,
+                FunctionCallTarget::Method { receiver, .. } => Some(receiver.type_id),
+            };
+
+            if receiver_type_id != it.owner_type_id {
                 return false;
             }
 
             if let Some(generic_information) = &it.generic_information {
-                if generic_type_arguments.is_empty() {
+                // fixme: this might not be the best place, but we need to ignore the implicit `This` type parameter.
+                let parameters =
+                    generic_information.parameters.iter().filter(|it| it.name != "This").collect::<Vec<_>>();
+
+                if generic_type_arguments.len() != parameters.len() {
                     return false;
                 }
 
-                if generic_type_arguments.len() != generic_information.parameters.len() {
-                    return false;
-                }
-
-                for (parameter, argument_type_id) in generic_information.parameters.iter().zip(generic_type_arguments) {
+                for (parameter, argument_type_id) in parameters.iter().zip(generic_type_arguments) {
                     if parameter.type_id != *argument_type_id {
                         return false;
                     }
@@ -307,4 +327,28 @@ pub enum ExpressionKind {
 
     /// A reference to a local variable by name.
     VariableReference(String),
+}
+
+#[derive(Debug)]
+pub enum FunctionCallTarget {
+    /// A callee which is a "function" is free-standing, and is not owned by a type.
+    Function { namespace: Option<String>, name: String },
+
+    /// A callee which is a "method" is owned by a type, and the `receiver` must be passed as the first argument.
+    Method { receiver: Expression, name: String },
+
+    /// A callee which is "associated" is owned by a type, but does not have a receiver (i.e. a static method call).
+    Associated { type_id: TypeId, name: String },
+}
+
+impl FunctionCallTarget {
+    /// Returns the `name` of this [`FunctionCallTarget`]. The name may not _fully_ describe the functionc all, as it
+    /// may be missing information like associated types.
+    pub fn plain_name(&self) -> &str {
+        match self {
+            FunctionCallTarget::Associated { name, .. }
+            | FunctionCallTarget::Function { name, .. }
+            | FunctionCallTarget::Method { name, .. } => name,
+        }
+    }
 }

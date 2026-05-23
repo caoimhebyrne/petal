@@ -1,6 +1,9 @@
-use crate::ast::statement::{
-    function_declaration::FunctionDeclaration,
-    type_declaration::TypeDeclaration,
+use crate::{
+    ast::statement::{
+        function_declaration::FunctionDeclaration,
+        type_declaration::TypeDeclaration,
+    },
+    typed_ast::FunctionCallTarget,
 };
 
 /// The context associated with the entire type-checking process.
@@ -15,8 +18,26 @@ pub struct TypeResolverContext {
 
 impl TypeResolverContext {
     /// Finds a [`UnresolvedFunctionDeclaration`] given its name.
-    pub fn find_function_declaration(&self, name: &str) -> Option<&UnresolvedFunctionDeclaration> {
-        self.function_declarations.iter().find(|it| it.declaration.name == name)
+    pub fn find_function_declaration(&self, target: &FunctionCallTarget) -> Vec<UnresolvedFunctionDeclaration> {
+        self.function_declarations
+            .clone()
+            .into_iter()
+            .filter(|it| {
+                if it.declaration.name != target.plain_name() {
+                    return false;
+                }
+
+                // If this is a namespace-qualified target, then the namespace of the function must match.
+                if let FunctionCallTarget::Function { namespace: target_namespace, .. } = target
+                    && target_namespace != &it.namespace
+                {
+                    return false;
+                }
+
+                // We cannot verify further, the caller is responsible for doing further checks (on `owner_type_expr`).
+                true
+            })
+            .collect()
     }
 
     /// Inserts a [`UnresolvedFunctionDeclaration`] into this [`TypeResolverContext`].
@@ -36,8 +57,7 @@ impl TypeResolverContext {
 }
 
 /// A function which has yet to be fully visited by the [`TypeResolver`].
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UnresolvedFunctionDeclaration {
     /// The namespace that the function was defined in.
     pub namespace: Option<String>,

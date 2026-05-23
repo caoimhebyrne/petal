@@ -6,6 +6,7 @@ use crate::core::{
 };
 
 /// An error emitted by the typechecker.
+#[derive(Debug)]
 pub struct TypecheckerError {
     /// The kind of error that this is.
     pub kind: TypecheckerErrorKind,
@@ -27,7 +28,11 @@ impl Display for TypecheckerError {
 }
 
 /// The different kinds of [`TypecheckerError`]s that exist.
+#[derive(Debug)]
 pub enum TypecheckerErrorKind {
+    /// An ambiguous function call was encountered, multiple definitions qualified.
+    AmbiguousFunctionCall(usize),
+
     /// A type expression was provided for a type definition, but the expression was not a definition kind.
     ExpectedTypeDefinition,
 
@@ -42,6 +47,9 @@ pub enum TypecheckerErrorKind {
 
     /// A dereference expression was encountered, where the target of the expression was not a reference.
     InvalidDereferenceTarget,
+
+    /// A function call expression was encountered, but the target of the call was not valid.
+    InvalidFunctionCallTarget,
 
     /// A field was not provided in a structure initialization expression.
     MissingStructureFieldInInitializer(String),
@@ -69,6 +77,10 @@ impl TypecheckerErrorKind {
 impl Display for TypecheckerErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::AmbiguousFunctionCall(candidates) => {
+                write!(f, "This function call is ambiguous, there are {} possible candidates", candidates)
+            }
+
             Self::ExpectedTypeDefinition => {
                 write!(f, "Expected any type definition (struct, enum), but got a plain type expression instead")
             }
@@ -93,6 +105,13 @@ impl Display for TypecheckerErrorKind {
 
             Self::InvalidDereferenceTarget => {
                 write!(f, "You cannot dereference this expression type, it must be a reference type")
+            }
+
+            Self::InvalidFunctionCallTarget => {
+                write!(
+                    f,
+                    "The target of this function call is invalid (expected a function name, value reference, or type name)"
+                )
             }
 
             Self::MissingStructureFieldInInitializer(name) => {
