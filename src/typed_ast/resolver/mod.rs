@@ -21,7 +21,10 @@ use crate::{
             TypecheckerErrorKind,
         },
         resolver::{
-            context::TypeResolverContext,
+            context::{
+                TypeResolverContext,
+                UnresolvedFunctionDeclaration,
+            },
             scope::Scope,
         },
         r#type::{
@@ -59,6 +62,9 @@ pub struct TypeResolver {
     /// The current scope.
     scope: Scope,
 
+    /// The namespace that this [`TypeResolver`] is currently visiting.
+    namespace: Option<String>,
+
     /// The program being constructed by this [`TypeResolver`].
     program: Program,
 }
@@ -87,7 +93,9 @@ impl TypeResolver {
         for statement in statements {
             match &statement.kind {
                 ast::statement::StatementKind::NamespaceDeclaration(namespace_declaration) => {
+                    self.namespace = Some(namespace_declaration.name.clone());
                     self.pre_visit_top_level_declaration_statements(&namespace_declaration.body)?;
+                    self.namespace = None; // todo: nesting?
                 }
 
                 ast::statement::StatementKind::FunctionDeclaration(function_declaration) => {
@@ -121,7 +129,9 @@ impl TypeResolver {
         for statement in statements {
             match statement.kind {
                 ast::statement::StatementKind::NamespaceDeclaration(namespace_declaration) => {
+                    self.namespace = Some(namespace_declaration.name.clone());
                     self.visit_top_level_declaration_statements(namespace_declaration.body)?;
+                    self.namespace = None; // todo: nesting?
                 }
 
                 ast::statement::StatementKind::FunctionDeclaration(function_declaration) => {
@@ -289,22 +299,23 @@ impl TypeResolver {
         }
 
         // We can attempt to find an existing function declaration. This may or may not be generic.
-        let Some(function_declaration) = self.context.find_function_declaration(name) else {
+        let Some(function) = self.context.find_function_declaration(name) else {
             return Err(TypecheckerErrorKind::UndeclaredFunction(name.to_string()).at(span));
         };
 
         // The number of generic type arguments must equal the number of generic type parameters in the function. At a
         // later point in time, we may be able to infer these.
-        if generic_type_arguments.len() != function_declaration.generic_type_parameters.len() {
+        if generic_type_arguments.len() != function.declaration.generic_type_parameters.len() {
             return Err(TypecheckerErrorKind::GenericTypeArgumentCountMismatch {
-                expected: function_declaration.generic_type_parameters.len(),
+                expected: function.declaration.generic_type_parameters.len(),
                 got: generic_type_arguments.len(),
             }
             .at(span));
         }
 
         // todo(resolver): `TypeResolvingContext`
-        let generic_type_parameters = function_declaration
+        let generic_type_parameters = function
+            .declaration
             .generic_type_parameters
             .iter()
             .zip(generic_type_arguments)
@@ -314,7 +325,12 @@ impl TypeResolver {
             })
             .collect::<Vec<GenericTypeParameter>>();
 
-        self.compile_function_declaration(function_declaration.clone(), &generic_type_parameters, span)
+        self.compile_function_declaration(
+            function.namespace.clone(),
+            function.declaration.clone(),
+            &generic_type_parameters,
+            span,
+        )
     }
 }
 
@@ -327,7 +343,10 @@ impl TypeResolver {
         &mut self,
         function_declaration: &ast::statement::function_declaration::FunctionDeclaration,
     ) {
-        self.context.insert_function_declaration(function_declaration.clone());
+        self.context.insert_function_declaration(UnresolvedFunctionDeclaration {
+            namespace: self.namespace.clone(),
+            declaration: function_declaration.clone(),
+        });
     }
 
     /// Visits the provided [`ast::statement::function_declaration::FunctionDeclaration`].
@@ -352,13 +371,14 @@ impl TypeResolver {
         }
 
         // Otherwise, we can compile the function as normal.
-        self.compile_function_declaration(function_declaration, &[], span)?;
+        self.compile_function_declaration(self.namespace.clone(), function_declaration, &[], span)?;
         Ok(())
     }
 
     /// Compiles the provided [`ast::statement::function_declaration::FunctionDeclaration`].
     fn compile_function_declaration(
         &mut self,
+        namespace: Option<String>,
         function_declaration: ast::statement::function_declaration::FunctionDeclaration,
         generic_type_parameters: &[GenericTypeParameter],
         span: Span,
@@ -398,6 +418,7 @@ impl TypeResolver {
         let function_key = self.program.insert_function(
             span.module_id,
             Function {
+                namespace,
                 name: function_declaration.name,
                 parameters,
                 body,

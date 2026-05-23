@@ -160,8 +160,13 @@ impl<'db> PrintingProgramVisitor<'db> {
 
 impl ProgramVisitor for PrintingProgramVisitor<'_> {
     fn visit_function(&mut self, key: &FunctionKey, function: &mut Function) {
+        let namespace_prefix = match &function.namespace {
+            Some(value) => format!("{value}::"),
+            _ => String::new(),
+        };
+
         debug!(
-            "Function '{}' -> returns {} (id = {:?}):",
+            "Function '{namespace_prefix}{}' -> returns {} (id = {:?}):",
             function.name,
             self.print_type_id(function.return_type_id),
             function.return_type_id

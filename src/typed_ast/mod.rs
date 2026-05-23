@@ -87,6 +87,9 @@ pub struct FunctionKey {
 /// A function within a typed AST.
 #[derive(Debug, Clone)]
 pub struct Function {
+    /// The namespace that the function was defined in.
+    pub namespace: Option<String>,
+
     /// The name (as defined in the source code) of this function.
     pub name: String,
 
