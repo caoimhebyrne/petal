@@ -121,4 +121,34 @@ impl TypeDb {
         types.insert(type_id, ty);
         type_id
     }
+
+    /// Returns a human-readable name for the [`Type`] from the provided [`TypeId`].
+    pub fn get_type_description(&self, type_id: TypeId) -> String {
+        let ty = self.get_type(type_id);
+        match ty {
+            Type::Boolean => "bool".to_string(),
+            Type::Defined(defined_type_id) => {
+                let defined_type = self.get_defined_type(*defined_type_id);
+
+                if let Some(generic_information) = &defined_type.generic_information {
+                    let generic_type_arguments = generic_information
+                        .parameters
+                        .iter()
+                        .map(|it| self.get_type_description(it.type_id))
+                        .collect::<Vec<String>>()
+                        .join(",");
+
+                    format!("{}<{}>", defined_type.name, generic_type_arguments)
+                } else {
+                    defined_type.name.clone()
+                }
+            }
+            Type::Reference(inner_type_id) => {
+                format!("&{}", self.get_type_description(*inner_type_id))
+            }
+            Type::SignedInteger(bits) => format!("i{bits}"),
+            Type::UnsignedInteger(bits) => format!("u{bits}"),
+            Type::Void => "void".to_string(),
+        }
+    }
 }
