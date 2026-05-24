@@ -222,6 +222,115 @@ mod function_call {
     }
 }
 
+mod structures {
+    use super::*;
+
+    #[test]
+    fn with_empty_initialization() -> TestResult<()> {
+        assert_successful_type_check(
+            r"
+            type Foo = struct {};
+
+            func bar() {
+                foo: Foo = {};
+            }
+            ",
+        )
+    }
+
+    #[test]
+    fn with_non_empty_initialization() -> TestResult<()> {
+        assert_successful_type_check(
+            r#"
+            type Foo = struct {
+                bar: i32,
+                baz: str,
+            };
+
+            func quuz() {
+                foo: Foo = { .baz = "", .bar = 123 };
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn with_field_assignment() -> TestResult<()> {
+        assert_successful_type_check(
+            r"
+            type Foo = struct { value: i32 };
+
+            func bar() {
+                foo: Foo = { .value = 123 };
+                foo.value = 456;
+            }
+            ",
+        )
+    }
+
+    #[test]
+    fn fails_with_field_assignment_type_mismatch() -> TestResult<()> {
+        assert_failing_type_check(
+            r#"
+            type Foo = struct { value: i32 };
+
+            func bar() {
+                foo: Foo = { .value = 123 };
+                foo.value = "";
+            }
+            "#,
+            "Expected a value of type 'i32', but received a value of type 'CompileTimeStr'",
+        )
+    }
+
+    #[test]
+    fn fails_with_initialization_type_mismatch() -> TestResult<()> {
+        assert_failing_type_check(
+            r"
+            type Foo = struct {
+                bar: i32,
+                baz: bool,
+            };
+
+            func quuz() {
+                foo: Foo = { .bar = 123, .baz = 456 };
+            }
+            ",
+            "Expected a value of type 'bool', but received a value of type 'u8'",
+        )
+    }
+
+    #[test]
+    fn fails_with_missing_initialization_field() -> TestResult<()> {
+        assert_failing_type_check(
+            r"
+            type Foo = struct {
+                bar: i32,
+            };
+
+            func baz() {
+                foo: Foo = { .baz = 2 };
+            }
+            ",
+            "A value was not provided for field 'bar' in the structure initializer",
+        )
+    }
+
+    #[test]
+    fn fails_with_invalid_initialization_field() -> TestResult<()> {
+        assert_failing_type_check(
+            r"
+            type Foo = struct {};
+
+            func baz() {
+                foo: Foo = { .baz = 2 };
+            }
+            ",
+            "Expected 0 field initializers but got 1 field initializer",
+        )
+    }
+}
+
 mod variable_assignment {
     use super::*;
 
@@ -245,22 +354,6 @@ mod variable_assignment {
                 @bar = 5;
             }
             ",
-        )
-    }
-
-    // todo: struct tests?
-    #[test]
-    fn with_struct_field_assignment() -> TestResult<()> {
-        assert_failing_type_check(
-            r#"
-            type Foo = struct { value: str };
-
-            func bar() {
-                foo: Foo = { .value = "" };
-                foo.value = 4;
-            }
-            "#,
-            "Expected a value of type 'CompileTimeStr', but received a value of type 'u8'",
         )
     }
 

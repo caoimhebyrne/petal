@@ -1163,6 +1163,15 @@ impl TypeResolver {
         let defined_type = self.program.type_db.get_defined_type(*defined_type_id);
         let DefinedTypeKind::Structure(structure) = &defined_type.kind.clone(); // todo: remove this clone
 
+        // The number of fields on the structure initialization must match the number of values passed.
+        if structure.fields.len() != structure_initialization.fields.len() {
+            return Err(TypecheckerErrorKind::StructureInitializationFieldCountMismatch {
+                expected: structure.fields.len(),
+                got: structure_initialization.fields.len(),
+            }
+            .at(span));
+        }
+
         // The initialization's fields may not be in order, we need to find them individually based on their name.
         let mut field_values: Vec<Expression> = Vec::new();
 
@@ -1173,17 +1182,17 @@ impl TypeResolver {
                     TypecheckerErrorKind::MissingStructureFieldInInitializer(field.name.clone()).at(span)
                 })?;
 
-            let field_value = self.visit_expression(*initialization_field.value.clone(), Some(field.type_id))?;
-            field_values.push(field_value);
-        }
-
-        // The number of fields on the structure initialization must match the number of values passed.
-        if structure.fields.len() != field_values.len() {
-            return Err(TypecheckerErrorKind::StructureInitializationFieldCountMismatch {
-                expected: structure.fields.len(),
-                got: field_values.len(),
+            let initializer_value = self.visit_expression(*initialization_field.value.clone(), Some(field.type_id))?;
+            if field.type_id != initializer_value.type_id {
+                return Err(TypecheckerErrorKind::type_mismatch(
+                    &self.program.type_db,
+                    field.type_id,
+                    initializer_value.type_id,
+                )
+                .at(initializer_value.span));
             }
-            .at(span));
+
+            field_values.push(initializer_value);
         }
 
         Ok((ExpressionKind::StructureInitialization { field_values }, expected_type_id))
