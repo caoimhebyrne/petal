@@ -1,0 +1,21 @@
+// This is a variant of ./11_member_functions, but with a generic `Point` structure.
+type Point<T> = struct {
+    x: T,
+    y: T,
+};
+
+func <T> Point<T>.origin() -> This {
+    return { .x = 0, .y = 0 };
+}
+
+func <T> Point<T>.translate(this: &This, ~x: T, ~y: T) {
+    this->x = this->x + x;
+    this->y = this->y + y;
+}
+
+func main() -> i32 {
+    point_a: Point<i32> = Point.origin<i32>();
+    point_a.translate<i32>(x: 5, y: 4);
+
+    return point_a.x + point_a.y;
+}
