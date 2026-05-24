@@ -1,8 +1,14 @@
 use std::fmt::Display;
 
-use crate::core::{
-    error::Error,
-    span::Span,
+use crate::{
+    core::{
+        error::Error,
+        span::Span,
+    },
+    typed_ast::r#type::db::{
+        TypeDb,
+        TypeId,
+    },
 };
 
 /// An error emitted by the typechecker.
@@ -57,6 +63,9 @@ pub enum TypecheckerErrorKind {
     /// The number of field initializers provided did not equal the number of fields on the structure type.
     StructureInitializationFieldCountMismatch { expected: usize, got: usize },
 
+    /// A type was expected, but an unsupported type was received.
+    TypeMismatch { expected: String, got: String },
+
     /// A function call was made, but a matching function could not be found.
     UndeclaredFunction(String),
 
@@ -71,6 +80,14 @@ impl TypecheckerErrorKind {
     /// Creates a new [`TypecheckerError`] from this [`TypecheckerErrorKind`] using the provided [`Span`].
     pub fn at(self, span: Span) -> TypecheckerError {
         TypecheckerError { kind: self, span }
+    }
+
+    /// Creates a new [`TypecheckerErrorKind::TypeMismatch`] from the provided [`TypeDb`] and [`TypeId`]s.
+    pub fn type_mismatch(type_db: &TypeDb, expected_type_id: TypeId, got_type_id: TypeId) -> TypecheckerErrorKind {
+        TypecheckerErrorKind::TypeMismatch {
+            expected: type_db.get_type_description(expected_type_id),
+            got: type_db.get_type_description(got_type_id),
+        }
     }
 }
 
@@ -126,6 +143,10 @@ impl Display for TypecheckerErrorKind {
                 got,
                 if *got == 1 { "" } else { "s" }
             ),
+
+            Self::TypeMismatch { expected, got } => {
+                write!(f, "Expected a value of type '{expected}', but received a value of type '{got}'")
+            }
 
             Self::UndeclaredFunction(name) => write!(f, "Cannot find function named '{name}'"),
 

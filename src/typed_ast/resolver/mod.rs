@@ -684,13 +684,18 @@ impl TypeResolver {
         span: Span,
     ) -> TypecheckerResult<StatementKind> {
         // FIXME: Remove the clone
-        let generic_type_parameters = &self.scope.generic_type_parameters.clone();
-        let type_id = self.visit_type_expr(generic_type_parameters, &variable_declaration.type_expr, span)?;
+        let generic_type_parameters = self.scope.generic_type_parameters.clone();
 
-        self.scope.set_variable_ty(variable_declaration.name.clone(), type_id);
+        let variable_type_id = self.visit_type_expr(&generic_type_parameters, &variable_declaration.type_expr, span)?;
+        let value = self.visit_expression(variable_declaration.value, Some(variable_type_id))?;
 
-        let value = self.visit_expression(variable_declaration.value, Some(type_id))?;
-        Ok(StatementKind::VariableDeclaration { name: variable_declaration.name, value, type_id })
+        if value.type_id != variable_type_id {
+            return Err(TypecheckerErrorKind::type_mismatch(&self.program.type_db, variable_type_id, value.type_id)
+                .at(value.span));
+        }
+
+        self.scope.set_variable_ty(variable_declaration.name.clone(), variable_type_id);
+        Ok(StatementKind::VariableDeclaration { name: variable_declaration.name, value, type_id: variable_type_id })
     }
 }
 
