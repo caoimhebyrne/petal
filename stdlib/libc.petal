@@ -1,15 +1,44 @@
+// Bindings for C types to Petal types.
+namespace libc {
+
+    // Returns a C-compatible string from the provided `str`.
+    //
+    // The caller is responsible for calling `memory::free` on the returned reference.
+    func str.to_c_string(this: &This) -> &u8 {
+        // Allocate the same amount of bytes, plus one for the null terminator.
+        c_str: &u8 = memory::allocate<u8>(size: this->length + 1);
+        memory::copy<u8>(source: this->data, destination: c_str, count: this->length);
+        return c_str;
+    }
+
+    // Creates a `str` from a reference to a C-string.
+    //
+    // This will not copy the bytes of the `c_str` to a new memory location, the reference will be used as `str`'s
+    // `data`.
+    //
+    // This means that `c_str` must live as long as the returned `str`.
+    func str.from_c_string(c_str: &u8) -> This {
+        length: u64 = libc::strlen(c_str);
+        return { .data = c_str, .length = length };
+    }
+
+}
+
 // Bindings for libc functions to Petal functions.
 namespace libc {
 
     // Allocates memory for an array of [n] elements of [size] bytes each, and returns a pointer to the allocated memory.
     public extern func <T> calloc(~n: u64, ~size: u64) -> &T;
 
-    // Copies [n] bytes from [src] to [dst].
-    public extern func <T> memcpy(~dst: &T, ~src: &T, ~n: u64);
-
     // Frees the memory space pointed to by [ptr], which must have been returned by a previous call to [malloc] or
     // related functions.
     public extern func <T> free(ptr: &T);
+
+    // Copies [n] bytes from [src] to [dst].
+    public extern func <T> memcpy(~dst: &T, ~src: &T, ~n: u64);
+
+    // Calculates the length of the string pointed to by `s`, excluding the terminating null byte.
+    public extern func strlen(s: &u8) -> u64;
 
     // Attempts to write [nbyte] of data to the object referenced by the descriptor [filedesc] from the buffer pointed
     // to by [buf].
