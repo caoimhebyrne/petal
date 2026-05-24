@@ -40,6 +40,20 @@ pub struct Structure {
     pub fields: Vec<StructureField>,
 }
 
+impl Structure {
+    /// Attempts to find a [`StructureField`] on this [`Structure`] which has the provided [`name`].
+    ///
+    /// This returns a tuple of the structure field's index to its [`TypeId`]. The [`StructureField`] itself is not
+    /// returned, as the name is already known.
+    pub fn find_field_by_name(&self, name: &str) -> Option<(usize, TypeId)> {
+        self.fields
+            .iter()
+            .enumerate()
+            .find(|(_, field)| field.name == name)
+            .map(|(index, field)| (index, field.type_id))
+    }
+}
+
 /// A field on a structure.
 #[derive(Debug, Clone, PartialEq)]
 pub struct StructureField {

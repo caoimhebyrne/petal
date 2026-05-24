@@ -695,13 +695,8 @@ impl TypeResolver {
                 let DefinedTypeKind::Structure(structure) =
                     &self.program.type_db.get_defined_type(defined_type_id).kind;
 
-                let (field_index, field_type_id) = structure
-                    .fields
-                    .iter()
-                    .enumerate()
-                    .find(|(_, it)| it.name == member_access.name)
-                    .map(|it| (it.0, it.1.type_id))
-                    .ok_or_else(|| {
+                let (field_index, field_type_id) =
+                    structure.find_field_by_name(&member_access.name).ok_or_else(|| {
                         TypecheckerErrorKind::UnresolvableIdentifierReference(member_access.name).at(span)
                     })?;
 
@@ -1044,14 +1039,11 @@ impl TypeResolver {
         // The structure type must have a field with the provided name
         let DefinedTypeKind::Structure(structure) = &self.program.type_db.get_defined_type(defined_type_id).kind;
 
-        let (field_index, field) = structure
-            .fields
-            .iter()
-            .enumerate()
-            .find(|(_, it)| it.name == member_access.name)
+        let (field_index, field_type_id) = structure
+            .find_field_by_name(&member_access.name)
             .ok_or_else(|| TypecheckerErrorKind::UnresolvableIdentifierReference(member_access.name).at(span))?;
 
-        Ok((ExpressionKind::StructureFieldReference { target: Box::new(target), field_index }, field.type_id))
+        Ok((ExpressionKind::StructureFieldReference { target: Box::new(target), field_index }, field_type_id))
     }
 
     /// Visits the provided number literal expression.
