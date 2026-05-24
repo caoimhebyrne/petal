@@ -16,11 +16,15 @@ mod runner;
 // The result of a test case.
 type TestResult<T> = Result<T, Box<dyn Error>>;
 
-/// Asserts that the provided code snippet successfully passes type-checking.
-fn assert_successful_type_check(snippet: &str) -> TestResult<()> {
+fn init_env_logger() {
     // Using `try_init` allows us to ignore an error which can occur when trying to initialize the logger more than
     // once during test execution.
     let _ = env_logger::builder().is_test(true).filter_level(log::LevelFilter::Trace).try_init();
+}
+
+/// Asserts that the provided code snippet successfully passes type-checking.
+fn assert_successful_type_check(snippet: &str) -> TestResult<()> {
+    init_env_logger();
 
     let mut runner = TestCaseRunner::with_prelude()?;
     runner.add_module_from_str(snippet)?;
@@ -29,9 +33,7 @@ fn assert_successful_type_check(snippet: &str) -> TestResult<()> {
 
 /// Asserts that the provided code snippet returns an error which matches the provided string.
 fn assert_failing_type_check(snippet: &str, expected_error: &str) -> TestResult<()> {
-    // Using `try_init` allows us to ignore an error which can occur when trying to initialize the logger more than
-    // once during test execution.
-    let _ = env_logger::builder().is_test(true).filter_level(log::LevelFilter::Trace).try_init();
+    init_env_logger();
 
     let mut runner = TestCaseRunner::with_prelude()?;
     runner.add_module_from_str(snippet)?;
