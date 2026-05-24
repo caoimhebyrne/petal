@@ -601,7 +601,7 @@ impl TypeResolver {
                 StatementKind::FunctionCall { function_key, arguments, return_type_id }
             }
 
-            ast::statement::StatementKind::Return(r#return) => self.visit_statement_return(r#return)?,
+            ast::statement::StatementKind::Return(r#return) => self.visit_statement_return(r#return, statement.span)?,
 
             ast::statement::StatementKind::VariableAssignment(variable_assignment) => {
                 self.visit_statement_variable_assignment(variable_assignment, statement.span)?
@@ -621,8 +621,23 @@ impl TypeResolver {
     fn visit_statement_return(
         &mut self,
         r#return: ast::statement::r#return::Return,
+        span: Span,
     ) -> TypecheckerResult<StatementKind> {
-        let value = r#return.value.map(|it| self.visit_expression(it, self.scope.get_return_type_id())).transpose()?;
+        // If the scope does not have an expected return type, we can assume that it is `void`.
+        let return_type_id = self.scope.get_return_type_id().unwrap_or(self.program.type_db.void_type_id());
+
+        let value = r#return.value.map(|it| self.visit_expression(it, Some(return_type_id))).transpose()?;
+
+        // If the value does not exist, we can treat it as a 'void' value.
+        let value_type_id = value.as_ref().map_or(self.program.type_db.void_type_id(), |it| it.type_id);
+
+        // The return type of the scope must match the value type.
+        if return_type_id != value_type_id {
+            return Err(
+                TypecheckerErrorKind::type_mismatch(&self.program.type_db, return_type_id, value_type_id).at(span)
+            );
+        }
+
         Ok(StatementKind::Return(value))
     }
 
