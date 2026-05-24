@@ -48,12 +48,12 @@ use crate::{
     },
 };
 
-pub mod ast;
-pub mod backend;
-pub mod core;
-pub mod lexer;
-pub mod module;
-pub mod module_registry;
+mod ast;
+mod backend;
+mod core;
+mod lexer;
+mod module;
+mod module_registry;
 mod typed_ast;
 
 #[cfg(test)]

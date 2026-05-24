@@ -30,16 +30,9 @@ pub enum ASTErrorKind {
 }
 
 impl ASTErrorKind {
-    /// Returns an [ASTError] from this [ASTErrorKind] at the provided [Span].
+    /// Returns an [`ASTError`] from this [`ASTErrorKind`] at the provided [`Span`].
     pub fn at(self, span: Span) -> ASTError {
         ASTError { kind: self, span }
-    }
-}
-
-impl ASTError {
-    /// Creates a new [`ASTError`].
-    pub fn new(kind: ASTErrorKind, span: Span) -> Self {
-        ASTError { kind, span }
     }
 }
 
@@ -47,13 +40,13 @@ impl Display for ASTErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ASTErrorKind::ExpectedToken { expected, got } => {
-                write!(f, "Expected token '{:?}' but got '{:?}'", expected, got)
+                write!(f, "Expected token '{expected:?}' but got '{got:?}'")
             }
             ASTErrorKind::ExpectedIdentifier => write!(f, "Expected any identifier"),
-            ASTErrorKind::UnexpectedToken(token) => write!(f, "Unexpected token: '{:?}'", token),
+            ASTErrorKind::UnexpectedToken(token) => write!(f, "Unexpected token: '{token:?}'"),
             ASTErrorKind::UnexpectedEndOfFile => write!(f, "Unexpected end-of-file"),
-            ASTErrorKind::ExpectedStatement(token) => write!(f, "Expected a statement, but got '{:?}'", token),
-            ASTErrorKind::ExpectedExpression(token) => write!(f, "Expected an expression, but got '{:?}'", token),
+            ASTErrorKind::ExpectedStatement(token) => write!(f, "Expected a statement, but got '{token:?}'"),
+            ASTErrorKind::ExpectedExpression(token) => write!(f, "Expected an expression, but got '{token:?}'"),
         }
     }
 }

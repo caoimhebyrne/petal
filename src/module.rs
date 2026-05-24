@@ -43,24 +43,7 @@ pub struct ParsedModule {
 }
 
 impl ParsedModule {
-    /// Creates a new [ParsedModule].
-    pub fn new(id: ModuleId, ast: Vec<Statement>) -> Self {
-        Self { id, ast }
-    }
-}
-
-/// A module that has been verified by the Typechecker.
-#[derive(Debug)]
-pub struct CheckedModule {
-    /// The unique identifier for this [`CheckedModule`]. This is inherited from its parent [`ParsedModule`].
-    pub id: ModuleId,
-
-    /// The top-level statements within this module.
-    pub ast: Vec<Statement>,
-}
-
-impl CheckedModule {
-    /// Creates a new [CheckedModule].
+    /// Creates a new [`ParsedModule`].
     pub fn new(id: ModuleId, ast: Vec<Statement>) -> Self {
         Self { id, ast }
     }
