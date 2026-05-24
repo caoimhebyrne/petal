@@ -841,27 +841,94 @@ impl TypeResolver {
         let call_target = self.resolve_function_call_target(*function_call.callee, &generic_type_arguments, span)?;
         let function_key = self.compute_function(&call_target, &generic_type_arguments, span)?;
 
-        let mut arguments = Vec::with_capacity(function_call.arguments.len());
+        // TODO: remove clone
+        let function = self.program.get_function(&function_key).clone();
 
-        // If the function call target is a method, then we need to provide a reference to the receiver as the first
-        // argument.
-        if let FunctionCallTarget::Method { receiver, .. } = call_target {
-            let type_id = self.program.type_db.get_or_insert_type(Type::Reference(receiver.type_id));
-            let span = receiver.span;
+        // If there are more arguments provided in the function call then there are of function parameters, then
+        // the call is immediately invalid.
+        let provided_argument_count = if let FunctionCallTarget::Method { .. } = &call_target {
+            // +1 for the implicit `this`
+            function_call.arguments.len() + 1
+        } else {
+            function_call.arguments.len()
+        };
 
-            arguments.push(Expression { kind: ExpressionKind::Reference(Box::new(receiver)), span, type_id });
+        if provided_argument_count > function.parameters.len() {
+            return Err(TypecheckerErrorKind::FunctionCallArgumentCountMismatch {
+                expected: function.parameters.len(),
+                got: provided_argument_count,
+            }
+            .at(span));
         }
 
-        // todo(resolver): named vs positional argumenmts
-        arguments.extend(
-            function_call
-                .arguments
-                .into_iter()
-                .map(|it| self.visit_expression(it.value, None))
-                .collect::<TypecheckerResult<Vec<_>>>()?,
-        );
+        let mut arguments = Vec::with_capacity(provided_argument_count);
 
-        let function = self.program.get_function(&function_key);
+        // FIXME: This is not perfect.
+        //
+        // 1. If a named argument is provided for a positional parameter, the error message is not great ("A positional
+        //    argument must be provided for parameter '<name>'").
+        // 2. A check is performed above to ensure that too many arguments are not passed to the call, this means that
+        //    if an extra named argument (like `b` in `func foo(~a: i32)`) is passed, the error message doesn't tell
+        //    you that a parameter named `b` does not exist.
+        for (index, parameter) in function.parameters.iter().enumerate() {
+            // If this is the first parameter, and this is a method function call, then we can use the receiver expression.
+            let argument_expression = if index == 0
+                && let FunctionCallTarget::Method { receiver, .. } = &call_target
+            {
+                receiver.clone()
+            } else {
+                // We need to visit the expression first to ensure that it is valid.
+                let expression = if parameter.is_named {
+                    // If this is a named parameter, the argument corresponding to it should be provided with a name.
+                    //
+                    // There are multiple cases that we could encounter here, and this is probably not even an
+                    // exhaustive list:
+                    // 1. A named argument for the parameter doesn't exist
+                    // 2. More than one named arguments for the parameter exists
+                    let candidates = function_call
+                        .arguments
+                        .iter()
+                        .filter(|it| it.name.as_ref().is_some_and(|name| name == &parameter.name))
+                        .map(|it| &it.value)
+                        .collect::<Vec<_>>();
+
+                    if candidates.len() > 1 {
+                        return Err(TypecheckerErrorKind::AmbiguousFunctionCallArgument(
+                            parameter.name.clone(),
+                            candidates.len(),
+                        )
+                        .at(span));
+                    }
+
+                    candidates.first().copied().ok_or_else(|| {
+                        TypecheckerErrorKind::MissingNamedArgumentInFunctionCall(parameter.name.clone()).at(span)
+                    })
+                } else {
+                    // The parameter is not named, so we can just assume that the argument is positional.
+                    function_call.arguments.get(index).filter(|it| it.name.is_none()).map(|it| &it.value).ok_or_else(
+                        || {
+                            TypecheckerErrorKind::MissingPositionalArgumentInFunctionCall(parameter.name.clone())
+                                .at(span)
+                        },
+                    )
+                }?;
+
+                self.visit_expression(expression.clone(), Some(parameter.type_id))?
+            };
+
+            // The type of the argument expression must match the parameter.
+            if argument_expression.type_id != parameter.type_id {
+                return Err(TypecheckerErrorKind::type_mismatch(
+                    &self.program.type_db,
+                    parameter.type_id,
+                    argument_expression.type_id,
+                )
+                .at(argument_expression.span));
+            }
+
+            arguments.push(argument_expression);
+        }
+
         Ok((function_key, arguments, function.return_type_id))
     }
 

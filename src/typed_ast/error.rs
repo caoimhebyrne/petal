@@ -39,11 +39,17 @@ pub enum TypecheckerErrorKind {
     /// An ambiguous function call was encountered, multiple definitions qualified.
     AmbiguousFunctionCall(usize),
 
+    /// An ambiguous function call argument was provided, where two or more arguments had the same name.
+    AmbiguousFunctionCallArgument(String, usize),
+
     /// A type expression was provided for a type definition, but the expression was not a definition kind.
     ExpectedTypeDefinition,
 
     /// A structure type was expected, but another type kind was received.
     ExpectedStructureType,
+
+    /// A function call was made with too many arguments.
+    FunctionCallArgumentCountMismatch { expected: usize, got: usize },
 
     /// The number of generic type arguments provided did not equal the number of generic type parameters.
     GenericTypeArgumentCountMismatch { expected: usize, got: usize },
@@ -56,6 +62,12 @@ pub enum TypecheckerErrorKind {
 
     /// A function call expression was encountered, but the target of the call was not valid.
     InvalidFunctionCallTarget,
+
+    /// A named argument was not provided in a function call.
+    MissingNamedArgumentInFunctionCall(String),
+
+    /// A positional argument was not provided in a function call.
+    MissingPositionalArgumentInFunctionCall(String),
 
     /// A field was not provided in a structure initialization expression.
     MissingStructureFieldInInitializer(String),
@@ -95,7 +107,14 @@ impl Display for TypecheckerErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::AmbiguousFunctionCall(candidates) => {
-                write!(f, "This function call is ambiguous, there are {} possible candidates", candidates)
+                write!(f, "This function call is ambiguous, there are {candidates} possible candidates")
+            }
+
+            Self::AmbiguousFunctionCallArgument(name, candidates) => {
+                write!(
+                    f,
+                    "{candidates} arguments are provided in this function call with the name '{name}', there must only be one"
+                )
             }
 
             Self::ExpectedTypeDefinition => {
@@ -105,6 +124,15 @@ impl Display for TypecheckerErrorKind {
             Self::ExpectedStructureType => {
                 write!(f, "Expected a structure type to be the target of this expression, but got some other type")
             }
+
+            Self::FunctionCallArgumentCountMismatch { expected, got } => write!(
+                f,
+                "Expected {} argument{} in function call, but got {} argument{}",
+                expected,
+                if *expected == 1 { "" } else { "s" },
+                got,
+                if *got == 1 { "" } else { "s" }
+            ),
 
             Self::GenericTypeArgumentCountMismatch { expected, got } => write!(
                 f,
@@ -129,6 +157,14 @@ impl Display for TypecheckerErrorKind {
                     f,
                     "The target of this function call is invalid (expected a function name, value reference, or type name)"
                 )
+            }
+
+            Self::MissingNamedArgumentInFunctionCall(name) => {
+                write!(f, "A named argument must be provided for parameter '{name}'")
+            }
+
+            Self::MissingPositionalArgumentInFunctionCall(name) => {
+                write!(f, "A positional argument must be provided for parameter '{name}'")
             }
 
             Self::MissingStructureFieldInInitializer(name) => {

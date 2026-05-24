@@ -119,9 +119,22 @@ mod function_call {
             func foo(~a: i32, ~b: i32) {}
 
             func bar() {
-                foo(b: 10, a: 5);
+                foo(a: 5, b: 10);
             }
             ",
+        )
+    }
+
+    #[test]
+    fn with_out_of_order_named_arguments() -> TestResult<()> {
+        assert_successful_type_check(
+            r#"
+            func foo(~a: i32, ~b: str) {}
+
+            func bar() {
+                foo(b: "", a: 2);
+            }
+            "#,
         )
     }
 
@@ -135,6 +148,76 @@ mod function_call {
                 foo(5, b: 10);
             }
             ",
+        )
+    }
+
+    #[test]
+    fn fails_with_type_mismatch() -> TestResult<()> {
+        assert_failing_type_check(
+            r"
+            func foo(a: bool) {}
+
+            func bar() {
+                foo(123);
+            }
+            ",
+            "Expected a value of type 'bool', but received a value of type 'u8'",
+        )
+    }
+
+    #[test]
+    fn fails_with_too_many_arguments() -> TestResult<()> {
+        assert_failing_type_check(
+            r"
+            func foo(a: i32) {}
+
+            func bar() {
+                foo(123, 456);
+            }
+            ",
+            "Expected 1 argument in function call, but got 2 arguments",
+        )
+    }
+
+    #[test]
+    fn fails_with_positional_argument_for_named_parameter() -> TestResult<()> {
+        assert_failing_type_check(
+            r"
+            func foo(~a: i32) {}
+
+            func bar() {
+                foo(123);
+            }
+            ",
+            "A named argument must be provided for parameter 'a'",
+        )
+    }
+
+    #[test]
+    fn fails_with_named_argument_for_positional_parameter() -> TestResult<()> {
+        assert_failing_type_check(
+            r"
+            func foo(a: i32) {}
+
+            func bar() {
+                foo(a: 123);
+            }
+            ",
+            "A positional argument must be provided for parameter 'a'",
+        )
+    }
+
+    #[test]
+    fn fails_with_type_mismatch_for_named_argument() -> TestResult<()> {
+        assert_failing_type_check(
+            r"
+            func foo(a: i32, ~b: bool) {}
+
+            func bar() {
+                foo(123, b: 456);
+            }
+            ",
+            "Expected a value of type 'bool', but received a value of type 'u8'",
         )
     }
 }
