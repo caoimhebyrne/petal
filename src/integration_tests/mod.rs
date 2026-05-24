@@ -222,6 +222,86 @@ mod function_call {
     }
 }
 
+mod variable_assignment {
+    use super::*;
+
+    #[test]
+    fn with_i32_type_and_value() -> TestResult<()> {
+        assert_successful_type_check(
+            r"
+            func foo() {
+                bar: i32 = 0;
+                bar = 2;
+            }
+            ",
+        )
+    }
+
+    #[test]
+    fn with_dereference_i32_type() -> TestResult<()> {
+        assert_successful_type_check(
+            r"
+            func foo(bar: &i32) {
+                @bar = 5;
+            }
+            ",
+        )
+    }
+
+    // todo: struct tests?
+    #[test]
+    fn with_struct_field_assignment() -> TestResult<()> {
+        assert_failing_type_check(
+            r#"
+            type Foo = struct { value: str };
+
+            func bar() {
+                foo: Foo = { .value = "" };
+                foo.value = 4;
+            }
+            "#,
+            "Expected a value of type 'CompileTimeStr', but received a value of type 'u8'",
+        )
+    }
+
+    #[test]
+    fn fails_with_dereference_of_non_reference_value() -> TestResult<()> {
+        assert_failing_type_check(
+            r"
+            func foo(bar: i32) {
+                @bar = 5;
+            }
+            ",
+            "You cannot dereference this expression type, it must be a reference type",
+        )
+    }
+
+    #[test]
+    fn fails_with_type_mismatch() -> TestResult<()> {
+        assert_failing_type_check(
+            r#"
+            func foo() {
+                bar: str = "";
+                bar = 3;
+            }
+            "#,
+            "Expected a value of type 'CompileTimeStr', but received a value of type 'u8'",
+        )
+    }
+
+    #[test]
+    fn fails_with_invalid_variable_name() -> TestResult<()> {
+        assert_failing_type_check(
+            r"
+            func foo() {
+                bar = 3;
+            }
+            ",
+            "Could not resolve a value for identifier 'bar'",
+        )
+    }
+}
+
 mod variable_declaration {
     use super::*;
 

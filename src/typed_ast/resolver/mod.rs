@@ -648,9 +648,21 @@ impl TypeResolver {
         span: Span,
     ) -> TypecheckerResult<StatementKind> {
         match variable_assignment.target.kind {
-            ast::expression::ExpressionKind::Dereference(target_expression) => {
-                let target = self.visit_expression(*target_expression, None)?;
-                let value = self.visit_expression(*variable_assignment.value, None)?;
+            ast::expression::ExpressionKind::Dereference(_) => {
+                // We can visit the dereference to ensure that the expression it wraps is of a reference type. The type
+                // of the resulting `Expression` should be the inner non-reference type.
+                let target = self.visit_expression(*variable_assignment.target, None)?;
+                let value = self.visit_expression(*variable_assignment.value, Some(target.type_id))?;
+
+                if target.type_id != value.type_id {
+                    return Err(TypecheckerErrorKind::type_mismatch(
+                        &self.program.type_db,
+                        target.type_id,
+                        value.type_id,
+                    )
+                    .at(value.span));
+                }
+
                 Ok(StatementKind::ReferenceValueAssignment { target, value })
             }
 
@@ -660,6 +672,15 @@ impl TypeResolver {
                 };
 
                 let value = self.visit_expression(*variable_assignment.value, Some(variable_type_id))?;
+                if value.type_id != variable_type_id {
+                    return Err(TypecheckerErrorKind::type_mismatch(
+                        &self.program.type_db,
+                        variable_type_id,
+                        value.type_id,
+                    )
+                    .at(value.span));
+                }
+
                 Ok(StatementKind::VariableAssignment { name: variable_name, value, variable_type_id })
             }
 
@@ -674,12 +695,26 @@ impl TypeResolver {
                 let DefinedTypeKind::Structure(structure) =
                     &self.program.type_db.get_defined_type(defined_type_id).kind;
 
-                let (field_index, field) =
-                    structure.fields.iter().enumerate().find(|(_, it)| it.name == member_access.name).ok_or_else(
-                        || TypecheckerErrorKind::UnresolvableIdentifierReference(member_access.name).at(span),
-                    )?;
+                let (field_index, field_type_id) = structure
+                    .fields
+                    .iter()
+                    .enumerate()
+                    .find(|(_, it)| it.name == member_access.name)
+                    .map(|it| (it.0, it.1.type_id))
+                    .ok_or_else(|| {
+                        TypecheckerErrorKind::UnresolvableIdentifierReference(member_access.name).at(span)
+                    })?;
 
-                let value = self.visit_expression(*variable_assignment.value, Some(field.type_id))?;
+                let value = self.visit_expression(*variable_assignment.value, Some(field_type_id))?;
+
+                if value.type_id != field_type_id {
+                    return Err(TypecheckerErrorKind::type_mismatch(
+                        &self.program.type_db,
+                        field_type_id,
+                        value.type_id,
+                    )
+                    .at(value.span));
+                }
 
                 Ok(StatementKind::StructureFieldAssignment {
                     target: Box::new(target),
