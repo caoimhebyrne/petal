@@ -3,8 +3,8 @@ use crate::typed_ast::r#type::db::{
     TypeId,
 };
 
-pub(super) mod db;
-pub(super) mod defined;
+pub mod db;
+pub mod defined;
 
 /// A type on a node within the typed AST.
 #[derive(Debug, Copy, Clone, PartialEq)]

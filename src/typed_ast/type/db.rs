@@ -1,6 +1,9 @@
-use std::collections::{
-    BTreeMap,
-    btree_map::Keys,
+use std::{
+    collections::{
+        BTreeMap,
+        btree_map::Keys,
+    },
+    fmt::Display,
 };
 
 use crate::typed_ast::r#type::{
@@ -15,6 +18,12 @@ pub struct TypeId(usize);
 /// The ID of a [`DefinedType`].
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DefinedTypeId(usize);
+
+impl Display for DefinedTypeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct TypeDb {

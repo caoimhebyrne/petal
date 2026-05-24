@@ -1,9 +1,5 @@
 use std::{
-    self,
-    collections::{
-        HashMap,
-        HashSet,
-    },
+    collections::HashMap,
     io::Write,
     path::PathBuf,
     process::{
@@ -13,292 +9,76 @@ use std::{
 };
 
 use crate::{
-    ast::{
-        statement::{
-            Statement,
-            StatementKind,
-            function_declaration::{
-                DeclarationModifier,
-                FunctionDeclaration,
+    ast::expression::binary_operation::BinaryOperator,
+    backend::c::writer::Writer,
+    typed_ast::{
+        Expression,
+        Function,
+        FunctionKey,
+        Program,
+        Statement,
+        r#type::{
+            Type,
+            db::{
+                DefinedTypeId,
+                TypeDb,
+                TypeId,
+            },
+            defined::{
+                DefinedTypeKind,
+                Structure,
             },
         },
-        type_expr::GenericTypeArgument,
-    },
-    backend::c::{
-        error::{
-            CBackendError,
-            CBackendErrorKind,
-        },
-        writer::Writer,
-    },
-    core::span::Span,
-    module::CheckedModule,
-    typechecker::{
-        BuiltinTypes,
-        context::{
-            CheckedFunction,
-            DeclaredEnum,
-            DeclaredStructure,
-            DeclaredType,
-            DeclaredTypeId,
-            EnumId,
-            FunctionId,
-            SpecializedFunction,
-            SpecializedFunctionId,
-            SpecializedStructure,
-            SpecializedStructureId,
-            StructureId,
-            SyntheticType,
-        },
-        r#type::{
-            FunctionReference,
-            StructureReference,
-            Type,
+        visitor::{
+            ProgramVisitor,
+            walk_function,
+            walk_program,
+            walk_statement,
         },
     },
 };
 
-pub mod error;
-pub mod expression;
-pub mod statement;
 mod writer;
 
-/// The C codegen backend.
-pub struct CBackend {
-    /// The built-in types that have been recognized during compilation.
-    builtin_types: BuiltinTypes,
+pub struct CBackend<'db> {
+    /// The names of functions within the program being visited.
+    function_names: HashMap<FunctionKey, String>,
 
-    /// The types declared by the user during compilation.
-    declared_types: HashMap<DeclaredTypeId, DeclaredType>,
+    /// The [`TypeDb`] containing the types used by this program.
+    type_db: &'db TypeDb,
 
-    /// The enums declared by the user during compilation.
-    enums: HashMap<EnumId, DeclaredEnum>,
-
-    /// The functions defined in the source code during compilation.
-    functions: HashMap<FunctionId, CheckedFunction>,
-
-    /// The structures defined in the source code during compilation.
-    structures: HashMap<StructureId, DeclaredStructure>,
-
-    /// The specialized functions defined in the source code during compilation.
-    specialized_functions: HashMap<SpecializedFunctionId, SpecializedFunction>,
-
-    /// The specialized structures defined in the source code during compilation.
-    specialized_structures: HashMap<SpecializedStructureId, SpecializedStructure>,
-
-    /// The types that have been synthesised during compilation.
-    ///
-    /// This could include: optional type implementations and generic type implementations.
-    synthetic_types: HashSet<SyntheticType>,
-
-    /// The writer to use.
+    /// The writer to use when emitting C code.
     writer: Writer,
 }
 
-impl CBackend {
-    /// Creates a new [`CBackend`].
-    pub fn new(
-        builtin_types: BuiltinTypes,
-        declared_types: HashMap<DeclaredTypeId, DeclaredType>,
-        enums: HashMap<EnumId, DeclaredEnum>,
-        functions: HashMap<FunctionId, CheckedFunction>,
-        structures: HashMap<StructureId, DeclaredStructure>,
-        specialized_functions: HashMap<SpecializedFunctionId, SpecializedFunction>,
-        specialized_structures: HashMap<SpecializedStructureId, SpecializedStructure>,
-        synthetic_types: HashSet<SyntheticType>,
-    ) -> Self {
-        Self {
-            builtin_types,
-            declared_types,
-            enums,
-            functions,
-            structures,
-            specialized_functions,
-            specialized_structures,
-            synthetic_types,
-            writer: Writer::default(),
+impl<'db> CBackend<'db> {
+    /// Visits the [`Program`] owned by this [`CBackend`].
+    pub fn visit(program: &'db mut Program) -> Self {
+        let mut visitor = CBackend::new(&program.type_db);
+
+        visitor.writer.append_line("#include <stdint.h>");
+        visitor.writer.append_line("#include <stdbool.h>");
+
+        for (function_key, function) in &program.functions {
+            visitor.function_names.insert(*function_key, Self::create_function_c_name(&program.type_db, function));
         }
+
+        for defined_type_id in program.type_db.iter_defined_types() {
+            visitor.writer.append_line("");
+            visitor.visit_defined_type_id(*defined_type_id);
+        }
+
+        walk_program(&mut visitor, &mut program.functions);
+        visitor
     }
 
-    /// Compiles a [`CheckedModule`] to C code.
-    pub fn emit_code(mut self, modules: &Vec<CheckedModule>) -> Result<String, CBackendError> {
-        let mut code = String::new();
-
-        code.push_str("#include <stdint.h>\n#include <stdbool.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <unistd.h>\n\n");
-
-        code.push_str(
-            r#"_Noreturn static void __ptl_internal_fn_panic(const char* msg) {
-    fprintf(stderr, "PANIC: %s\n", msg);
-    exit(255);
-}
-
-"#,
-        );
-
-        debug!("Attempting to generate C code with {} structure(s)", self.structures.len());
-
-        for structure in self.structures.values() {
-            let declared_type = &self.declared_types[&structure.declared_type_id];
-            if !declared_type.generic_type_parameters.is_empty() {
-                debug!(
-                    "Not generating definition for type '{}' as it is generic, a specialization should cover it",
-                    declared_type.name
-                );
-                continue;
-            }
-
-            code.push_str("typedef struct {\n");
-
-            for field in &structure.fields {
-                code.push_str(&format!("    {} {};\n", self.compile_type(&field.r#type, field.span)?, field.name));
-            }
-
-            code.push_str(&format!("}} {};\n\n", self.declared_type_name(declared_type, &vec![])?));
-        }
-
-        for specialized_structure in self.specialized_structures.values() {
-            let declared_type = &self.declared_types[&specialized_structure.generic_type_id];
-            code.push_str("typedef struct {\n");
-
-            for field in &specialized_structure.fields {
-                code.push_str(&format!("    {} {};\n", self.compile_type(&field.r#type, field.span)?, field.name));
-            }
-
-            code.push_str(&format!(
-                "}} {};\n\n",
-                self.declared_type_name(declared_type, &specialized_structure.generic_type_arguments)?
-            ));
-        }
-
-        for r#enum in self.enums.values() {
-            let declared_type = &self.declared_types[&r#enum.declared_type_id];
-            let enum_name = self.declared_type_name(declared_type, &vec![])?;
-            code.push_str("typedef enum {\n");
-
-            for (index, variant) in r#enum.variants.iter().enumerate() {
-                code.push_str(&format!("    {enum_name}_{index}, // {}\n", variant.name))
-            }
-
-            code.push_str(&format!("}} {};\n\n", enum_name));
-        }
-
-        for synthetic_type in &self.synthetic_types {
-            match synthetic_type {
-                SyntheticType::Optional { inner_type } => {
-                    let inner_type_str = self.compile_type(&inner_type, Span::new(modules[0].id, 0, 0))?;
-
-                    code.push_str(&format!(
-                        "typedef struct {{ bool has_value; {} value; }} Optional_{};\n\n",
-                        inner_type_str, inner_type
-                    ));
-                }
-            }
-        }
-
-        for (specialized_function_id, specialized_function) in &self.specialized_functions {
-            let name = self.function_name(&FunctionReference::Specialized(*specialized_function_id))?;
-            let return_type = self.compile_type(&specialized_function.return_type, Span::new(modules[0].id, 0, 0))?;
-
-            let parameters: String = if specialized_function.parameters.is_empty() {
-                "void".into()
-            } else {
-                specialized_function
-                    .parameters
-                    .iter()
-                    .map(|it| self.compile_function_parameter(it))
-                    .collect::<Result<Vec<String>, CBackendError>>()?
-                    .join(", ")
-            };
-
-            code.push_str(&format!("{return_type} {name}({parameters});\n"));
-        }
-
-        code.push('\n');
-
-        for module in modules {
-            self.visit_top_level_declarations(&mut code, &module.ast)?;
-        }
-
-        for module in modules {
-            for statement in &module.ast {
-                self.compile_statement(statement)?;
-            }
-        }
-
-        code.push_str(&self.writer.code);
-        Ok(code)
-    }
-
-    fn visit_top_level_declarations(
-        &self,
-        code: &mut String,
-        statements: &Vec<Statement>,
-    ) -> Result<(), CBackendError> {
-        for statement in statements {
-            match &statement.kind {
-                StatementKind::FunctionDeclaration(function_declaration) => {
-                    let forward_declaration =
-                        self.compile_function_forward_declaration(function_declaration, statement.span)?;
-                    code.push_str(&forward_declaration);
-                }
-
-                StatementKind::NamespaceDeclaration(namespace_declaration) => {
-                    self.visit_top_level_declarations(code, &namespace_declaration.body)?;
-                }
-
-                _ => {}
-            }
-        }
-
-        Ok(())
-    }
-
-    fn compile_function_forward_declaration(
-        &self,
-        function_declaration: &FunctionDeclaration,
-        span: Span,
-    ) -> Result<String, CBackendError> {
-        let mut code = String::new();
-
-        if function_declaration.modifiers.contains(&DeclarationModifier::Extern) {
-            trace!(
-                "Skipping generation of forward-declaration for function '{}' as it is marked as external",
-                function_declaration.name
-            );
-
-            return Ok(code);
-        }
-
-        if !function_declaration.generic_type_parameters.is_empty() {
-            trace!(
-                "Not generating forward-declaration for function '{}' as it is generic, a specialization should cover it",
-                function_declaration.name
-            );
-
-            return Ok(code);
-        }
-
-        let function_id = function_declaration.function_id.ok_or(CBackendErrorKind::MissingFunctionId.at(span))?;
-        let name = self.function_name(&FunctionReference::Plain(function_id))?;
-        let return_type = self.compile_type(&function_declaration.return_type, span)?;
-
-        let parameters: String = if function_declaration.parameters.is_empty() {
-            "void".into()
-        } else {
-            function_declaration
-                .parameters
-                .iter()
-                .map(|it| self.compile_function_parameter(it))
-                .collect::<Result<Vec<String>, CBackendError>>()?
-                .join(", ")
-        };
-
-        code.push_str(&format!("{return_type} {name}({parameters});\n\n"));
-        Ok(code)
+    /// Returns the code that has been generated by this [`CBackend`].
+    pub fn get_code(&self) -> &str {
+        &self.writer.inner
     }
 
     /// Compiles C code into a binary.
-    pub fn emit_binary(code: &str, executable_file_path: &PathBuf) -> Result<(), CBackendError> {
+    pub fn emit_binary(&self, executable_file_path: &PathBuf) -> Result<(), String> {
         let mut child = Command::new("cc")
             // Tell the compiler that the stdin contains C code.
             .args(["-x", "c"])
@@ -308,149 +88,331 @@ impl CBackend {
             .arg("-")
             .stdin(Stdio::piped())
             .spawn()
-            .map_err(|e| CBackendErrorKind::CompilerInvocationFailed(e.to_string()).without_span())?;
+            .map_err(|e| e.to_string())?;
 
         child
             .stdin
             .as_mut()
-            .ok_or(
-                CBackendErrorKind::CompilerInvocationFailed("Failed to open stdin to compiler process".into())
-                    .without_span(),
-            )?
-            .write_all(code.as_bytes())
-            .map_err(|e| CBackendErrorKind::CompilerInvocationFailed(e.to_string()).without_span())?;
+            .ok_or("Failed to open stdin to compiler process".to_string())?
+            .write_all(self.writer.inner.as_bytes())
+            .map_err(|e| e.to_string())?;
 
-        let status =
-            child.wait().map_err(|e| CBackendErrorKind::CompilerInvocationFailed(e.to_string()).without_span())?;
+        let status = child.wait().map_err(|e| e.to_string())?;
 
         if !status.success() {
-            return Err(CBackendErrorKind::CompilerInvocationFailed(format!(
-                "Exited with a non-zero status code: {:?}",
-                status.code(),
-            ))
-            .without_span());
+            return Err(format!("C compiler had {status}"));
         }
 
         Ok(())
     }
 
-    /// Converts a [Type] into a C type.
-    fn compile_type(&self, r#type: &Type, span: Span) -> Result<String, CBackendError> {
-        let value = match r#type {
-            Type::SignedInteger(size) => format!("int{}_t", size),
-            Type::UnsignedInteger(size) => format!("uint{}_t", size),
-            Type::Boolean => "bool".into(),
-            Type::Void => "void".into(),
-            Type::Reference(referenced) => format!("{}*", self.compile_type(referenced, span)?),
-            Type::Optional(inner) => format!("Optional_{}", self.identifier_friendly_name(inner, span)?),
-            Type::Enum(_) | Type::Structure(_) => self.identifier_friendly_name(r#type, span)?,
-            Type::GenericType(_) | Type::Unknown => panic!("Unable to compile type: {type:?}"),
-        };
-
-        Ok(value)
+    /// Creates a new [`CBackend`] with the provided [`TypeDb`].
+    fn new(type_db: &'db TypeDb) -> Self {
+        Self { function_names: HashMap::default(), type_db, writer: Writer::default() }
     }
 
-    /// Generates a name for the provided [`DeclaredType`].
-    fn declared_type_name(
-        &self,
-        declared_type: &DeclaredType,
-        generic_type_arguments: &Vec<GenericTypeArgument>,
-    ) -> Result<String, CBackendError> {
-        let mut name = format!(
-            "ptl_mod_{}_{}_type_{}",
-            declared_type.module_id,
-            declared_type.namespace.clone().unwrap_or_else(|| "root".to_string()),
-            declared_type.name
-        );
+    /// Takes a mutable reference to [`self`], then:
+    ///
+    /// - increases its [`Writer`]'s indentation level,
+    /// - executes the code in the provided `func`, passing the mutable self,
+    /// - and decreases the [`Writer`]'s indentation level.
+    fn with_writer_indent<F, R>(&mut self, func: F) -> R
+    where
+        F: FnOnce(&mut Self) -> R,
+    {
+        self.writer.increase_indentation();
+        let result = func(self);
+        self.writer.decrease_indentation();
 
-        for argument in generic_type_arguments {
-            name.push('_');
-            name.push_str(&self.identifier_friendly_name(&argument.r#type, argument.span)?);
-        }
-
-        Ok(name)
+        result
     }
 
-    /// Generates a name for the provided [`FunctionId`].
-    fn function_name(&self, function_reference: &FunctionReference) -> Result<String, CBackendError> {
-        let function_id = match function_reference {
-            FunctionReference::Plain(id) => id,
-            FunctionReference::Specialized(specialized_id) => {
-                let specialized_function = &self.specialized_functions[&specialized_id];
-                &specialized_function.generic_function_id
-            }
-        };
-
-        let checked_function = &self.functions[function_id];
-
-        // If the function is external, then we must not mangle its name.
-        if checked_function.modifiers.contains(&DeclarationModifier::Extern)
-            || (checked_function.namespace.is_none() && checked_function.name == "main")
-        {
-            return Ok(checked_function.name.clone());
-        }
-
-        let mut name = format!(
-            "ptl_mod_{}_{}_fn_{}",
-            checked_function.module_id,
-            checked_function.namespace.clone().unwrap_or_else(|| "root".to_string()),
-            checked_function.name,
-        );
-
-        let function_parameters = match function_reference {
-            FunctionReference::Plain(_) => &checked_function.parameters,
-            FunctionReference::Specialized(specialized_id) => {
-                let specialized_function = &self.specialized_functions[&specialized_id];
-                &specialized_function.parameters
-            }
-        };
-
-        for parameter in function_parameters {
-            name.push('_');
-            name.push_str(&self.identifier_friendly_name(&parameter.r#type, parameter.span)?);
-        }
-
-        Ok(name)
+    /// Visits the [`DefinedType`] referenced by the provided [`DefinedTypeId`].
+    fn visit_defined_type_id(&mut self, defined_type_id: DefinedTypeId) {
+        let defined_type = self.type_db.get_defined_type(defined_type_id);
+        self.visit_defined_type_kind(&Self::get_defined_type_c_name(self.type_db, defined_type_id), &defined_type.kind);
     }
 
-    /// Returns a name for the provided structure reference type.
-    fn get_name_for_structure_reference(
-        &self,
-        structure_reference: &StructureReference,
-    ) -> Result<String, CBackendError> {
-        match structure_reference {
-            StructureReference::Plain(plain_id) => {
-                let structure = &self.structures[plain_id];
-                let declared_type = &self.declared_types[&structure.declared_type_id];
-                self.declared_type_name(declared_type, &vec![])
-            }
-
-            StructureReference::Specialized(specialized_id) => {
-                let structure = &self.specialized_structures[specialized_id];
-                let declared_type = &self.declared_types[&structure.generic_type_id];
-                self.declared_type_name(declared_type, &structure.generic_type_arguments)
-            }
+    /// Visits the provided [`DefinedTypeKind`].
+    fn visit_defined_type_kind(&mut self, name: &str, defined_type_kind: &DefinedTypeKind) {
+        match defined_type_kind {
+            DefinedTypeKind::Structure(structure) => self.visit_structure_type(name, structure),
         }
     }
 
-    /// Returns a name for the provided type that is able to be used within an identifier.
-    fn identifier_friendly_name(&self, r#type: &Type, span: Span) -> Result<String, CBackendError> {
-        let name = match r#type {
+    /// Visits the provided [`Structure`] type.
+    fn visit_structure_type(&mut self, name: &str, structure: &Structure) {
+        self.writer.append_line("typedef struct {");
+
+        self.with_writer_indent(|this| {
+            for field in &structure.fields {
+                let field_type = CBackend::get_type_c_name(this.type_db, field.type_id);
+                let field_name = &field.name;
+
+                this.writer.append_line(&format!("{field_type} {field_name};"));
+            }
+        });
+
+        self.writer.append_line(&format!("}} {name};"));
+    }
+
+    /// Gets the C name for a [`Function`] by its [`FunctionKey`].
+    fn get_function_c_name_by_key(&self, function_key: &FunctionKey) -> &str {
+        self.function_names.get(function_key).expect("self.function_names.get() should return `Some(_)`")
+    }
+
+    /// Gets the C name for a [`Function`].
+    fn create_function_c_name(type_db: &TypeDb, function: &Function) -> String {
+        if function.name == "main" {
+            return "main".to_string();
+        }
+
+        let module_id = function.span.module_id;
+
+        let name = &function.name;
+
+        let parameter_types = function
+            .parameters
+            .iter()
+            .map(|it| it.type_id)
+            .map(|it| Self::get_type_identifier_name(type_db, it))
+            .collect::<Vec<_>>();
+
+        let return_type = Self::get_type_identifier_name(type_db, function.return_type_id);
+
+        format!(
+            "petal_mod_{module_id}_func_{name}_{return_type}{}",
+            if parameter_types.is_empty() { String::new() } else { format!("_{}", parameter_types.join("_")) }
+        )
+    }
+
+    /// Gets the C name for a [`Type`] from its [`TypeId`].
+    fn get_type_c_name(type_db: &TypeDb, type_id: TypeId) -> String {
+        let ty = type_db.get_type(type_id);
+        match ty {
             Type::Boolean => "bool".to_string(),
-            Type::Optional(inner) => format!("{}opt", self.identifier_friendly_name(inner, span)?),
-            Type::Reference(inner) => format!("{}ref", self.identifier_friendly_name(inner, span)?),
-            Type::SignedInteger(size) => format!("i{size}"),
-            Type::Enum(enum_id) => {
-                let r#enum = &self.enums[enum_id];
-                let declared_type = &self.declared_types[&r#enum.declared_type_id];
-                self.declared_type_name(declared_type, &vec![])?
+
+            Type::Defined(defined_type_id) => Self::get_defined_type_c_name(type_db, *defined_type_id),
+
+            Type::Reference(inner_type_id) => {
+                format!("{}*", Self::get_type_c_name(type_db, *inner_type_id))
             }
-            Type::Structure(structure_reference) => self.get_name_for_structure_reference(structure_reference)?,
-            Type::UnsignedInteger(size) => format!("u{size}"),
-            Type::Void => format!("void"),
-            Type::GenericType(_) | Type::Unknown => panic!("Unable to compile type: {type:?}"),
+
+            Type::SignedInteger(bits) => format!("int{bits}_t"),
+
+            Type::UnsignedInteger(bits) => format!("uint{bits}_t"),
+
+            Type::Void => "void".to_string(),
+        }
+    }
+
+    /// Gets the C name for a [`DefinedType`] from its [`DefinedTypeId`].
+    fn get_defined_type_c_name(type_db: &TypeDb, defined_type_id: DefinedTypeId) -> String {
+        let defined_type = type_db.get_defined_type(defined_type_id);
+        let module_id = defined_type.span.module_id;
+        let type_name = &defined_type.name;
+
+        format!("ptl_mod_{module_id}_type_{defined_type_id}_{type_name}")
+    }
+
+    /// Gets an identifier-friendly name for a [`Type`] from its [`TypeId`].
+    fn get_type_identifier_name(type_db: &TypeDb, type_id: TypeId) -> String {
+        let ty = type_db.get_type(type_id);
+        match ty {
+            Type::Boolean => "boolean".to_string(),
+
+            Type::Defined(defined_type_id) => {
+                let defined_type = type_db.get_defined_type(*defined_type_id);
+                defined_type.name.clone()
+            }
+
+            Type::Reference(inner_type_id) => {
+                let inner_type = Self::get_type_identifier_name(type_db, *inner_type_id);
+                format!("Reference{inner_type}")
+            }
+
+            Type::SignedInteger(bits) => {
+                format!("i{bits}")
+            }
+
+            Type::UnsignedInteger(bits) => {
+                format!("u{bits}")
+            }
+
+            Type::Void => "void".to_string(),
+        }
+    }
+}
+
+impl ProgramVisitor for CBackend<'_> {
+    type Expr = String;
+
+    fn default_expr_result() -> Self::Expr {
+        "/* todo */".to_string()
+    }
+
+    fn visit_function(&mut self, function_key: &FunctionKey, function: &mut Function) {
+        self.writer.append_line("");
+
+        let return_type = Self::get_type_c_name(self.type_db, function.return_type_id);
+        let function_name = self.get_function_c_name_by_key(function_key);
+
+        let parameters = function
+            .parameters
+            .iter()
+            .map(|it| format!("{} {}", Self::get_type_c_name(self.type_db, it.type_id), it.name))
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        self.writer.append_line(&format!("{return_type} {function_name}({parameters}) {{"));
+        self.with_writer_indent(|this| {
+            walk_function(this, function);
+        });
+        self.writer.append_line("}");
+    }
+
+    fn visit_statement(&mut self, statement: &mut Statement) {
+        self.writer.append_indentation_string();
+        walk_statement(self, statement);
+        self.writer.append(";\n");
+    }
+
+    fn visit_statement_function_call(
+        &mut self,
+        function_key: &FunctionKey,
+        arguments: &mut [Expression],
+        type_id: &mut TypeId,
+    ) {
+        let function_call = &self.visit_expression_function_call(function_key, arguments, type_id);
+        self.writer.append(function_call);
+    }
+
+    fn visit_statement_reference_value_assignment(&mut self, target: &mut Expression, value: &mut Expression) {
+        let target = self.visit_expression(target);
+        let value = self.visit_expression(value);
+
+        self.writer.append(&format!("*({target}) = {value}"));
+    }
+
+    fn visit_statement_return(&mut self, value: Option<&mut Expression>) {
+        if let Some(value) = value.map(|it| self.visit_expression(it)) {
+            self.writer.append(&format!("return {value}"));
+        } else {
+            self.writer.append("return");
+        }
+    }
+
+    fn visit_statement_structure_field_assignment(
+        &mut self,
+        target: &mut Expression,
+        field_index: &mut usize,
+        value: &mut Expression,
+    ) {
+        let Type::Defined(defined_type_id) = self.type_db.get_type(target.type_id) else { unreachable!() };
+        let DefinedTypeKind::Structure(structure) = &self.type_db.get_defined_type(*defined_type_id).kind;
+
+        let field_name = &structure.fields[*field_index].name;
+        let target = self.visit_expression(target);
+        let value = self.visit_expression(value);
+
+        self.writer.append(&format!("({target}).{field_name} = {value}"));
+    }
+
+    fn visit_statement_variable_assignment(
+        &mut self,
+        name: &str,
+        value: &mut Expression,
+        _variable_type_id: &mut TypeId,
+    ) {
+        let value = self.visit_expression(value);
+        self.writer.append(&format!("{name} = {value}"));
+    }
+
+    fn visit_statement_variable_declaration(&mut self, name: &str, value: &mut Expression, type_id: &mut TypeId) {
+        let variable_type = Self::get_type_c_name(self.type_db, *type_id);
+        let value = self.visit_expression(value);
+
+        self.writer.append(&format!("{variable_type} {name} = {value}"));
+    }
+
+    fn visit_expression_binary_operation(
+        &mut self,
+        left: &mut Expression,
+        right: &mut Expression,
+        operator: &mut BinaryOperator,
+        _type_id: &mut TypeId,
+    ) -> Self::Expr {
+        let left = self.visit_expression(left);
+        let right = self.visit_expression(right);
+        let operator = match operator {
+            BinaryOperator::Add => "+",
+            BinaryOperator::Divide => "/",
+            BinaryOperator::Equals => "==",
+            BinaryOperator::Multiply => "*",
+            BinaryOperator::NotEquals => "!=",
+            BinaryOperator::Subtract => "-",
         };
 
-        Ok(name)
+        format!("{left} {operator} {right}")
+    }
+
+    fn visit_expression_boolean_literal(&mut self, value: &mut bool) -> Self::Expr {
+        value.to_string()
+    }
+
+    fn visit_expression_dereference(&mut self, reference: &mut Expression) -> Self::Expr {
+        let reference = self.visit_expression(reference);
+        format!("*({reference})")
+    }
+
+    fn visit_expression_function_call(
+        &mut self,
+        function_key: &FunctionKey,
+        arguments: &mut [Expression],
+        _type_id: &mut TypeId,
+    ) -> Self::Expr {
+        let arguments = arguments.iter_mut().map(|it| self.visit_expression(it)).collect::<Vec<_>>().join(", ");
+        let name = self.get_function_c_name_by_key(function_key);
+
+        format!("{name}({arguments})")
+    }
+
+    fn visit_expression_number_literal(&mut self, value: &mut f64, _type_id: &mut TypeId) -> Self::Expr {
+        value.to_string()
+    }
+
+    fn visit_expression_reference(&mut self, value: &mut Expression) -> Self::Expr {
+        let value = self.visit_expression(value);
+        format!("&({value})")
+    }
+
+    fn visit_expression_structure_field_reference(
+        &mut self,
+        target: &mut Expression,
+        field_index: &mut usize,
+    ) -> Self::Expr {
+        let Type::Defined(defined_type_id) = self.type_db.get_type(target.type_id) else { unreachable!() };
+        let DefinedTypeKind::Structure(structure) = &self.type_db.get_defined_type(*defined_type_id).kind;
+
+        let field_name = &structure.fields[*field_index].name;
+        let target = self.visit_expression(target);
+
+        format!("({target}).{field_name}")
+    }
+
+    fn visit_expression_structure_initialization(
+        &mut self,
+        field_values: &mut Vec<Expression>,
+        type_id: &mut TypeId,
+    ) -> Self::Expr {
+        let Type::Defined(defined_type_id) = self.type_db.get_type(*type_id) else { unreachable!() };
+
+        let struct_name = Self::get_defined_type_c_name(self.type_db, *defined_type_id);
+        let field_values = field_values.iter_mut().map(|it| self.visit_expression(it)).collect::<Vec<_>>().join(", ");
+        format!("({struct_name}) {{ {field_values} }}")
+    }
+
+    fn visit_expression_variable_reference(&mut self, variable_name: &mut str, _type_id: &mut TypeId) -> Self::Expr {
+        variable_name.to_string()
     }
 }

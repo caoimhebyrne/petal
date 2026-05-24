@@ -22,10 +22,10 @@ pub(crate) mod visitor;
 #[derive(Default, Debug, Clone)]
 pub struct Program {
     /// The functions within this program.
-    functions: BTreeMap<FunctionKey, Function>,
+    pub functions: BTreeMap<FunctionKey, Function>,
 
     /// The [`TypeDb`] containing the [`Type`]s used by this program.
-    type_db: TypeDb,
+    pub type_db: TypeDb,
 }
 
 impl Program {
@@ -288,6 +288,9 @@ pub enum ExpressionKind {
         /// The operator to use on the [`left`]-hand and [`right`]-hand sides of the expression.
         operator: BinaryOperator,
     },
+
+    /// A boolean literal.
+    BooleanLiteral(bool),
 
     /// Reading the value within a reference.
     Dereference(Box<Expression>),

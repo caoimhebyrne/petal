@@ -131,6 +131,8 @@ impl<'db> PrintingProgramVisitor<'db> {
 }
 
 impl ProgramVisitor for PrintingProgramVisitor<'_> {
+    fn default_expr_result() -> Self::Expr {}
+
     fn visit_function(&mut self, key: &FunctionKey, function: &mut Function) {
         let namespace_prefix = match &function.namespace {
             Some(value) => format!("{value}::"),
@@ -312,7 +314,7 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
         walk_expression_structure_field_reference(self, target, field_index);
     }
 
-    fn visit_expression_structure_initialization(&mut self, field_values: &mut Vec<Expression>) {
+    fn visit_expression_structure_initialization(&mut self, field_values: &mut Vec<Expression>, _type_id: &mut TypeId) {
         debug!("{}Structure initialization", self.indentation_string());
 
         walk_expression_structure_initialization(self, field_values);

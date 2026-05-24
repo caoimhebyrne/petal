@@ -1,33 +1,42 @@
-const TAB_WIDTH: usize = 4;
-
-/// Generates a string of C code by keeping track of indentation, and allowing users to append to it.
 #[derive(Default)]
-pub(crate) struct Writer {
-    /// The string being built.
-    pub code: String,
+pub struct Writer {
+    /// The indentation level that the writer is currently at.
+    indentation: usize,
 
-    /// The current level of indentation.
-    indentation_level: usize,
+    /// The string being written to.
+    pub inner: String,
 }
 
 impl Writer {
-    /// Writes a new line of code to the [`Writer`].
-    pub fn append(&mut self, string: impl AsRef<str>) {
-        for _ in 0..self.indentation_level * TAB_WIDTH {
-            self.code.push(' ');
-        }
-
-        self.code.push_str(string.as_ref());
-        self.code.push('\n');
+    /// Appends a string literal to this [`Writer`].
+    pub fn append(&mut self, str: &str) {
+        self.inner += str;
     }
 
-    /// Increases the level of indentation by 1.
-    pub fn increase_indent(&mut self) {
-        self.indentation_level += 1;
+    /// Appends white-space representing the current indentation level to this [`Writer`].
+    pub fn append_indentation_string(&mut self) {
+        self.append(&self.get_indentation_string());
     }
 
-    /// Decreases the level of indentation by 1.
-    pub fn decrease_indent(&mut self) {
-        self.indentation_level -= 1;
+    /// Appends a string literal representing a single line to this [`Writer`].
+    pub fn append_line(&mut self, str: &str) {
+        self.append_indentation_string();
+        self.append(str);
+        self.append("\n");
+    }
+
+    /// Increases this [`Writer`]'s indentation by one.
+    pub fn increase_indentation(&mut self) {
+        self.indentation = self.indentation.saturating_add(1);
+    }
+
+    /// Decreases this [`Writer`]'s indentation by one.
+    pub fn decrease_indentation(&mut self) {
+        self.indentation = self.indentation.saturating_sub(1);
+    }
+
+    /// Returns a [`String`] representing the indentation level of this builder.
+    fn get_indentation_string(&self) -> String {
+        " ".repeat(self.indentation * 4)
     }
 }

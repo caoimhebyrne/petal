@@ -1,12 +1,25 @@
+#![feature(associated_type_defaults)]
+
 use std::{
-    env::current_dir,
+    env::{
+        self,
+        current_dir,
+    },
     fs,
     io::Write,
     path::{
         Path,
         PathBuf,
     },
-    process::ExitCode,
+    process::{
+        Command,
+        ExitCode,
+        exit,
+    },
+    time::{
+        SystemTime,
+        UNIX_EPOCH,
+    },
 };
 
 use clap::Parser;
@@ -18,6 +31,7 @@ use crate::{
         StatementKind,
         import::Import,
     },
+    backend::c::CBackend,
     core::error::Error,
     module::{
         ModuleError,
@@ -35,7 +49,7 @@ use crate::{
 };
 
 pub mod ast;
-// pub mod backend;
+pub mod backend;
 pub mod core;
 pub mod lexer;
 pub mod module;
@@ -226,56 +240,48 @@ fn main_impl(mut args: Args, module_registry: &mut ModuleRegistry) -> Result<(),
     let mut program = TypeResolver::default().resolve(parsed_modules)?;
     PrintingProgramVisitor::visit(&mut program);
 
-    // let checked_program = Typechecker::default().check(parsed_modules)?;
+    info!("Generating code");
 
-    // info!("Generating code");
+    let backend = CBackend::visit(&mut program);
 
-    // let code = CBackend::new(
-    //     checked_program.builtin_types,
-    //     checked_program.declared_types,
-    //     checked_program.enums,
-    //     checked_program.functions,
-    //     checked_program.structures,
-    //     checked_program.specialized_functions,
-    //     checked_program.specialized_structures,
-    //     checked_program.synthetic_types,
-    // )
-    // .emit_code(&checked_program.modules)?;
+    if args.emit_code {
+        println!("{}", backend.get_code());
+    }
 
-    // if args.emit_code {
-    //     println!("{code}");
-    // }
+    // `./path/to/petal/file.petal` -> `file`
+    let executable_file_path = if args.run {
+        let current_timestamp =
+            SystemTime::now().duration_since(UNIX_EPOCH).expect("SystemTime::duration_since should not fail");
 
-    // // `./path/to/petal/file.petal` -> `file`
-    // let executable_file_path = if args.run {
-    //     let current_timestamp =
-    //         SystemTime::now().duration_since(UNIX_EPOCH).expect("SystemTime::duration_since should not fail");
+        let mut path = env::temp_dir();
+        path.push(format!("petal-{}", current_timestamp.as_millis()));
+        path
+    } else {
+        let path = args.output.unwrap_or_else(|| args.input[0].clone());
+        PathBuf::from(path).with_extension("")
+    };
 
-    //     let mut path = env::temp_dir();
-    //     path.push(format!("petal-{}", current_timestamp.as_millis()));
-    //     path
-    // } else {
-    //     let path = args.output.unwrap_or_else(|| args.input[0].clone());
-    //     PathBuf::from(path).with_extension("")
-    // };
+    if !args.no_emit_binary {
+        info!("Compiling binary ('{}')", executable_file_path.to_string_lossy());
 
-    // if !args.no_emit_binary {
-    //     info!("Compiling binary ('{}')", executable_file_path.to_string_lossy());
-    //     CBackend::emit_binary(&code, &executable_file_path)?;
-    // }
+        if let Err(error) = backend.emit_binary(&executable_file_path) {
+            error!("{error}");
+            exit(-1);
+        }
+    }
 
-    // if args.run {
-    //     info!("Running '{}'", executable_file_path.to_string_lossy());
+    if args.run {
+        info!("Running '{}'", executable_file_path.to_string_lossy());
 
-    //     let mut child = Command::new(&executable_file_path).spawn().expect("Failed to launch generated executable");
-    //     let status = child.wait().expect("Failed to wait for child to finish execution");
+        let mut child = Command::new(&executable_file_path).spawn().expect("Failed to launch generated executable");
+        let status = child.wait().expect("Failed to wait for child to finish execution");
 
-    //     if fs::remove_file(&executable_file_path).is_err() {
-    //         warn!("Failed to clean up temporary executable at '{}'", executable_file_path.to_string_lossy())
-    //     }
+        if fs::remove_file(&executable_file_path).is_err() {
+            warn!("Failed to clean up temporary executable at '{}'", executable_file_path.to_string_lossy());
+        }
 
-    //     exit(status.code().unwrap_or(-1))
-    // }
+        exit(status.code().unwrap_or(-1))
+    }
 
     Ok(())
 }

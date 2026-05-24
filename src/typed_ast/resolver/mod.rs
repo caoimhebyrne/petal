@@ -648,16 +648,20 @@ impl TypeResolver {
         span: Span,
     ) -> TypecheckerResult<StatementKind> {
         match variable_assignment.target.kind {
-            ast::expression::ExpressionKind::Dereference(_) => {
-                // We can visit the dereference to ensure that the expression it wraps is of a reference type. The type
-                // of the resulting `Expression` should be the inner non-reference type.
-                let target = self.visit_expression(*variable_assignment.target, None)?;
-                let value = self.visit_expression(*variable_assignment.value, Some(target.type_id))?;
+            ast::expression::ExpressionKind::Dereference(inner_expression) => {
+                let target = self.visit_expression(*inner_expression, None)?;
 
-                if target.type_id != value.type_id {
+                // The type of the `reference_expr` should be a reference type.
+                let Type::Reference(inner_type_id) = *self.program.type_db.get_type(target.type_id) else {
+                    return Err(TypecheckerErrorKind::InvalidDereferenceTarget.at(target.span));
+                };
+
+                let value = self.visit_expression(*variable_assignment.value, Some(inner_type_id))?;
+
+                if inner_type_id != value.type_id {
                     return Err(TypecheckerErrorKind::type_mismatch(
                         &self.program.type_db,
-                        target.type_id,
+                        inner_type_id,
                         value.type_id,
                     )
                     .at(value.span));
@@ -759,6 +763,8 @@ impl TypeResolver {
                 self.visit_expression_binary_operation(binary_operation, expected_type_id)?
             }
 
+            ast::expression::ExpressionKind::BooleanLiteral(value) => self.visit_expression_boolean_literal(value),
+
             ast::expression::ExpressionKind::Dereference(reference) => self.visit_expression_dereference(*reference)?,
 
             ast::expression::ExpressionKind::FunctionCall(function_call) => {
@@ -793,7 +799,7 @@ impl TypeResolver {
                     expression.span,
                 )?,
 
-            _ => todo!(),
+            _ => todo!("{expression:?}"),
         };
 
         Ok(Expression { kind, type_id, span: expression.span })
@@ -835,6 +841,11 @@ impl TypeResolver {
             },
             type_id,
         ))
+    }
+
+    /// Visits the provided boolean literal expression.
+    fn visit_expression_boolean_literal(&mut self, value: bool) -> (ExpressionKind, TypeId) {
+        (ExpressionKind::BooleanLiteral(value), self.program.type_db.boolean_type_id())
     }
 
     /// Visits the provided dereference expression.

@@ -25,6 +25,12 @@ pub(crate) mod print;
 /// Implementers of this trait must also implement [`Sized`]. This is to allow the trait to be used as a generic type
 /// parameter.
 pub trait ProgramVisitor: Sized {
+    /// The type that [`visit_expression`] should produce.
+    type Expr = ();
+
+    /// The default value to be returned by `visit_expression`.
+    fn default_expr_result() -> Self::Expr;
+
     /// Visits the provided [`Function`].
     #[allow(unused_variables)] // not used by this implementation, but may be by others
     fn visit_function(&mut self, key: &FunctionKey, function: &mut Function) {
@@ -34,6 +40,16 @@ pub trait ProgramVisitor: Sized {
     /// Visits the provided [`Statement`].
     fn visit_statement(&mut self, statement: &mut Statement) {
         walk_statement(self, statement);
+    }
+
+    /// Visits the provided function call statement.
+    fn visit_statement_function_call(
+        &mut self,
+        function_key: &FunctionKey,
+        arguments: &mut [Expression],
+        type_id: &mut TypeId,
+    ) {
+        self.visit_expression_function_call(function_key, arguments, type_id);
     }
 
     /// Visits a reference value assignment statement.
@@ -72,8 +88,8 @@ pub trait ProgramVisitor: Sized {
     }
 
     /// Visits the provided [`Expression`].
-    fn visit_expression(&mut self, expression: &mut Expression) {
-        walk_expression(self, expression);
+    fn visit_expression(&mut self, expression: &mut Expression) -> Self::Expr {
+        walk_expression(self, expression)
     }
 
     /// Visits a binary operation expression.
@@ -83,13 +99,21 @@ pub trait ProgramVisitor: Sized {
         right: &mut Expression,
         operator: &mut BinaryOperator,
         type_id: &mut TypeId,
-    ) {
+    ) -> Self::Expr {
         walk_expression_binary_operation(self, left, right, operator, type_id);
+        Self::default_expr_result()
+    }
+
+    /// Visits a boolean literal expression.
+    #[allow(unused_variables)] // not used by this implementation, but may be by others
+    fn visit_expression_boolean_literal(&mut self, value: &mut bool) -> Self::Expr {
+        Self::default_expr_result()
     }
 
     /// Visits a dereference expression.
-    fn visit_expression_dereference(&mut self, reference: &mut Expression) {
+    fn visit_expression_dereference(&mut self, reference: &mut Expression) -> Self::Expr {
         walk_expression_dereference(self, reference);
+        Self::default_expr_result()
     }
 
     /// Visits a function call expression.
@@ -98,36 +122,55 @@ pub trait ProgramVisitor: Sized {
         function_key: &FunctionKey,
         arguments: &mut [Expression],
         type_id: &mut TypeId,
-    ) {
+    ) -> Self::Expr {
         walk_expression_function_call(self, function_key, arguments, type_id);
+        Self::default_expr_result()
     }
 
     /// Visits a number literal expression.
     #[allow(unused_variables)] // not used by this implementation, but may be by others
-    fn visit_expression_number_literal(&mut self, value: &mut f64, type_id: &mut TypeId) {}
+    fn visit_expression_number_literal(&mut self, value: &mut f64, type_id: &mut TypeId) -> Self::Expr {
+        Self::default_expr_result()
+    }
 
     /// Visits a reference expression.
-    fn visit_expression_reference(&mut self, value: &mut Expression) {
+    fn visit_expression_reference(&mut self, value: &mut Expression) -> Self::Expr {
         walk_expression_reference(self, value);
+        Self::default_expr_result()
     }
 
     /// Visits a string literal expression.
     #[allow(unused_variables)] // not used by this implementation, but may be by others
-    fn visit_expression_string_literal(&mut self, value: &mut String) {}
+    fn visit_expression_string_literal(&mut self, value: &mut String) -> Self::Expr {
+        Self::default_expr_result()
+    }
 
     /// Visits a structure field reference.
-    fn visit_expression_structure_field_reference(&mut self, target: &mut Expression, field_index: &mut usize) {
+    fn visit_expression_structure_field_reference(
+        &mut self,
+        target: &mut Expression,
+        field_index: &mut usize,
+    ) -> Self::Expr {
         walk_expression_structure_field_reference(self, target, field_index);
+        Self::default_expr_result()
     }
 
     /// Visits a structure initialization expression.
-    fn visit_expression_structure_initialization(&mut self, field_values: &mut Vec<Expression>) {
+    #[allow(unused_variables)] // not used by this implementation, but may be by others
+    fn visit_expression_structure_initialization(
+        &mut self,
+        field_values: &mut Vec<Expression>,
+        type_id: &mut TypeId,
+    ) -> Self::Expr {
         walk_expression_structure_initialization(self, field_values);
+        Self::default_expr_result()
     }
 
     /// Visits a variable reference expression.
     #[allow(unused_variables)] // not used by this implementation, but may be by others
-    fn visit_expression_variable_reference(&mut self, variable_name: &mut str, type_id: &mut TypeId) {}
+    fn visit_expression_variable_reference(&mut self, variable_name: &mut str, type_id: &mut TypeId) -> Self::Expr {
+        Self::default_expr_result()
+    }
 
     /// Visits a [`TypeId`].
     #[allow(unused_variables)] // not used by this implementation, but may be by others
@@ -158,10 +201,10 @@ pub fn walk_function<V: ProgramVisitor>(visitor: &mut V, function: &mut Function
 }
 
 /// Invokes the `visitor`'s specialized methods on the provided [`Statement`].
-fn walk_statement<V: ProgramVisitor>(visitor: &mut V, statement: &mut Statement) {
+pub fn walk_statement<V: ProgramVisitor>(visitor: &mut V, statement: &mut Statement) {
     match &mut statement.kind {
         StatementKind::FunctionCall { function_key, arguments, return_type_id } => {
-            visitor.visit_expression_function_call(function_key, arguments, return_type_id);
+            visitor.visit_statement_function_call(function_key, arguments, return_type_id);
         }
 
         StatementKind::ReferenceValueAssignment { target, value } => {
@@ -236,44 +279,38 @@ pub fn walk_statement_variable_declaration<V: ProgramVisitor>(
 }
 
 /// Invokes the `visitor`'s specialized methods on the proivded [`Expression`].
-fn walk_expression<V: ProgramVisitor>(visitor: &mut V, expression: &mut Expression) {
+fn walk_expression<V: ProgramVisitor>(visitor: &mut V, expression: &mut Expression) -> V::Expr {
     visitor.visit_type_id(&mut expression.type_id);
 
     match &mut expression.kind {
         ExpressionKind::BinaryOperation { left, right, operator } => {
-            visitor.visit_expression_binary_operation(left, right, operator, &mut expression.type_id);
+            visitor.visit_expression_binary_operation(left, right, operator, &mut expression.type_id)
         }
 
-        ExpressionKind::Dereference(reference) => {
-            visitor.visit_expression_dereference(reference);
-        }
+        ExpressionKind::BooleanLiteral(value) => visitor.visit_expression_boolean_literal(value),
+
+        ExpressionKind::Dereference(reference) => visitor.visit_expression_dereference(reference),
 
         ExpressionKind::FunctionCall { function_key, arguments } => {
-            visitor.visit_expression_function_call(function_key, arguments, &mut expression.type_id);
+            visitor.visit_expression_function_call(function_key, arguments, &mut expression.type_id)
         }
 
-        ExpressionKind::NumberLiteral(value) => {
-            visitor.visit_expression_number_literal(value, &mut expression.type_id);
-        }
+        ExpressionKind::NumberLiteral(value) => visitor.visit_expression_number_literal(value, &mut expression.type_id),
 
-        ExpressionKind::Reference(value) => {
-            visitor.visit_expression_reference(value);
-        }
+        ExpressionKind::Reference(value) => visitor.visit_expression_reference(value),
 
-        ExpressionKind::StringLiteral(value) => {
-            visitor.visit_expression_string_literal(value);
-        }
+        ExpressionKind::StringLiteral(value) => visitor.visit_expression_string_literal(value),
 
         ExpressionKind::StructureFieldReference { target, field_index } => {
-            visitor.visit_expression_structure_field_reference(target, field_index);
+            visitor.visit_expression_structure_field_reference(target, field_index)
         }
 
         ExpressionKind::StructureInitialization { field_values } => {
-            visitor.visit_expression_structure_initialization(field_values);
+            visitor.visit_expression_structure_initialization(field_values, &mut expression.type_id)
         }
 
         ExpressionKind::VariableReference(variable_name) => {
-            visitor.visit_expression_variable_reference(variable_name, &mut expression.type_id);
+            visitor.visit_expression_variable_reference(variable_name, &mut expression.type_id)
         }
     }
 }
