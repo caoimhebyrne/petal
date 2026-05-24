@@ -173,7 +173,7 @@ pub struct FunctionParameter {
     pub is_named: bool,
 
     /// The span that the parameter was defined at in the source code.
-    pub span: Span,
+    pub _span: Span,
 }
 
 /// A statement within the typed AST is very similar to a statement in the regular AST. It may contain additional
@@ -184,7 +184,7 @@ pub struct Statement {
     pub kind: StatementKind,
 
     /// The span that this statement occurred at within the source code.
-    pub span: Span,
+    pub _span: Span,
 }
 
 /// The different kinds of typed [`Statement`]s that exist within the typed AST.
@@ -256,7 +256,7 @@ pub enum StatementKind {
 impl StatementKind {
     /// Creates a [`Statement`] from this [`StatementKind`] and the provided [`Span`].
     pub fn at(self, span: Span) -> Statement {
-        Statement { kind: self, span }
+        Statement { kind: self, _span: span }
     }
 }
 

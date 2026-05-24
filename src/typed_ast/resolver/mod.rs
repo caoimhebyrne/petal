@@ -496,7 +496,7 @@ impl TypeResolver {
             name: parameter.name,
             type_id: self.visit_type_expr(generic_type_parameters, &parameter.type_expr, parameter.span)?,
             is_named: parameter.is_named,
-            span: parameter.span,
+            _span: parameter.span,
         })
     }
 }
