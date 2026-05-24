@@ -14,7 +14,6 @@ use crate::{
             function_call::FunctionCall,
             member_access::MemberAccess,
             namespace_qualifier::NamespaceQualifier,
-            optional_wrap::OptionalForceUnwrap,
             structure_initialization::StructureInitialization,
         },
         statement::{
@@ -301,13 +300,6 @@ impl ASTParser {
             expression = Expression::new(function_call.into(), function_call_span)
         }
 
-        // Or, we can attempt to parse a force-unwrap.
-        if self.peek_is(TokenKind::ExclamationMark) {
-            self.expect_any()?;
-            // The expression that we have collected up until this point is considered to be the optional vlaue.
-            expression = Expression::new(OptionalForceUnwrap::new(expression.clone()).into(), expression.span)
-        }
-
         Ok(expression)
     }
 
@@ -450,23 +442,14 @@ impl ASTParser {
         self.expect(TokenKind::Colon)?;
 
         // The next token must be the type of the variable.
-        let (type_expr, type_span) = self.parse_type_expr()?;
+        let (type_expr, _) = self.parse_type_expr()?;
+
+        // The next token must be an equals.
+        self.expect(TokenKind::Equals)?;
 
         // And finally, there must be an expression.
-        let (value, span) = if self.peek_is(TokenKind::Semicolon) {
-            // If there is no expression, we can insert an `OptionalEmpty`.
-            // TODO: Is this the right place?
-            let span = Span::between(name_span, type_span);
-            let value = Expression::new(ExpressionKind::OptionalEmpty, span);
-            (value, span)
-        } else {
-            // The next token must be an equals.
-            self.expect(TokenKind::Equals)?;
-
-            let value = self.parse_expression()?;
-            let span = Span::between(type_span, value.span);
-            (value, span)
-        };
+        let value = self.parse_expression()?;
+        let span = Span::between(name_span, value.span);
 
         Ok(Statement::from(VariableDeclaration::new(name, type_expr, value), span))
     }
@@ -901,29 +884,12 @@ mod tests {
                 remove_spans(&mut member_access.target);
             }
 
-            ExpressionKind::OptionalWrap(optional_wrap) => {
-                remove_spans(&mut optional_wrap.inner_value);
-            }
-
-            ExpressionKind::OptionalHasValue(optional_has_value) => {
-                remove_spans(&mut optional_has_value.optional_value);
-            }
-
-            ExpressionKind::OptionalForceUnwrap(optional_force_unwrap) => {
-                remove_spans(&mut optional_force_unwrap.optional_value);
-            }
-
-            ExpressionKind::OptionalUnwrap(optional_unwrap) => {
-                remove_spans(&mut optional_unwrap.optional_value);
-            }
-
             // These expressions do not have any children.
-            ExpressionKind::StringLiteral(_) => {}
-            ExpressionKind::BooleanLiteral(_) => {}
-            ExpressionKind::IdentifierReference(_) => {}
-            ExpressionKind::NumberLiteral(_) => {}
-            ExpressionKind::NamespaceQualifier(_) => {}
-            ExpressionKind::OptionalEmpty => {}
+            ExpressionKind::StringLiteral(_)
+            | ExpressionKind::BooleanLiteral(_)
+            | ExpressionKind::IdentifierReference(_)
+            | ExpressionKind::NumberLiteral(_)
+            | ExpressionKind::NamespaceQualifier(_) => {}
         }
     }
 
@@ -950,7 +916,7 @@ mod tests {
 
         for (src, expected) in cases {
             println!("Validating operator precedence and associativity case '{src}'");
-            assert_expression_eq(parse_expression_from_str(src), expected)
+            assert_expression_eq(parse_expression_from_str(src), expected);
         }
     }
 }

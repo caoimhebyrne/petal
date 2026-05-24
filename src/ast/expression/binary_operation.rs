@@ -19,6 +19,7 @@ pub struct BinaryOperation {
 
 impl BinaryOperation {
     /// Creates a new [`BinaryOperation`].
+    #[must_use]
     pub fn new(left: Expression, right: Expression, operator: BinaryOperator) -> Self {
         Self { left: left.into(), right: right.into(), operator }
     }
@@ -51,6 +52,7 @@ pub enum BinaryOperatorClass {
 }
 
 impl BinaryOperator {
+    #[must_use]
     pub fn precedence(&self) -> u8 {
         match self {
             Self::Add | Self::Subtract => 1,
@@ -59,6 +61,7 @@ impl BinaryOperator {
         }
     }
 
+    #[must_use]
     pub fn class(&self) -> BinaryOperatorClass {
         match self {
             Self::Add | Self::Subtract | Self::Multiply | Self::Divide => BinaryOperatorClass::Arithmetic,

@@ -4,12 +4,6 @@ use crate::{
         function_call::FunctionCall,
         member_access::MemberAccess,
         namespace_qualifier::NamespaceQualifier,
-        optional_wrap::{
-            OptionalForceUnwrap,
-            OptionalHasValue,
-            OptionalUnwrap,
-            OptionalWrap,
-        },
         structure_initialization::StructureInitialization,
     },
     core::span::Span,
@@ -19,7 +13,6 @@ pub mod binary_operation;
 pub mod function_call;
 pub mod member_access;
 pub mod namespace_qualifier;
-pub mod optional_wrap;
 pub mod structure_initialization;
 
 /// An expression node within the abstract syntax tree.
@@ -60,17 +53,6 @@ pub enum ExpressionKind {
 
     /// A dereference expression.
     Dereference(Box<Expression>),
-
-    /// Creates an empty optional.
-    OptionalEmpty,
-
-    /// Wraps the provided expression in an optional.
-    OptionalWrap(OptionalWrap),
-
-    OptionalHasValue(OptionalHasValue),
-
-    OptionalForceUnwrap(OptionalForceUnwrap),
-    OptionalUnwrap(OptionalUnwrap),
 
     /// A function call.
     FunctionCall(FunctionCall),
