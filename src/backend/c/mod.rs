@@ -9,7 +9,10 @@ use std::{
 };
 
 use crate::{
-    ast::expression::binary_operation::BinaryOperator,
+    ast::{
+        expression::binary_operation::BinaryOperator,
+        statement::function_declaration::DeclarationModifier,
+    },
     backend::c::writer::Writer,
     typed_ast::{
         Expression,
@@ -56,8 +59,12 @@ impl<'db> CBackend<'db> {
     pub fn visit(program: &'db mut Program) -> Self {
         let mut visitor = CBackend::new(&program.type_db);
 
-        visitor.writer.append_line("#include <stdint.h>");
         visitor.writer.append_line("#include <stdbool.h>");
+        visitor.writer.append_line("#include <stdint.h>");
+        visitor.writer.append_line("#include <stdio.h>");
+        visitor.writer.append_line("#include <stdlib.h>");
+        visitor.writer.append_line("#include <string.h>");
+        visitor.writer.append_line("#include <unistd.h>");
 
         for (function_key, function) in &program.functions {
             visitor.function_names.insert(*function_key, Self::create_function_c_name(&program.type_db, function));
@@ -163,8 +170,8 @@ impl<'db> CBackend<'db> {
 
     /// Gets the C name for a [`Function`].
     fn create_function_c_name(type_db: &TypeDb, function: &Function) -> String {
-        if function.name == "main" {
-            return "main".to_string();
+        if function.name == "main" || function.modifiers.contains(&DeclarationModifier::Extern) {
+            return function.name.clone();
         }
 
         let module_id = function.span.module_id;
@@ -252,6 +259,10 @@ impl ProgramVisitor for CBackend<'_> {
     }
 
     fn visit_function(&mut self, function_key: &FunctionKey, function: &mut Function) {
+        if function.modifiers.contains(&DeclarationModifier::Extern) {
+            return;
+        }
+
         self.writer.append_line("");
 
         let return_type = Self::get_type_c_name(self.type_db, function.return_type_id);
@@ -300,6 +311,20 @@ impl ProgramVisitor for CBackend<'_> {
         } else {
             self.writer.append("return");
         }
+    }
+
+    fn visit_expression_string_literal(&mut self, value: &mut String) -> Self::Expr {
+        // TODO: the string literal expression will be removed later
+        let defined_type_id = self
+            .type_db
+            .find_defined_type("CompileTimeStr", &[])
+            .expect("self.type_db.find_defined_type(\"CompileTimeStr\")");
+
+        format!(
+            "({}) {{ .data = \"{value}\", .length = {} }}",
+            Self::get_defined_type_c_name(self.type_db, defined_type_id),
+            value.len()
+        )
     }
 
     fn visit_statement_structure_field_assignment(
