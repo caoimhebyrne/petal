@@ -2,14 +2,14 @@
 namespace libc {
 
     // Allocates memory for an array of [n] elements of [size] bytes each, and returns a pointer to the allocated memory.
-    public extern func calloc(~n: u64, ~size: u64) -> &u8;
+    public extern func <T> calloc(~n: u64, ~size: u64) -> &T;
 
     // Copies [n] bytes from [src] to [dst].
-    public extern func memcpy(~dst: &u8, ~src: &u8, ~n: u64);
+    public extern func <T> memcpy(~dst: &T, ~src: &T, ~n: u64);
 
     // Frees the memory space pointed to by [ptr], which must have been returned by a previous call to [malloc] or
     // related functions.
-    public extern func free(ptr: &u8);
+    public extern func <T> free(ptr: &T);
 
     // Attempts to write [nbyte] of data to the object referenced by the descriptor [filedesc] from the buffer pointed
     // to by [buf].
