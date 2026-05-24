@@ -876,12 +876,8 @@ impl TypeResolver {
 
         // If there are more arguments provided in the function call then there are of function parameters, then
         // the call is immediately invalid.
-        let provided_argument_count = if let FunctionCallTarget::Method { .. } = &call_target {
-            // +1 for the implicit `this`
-            function_call.arguments.len() + 1
-        } else {
-            function_call.arguments.len()
-        };
+        let is_method_function_call = matches!(call_target, FunctionCallTarget::Method { .. });
+        let provided_argument_count = function_call.arguments.len() + usize::from(is_method_function_call);
 
         if provided_argument_count > function.parameters.len() {
             return Err(TypecheckerErrorKind::FunctionCallArgumentCountMismatch {
@@ -901,11 +897,17 @@ impl TypeResolver {
         //    if an extra named argument (like `b` in `func foo(~a: i32)`) is passed, the error message doesn't tell
         //    you that a parameter named `b` does not exist.
         for (index, parameter) in function.parameters.iter().enumerate() {
-            // If this is the first parameter, and this is a method function call, then we can use the receiver expression.
+            // If this is the first parameter, and this is a method function call, then we can provide a _reference_ to
+            // the receiver.
             let argument_expression = if index == 0
                 && let FunctionCallTarget::Method { receiver, .. } = &call_target
             {
-                receiver.clone()
+                let reference_type_id = self.program.type_db.get_or_insert_type(Type::Reference(receiver.type_id));
+                Expression {
+                    kind: ExpressionKind::Reference(Box::new(receiver.clone())),
+                    span: receiver.span,
+                    type_id: reference_type_id,
+                }
             } else {
                 // We need to visit the expression first to ensure that it is valid.
                 let expression = if parameter.is_named {
@@ -934,13 +936,20 @@ impl TypeResolver {
                         TypecheckerErrorKind::MissingNamedArgumentInFunctionCall(parameter.name.clone()).at(span)
                     })
                 } else {
+                    // If this is a method function call, then we can offset the argument index by one, as the first
+                    // parameter & argument will be an implicit `this`.
+                    let argument_index = index.saturating_sub(usize::from(is_method_function_call));
+
                     // The parameter is not named, so we can just assume that the argument is positional.
-                    function_call.arguments.get(index).filter(|it| it.name.is_none()).map(|it| &it.value).ok_or_else(
-                        || {
+                    function_call
+                        .arguments
+                        .get(argument_index)
+                        .filter(|it| it.name.is_none())
+                        .map(|it| &it.value)
+                        .ok_or_else(|| {
                             TypecheckerErrorKind::MissingPositionalArgumentInFunctionCall(parameter.name.clone())
                                 .at(span)
-                        },
-                    )
+                        })
                 }?;
 
                 self.visit_expression(expression.clone(), Some(parameter.type_id))?
