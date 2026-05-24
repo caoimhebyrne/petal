@@ -9,7 +9,6 @@ use crate::{
         FunctionKey,
         Program,
         r#type::{
-            Type,
             db::{
                 DefinedTypeId,
                 TypeDb,
@@ -26,7 +25,6 @@ use crate::{
             walk_expression_reference,
             walk_expression_structure_field_reference,
             walk_expression_structure_initialization,
-            walk_function,
             walk_program,
             walk_statement_reference_value_assignment,
             walk_statement_return,
