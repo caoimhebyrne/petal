@@ -1,4 +1,7 @@
-use std::fmt::Display;
+use std::fmt::{
+    Debug,
+    Display,
+};
 
 use crate::{
     core::span::Span,
@@ -9,7 +12,7 @@ use crate::{
 ///
 /// It is responsible for ensuring that an error implementation derives [`Display`], and provides
 /// an (optional) accessor for the [`Span`] that the error occurred at.
-pub trait Error: Display {
+pub trait Error: Debug + Display {
     /// The [`Span`] that this error occurred at. If span information is not available, then
     /// [`None`] should be returned.
     fn span(&self) -> Option<Span>;

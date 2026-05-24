@@ -1,0 +1,215 @@
+// The tests within this module ensure that the compiler does not regress in terms of _compilation ability_ and error
+// reporting.
+//
+// This does not check for correctness in terms of generated code or behavior (yet). That will be added once another
+// IR layer is added.
+
+use pretty_assertions::assert_eq;
+
+use crate::{
+    core::error::Error,
+    integration_tests::runner::TestCaseRunner,
+};
+
+mod runner;
+
+// The result of a test case.
+type TestResult<T> = Result<T, Box<dyn Error>>;
+
+/// Asserts that the provided code snippet successfully passes type-checking.
+fn assert_successful_type_check(snippet: &str) -> TestResult<()> {
+    // Using `try_init` allows us to ignore an error which can occur when trying to initialize the logger more than
+    // once during test execution.
+    let _ = env_logger::builder().is_test(true).filter_level(log::LevelFilter::Trace).try_init();
+
+    let mut runner = TestCaseRunner::with_prelude()?;
+    runner.add_module_from_str(snippet)?;
+    runner.compile()
+}
+
+/// Asserts that the provided code snippet returns an error which matches the provided string.
+fn assert_failing_type_check(snippet: &str, expected_error: &str) -> TestResult<()> {
+    // Using `try_init` allows us to ignore an error which can occur when trying to initialize the logger more than
+    // once during test execution.
+    let _ = env_logger::builder().is_test(true).filter_level(log::LevelFilter::Trace).try_init();
+
+    let mut runner = TestCaseRunner::with_prelude()?;
+    runner.add_module_from_str(snippet)?;
+
+    let Err(error) = runner.compile() else {
+        panic!("Compilation was successful, but expected an error: '{expected_error}'");
+    };
+
+    assert_eq!(error.to_string(), expected_error);
+    Ok(())
+}
+
+mod function_declaration {
+    use super::*;
+
+    #[test]
+    fn empty_body_with_no_parameters() -> TestResult<()> {
+        assert_successful_type_check("func foo() {}")
+    }
+
+    #[test]
+    fn empty_body_with_parameters() -> TestResult<()> {
+        assert_successful_type_check("func foo(a: i32, b: i32) {}")
+    }
+
+    #[test]
+    fn empty_body_with_named_parameters() -> TestResult<()> {
+        assert_successful_type_check("func foo(~a: i32, ~b: i32) {}")
+    }
+
+    #[test]
+    fn empty_body_with_mixed_parameters() -> TestResult<()> {
+        assert_successful_type_check("func foo(a: i32, ~b: i32) {}")
+    }
+
+    #[test]
+    fn empty_body_with_return_type() -> TestResult<()> {
+        assert_successful_type_check("func foo() -> i32 {}")
+    }
+
+    #[test]
+    fn fails_with_invalid_return_type() -> TestResult<()> {
+        assert_failing_type_check(
+            "func foo() -> this_does_not_exist {}",
+            "Cannot find type named 'this_does_not_exist'",
+        )
+    }
+}
+
+mod function_call {
+    use super::*;
+
+    #[test]
+    fn with_no_arguments() -> TestResult<()> {
+        assert_successful_type_check(
+            r"
+            func foo() {}
+
+            func bar() {
+                foo();
+            }
+            ",
+        )
+    }
+
+    #[test]
+    fn with_positional_arguments() -> TestResult<()> {
+        assert_successful_type_check(
+            r"
+            func foo(a: i32, b: i32) {}
+
+            func bar() {
+                foo(5, 10);
+            }
+            ",
+        )
+    }
+
+    #[test]
+    fn with_named_arguments() -> TestResult<()> {
+        assert_successful_type_check(
+            r"
+            func foo(~a: i32, ~b: i32) {}
+
+            func bar() {
+                foo(b: 10, a: 5);
+            }
+            ",
+        )
+    }
+
+    #[test]
+    fn with_mixed_arguments() -> TestResult<()> {
+        assert_successful_type_check(
+            r"
+            func foo(a: i32, ~b: i32) {}
+
+            func bar() {
+                foo(5, b: 10);
+            }
+            ",
+        )
+    }
+}
+
+mod variable_declaration {
+    use super::*;
+
+    #[test]
+    fn with_i32_value() -> TestResult<()> {
+        assert_successful_type_check(
+            r"
+            func foo() {
+                value: i32 = 0;
+            }
+            ",
+        )
+    }
+
+    #[test]
+    fn fails_with_type_mismatch() -> TestResult<()> {
+        assert_failing_type_check(
+            r"
+            func foo() {
+                value: bool = 2;
+            }
+            ",
+            "Expected a value of type 'bool', but received a value of type 'u8'",
+        )
+    }
+}
+
+mod r#return {
+    use super::*;
+
+    #[test]
+    fn without_value_in_void_func() -> TestResult<()> {
+        assert_successful_type_check(
+            r"
+            func foo() {
+                return;
+            }
+            ",
+        )
+    }
+
+    #[test]
+    fn with_value_in_i32_func() -> TestResult<()> {
+        assert_successful_type_check(
+            r"
+            func foo() -> i32 {
+                return 2;
+            }
+            ",
+        )
+    }
+
+    #[test]
+    fn fails_with_value_in_void_fn() -> TestResult<()> {
+        assert_failing_type_check(
+            r"
+            func foo() {
+                return 2;
+            }
+            ",
+            "Expected a value of type 'void', but received a value of type 'u8'",
+        )
+    }
+
+    #[test]
+    fn fails_with_value_type_mismatch() -> TestResult<()> {
+        assert_failing_type_check(
+            r"
+            func foo() -> bool {
+                return 2;
+            }
+            ",
+            "Expected a value of type 'bool', but received a value of type 'u8'",
+        )
+    }
+}

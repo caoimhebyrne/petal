@@ -31,28 +31,67 @@ pub struct ModuleRegistry {
 
 impl ModuleRegistry {
     /// Creates a new [`Module`] within this [`ModuleRegistry`], assigning it a unique [`ModuleId`].
-    pub fn create_module(&mut self, file_path: PathBuf) -> Result<(ModuleId, bool), ModuleError> {
-        // If a module already exists with the provided file path, we must return the existing one.
-        if let Some((module_id, _)) = self.modules.iter().find(|it| it.1.file_path == file_path) {
-            return Ok((*module_id, true));
-        }
+    ///
+    /// # Errors
+    ///
+    /// Will return `Err` if `file_path` does not exist, or otherwise could not be read from.
+    pub fn create_module(&mut self, file_path: PathBuf) -> Result<InsertModuleResult, ModuleError> {
+        self.insert_module(file_path, Module::create)
+    }
 
-        let id = ModuleId(self.modules.len());
-
-        let module = Module::create(id, file_path)?;
-        self.modules.insert(id, module);
-
-        Ok((id, false))
+    /// Creates a new [`Module`] within this [`ModuleRegistry`] with the provided [`String`] being used as its
+    /// contents. The [`Module`] will be assigned a unique [`ModuleId`].
+    ///
+    /// # Errors
+    ///
+    /// Should not return an error, but the function has a [`Result`] type due to its implementation.
+    pub fn create_module_with_contents(
+        &mut self,
+        file_path: PathBuf,
+        contents: String,
+    ) -> Result<InsertModuleResult, ModuleError> {
+        self.insert_module(file_path, |module_id, file_path| {
+            Ok(Module::create_with_contents(module_id, file_path, contents))
+        })
     }
 
     /// Retrieves a [`Module`] from this [`ModuleRegistry`].
     ///
+    /// # Panics
+    ///
     /// This function will panic if a module does not exist with the provided ID. This is "safe" because the intended
     /// use-case for this structure is for it to only be initialized once. A [`ModuleId`] must not, and cannot, be
     /// created by anything else.
+    #[must_use]
     pub fn get_module(&self, id: ModuleId) -> &Module {
         self.modules.get(&id).expect("get_module should never return None")
     }
+
+    /// Inserts a [`Module`] into this [`ModuleRegistry`] by evaluating [`supplier`] with a generated [`ModuleId`].
+    fn insert_module<S>(&mut self, file_path: PathBuf, supplier: S) -> Result<InsertModuleResult, ModuleError>
+    where
+        S: FnOnce(ModuleId, PathBuf) -> Result<Module, ModuleError>,
+    {
+        // If a module already exists with the provided [`file_path`], then we can return it instead of allocating a
+        // new one.
+        if let Some(tuple) = self.modules.iter().find(|it| it.1.file_path == file_path) {
+            return Ok(InsertModuleResult::Existing(*tuple.0));
+        }
+
+        let id = ModuleId(self.modules.len());
+        self.modules.insert(id, supplier(id, file_path)?);
+
+        Ok(InsertModuleResult::New(id))
+    }
+}
+
+/// The result of inserting a module into a [`ModuleRegistry`].
+pub enum InsertModuleResult {
+    /// The module at the provided path already existed in this [`ModuleRegistry`].
+    Existing(ModuleId),
+
+    /// The module at the provided path has not been added to this [`ModuleRegistry`] until now.
+    New(ModuleId),
 }
 
 /// A fake [`ModuleId`] not registered with any [`ModuleRegistry`].
@@ -60,13 +99,4 @@ impl ModuleRegistry {
 /// This must exclusively be used by tests that require a [`ModuleId`], but do not interact with the
 /// [`ModuleRegistry`].
 #[cfg(test)]
-pub const MOCK_MODULE_ID: ModuleId = create_mock_module_id(0);
-
-/// Creates a fake [`ModuleId`] not registered with any [`ModuleRegistry`], similarly to [`MOCK_MODULE_ID`].
-///
-/// This must exclusively be used by tests that require a [`ModuleId`], but do not interact with the
-/// [`ModuleRegistry`].
-#[cfg(test)]
-pub const fn create_mock_module_id(value: usize) -> ModuleId {
-    ModuleId(value)
-}
+pub const MOCK_MODULE_ID: ModuleId = ModuleId(0);

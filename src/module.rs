@@ -67,6 +67,7 @@ impl CheckedModule {
 }
 
 /// An error that occurs while creating a Petal module.
+#[derive(Debug)]
 pub enum ModuleError {
     /// The file could not be read.
     IOError { path: PathBuf, error: io::Error },
@@ -79,6 +80,11 @@ impl Module {
             fs::read_to_string(&file_path).map_err(|error| ModuleError::IOError { path: file_path.clone(), error })?;
 
         Ok(Module { id, file_path, file_contents })
+    }
+
+    /// Creates a [`Module`] from a [`String`] containing its contents.
+    pub fn create_with_contents(id: ModuleId, file_path: PathBuf, file_contents: String) -> Self {
+        Module { id, file_path, file_contents }
     }
 
     /// Attempts to parse AST nodes from this module.

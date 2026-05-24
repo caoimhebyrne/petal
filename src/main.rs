@@ -24,6 +24,7 @@ use crate::{
         ParsedModule,
     },
     module_registry::{
+        InsertModuleResult,
         ModuleId,
         ModuleRegistry,
     },
@@ -172,11 +173,14 @@ fn create_and_parse_module(
     module_registry: &mut ModuleRegistry,
     file_path: &Path,
 ) -> Result<ModuleId, Box<dyn Error>> {
-    let (module_id, already_created) = module_registry.create_module(file_path.to_path_buf())?;
-    if already_created {
-        trace!("Module at path '{}' has already been registered (ID = {})", file_path.display(), module_id);
-        return Ok(module_id);
-    }
+    let module_id = match module_registry.create_module(file_path.to_path_buf())? {
+        InsertModuleResult::Existing(value) => {
+            trace!("Module at path '{}' has already been registered (ID = {})", file_path.display(), value);
+            return Ok(value);
+        }
+
+        InsertModuleResult::New(value) => value,
+    };
 
     let parsed_module = module_registry.get_module(module_id).parse()?;
 
