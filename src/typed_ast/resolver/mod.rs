@@ -1165,7 +1165,7 @@ impl TypeResolver {
         }
 
         // The initialization's fields may not be in order, we need to find them individually based on their name.
-        let mut field_values: Vec<Expression> = Vec::new();
+        let mut field_values: Vec<Expression> = Vec::with_capacity(structure.fields.len());
 
         for field in &structure.fields {
             // A corresponding initialization field must exist.
