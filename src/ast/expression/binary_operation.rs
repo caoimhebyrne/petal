@@ -40,12 +40,29 @@ pub enum BinaryOperator {
     NotEquals,
 }
 
+/// How a [`BinaryOperator`] should decide the type of its result.
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum BinaryOperatorClass {
+    /// The type of the result should be a common type of the operands.
+    Arithmetic,
+
+    /// The type of the result should be a boolean.
+    Comparison,
+}
+
 impl BinaryOperator {
     pub fn precedence(&self) -> u8 {
         match self {
             Self::Add | Self::Subtract => 1,
             Self::Multiply | Self::Divide => 2,
             Self::Equals | Self::NotEquals => 3,
+        }
+    }
+
+    pub fn class(&self) -> BinaryOperatorClass {
+        match self {
+            Self::Add | Self::Subtract | Self::Multiply | Self::Divide => BinaryOperatorClass::Arithmetic,
+            Self::Equals | Self::NotEquals => BinaryOperatorClass::Comparison,
         }
     }
 }

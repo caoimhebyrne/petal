@@ -18,6 +18,9 @@ pub struct DefinedTypeId(usize);
 
 #[derive(Debug, Clone)]
 pub struct TypeDb {
+    /// The `bool` type.
+    boolean_type_id: TypeId,
+
     /// The "custom" types that were defined by the program.
     defined_types: BTreeMap<DefinedTypeId, DefinedType>,
 
@@ -34,13 +37,19 @@ impl Default for TypeDb {
     fn default() -> Self {
         let mut types = BTreeMap::default();
 
+        let boolean_type_id = Self::get_or_insert_type_into_map(&mut types, Type::Boolean);
         let void_type_id = Self::get_or_insert_type_into_map(&mut types, Type::Void);
 
-        Self { defined_types: BTreeMap::default(), types, void_type_id }
+        Self { boolean_type_id, defined_types: BTreeMap::default(), types, void_type_id }
     }
 }
 
 impl TypeDb {
+    /// Returns the [`TypeId`] for the [`Type::Boolean`] type.
+    pub fn boolean_type_id(&self) -> TypeId {
+        self.boolean_type_id
+    }
+
     /// Returns the [`TypeId`] for the [`Type::Void`] type.
     pub fn void_type_id(&self) -> TypeId {
         self.void_type_id

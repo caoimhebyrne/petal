@@ -1,6 +1,9 @@
+use std::cmp::max;
+
 use crate::{
     ast::{
         self,
+        expression::binary_operation::BinaryOperatorClass,
         type_expr::TypeExpr,
     },
     core::span::Span,
@@ -708,7 +711,7 @@ impl TypeResolver {
     ) -> TypecheckerResult<Expression> {
         let (kind, type_id) = match expression.kind {
             ast::expression::ExpressionKind::BinaryOperation(binary_operation) => {
-                self.visit_expression_binary_operation(binary_operation)?
+                self.visit_expression_binary_operation(binary_operation, expected_type_id)?
             }
 
             ast::expression::ExpressionKind::Dereference(reference) => self.visit_expression_dereference(*reference)?,
@@ -728,7 +731,9 @@ impl TypeResolver {
                 self.visit_expression_member_access(member_access, expression.span)?
             }
 
-            ast::expression::ExpressionKind::NumberLiteral(value) => self.visit_expression_number_literal(value),
+            ast::expression::ExpressionKind::NumberLiteral(value) => {
+                self.visit_expression_number_literal(value, expected_type_id)
+            }
 
             ast::expression::ExpressionKind::Reference(value) => self.visit_expression_reference(*value)?,
 
@@ -753,13 +758,29 @@ impl TypeResolver {
     fn visit_expression_binary_operation(
         &mut self,
         binary_operation: ast::expression::binary_operation::BinaryOperation,
+        expected_type_id: Option<TypeId>,
     ) -> TypecheckerResult<(ExpressionKind, TypeId)> {
-        let left = self.visit_expression(*binary_operation.left, None)?;
-        let right = self.visit_expression(*binary_operation.right, Some(left.type_id))?;
+        let left = self.visit_expression(*binary_operation.left, expected_type_id)?;
+        let right = self.visit_expression(*binary_operation.right, expected_type_id.or(Some(left.type_id)))?;
 
-        // The type of the expression (for now) will be the type of the expression on the left-hand side.
-        // This will be refined and verified at later stages, once we verify that the types are actually compatible with each other.
-        let type_id = left.type_id;
+        // Both operands must be of the same type for them to be comparable.
+        //
+        // todo: types should have an `Add` | `Subtract` | `Divide` | `Multiply` | `Equals` protocol that they can
+        //       conform to. If a type conforms to this protocol, then we should use its implementation here.
+        if left.type_id != right.type_id {
+            return Err(
+                TypecheckerErrorKind::type_mismatch(&self.program.type_db, left.type_id, right.type_id).at(right.span)
+            );
+        }
+
+        // The result type of the operation depends on the class of the operator.
+        let type_id = match binary_operation.operator.class() {
+            // The result of the operation should be a common type of the operands.
+            BinaryOperatorClass::Arithmetic => left.type_id,
+
+            // The result of the operation should be a boolean.
+            BinaryOperatorClass::Comparison => self.program.type_db.boolean_type_id(),
+        };
 
         Ok((
             ExpressionKind::BinaryOperation {
@@ -918,8 +939,12 @@ impl TypeResolver {
 
     /// Visits the provided number literal expression.
     /// The type returned will be the "lowest" possible integer type supported by the literal.
-    fn visit_expression_number_literal(&mut self, value: f64) -> (ExpressionKind, TypeId) {
-        let ty = if value < 0.0 {
+    fn visit_expression_number_literal(
+        &mut self,
+        value: f64,
+        expected_type_id: Option<TypeId>,
+    ) -> (ExpressionKind, TypeId) {
+        let minimum_type = if value < 0.0 {
             let bits = match value {
                 v if v >= f64::from(i8::MIN) => 8,
                 v if v >= f64::from(i16::MIN) => 16,
@@ -939,8 +964,33 @@ impl TypeResolver {
             Type::UnsignedInteger(bits)
         };
 
-        let type_id = self.program.type_db.get_or_insert_type(ty);
-        (ExpressionKind::NumberLiteral(value), type_id)
+        let coerced_type = match expected_type_id.map(|it| self.program.type_db.get_type(it)) {
+            // The expected type suggests that we should use a signed type. All integer types are castable to signed.
+            Some(Type::SignedInteger(expected_bits)) => match minimum_type {
+                Type::SignedInteger(minimum_bits) | Type::UnsignedInteger(minimum_bits) => {
+                    Type::SignedInteger(max(*expected_bits, minimum_bits))
+                }
+
+                _ => unreachable!("minimum_type can only be `Type::UnsignedInteger` or `Type::SignedInteger`"),
+            },
+
+            // The expected type suggests that we should use an unsigned type. Not all integer types are castable to unsigned.
+            Some(Type::UnsignedInteger(expected_bits)) => match minimum_type {
+                Type::UnsignedInteger(minimum_bits) => Type::UnsignedInteger(max(*expected_bits, minimum_bits)),
+
+                // We still return the signed integer in this case, even though the hint suggests an unsigned integer.
+                // The caller is responsible for checking whether the signed-ness is OK.
+                Type::SignedInteger(_) => minimum_type,
+
+                _ => unreachable!("minimum_type can only be `Type::UnsignedInteger` or `Type::SignedInteger`"),
+            },
+
+            // If the expected type is not an integer type, then we can just return the minimum integer type. The caller is
+            // responsible for checking whether the type is valid.
+            _ => minimum_type,
+        };
+
+        (ExpressionKind::NumberLiteral(value), self.program.type_db.get_or_insert_type(coerced_type))
     }
 
     // Visits the provided reference expression.
