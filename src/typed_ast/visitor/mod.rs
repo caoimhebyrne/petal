@@ -42,6 +42,16 @@ pub trait ProgramVisitor: Sized {
         walk_statement(self, statement);
     }
 
+    /// Visits the provided conditional statement.
+    fn visit_statement_conditional(
+        &mut self,
+        condition: &mut Expression,
+        then_block: &mut Vec<Statement>,
+        else_block: &mut Vec<Statement>,
+    ) {
+        walk_statement_conditional(self, condition, then_block, else_block);
+    }
+
     /// Visits the provided function call statement.
     fn visit_statement_function_call(
         &mut self,
@@ -203,6 +213,10 @@ pub fn walk_function<V: ProgramVisitor>(visitor: &mut V, function: &mut Function
 /// Invokes the `visitor`'s specialized methods on the provided [`Statement`].
 pub fn walk_statement<V: ProgramVisitor>(visitor: &mut V, statement: &mut Statement) {
     match &mut statement.kind {
+        StatementKind::Conditional { condition, then_block, else_block } => {
+            visitor.visit_statement_conditional(condition, then_block, else_block)
+        }
+
         StatementKind::FunctionCall { function_key, arguments, return_type_id } => {
             visitor.visit_statement_function_call(function_key, arguments, return_type_id);
         }
@@ -229,6 +243,25 @@ pub fn walk_statement<V: ProgramVisitor>(visitor: &mut V, statement: &mut Statem
     }
 }
 
+/// Invokes the `visitor` on any child nodes within a conditional statement.
+pub fn walk_statement_conditional<V: ProgramVisitor>(
+    visitor: &mut V,
+    condition: &mut Expression,
+    then_block: &mut Vec<Statement>,
+    else_block: &mut Vec<Statement>,
+) {
+    visitor.visit_expression(condition);
+
+    for statement in then_block {
+        visitor.visit_statement(statement);
+    }
+
+    for statement in else_block {
+        visitor.visit_statement(statement);
+    }
+}
+
+/// Invokes the `visitor` on any child nodes within a reference value assignment statement.
 pub fn walk_statement_reference_value_assignment<V: ProgramVisitor>(
     visitor: &mut V,
     target: &mut Expression,

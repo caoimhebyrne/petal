@@ -601,6 +601,8 @@ impl TypeResolver {
                 StatementKind::FunctionCall { function_key, arguments, return_type_id }
             }
 
+            ast::statement::StatementKind::If(r#if) => self.visit_statement_if(r#if)?,
+
             ast::statement::StatementKind::Return(r#return) => self.visit_statement_return(r#return, statement.span)?,
 
             ast::statement::StatementKind::VariableAssignment(variable_assignment) => {
@@ -615,6 +617,31 @@ impl TypeResolver {
         };
 
         Ok(kind.at(statement.span))
+    }
+
+    /// Visits the provided AST [`If`] statement.
+    fn visit_statement_if(&mut self, r#if: ast::statement::r#if::If) -> TypecheckerResult<StatementKind> {
+        // The condition must be a boolean.
+        let condition = self.visit_expression(*r#if.condition, Some(self.program.type_db.boolean_type_id()))?;
+        if condition.type_id != self.program.type_db.boolean_type_id() {
+            return Err(TypecheckerErrorKind::type_mismatch(
+                &self.program.type_db,
+                self.program.type_db.boolean_type_id(),
+                condition.type_id,
+            )
+            .at(condition.span));
+        }
+
+        // The blocks must be valid.
+        self.set_scope(Scope::empty_with_parent);
+        let then_block = self.visit_statements(r#if.then_block)?;
+        self.pop_scope();
+
+        self.set_scope(Scope::empty_with_parent);
+        let else_block = self.visit_statements(r#if.else_block)?;
+        self.pop_scope();
+
+        Ok(StatementKind::Conditional { condition, then_block, else_block })
     }
 
     /// Visits the proivded AST [`Return`] statement.

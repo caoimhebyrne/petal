@@ -190,6 +190,18 @@ pub struct Statement {
 /// The different kinds of typed [`Statement`]s that exist within the typed AST.
 #[derive(Debug, Clone)]
 pub enum StatementKind {
+    /// An if (else) statement.
+    Conditional {
+        /// The condition to evaluate.
+        condition: Expression,
+
+        /// The block to execute if the condition is `true`.
+        then_block: Vec<Statement>,
+
+        /// The block to execute if the condition is `false`.
+        else_block: Vec<Statement>,
+    },
+
     /// A function call.
     FunctionCall {
         /// The key of the function being called.

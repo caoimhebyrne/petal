@@ -505,15 +505,32 @@ impl ASTParser {
         let condition = self.parse_expression()?;
 
         // And then the block of code to execute when the condition is true.
-        let mut block: Vec<Statement> = Vec::new();
+        let mut then_block: Vec<Statement> = Vec::new();
         self.expect(TokenKind::OpenBrace)?;
 
         while !self.peek_is(TokenKind::CloseBrace) {
-            block.push(self.parse_statement()?);
+            then_block.push(self.parse_statement()?);
         }
 
-        let closing_brace_span = self.expect(TokenKind::CloseBrace)?.span;
-        Ok(Statement::from(If::new(condition, block), Span::between(if_keyword_span, closing_brace_span)))
+        let if_closing_brace_span = self.expect(TokenKind::CloseBrace)?.span;
+
+        let mut else_block: Vec<Statement> = Vec::new();
+        let closing_brace_span = if self.peek_is(TokenKind::Keyword(Keyword::Else)) {
+            self.expect(TokenKind::OpenBrace)?;
+
+            while !self.peek_is(TokenKind::CloseBrace) {
+                else_block.push(self.parse_statement()?);
+            }
+
+            self.expect(TokenKind::CloseBrace)?.span
+        } else {
+            if_closing_brace_span
+        };
+
+        Ok(Statement::from(
+            If::new(condition, then_block, else_block),
+            Span::between(if_keyword_span, closing_brace_span),
+        ))
     }
 
     /// Attempts to parse an import statement from the [ASTParser]'s current position.

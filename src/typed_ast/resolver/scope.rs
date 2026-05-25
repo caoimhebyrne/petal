@@ -25,6 +25,17 @@ pub struct Scope {
 }
 
 impl Scope {
+    /// Creates an empty scope with the provided [`Scope`] as its parent.
+    pub fn empty_with_parent(parent: Scope) -> Self {
+        Self {
+            generic_type_parameters: Vec::new(),
+            parameter_types: HashMap::default(),
+            parent: Some(Box::new(parent)),
+            return_type_id: None,
+            variable_types: HashMap::default(),
+        }
+    }
+
     /// Creates a scope with parameters and a parent.
     pub fn function(
         generic_type_parameters: Vec<GenericTypeParameter>,

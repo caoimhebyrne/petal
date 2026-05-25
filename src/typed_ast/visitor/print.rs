@@ -8,6 +8,7 @@ use crate::{
         Function,
         FunctionKey,
         Program,
+        Statement,
         r#type::{
             db::{
                 DefinedTypeId,
@@ -190,6 +191,39 @@ impl ProgramVisitor for PrintingProgramVisitor<'_> {
                 debug!("");
             }
 
+            self.decrease_indentation();
+        }
+
+        self.decrease_indentation();
+    }
+
+    fn visit_statement_conditional(
+        &mut self,
+        condition: &mut Expression,
+        then_block: &mut Vec<Statement>,
+        else_block: &mut Vec<Statement>,
+    ) {
+        debug!("{}Conditional", self.indentation_string());
+
+        self.visit_expression(condition);
+
+        self.increase_indentation();
+        debug!("");
+        debug!("{}Then:", self.indentation_string());
+        self.increase_indentation();
+        for statement in then_block {
+            self.visit_statement(statement);
+        }
+        self.decrease_indentation();
+
+        if !else_block.is_empty() {
+            self.increase_indentation();
+            debug!("");
+            debug!("{}Else:", self.indentation_string());
+            self.increase_indentation();
+            for statement in else_block {
+                self.visit_statement(statement);
+            }
             self.decrease_indentation();
         }
 

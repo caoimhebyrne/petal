@@ -20,6 +20,7 @@ use crate::{
         FunctionKey,
         Program,
         Statement,
+        StatementKind,
         r#type::{
             Type,
             db::{
@@ -285,7 +286,36 @@ impl ProgramVisitor for CBackend<'_> {
     fn visit_statement(&mut self, statement: &mut Statement) {
         self.writer.append_indentation_string();
         walk_statement(self, statement);
-        self.writer.append(";\n");
+
+        if !matches!(statement.kind, StatementKind::Conditional { .. }) {
+            self.writer.append(";\n");
+        }
+    }
+
+    fn visit_statement_conditional(
+        &mut self,
+        condition: &mut Expression,
+        then_block: &mut Vec<Statement>,
+        else_block: &mut Vec<Statement>,
+    ) {
+        let condition = self.visit_expression(condition);
+        self.writer.append(&format!("if ({condition}) {{\n"));
+
+        self.with_writer_indent(|this| {
+            for statement in then_block {
+                this.visit_statement(statement);
+            }
+        });
+
+        self.writer.append_line("} else {");
+
+        self.with_writer_indent(|this| {
+            for statement in else_block {
+                this.visit_statement(statement);
+            }
+        });
+
+        self.writer.append_line("}");
     }
 
     fn visit_statement_function_call(
