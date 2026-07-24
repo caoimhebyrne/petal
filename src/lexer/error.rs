@@ -18,6 +18,9 @@ pub struct LexerError {
 /// The different kinds of [`LexerError`]s that exist.
 #[derive(Debug, PartialEq)]
 pub enum LexerErrorKind {
+    /// An escape sequence within a string literal is not recognized.
+    InvalidEscapeSequence(char),
+
     /// A number literal is invalid.
     InvalidNumberLiteral(String),
 
@@ -51,6 +54,7 @@ impl Error for LexerError {
 impl Display for LexerErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            LexerErrorKind::InvalidEscapeSequence(char) => write!(f, "Invalid escape sequence: '\\{}'", char),
             LexerErrorKind::InvalidNumberLiteral(value) => write!(f, "Invalid number literal: '{}'", value),
             LexerErrorKind::UnrecognizedCharacter(char) => write!(f, "Unrecognized character: '{}'", char),
             LexerErrorKind::UnterminatedStringLiteral => write!(f, "Unterminated string literal"),

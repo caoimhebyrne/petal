@@ -214,6 +214,35 @@ impl<'db> CBackend<'db> {
         }
     }
 
+    /// Escapes the provided string so that it can be embedded within a C string literal.
+    ///
+    /// The values held by string literals have already had their escape sequences decoded by the
+    /// lexer, so they must be re-escaped before being written back out as C source code.
+    fn escape_c_string(value: &str) -> String {
+        let mut escaped = String::with_capacity(value.len());
+
+        for byte in value.bytes() {
+            match byte {
+                b'"' => escaped.push_str("\\\""),
+                b'\\' => escaped.push_str("\\\\"),
+                b'\n' => escaped.push_str("\\n"),
+                b'\r' => escaped.push_str("\\r"),
+                b'\t' => escaped.push_str("\\t"),
+
+                // Printable ASCII can be written out as-is.
+                0x20..=0x7e => escaped.push(byte as char),
+
+                // Everything else (including the individual bytes of any multi-byte UTF-8 sequence)
+                // is written as a three digit octal escape. Octal escapes are used over hexadecimal
+                // ones as C limits them to three digits, meaning that they can never be extended by
+                // a digit which happens to follow them in the string.
+                _ => escaped.push_str(&format!("\\{byte:03o}")),
+            }
+        }
+
+        escaped
+    }
+
     /// Gets the C name for a [`DefinedType`] from its [`DefinedTypeId`].
     fn get_defined_type_c_name(type_db: &TypeDb, defined_type_id: DefinedTypeId) -> String {
         let defined_type = type_db.get_defined_type(defined_type_id);
@@ -351,8 +380,9 @@ impl ProgramVisitor for CBackend<'_> {
             .expect("self.type_db.find_defined_type(\"CompileTimeStr\")");
 
         format!(
-            "({}) {{ .data = \"{value}\", .length = {} }}",
+            "({}) {{ .data = \"{}\", .length = {} }}",
             Self::get_defined_type_c_name(self.type_db, defined_type_id),
+            Self::escape_c_string(value),
             value.len()
         )
     }

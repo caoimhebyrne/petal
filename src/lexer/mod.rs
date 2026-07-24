@@ -142,22 +142,57 @@ impl<'a> Lexer<'a> {
     }
 
     /// Attempts to parse a string literal token at the [`Lexer`]'s current position.
+    ///
+    /// The opening quote is expected to have already been consumed by the caller. Escape sequences
+    /// are decoded as they are read, so the resulting token holds the string's actual value rather
+    /// than the characters used to spell it out in the source file.
     fn parse_string_literal(&mut self) -> Result<Token, LexerError> {
-        let mut string: String = "".into();
+        // The caller has already consumed the opening quote, so it sits just behind the cursor.
+        let start = self.cursor - 1;
 
-        self.consume_while(&mut string, |char| char != '"' && char != '\n');
+        let mut string = String::new();
 
-        let mut span = self.span(string.len());
-        span.location.start -= 1;
-        span.location.length += 1;
+        loop {
+            // A string literal may not span multiple lines, so a new-line is treated the same way
+            // as the end of the source file: the literal was never terminated.
+            let Some(character) = self.peek().filter(|it| *it != '\n') else {
+                return Err(LexerErrorKind::UnterminatedStringLiteral.at(self.span_from(start)));
+            };
 
-        // If the string is not terminated with a closing quote, then we must throw an error.
-        if self.next().map(|it| it == '"').is_none() {
-            return Err(LexerErrorKind::UnterminatedStringLiteral.at(span));
+            self.next();
+
+            match character {
+                '"' => break,
+                '\\' => string.push(self.parse_escape_sequence()?),
+                _ => string.push(character),
+            }
         }
 
-        span.location.length += 1;
-        Ok(Token::new(TokenKind::String(string.clone()), span))
+        Ok(Token::new(TokenKind::String(string), self.span_from(start)))
+    }
+
+    /// Attempts to parse the remainder of an escape sequence within a string literal, returning the
+    /// character that the sequence represents.
+    ///
+    /// The leading backslash is expected to have already been consumed by the caller.
+    fn parse_escape_sequence(&mut self) -> Result<char, LexerError> {
+        // The backslash sits just behind the cursor, and is part of the sequence being parsed.
+        let start = self.cursor - 1;
+
+        let Some(character) = self.next().filter(|it| *it != '\n') else {
+            return Err(LexerErrorKind::UnterminatedStringLiteral.at(self.span_from(start)));
+        };
+
+        match character {
+            '\\' => Ok('\\'),
+            '"' => Ok('"'),
+            'n' => Ok('\n'),
+            'r' => Ok('\r'),
+            't' => Ok('\t'),
+            '0' => Ok('\0'),
+
+            _ => Err(LexerErrorKind::InvalidEscapeSequence(character).at(self.span_from(start))),
+        }
     }
 
     /// Attempts to parse an identifier at the start of the [`Lexer`]'s current position, taking
@@ -220,6 +255,12 @@ impl<'a> Lexer<'a> {
         // The only exception to that is a bad input, but bugs for that should be caught by the
         // unit tests.
         Span::new(self.module_id, self.cursor - length, length)
+    }
+
+    /// Returns a [`Span`] covering the source between the provided start index and the [`Lexer`]'s
+    /// current cursor.
+    fn span_from(&self, start: usize) -> Span {
+        Span::new(self.module_id, start, self.cursor - start)
     }
 }
 
@@ -320,6 +361,56 @@ mod tests {
         assert_lexer_tokens(
             "// This is a test!\n//This is another test!\n/",
             vec![Token::new(TokenKind::ForwardSlash, Span::new(MOCK_MODULE_ID, 43, 1))],
+        );
+    }
+
+    #[test]
+    fn parse_string_literal() {
+        assert_lexer_tokens(
+            r#""hello""#,
+            vec![Token::new(TokenKind::String("hello".into()), Span::new(MOCK_MODULE_ID, 0, 7))],
+        );
+    }
+
+    #[test]
+    fn parse_empty_string_literal() {
+        assert_lexer_tokens(r#""""#, vec![Token::new(TokenKind::String("".into()), Span::new(MOCK_MODULE_ID, 0, 2))]);
+    }
+
+    #[test]
+    fn parse_string_literal_escape_sequences() {
+        // The span covers the source text of the literal (14 characters), whereas the value that it
+        // decodes to is only 8 characters long.
+        assert_lexer_tokens(
+            r#""a\n\t\r\0\\\"""#,
+            vec![Token::new(TokenKind::String("a\n\t\r\0\\\"".into()), Span::new(MOCK_MODULE_ID, 0, 15))],
+        );
+    }
+
+    #[test]
+    fn error_invalid_escape_sequence() {
+        let mut lexer = Lexer::new(MOCK_MODULE_ID, r#""oh \q no""#);
+        assert_eq!(
+            lexer.parse(),
+            Err(LexerError::new(LexerErrorKind::InvalidEscapeSequence('q'), Span::new(MOCK_MODULE_ID, 4, 2)))
+        );
+    }
+
+    #[test]
+    fn error_unterminated_string_literal_at_end_of_source() {
+        let mut lexer = Lexer::new(MOCK_MODULE_ID, r#""unterminated"#);
+        assert_eq!(
+            lexer.parse(),
+            Err(LexerError::new(LexerErrorKind::UnterminatedStringLiteral, Span::new(MOCK_MODULE_ID, 0, 13)))
+        );
+    }
+
+    #[test]
+    fn error_unterminated_string_literal_at_new_line() {
+        let mut lexer = Lexer::new(MOCK_MODULE_ID, "\"unterminated\n\"");
+        assert_eq!(
+            lexer.parse(),
+            Err(LexerError::new(LexerErrorKind::UnterminatedStringLiteral, Span::new(MOCK_MODULE_ID, 0, 13)))
         );
     }
 
