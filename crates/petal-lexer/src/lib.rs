@@ -73,14 +73,12 @@ impl<'a> Lexer<'a> {
             char if char.is_numeric() => {
                 self.cursor.consume_while(char::is_numeric);
 
-                let is_floating_point = self.cursor.consume_if(|it| it == '.');
-                if is_floating_point {
+                let float = self.cursor.consume_if(|it| it == '.');
+                if float {
                     self.cursor.consume_while(char::is_numeric);
                 }
 
-                TokenKind::Number {
-                    float: is_floating_point,
-                }
+                TokenKind::Number { float }
             }
 
             _ => TokenKind::Unknown,
