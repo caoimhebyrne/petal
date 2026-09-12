@@ -76,7 +76,9 @@ impl<'a> Lexer<'a> {
                     self.cursor.consume_while(char::is_numeric);
                 }
 
-                TokenKind::Number { is_floating_point }
+                TokenKind::Number {
+                    float: is_floating_point,
+                }
             }
 
             _ => TokenKind::Unknown,
@@ -142,17 +144,13 @@ mod tests {
 
     #[test]
     fn parses_integer_token() {
-        assert_eq!(token_kinds("123456"), vec![TokenKind::Number {
-            is_floating_point: false
-        }]);
+        assert_eq!(token_kinds("123456"), vec![TokenKind::Number { float: false }]);
     }
 
     #[test]
     fn parses_float_token() {
         assert_eq!(tokenize("123456.789").collect::<Vec<_>>(), vec![Token::new(
-            TokenKind::Number {
-                is_floating_point: true
-            },
+            TokenKind::Number { float: true },
             Span::new(0, 10)
         )]);
     }

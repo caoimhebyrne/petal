@@ -9,6 +9,7 @@ repository = "https://github.com/caoimhebyrne/petal"
 version = "0.1.0"
 
 [workspace.dependencies]
+petal-lexer = { path = "crates/petal-lexer" }
 petal-span = { path = "crates/petal-span" }
 
 [workspace.lints.clippy]

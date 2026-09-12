@@ -32,6 +32,16 @@ impl Span {
     pub fn slice(self, string: &str) -> &str {
         &string[self.start as usize..self.end as usize]
     }
+
+    /// Get the start index of this [`Span`].
+    pub const fn start(self) -> u32 {
+        self.start
+    }
+
+    /// Get the end index of this [`Span`].
+    pub const fn end(self) -> u32 {
+        self.end
+    }
 }
 
 #[cfg(test)]
