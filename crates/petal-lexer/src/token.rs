@@ -28,6 +28,8 @@ pub enum TokenKind {
 
     OpenBrace,
     CloseBrace,
+    OpenParen,
+    CloseParen,
     Colon,
     Semicolon,
     Comma,

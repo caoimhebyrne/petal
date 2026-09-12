@@ -42,6 +42,8 @@ impl<'a> Lexer<'a> {
         let kind = match self.cursor.consume()? {
             '{' => TokenKind::OpenBrace,
             '}' => TokenKind::CloseBrace,
+            '(' => TokenKind::OpenParen,
+            ')' => TokenKind::CloseParen,
             ':' => TokenKind::Colon,
             ';' => TokenKind::Semicolon,
             ',' => TokenKind::Comma,
