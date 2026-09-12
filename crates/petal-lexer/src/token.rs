@@ -4,6 +4,7 @@ use petal_span::Span;
 ///
 /// Tokens do not contain any data for literals (i.e. strings, numbers). The caller is expected to extract them (and
 /// parse them) from the source string using [`Self::span`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Token {
     /// The kind of token that this is.
     pub kind: TokenKind,
@@ -20,7 +21,21 @@ impl Token {
 }
 
 /// The different kinds of [`Token`]s that can be parsed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenKind {
+    Identifier,
+    Number { is_floating_point: bool },
+
     OpenBrace,
     CloseBrace,
+    Colon,
+    Semicolon,
+    Comma,
+    Hyphen,
+    Slash,
+
+    Arrow,
+
+    Comment,
+    Unknown,
 }

@@ -31,11 +31,14 @@ impl<'a> Cursor<'a> {
         self.chars.clone().next()
     }
 
-    /// Peeks at the character at the provided offset from the iterator's current position.
-    pub fn peek_nth(&self, offset: usize) -> Option<char> {
-        // cloning the iterator is cheap, as it only clones the pointer that the iterator is currently at, alongside
-        // some metadata.
-        self.chars.clone().nth(offset)
+    /// Returns true and consumes the next character if it is equal to the `expected` character.
+    pub fn consume_if(&mut self, predicate: impl Fn(char) -> bool) -> bool {
+        if !self.peek().is_some_and(predicate) {
+            return false;
+        }
+
+        self.consume();
+        true
     }
 
     /// Consumes characters from the iterator until the `predicate` returns false, or the end of the iterator is
@@ -79,6 +82,15 @@ mod tests {
     }
 
     #[test]
+    fn consume_if_does_not_consume_when_does_not_match() {
+        let string = "hello";
+        let mut cursor = Cursor::new(string);
+
+        assert!(!cursor.consume_if(|it| it == 'x'));
+        assert_eq!(cursor.consume(), Some('h'));
+    }
+
+    #[test]
     fn offset_returns_correct_value_after_consume() {
         let string = "Hello, world!";
         let mut cursor = Cursor::new(string);
@@ -94,17 +106,5 @@ mod tests {
 
         assert_eq!(cursor.peek(), Some('H'));
         assert_eq!(cursor.offset(), 0);
-    }
-
-    #[test]
-    fn peek_nth_returns_without_consuming() {
-        let string = "Hello, world!";
-        let mut cursor = Cursor::new(string);
-
-        assert_eq!(cursor.peek_nth(5), Some(','));
-        assert_eq!(cursor.consume(), Some('H'));
-
-        assert_eq!(cursor.peek_nth(3), Some('o'));
-        assert_eq!(cursor.consume(), Some('e'));
     }
 }

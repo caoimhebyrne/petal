@@ -1,4 +1,5 @@
 /// A range within some text, i.e. a start and end offset in bytes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Span {
     /// The zero-indexed start offset of the span.
     start: u32,
