@@ -6,8 +6,5 @@ license.workspace = true
 repository.workspace = true
 version.workspace = true
 
-[dependencies]
-petal-span = { workspace = true }
-
 [lints]
 workspace = true
