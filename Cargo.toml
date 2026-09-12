@@ -12,4 +12,5 @@ version = "0.1.0"
 petal-span = { path = "crates/petal-span" }
 
 [workspace.lints.clippy]
-pedantic = "warn"
+pedantic = { level = "warn", priority = -1 }
+must_use_candidate = "allow"

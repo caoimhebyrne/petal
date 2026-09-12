@@ -13,14 +13,12 @@ impl Span {
     /// # Panics
     ///
     /// This function will panic if `end` is before `start`.
-    #[must_use]
     pub const fn new(start: u32, end: u32) -> Self {
         assert!(end > start, "The end of a span must be after the start");
         Self { start, end }
     }
 
     /// Get the number of bytes that this [`Span`] covers.
-    #[must_use]
     pub const fn size(self) -> u32 {
         self.end - self.start
     }
@@ -30,7 +28,6 @@ impl Span {
     /// # Panics
     ///
     /// This function will panic if this [`Span`] is outside the bounds of the provided `string`.
-    #[must_use]
     pub fn slice(self, string: &str) -> &str {
         &string[self.start as usize..self.end as usize]
     }
