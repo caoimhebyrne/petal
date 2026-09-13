@@ -6,6 +6,7 @@ version = 4
 name = "petal-ast"
 version = "0.1.0"
 dependencies = [
+ "petal-diagnostic",
  "petal-lexer",
  "petal-span",
 ]
@@ -15,7 +16,15 @@ name = "petal-cli"
 version = "0.1.0"
 dependencies = [
  "petal-ast",
+ "petal-diagnostic",
  "petal-lexer",
+]
+
+[[package]]
+name = "petal-diagnostic"
+version = "0.1.0"
+dependencies = [
+ "petal-span",
 ]
 
 [[package]]

@@ -4,27 +4,36 @@ mod statement;
 
 pub use definition::*;
 pub use expression::*;
+use petal_diagnostic::{Diagnostic, DiagnosticSeverity};
 use petal_lexer::{Cursor, Token, TokenCursor, TokenKind};
 pub use statement::*;
 
-struct Parser<'a> {
+struct Parser<'a, 'd> {
     source: &'a str,
 
     /// The iterator to consume tokens from.
     cursor: TokenCursor<'a>,
+
+    /// The [`Vec`] of [`Diagnostic`]s to push to.
+    diagnostics: &'d mut Vec<Diagnostic>,
 }
 
-impl<'a> Parser<'a> {
+impl<'a, 'd> Parser<'a, 'd> {
     /// Create a new [`Parser`] consuming the provided [`Iterator`] of [`Token`]s.
-    pub fn new(source: &'a str, tokens: impl Iterator<Item = Token> + 'a) -> Self {
+    pub fn new(
+        source: &'a str,
+        tokens: impl Iterator<Item = Token> + 'a,
+        diagnostics: &'d mut Vec<Diagnostic>,
+    ) -> Self {
         Self {
             source,
             cursor: TokenCursor::new(tokens),
+            diagnostics,
         }
     }
 }
 
-impl Parser<'_> {
+impl Parser<'_, '_> {
     /// Return the definition at the parser's current position, advancing its cursor.
     pub fn next_definition(&mut self) -> Option<Definition> {
         self.next_function_definition().map(Definition::Function)
@@ -74,8 +83,33 @@ impl Parser<'_> {
     }
 }
 
+/// The result of calling [`parse`].
+#[derive(Default)]
+pub struct ParseResult {
+    /// The definitions parsed from the source.
+    pub definitions: Vec<Definition>,
+
+    /// The diagnostics produced while parsing the source.
+    pub diagnostics: Vec<Diagnostic>,
+}
+
+impl ParseResult {
+    /// Return whether the parsing can continue (i.e. whether there are any error diagnostics in the result).
+    pub fn can_continue(&self) -> bool {
+        self.diagnostics
+            .iter()
+            .all(|it| it.severity != DiagnosticSeverity::Error)
+    }
+}
+
 /// Parse definitions from the provided [`Iterator`] of [`Token`]s.
-pub fn parse<'a>(source: &'a str, tokens: impl Iterator<Item = Token> + 'a) -> impl Iterator<Item = Definition> + 'a {
-    let mut parser = Parser::new(source, tokens);
-    std::iter::from_fn(move || parser.next_definition())
+pub fn parse<'a>(source: &'a str, tokens: impl Iterator<Item = Token> + 'a) -> ParseResult {
+    let mut result = ParseResult::default();
+
+    let mut parser = Parser::new(source, tokens, &mut result.diagnostics);
+    while let Some(definition) = parser.next_definition() {
+        result.definitions.push(definition);
+    }
+
+    result
 }

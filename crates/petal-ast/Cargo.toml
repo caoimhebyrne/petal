@@ -7,6 +7,7 @@ repository.workspace = true
 version.workspace = true
 
 [dependencies]
+petal-diagnostic.workspace = true
 petal-lexer.workspace = true
 petal-span.workspace = true
 

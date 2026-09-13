@@ -8,6 +8,7 @@ version.workspace = true
 
 [dependencies]
 petal-ast.workspace = true
+petal-diagnostic.workspace = true
 petal-lexer.workspace = true
 
 [lints]
