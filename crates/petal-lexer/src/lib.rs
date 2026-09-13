@@ -1,10 +1,10 @@
-mod char_cursor;
+mod cursor;
 mod token;
 
 use petal_span::Span;
 pub use token::*;
 
-use crate::char_cursor::CharCursor;
+use crate::cursor::{CharCursor, Cursor};
 
 struct Lexer<'a> {
     /// The [`Cursor`] to consume characters from.

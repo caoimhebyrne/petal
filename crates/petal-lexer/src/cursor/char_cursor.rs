@@ -1,5 +1,7 @@
 use std::str::Chars;
 
+use crate::cursor::Cursor;
+
 /// A wrapper around a string slice and a [`Chars`] iterator, which allows you to peek ahead past the next character
 /// in the iterator.
 pub struct CharCursor<'a> {
@@ -19,41 +21,23 @@ impl<'a> CharCursor<'a> {
         }
     }
 
-    /// Consumes the next character in the iterator.
-    pub fn consume(&mut self) -> Option<char> {
-        self.chars.next()
-    }
-
-    /// Peeks at the next character in the iterator.
-    pub fn peek(&self) -> Option<char> {
-        // cloning the iterator is cheap, as it only clones the pointer that the iterator is currently at, alongside
-        // some metadata.
-        self.chars.clone().next()
-    }
-
-    /// Returns true and consumes the next character if it is equal to the `expected` character.
-    pub fn consume_if(&mut self, predicate: impl Fn(char) -> bool) -> bool {
-        if !self.peek().is_some_and(predicate) {
-            return false;
-        }
-
-        self.consume();
-        true
-    }
-
-    /// Consumes characters from the iterator until the `predicate` returns false, or the end of the iterator is
-    /// reached.
-    pub fn consume_while(&mut self, predicate: impl Fn(char) -> bool) {
-        while self.peek().map_or_default(&predicate) {
-            let _ = self.consume();
-        }
-    }
-
-    /// Returns the offset that the iterator is currently at compared to the start of the source string.
+    /// Return the offset that the cursor is currently at compared to the start of the source string.
     pub fn offset(&self) -> usize {
         // `as_str` returns a pointer to a string slice, which is cheap, and `len` just peeks into that slice's
         // metadata, so this operation is not expensive.
         self.string.len() - self.chars.as_str().len()
+    }
+}
+
+impl Cursor<char> for CharCursor<'_> {
+    fn consume(&mut self) -> Option<char> {
+        self.chars.next()
+    }
+
+    fn peek(&self) -> Option<char> {
+        // cloning the iterator is cheap, as it only clones the pointer that the iterator is currently at, alongside
+        // some metadata.
+        self.chars.clone().next()
     }
 }
 
