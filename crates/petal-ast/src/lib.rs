@@ -28,95 +28,46 @@ impl<'a, 'd> Parser<'a, 'd> {
     ) -> Self {
         Self {
             source,
-            cursor: TokenCursor::new(tokens),
+            cursor: TokenCursor::new(tokens, /* skip_comments */ true),
             diagnostics,
         }
     }
 }
 
 impl Parser<'_, '_> {
-    /// Expects the token at the parser's current position to pass the provided `predicate`.
-    ///
-    /// If the `predicate` returns false for the token, the `message` will be added as an error diagnostic, and [`None`]
-    /// will be returned.
-    fn expect<S>(
-        &mut self,
-        predicate: impl FnOnce(&Token) -> bool,
-        message: impl FnOnce(Option<&Token>) -> S,
-    ) -> Option<Token>
-    where
-        S: Into<String>,
-    {
-        // TODO: I feel like this belongs somewhere else. I'm just not sure where that is at the moment.
-        self.cursor.consume_while(|it| it.kind == TokenKind::Comment);
-
-        let Some(token) = self.cursor.peek() else {
-            self.diagnostics.push(Diagnostic::error(Span::default(), message(None)));
-            return None;
-        };
-
-        if !predicate(&token) {
-            self.diagnostics
-                .push(Diagnostic::error(Span::default(), message(Some(&token))));
-
-            return None;
-        }
-
-        self.cursor.consume();
-        Some(token)
-    }
-
     /// Expects a token of a certain kind to be at the parser's current position. If the token matches the expected
     /// kind, it will be consumed.
     ///
     /// If the token at the parser's current position does not match the expected kind, an error diagnostic will be
     /// produced, and [`None`] will be returned.
-    fn expect_kind(&mut self, kind: TokenKind) -> Option<Token> {
-        self.expect(
-            |it| it.kind == kind,
-            |maybe| {
-                let got = match maybe {
-                    Some(it) => format!("'{:?}'", it.kind),
-                    None => "end of file".to_string(),
-                };
+    fn expect(&mut self, kind: TokenKind) -> Option<Token> {
+        let Some(token) = self.cursor.peek() else {
+            // TODO: use the last span that we visited
+            self.diagnostics.push(Diagnostic::error(
+                Span::default(),
+                format!("expected token '{kind:?}' but reached the end of the file"),
+            ));
 
-                // // TODO: Implement `Display` on `TokenKind`.
-                format!("expected token '{kind:?}', but got {got:?}")
-            },
-        )
-    }
-
-    /// Expects any number token to be at the parser's current position. If the token matches the expected kind, it will
-    /// be consumed, and whether it is a floating point or not will be returned.
-    ///
-    /// If the token at the parser's current position does not match the expected kind, an error diagnostic will be
-    /// produced, and [`None`] will be returned.
-    fn expect_number(&mut self) -> Option<(bool, Span)> {
-        let token = self.expect(
-            |it| matches!(it.kind, TokenKind::Number { .. }),
-            |maybe| {
-                let got = match maybe {
-                    // // TODO: Implement `Display` on `TokenKind`.
-                    Some(it) => format!("'{:?}'", it.kind),
-                    None => "end of file".to_string(),
-                };
-
-                format!("expected a number, but got {got:?}")
-            },
-        )?;
-
-        let TokenKind::Number { float } = token.kind else {
-            panic!("predicate of `expect` yielded a token that was not of the same type");
+            return None;
         };
 
-        Some((float, token.span))
+        if token.kind != kind {
+            self.diagnostics.push(Diagnostic::error(
+                token.span,
+                format!("expected token '{kind:?}' but got '{:?}'", token.kind),
+            ));
+
+            return None;
+        }
+
+        self.cursor.consume()
     }
 }
 
 impl Parser<'_, '_> {
     /// Return the definition at the parser's current position, advancing its cursor.
     pub fn next_definition(&mut self) -> Option<Definition> {
-        // TODO: I don't like this.
+        // If we have reached the end of the stream, then there is nothing else to parse.
         self.cursor.peek()?;
 
         // TODO: If `None` is returned from this, we should consume tokens until we reach a token that is valid for a
@@ -127,21 +78,21 @@ impl Parser<'_, '_> {
     /// Parse a function definition at the parser's current position.
     fn next_function_definition(&mut self) -> Option<FunctionDefinition> {
         // The first token must be an identifier of `func`.
-        let identifier_token = self.expect_kind(TokenKind::Identifier)?;
+        let identifier_token = self.expect(TokenKind::Identifier)?;
         if identifier_token.span.slice(self.source) != "func" {
             return None;
         }
 
         // Then, there must be the name of the function.
-        let name_token = self.expect_kind(TokenKind::Identifier)?;
+        let name_token = self.expect(TokenKind::Identifier)?;
 
         // Then, there must be an opening parenthesis, followed by a closing parenthesis
-        self.expect_kind(TokenKind::OpenParen)?;
-        self.expect_kind(TokenKind::CloseParen)?;
+        self.expect(TokenKind::OpenParen)?;
+        self.expect(TokenKind::CloseParen)?;
 
         // There may be an arrow, which indicates that a return type is being specified.
         let return_type_name = if self.cursor.consume_if(|it| it.kind == TokenKind::Arrow).is_some() {
-            let return_type_name_token = self.expect_kind(TokenKind::Identifier)?;
+            let return_type_name_token = self.expect(TokenKind::Identifier)?;
             Some(return_type_name_token.span.slice(self.source).to_string())
         } else {
             None
@@ -162,7 +113,7 @@ impl Parser<'_, '_> {
     /// Parse a block at the parser's current position.
     fn next_block(&mut self) -> Option<Block> {
         // The block must start with an opening brace.
-        let open_brace = self.expect_kind(TokenKind::OpenBrace)?;
+        let open_brace = self.expect(TokenKind::OpenBrace)?;
 
         let mut statements: Vec<Statement> = Vec::new();
 
@@ -171,7 +122,7 @@ impl Parser<'_, '_> {
         }
 
         // And end with a closing brace.
-        let close_brace = self.expect_kind(TokenKind::CloseBrace)?;
+        let close_brace = self.expect(TokenKind::CloseBrace)?;
 
         Some(Block {
             statements,
@@ -185,14 +136,14 @@ impl Parser<'_, '_> {
     fn next_statement(&mut self) -> Option<Statement> {
         let statement = self.next_return_statement().map(Statement::Return)?;
 
-        self.expect_kind(TokenKind::Semicolon)?;
+        self.expect(TokenKind::Semicolon)?;
 
         Some(statement)
     }
 
     /// Parse a return statement at the parser's current position.
     fn next_return_statement(&mut self) -> Option<ReturnStatement> {
-        let keyword_token = self.expect_kind(TokenKind::Identifier)?;
+        let keyword_token = self.expect(TokenKind::Identifier)?;
         let keyword_str = keyword_token.span.slice(self.source);
 
         if keyword_str != "return" {
@@ -230,12 +181,13 @@ impl Parser<'_, '_> {
 
     /// Parse a number expression at the parser's current position.
     fn parse_number_expression(&mut self) -> Option<Expression> {
-        let (float, span) = self.expect_number()?;
-        let string = span.slice(self.source);
+        let token = self.expect(TokenKind::Number)?;
+        let string = token.span.slice(self.source);
 
-        if float {
+        let is_float = string.contains('.');
+        if is_float {
             self.diagnostics.push(Diagnostic::error(
-                span,
+                token.span,
                 "floating point number literals are not supported yet",
             ));
 
@@ -244,14 +196,17 @@ impl Parser<'_, '_> {
 
         let Ok(int) = string.parse::<i64>() else {
             self.diagnostics.push(Diagnostic::error(
-                span,
+                token.span,
                 format!("number literal '{string}' could not be parsed as an i64"),
             ));
 
             return None;
         };
 
-        Some(Expression::IntegerLiteral { value: int, span })
+        Some(Expression::IntegerLiteral {
+            value: int,
+            span: token.span,
+        })
     }
 }
 

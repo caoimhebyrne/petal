@@ -24,7 +24,7 @@ impl Token {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenKind {
     Identifier,
-    Number { float: bool },
+    Number,
 
     OpenBrace,
     CloseBrace,
