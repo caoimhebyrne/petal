@@ -33,6 +33,22 @@ impl Span {
         &string[self.start as usize..self.end as usize]
     }
 
+    /// Return a new [`Span`] starting at `self` and ending at `end`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `end` is before `self`.
+    #[must_use]
+    pub const fn until(self, end: Self) -> Self {
+        // TODO: I'm not sure if the bounds checking is correct here.
+        assert!(
+            end.start > self.start,
+            "The `end` span must start after the end of `self`"
+        );
+
+        Self::new(self.start, end.end)
+    }
+
     /// Get the start index of this [`Span`].
     pub const fn start(self) -> u32 {
         self.start
@@ -66,6 +82,13 @@ mod tests {
         let source = "func main() {}";
         let span = Span::new(5, 9);
         assert_eq!(span.slice(source), "main");
+    }
+
+    #[test]
+    fn until_returns_correct_value() {
+        let a = Span::new(0, 4);
+        let b = Span::new(2, 6);
+        assert_eq!(a.until(b), Span::new(0, 6));
     }
 
     #[test]
