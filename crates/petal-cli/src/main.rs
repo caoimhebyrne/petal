@@ -6,7 +6,7 @@ fn main() -> ExitCode {
     let program_name = arguments.next().unwrap_or("petal".into());
 
     let Some(path) = arguments.next() else {
-        eprintln!("usage: {program_name} <path> [--dump-tokens]");
+        eprintln!("usage: {program_name} <path> [--dump-ast] [--dump-tokens]");
         return ExitCode::FAILURE;
     };
 
