@@ -3,9 +3,18 @@
 version = 4
 
 [[package]]
+name = "petal-ast"
+version = "0.1.0"
+dependencies = [
+ "petal-lexer",
+ "petal-span",
+]
+
+[[package]]
 name = "petal-cli"
 version = "0.1.0"
 dependencies = [
+ "petal-ast",
  "petal-lexer",
 ]
 

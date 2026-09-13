@@ -10,10 +10,12 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     };
 
+    let dump_argument = arguments.next();
+
     let source = fs::read_to_string(path).expect("failed to read source file");
     let tokens = petal_lexer::tokenize(&source);
 
-    let dump_tokens = arguments.next().is_some_and(|it| it == "--dump-tokens");
+    let dump_tokens = dump_argument.as_ref().is_some_and(|it| it == "--dump-tokens");
     if dump_tokens {
         for token in tokens {
             println!(
@@ -23,6 +25,17 @@ fn main() -> ExitCode {
                 token.span.end(),
                 token.span.slice(&source)
             );
+        }
+
+        return ExitCode::SUCCESS;
+    }
+
+    let definitions = petal_ast::parse(&source, tokens);
+
+    let dump_ast = dump_argument.as_ref().is_some_and(|it| it == "--dump-ast");
+    if dump_ast {
+        for definition in definitions {
+            println!("{definition:#?}");
         }
     }
 

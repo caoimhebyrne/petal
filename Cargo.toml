@@ -9,6 +9,7 @@ repository = "https://github.com/caoimhebyrne/petal"
 version = "0.1.0"
 
 [workspace.dependencies]
+petal-ast = { path = "crates/petal-ast" }
 petal-lexer = { path = "crates/petal-lexer" }
 petal-span = { path = "crates/petal-span" }
 
