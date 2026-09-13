@@ -2,7 +2,7 @@ use std::str::Chars;
 
 /// A wrapper around a string slice and a [`Chars`] iterator, which allows you to peek ahead past the next character
 /// in the iterator.
-pub struct Cursor<'a> {
+pub struct CharCursor<'a> {
     /// The string slice that this cursor is wrapping.
     string: &'a str,
 
@@ -10,7 +10,7 @@ pub struct Cursor<'a> {
     chars: Chars<'a>,
 }
 
-impl<'a> Cursor<'a> {
+impl<'a> CharCursor<'a> {
     /// Create a new [`Cursor`] from a string slice.
     pub fn new(string: &'a str) -> Self {
         Self {
@@ -64,7 +64,7 @@ mod tests {
     #[test]
     fn consume_returns_next_character() {
         let string = "ab";
-        let mut cursor = Cursor::new(string);
+        let mut cursor = CharCursor::new(string);
 
         assert_eq!(cursor.consume(), Some('a'));
         assert_eq!(cursor.consume(), Some('b'));
@@ -74,7 +74,7 @@ mod tests {
     #[test]
     fn consume_while_does_not_consume_predicate_character() {
         let string = "Hello, world!";
-        let mut cursor = Cursor::new(string);
+        let mut cursor = CharCursor::new(string);
 
         cursor.consume_while(|char| char != ',');
 
@@ -84,7 +84,7 @@ mod tests {
     #[test]
     fn consume_if_does_not_consume_when_does_not_match() {
         let string = "hello";
-        let mut cursor = Cursor::new(string);
+        let mut cursor = CharCursor::new(string);
 
         assert!(!cursor.consume_if(|it| it == 'x'));
         assert_eq!(cursor.consume(), Some('h'));
@@ -93,7 +93,7 @@ mod tests {
     #[test]
     fn offset_returns_correct_value_after_consume() {
         let string = "Hello, world!";
-        let mut cursor = Cursor::new(string);
+        let mut cursor = CharCursor::new(string);
 
         let _ = cursor.consume();
         assert_eq!(cursor.offset(), 1);
@@ -102,7 +102,7 @@ mod tests {
     #[test]
     fn peek_returns_next_character_without_consuming() {
         let string = "Hello, world!";
-        let cursor = Cursor::new(string);
+        let cursor = CharCursor::new(string);
 
         assert_eq!(cursor.peek(), Some('H'));
         assert_eq!(cursor.offset(), 0);

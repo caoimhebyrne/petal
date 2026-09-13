@@ -1,21 +1,21 @@
-mod cursor;
+mod char_cursor;
 mod token;
 
 use petal_span::Span;
 pub use token::*;
 
-use crate::cursor::Cursor;
+use crate::char_cursor::CharCursor;
 
 struct Lexer<'a> {
     /// The [`Cursor`] to consume characters from.
-    cursor: Cursor<'a>,
+    cursor: CharCursor<'a>,
 }
 
 impl<'a> Lexer<'a> {
     /// Create a new [`Lexer`] from a string slice.
     pub fn new(string: &'a str) -> Self {
         Self {
-            cursor: Cursor::new(string),
+            cursor: CharCursor::new(string),
         }
     }
 
