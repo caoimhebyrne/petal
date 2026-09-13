@@ -1,6 +1,6 @@
 use petal_span::Span;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Diagnostic {
     /// The message of the [`Diagnostic`].
     pub message: String,

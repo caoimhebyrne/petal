@@ -240,3 +240,158 @@ pub fn parse<'a>(source: &'a str, tokens: impl Iterator<Item = Token> + 'a) -> P
 
     result
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn tokenize_and_parse(source: &str) -> ParseResult {
+        let tokens = petal_lexer::tokenize(source);
+        parse(source, tokens)
+    }
+
+    #[test]
+    fn parses_function_definition() {
+        let result = tokenize_and_parse("func main() {}");
+
+        assert!(result.can_continue());
+
+        assert_eq!(result.diagnostics, vec![]);
+
+        assert_eq!(result.definitions, vec![Definition::Function(FunctionDefinition {
+            name: "main".to_string(),
+            return_type_name: None,
+            body: Block {
+                statements: vec![],
+                span: Span::new(12, 14)
+            },
+            span: Span::new(0, 14)
+        })]);
+    }
+
+    #[test]
+    fn parses_function_definition_with_return_type() {
+        let result = tokenize_and_parse("func main() -> i32 {}");
+
+        assert!(result.can_continue());
+
+        assert_eq!(result.diagnostics, vec![]);
+
+        assert_eq!(result.definitions, vec![Definition::Function(FunctionDefinition {
+            name: "main".to_string(),
+            return_type_name: Some("i32".to_string()),
+            body: Block {
+                statements: vec![],
+                span: Span::new(19, 21)
+            },
+            span: Span::new(0, 21)
+        })]);
+    }
+
+    #[test]
+    fn parses_empty_return_statement() {
+        let result = tokenize_and_parse("func main() { return; }");
+
+        assert!(result.can_continue());
+
+        assert_eq!(result.diagnostics, vec![]);
+
+        assert_eq!(result.definitions, vec![Definition::Function(FunctionDefinition {
+            name: "main".to_string(),
+            return_type_name: None,
+            body: Block {
+                statements: vec![Statement::Return(ReturnStatement {
+                    value: None,
+                    span: Span::new(14, 20)
+                })],
+                span: Span::new(12, 23)
+            },
+            span: Span::new(0, 23)
+        })]);
+    }
+
+    #[test]
+    fn parses_return_statement_with_integer_literal() {
+        let result = tokenize_and_parse("func main() { return 123; }");
+
+        assert!(result.can_continue());
+
+        assert_eq!(result.diagnostics, vec![]);
+
+        assert_eq!(result.definitions, vec![Definition::Function(FunctionDefinition {
+            name: "main".to_string(),
+            return_type_name: None,
+            body: Block {
+                statements: vec![Statement::Return(ReturnStatement {
+                    value: Some(Expression::IntegerLiteral {
+                        value: 123,
+                        span: Span::new(21, 24)
+                    }),
+                    span: Span::new(14, 24)
+                })],
+                span: Span::new(12, 27)
+            },
+            span: Span::new(0, 27)
+        })]);
+    }
+
+    #[test]
+    fn cannot_parse_function_definition_without_body() {
+        let result = tokenize_and_parse("func main()");
+
+        assert!(!result.can_continue());
+
+        assert_eq!(result.definitions, vec![]);
+
+        assert_eq!(result.diagnostics, vec![Diagnostic::error(
+            // TODO: When this works properly, it should be the span of `)`.
+            Span::default(),
+            "expected token 'OpenBrace' but reached the end of the file"
+        )]);
+    }
+
+    #[test]
+    fn cannot_parse_function_definition_with_incomplete_return_type() {
+        let result = tokenize_and_parse("func main() -> {}");
+
+        assert!(!result.can_continue());
+
+        assert_eq!(result.definitions, vec![]);
+
+        assert_eq!(result.diagnostics, vec![Diagnostic::error(
+            Span::new(15, 16),
+            "expected token 'Identifier' but got 'OpenBrace'"
+        )]);
+    }
+
+    #[test]
+    fn cannot_parse_empty_return_statement_without_semicolon() {
+        let result = tokenize_and_parse("func main() { return }");
+
+        assert!(!result.can_continue());
+
+        assert_eq!(result.definitions, vec![]);
+
+        assert_eq!(result.diagnostics.len(), 1);
+
+        // We don't expect a specific message, but we do expect the diagnostic to be at the curly brace's position,
+        // indicating that it attempted to parse a value.
+        let diagnostic = &result.diagnostics[0];
+        assert_eq!(diagnostic.severity, DiagnosticSeverity::Error);
+        assert_eq!(diagnostic.span, Span::new(21, 22));
+    }
+
+    #[test]
+    fn cannot_parse_return_statement_with_integer_literal_without_semicolon() {
+        let result = tokenize_and_parse("func main() { return 123 }");
+
+        assert!(!result.can_continue());
+
+        assert_eq!(result.definitions, vec![]);
+
+        assert_eq!(result.diagnostics, vec![Diagnostic::error(
+            Span::new(25, 26),
+            "expected token 'Semicolon' but got 'CloseBrace'"
+        )]);
+    }
+}
