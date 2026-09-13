@@ -1,6 +1,8 @@
 mod char_cursor;
+mod token_cursor;
 
 pub use char_cursor::*;
+pub use token_cursor::*;
 
 /// An iterator-like trait.
 ///
@@ -11,20 +13,17 @@ pub trait Cursor<Item: Copy> {
     fn consume(&mut self) -> Option<Item>;
 
     /// Return at the next item in the iterator, without advancing the cursor.
-    fn peek(&self) -> Option<Item>;
+    ///
+    /// This function takes a mutable reference to self to make it compatible with the `Peekable::peek` API.
+    fn peek(&mut self) -> Option<Item>;
 
     /// Return true and advance the cursor if `predicate` is true.
-    fn consume_if(&mut self, predicate: impl FnOnce(Item) -> bool) -> bool {
-        if self.peek().map_or_default(predicate) {
-            self.consume();
-            return true;
-        }
-
-        false
+    fn consume_if(&mut self, predicate: impl FnOnce(Item) -> bool) -> Option<Item> {
+        self.peek().map_or_default(predicate).then(|| self.consume()).flatten()
     }
 
     /// Advance the cursor until the `predicate` returns false, or until there are no more items left to consume.
     fn consume_while(&mut self, predicate: impl Fn(Item) -> bool) {
-        while self.consume_if(&predicate) {}
+        while self.consume_if(&predicate).is_some() {}
     }
 }

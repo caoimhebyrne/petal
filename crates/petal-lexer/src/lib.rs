@@ -1,10 +1,9 @@
 mod cursor;
 mod token;
 
+pub use cursor::*;
 use petal_span::Span;
 pub use token::*;
-
-use crate::cursor::{CharCursor, Cursor};
 
 struct Lexer<'a> {
     /// The [`Cursor`] to consume characters from.
@@ -49,7 +48,7 @@ impl<'a> Lexer<'a> {
             ',' => TokenKind::Comma,
 
             '-' => {
-                if self.cursor.consume_if(|it| it == '>') {
+                if self.cursor.consume_if(|it| it == '>').is_some() {
                     TokenKind::Arrow
                 } else {
                     TokenKind::Hyphen
@@ -57,7 +56,7 @@ impl<'a> Lexer<'a> {
             }
 
             '/' => {
-                if self.cursor.consume_if(|it| it == '/') {
+                if self.cursor.consume_if(|it| it == '/').is_some() {
                     self.cursor.consume_while(|it| it != '\n');
                     TokenKind::Comment
                 } else {
@@ -73,7 +72,7 @@ impl<'a> Lexer<'a> {
             char if char.is_numeric() => {
                 self.cursor.consume_while(char::is_numeric);
 
-                let float = self.cursor.consume_if(|it| it == '.');
+                let float = self.cursor.consume_if(|it| it == '.').is_some();
                 if float {
                     self.cursor.consume_while(char::is_numeric);
                 }

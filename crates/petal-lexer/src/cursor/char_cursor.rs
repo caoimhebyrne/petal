@@ -34,7 +34,7 @@ impl Cursor<char> for CharCursor<'_> {
         self.chars.next()
     }
 
-    fn peek(&self) -> Option<char> {
+    fn peek(&mut self) -> Option<char> {
         // cloning the iterator is cheap, as it only clones the pointer that the iterator is currently at, alongside
         // some metadata.
         self.chars.clone().next()
@@ -70,7 +70,7 @@ mod tests {
         let string = "hello";
         let mut cursor = CharCursor::new(string);
 
-        assert!(!cursor.consume_if(|it| it == 'x'));
+        assert!(cursor.consume_if(|it| it == 'x').is_none());
         assert_eq!(cursor.consume(), Some('h'));
     }
 
@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn peek_returns_next_character_without_consuming() {
         let string = "Hello, world!";
-        let cursor = CharCursor::new(string);
+        let mut cursor = CharCursor::new(string);
 
         assert_eq!(cursor.peek(), Some('H'));
         assert_eq!(cursor.offset(), 0);
