@@ -1,5 +1,7 @@
 use std::{env, fs, process::ExitCode};
 
+use petal_codegen::codegen;
+
 use crate::diagnostic::print_diagnostics;
 
 mod diagnostic;
@@ -54,6 +56,9 @@ fn main() -> ExitCode {
     if !check_result.can_continue() {
         return ExitCode::FAILURE;
     }
+
+    let object = codegen(&check_result, &parse_result.definitions);
+    println!("created object file of {} byte(s)", object.len());
 
     ExitCode::SUCCESS
 }

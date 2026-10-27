@@ -1,0 +1,19 @@
+[package]
+name = "petal-codegen"
+
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+cranelift = "0.137.0"
+cranelift-module = "0.137.0"
+cranelift-native = "0.137.0"
+cranelift-object = "0.137.0"
+petal-ast.workspace = true
+petal-diagnostic.workspace = true
+petal-typecheck.workspace = true
+
+[lints]
+workspace = true
