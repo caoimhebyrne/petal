@@ -1,6 +1,6 @@
 use petal_span::Span;
 
-use crate::statement::Block;
+use crate::{TypeExpression, statement::Block};
 
 /// The different kinds of top-level definitions in the language.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,7 +24,7 @@ pub struct FunctionDefinition {
     pub name: String,
 
     /// The return type of the function.
-    pub return_type_name: Option<String>,
+    pub return_type: Option<TypeExpression>,
 
     /// The body of the function.
     pub body: Block,

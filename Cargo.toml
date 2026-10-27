@@ -13,6 +13,7 @@ petal-ast = { path = "crates/petal-ast" }
 petal-diagnostic = { path = "crates/petal-diagnostic" }
 petal-lexer = { path = "crates/petal-lexer" }
 petal-span = { path = "crates/petal-span" }
+petal-typecheck = { path = "crates/petal-typecheck" }
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }

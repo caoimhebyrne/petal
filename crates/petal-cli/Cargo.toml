@@ -10,6 +10,7 @@ version.workspace = true
 petal-ast.workspace = true
 petal-diagnostic.workspace = true
 petal-lexer.workspace = true
+petal-typecheck.workspace = true
 
 [lints]
 workspace = true

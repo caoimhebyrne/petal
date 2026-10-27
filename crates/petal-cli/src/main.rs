@@ -1,6 +1,8 @@
 use std::{env, fs, process::ExitCode};
 
-use petal_diagnostic::DiagnosticSeverity;
+use crate::diagnostic::print_diagnostics;
+
+mod diagnostic;
 
 fn main() -> ExitCode {
     let mut arguments = env::args();
@@ -41,24 +43,15 @@ fn main() -> ExitCode {
         }
     }
 
-    for diagnostic in &parse_result.diagnostics {
-        let prefix = if diagnostic.severity == DiagnosticSeverity::Error {
-            "error"
-        } else {
-            "warn"
-        };
-
-        println!(
-            "{:>5}({}:{}..{}): {}",
-            prefix,
-            path,
-            diagnostic.span.start(),
-            diagnostic.span.end(),
-            diagnostic.message
-        );
+    print_diagnostics(&path, &parse_result.diagnostics);
+    if !parse_result.can_continue() {
+        return ExitCode::FAILURE;
     }
 
-    if !parse_result.can_continue() {
+    let check_result = petal_typecheck::check(&parse_result);
+
+    print_diagnostics(&path, &check_result.diagnostics);
+    if !check_result.can_continue() {
         return ExitCode::FAILURE;
     }
 

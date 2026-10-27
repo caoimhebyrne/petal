@@ -1,6 +1,7 @@
 mod definition;
 mod expression;
 mod statement;
+mod type_expression;
 
 pub use definition::*;
 pub use expression::*;
@@ -8,6 +9,7 @@ use petal_diagnostic::{Diagnostic, DiagnosticSeverity};
 use petal_lexer::{Cursor, Token, TokenCursor, TokenKind};
 use petal_span::Span;
 pub use statement::*;
+pub use type_expression::*;
 
 struct Parser<'a, 'd> {
     source: &'a str,
@@ -17,6 +19,9 @@ struct Parser<'a, 'd> {
 
     /// The [`Vec`] of [`Diagnostic`]s to push to.
     diagnostics: &'d mut Vec<Diagnostic>,
+
+    /// The ID of the next expression that is going to be allocated by the parser.
+    expression_id: u32,
 }
 
 impl<'a, 'd> Parser<'a, 'd> {
@@ -30,7 +35,15 @@ impl<'a, 'd> Parser<'a, 'd> {
             source,
             cursor: TokenCursor::new(tokens, /* skip_comments */ true),
             diagnostics,
+            expression_id: 0,
         }
+    }
+
+    /// Allocates a new expression ID.
+    fn create_expr_id(&mut self) -> ExpressionId {
+        let id = ExpressionId(self.expression_id);
+        self.expression_id += 1;
+        id
     }
 }
 
@@ -79,7 +92,14 @@ impl Parser<'_, '_> {
     fn next_function_definition(&mut self) -> Option<FunctionDefinition> {
         // The first token must be an identifier of `func`.
         let identifier_token = self.expect(TokenKind::Identifier)?;
-        if identifier_token.span.slice(self.source) != "func" {
+        let identifier_str = identifier_token.span.slice(self.source);
+
+        if identifier_str != "func" {
+            self.diagnostics.push(Diagnostic::error(
+                identifier_token.span,
+                format!("expected 'func' keyword, but got '{identifier_str}'"),
+            ));
+
             return None;
         }
 
@@ -91,9 +111,13 @@ impl Parser<'_, '_> {
         self.expect(TokenKind::CloseParen)?;
 
         // There may be an arrow, which indicates that a return type is being specified.
-        let return_type_name = if self.cursor.consume_if(|it| it.kind == TokenKind::Arrow).is_some() {
+        let return_type = if self.cursor.consume_if(|it| it.kind == TokenKind::Arrow).is_some() {
             let return_type_name_token = self.expect(TokenKind::Identifier)?;
-            Some(return_type_name_token.span.slice(self.source).to_string())
+
+            Some(TypeExpression {
+                name: return_type_name_token.span.slice(self.source).to_string(),
+                span: return_type_name_token.span,
+            })
         } else {
             None
         };
@@ -104,7 +128,7 @@ impl Parser<'_, '_> {
 
         Some(FunctionDefinition {
             name: name_token.span.slice(self.source).to_string(),
-            return_type_name,
+            return_type,
             body,
             span,
         })
@@ -204,6 +228,7 @@ impl Parser<'_, '_> {
         };
 
         Some(Expression::IntegerLiteral {
+            id: self.create_expr_id(),
             value: int,
             span: token.span,
         })
@@ -218,6 +243,9 @@ pub struct ParseResult {
 
     /// The diagnostics produced while parsing the source.
     pub diagnostics: Vec<Diagnostic>,
+
+    /// The number of expressions that the parser allocated.
+    pub expression_count: u32,
 }
 
 impl ParseResult {
@@ -238,6 +266,7 @@ pub fn parse<'a>(source: &'a str, tokens: impl Iterator<Item = Token> + 'a) -> P
         result.definitions.push(definition);
     }
 
+    result.expression_count = parser.expression_id;
     result
 }
 
@@ -260,7 +289,7 @@ mod test {
 
         assert_eq!(result.definitions, vec![Definition::Function(FunctionDefinition {
             name: "main".to_string(),
-            return_type_name: None,
+            return_type: None,
             body: Block {
                 statements: vec![],
                 span: Span::new(12, 14)
@@ -279,7 +308,10 @@ mod test {
 
         assert_eq!(result.definitions, vec![Definition::Function(FunctionDefinition {
             name: "main".to_string(),
-            return_type_name: Some("i32".to_string()),
+            return_type: Some(TypeExpression {
+                name: "i32".to_string(),
+                span: Span::new(15, 18)
+            }),
             body: Block {
                 statements: vec![],
                 span: Span::new(19, 21)
@@ -298,7 +330,7 @@ mod test {
 
         assert_eq!(result.definitions, vec![Definition::Function(FunctionDefinition {
             name: "main".to_string(),
-            return_type_name: None,
+            return_type: None,
             body: Block {
                 statements: vec![Statement::Return(ReturnStatement {
                     value: None,
@@ -308,6 +340,8 @@ mod test {
             },
             span: Span::new(0, 23)
         })]);
+
+        assert_eq!(result.expression_count, 0);
     }
 
     #[test]
@@ -320,10 +354,11 @@ mod test {
 
         assert_eq!(result.definitions, vec![Definition::Function(FunctionDefinition {
             name: "main".to_string(),
-            return_type_name: None,
+            return_type: None,
             body: Block {
                 statements: vec![Statement::Return(ReturnStatement {
                     value: Some(Expression::IntegerLiteral {
+                        id: ExpressionId(0),
                         value: 123,
                         span: Span::new(21, 24)
                     }),
@@ -333,6 +368,8 @@ mod test {
             },
             span: Span::new(0, 27)
         })]);
+
+        assert_eq!(result.expression_count, 1);
     }
 
     #[test]
@@ -347,6 +384,20 @@ mod test {
             // TODO: When this works properly, it should be the span of `)`.
             Span::default(),
             "expected token 'OpenBrace' but reached the end of the file"
+        )]);
+    }
+
+    #[test]
+    fn cannot_parse_function_definition_without_func_keyword() {
+        let result = tokenize_and_parse("fn main() {}");
+
+        assert!(!result.can_continue());
+
+        assert_eq!(result.definitions, vec![]);
+
+        assert_eq!(result.diagnostics, vec![Diagnostic::error(
+            Span::new(0, 2),
+            "expected 'func' keyword, but got 'fn'"
         )]);
     }
 

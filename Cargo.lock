@@ -18,6 +18,7 @@ dependencies = [
  "petal-ast",
  "petal-diagnostic",
  "petal-lexer",
+ "petal-typecheck",
 ]
 
 [[package]]
@@ -37,3 +38,13 @@ dependencies = [
 [[package]]
 name = "petal-span"
 version = "0.1.0"
+
+[[package]]
+name = "petal-typecheck"
+version = "0.1.0"
+dependencies = [
+ "petal-ast",
+ "petal-diagnostic",
+ "petal-lexer",
+ "petal-span",
+]

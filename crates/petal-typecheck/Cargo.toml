@@ -1,0 +1,18 @@
+[package]
+name = "petal-typecheck"
+
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+petal-ast.workspace = true
+petal-diagnostic.workspace = true
+
+[dev-dependencies]
+petal-lexer.workspace = true
+petal-span.workspace = true
+
+[lints]
+workspace = true
