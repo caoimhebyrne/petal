@@ -44,7 +44,22 @@ impl Typechecker {
                 self.signature = Some(signature);
                 self.check_block(&function.body);
                 self.signature = None;
+
+                let returns_value = !self.types_match(return_type, self.result.types.void());
+                if returns_value && !function.body.statements.iter().any(Self::always_returns) {
+                    let span = function.return_type.as_ref().map_or(function.span, |it| it.span);
+                    self.result
+                        .diagnostics
+                        .push(Diagnostic::error(span, "function is missing a return statement"));
+                }
             }
+        }
+    }
+
+    /// Return whether the provided statement always returns from the function it is in.
+    fn always_returns(statement: &Statement) -> bool {
+        match statement {
+            Statement::Return(_) => true,
         }
     }
 
@@ -256,6 +271,27 @@ mod test {
         assert_eq!(result.diagnostics, vec![Diagnostic::error(
             Span::new(21, 27),
             "returned value does not match function's return type"
+        )]);
+    }
+
+    #[test]
+    fn checks_void_function_without_return() {
+        let (_, result) = parse_and_check("func main() {}");
+
+        assert!(result.can_continue());
+
+        assert_eq!(result.diagnostics, vec![]);
+    }
+
+    #[test]
+    fn non_void_function_must_return() {
+        let (_, result) = parse_and_check("func main() -> i32 {}");
+
+        assert!(!result.can_continue());
+
+        assert_eq!(result.diagnostics, vec![Diagnostic::error(
+            Span::new(15, 18),
+            "function is missing a return statement"
         )]);
     }
 

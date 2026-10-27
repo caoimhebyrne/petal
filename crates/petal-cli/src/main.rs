@@ -16,16 +16,36 @@ fn main() -> ExitCode {
     let program_name = arguments.next().unwrap_or("petal".into());
 
     let Some(path) = arguments.next() else {
-        eprintln!("usage: {program_name} <path> [--dump-ast] [--dump-tokens]");
+        eprintln!("usage: {program_name} <path> [-o <output>] [--dump-ast] [--dump-tokens]");
         return ExitCode::FAILURE;
     };
 
-    let dump_argument = arguments.next();
+    let mut dump_tokens = false;
+    let mut dump_ast = false;
+    let mut output_path = None;
+
+    while let Some(argument) = arguments.next() {
+        match argument.as_str() {
+            "--dump-tokens" => dump_tokens = true,
+            "--dump-ast" => dump_ast = true,
+            "-o" => {
+                let Some(path) = arguments.next() else {
+                    eprintln!("expected a path after '-o'");
+                    return ExitCode::FAILURE;
+                };
+
+                output_path = Some(PathBuf::from(path));
+            }
+            _ => {
+                eprintln!("unknown argument: '{argument}'");
+                return ExitCode::FAILURE;
+            }
+        }
+    }
 
     let source = fs::read_to_string(&path).expect("failed to read source file");
     let tokens = petal_lexer::tokenize(&source);
 
-    let dump_tokens = dump_argument.as_ref().is_some_and(|it| it == "--dump-tokens");
     if dump_tokens {
         for token in tokens {
             println!(
@@ -42,7 +62,6 @@ fn main() -> ExitCode {
 
     let parse_result = petal_ast::parse(&source, tokens);
 
-    let dump_ast = dump_argument.as_ref().is_some_and(|it| it == "--dump-ast");
     if dump_ast {
         for definition in &parse_result.definitions {
             println!("{definition:#?}");
@@ -64,8 +83,20 @@ fn main() -> ExitCode {
     let object = codegen(&check_result, &parse_result.definitions);
 
     let source_path = PathBuf::from(path);
-    let object_file_name = source_path.with_extension("o");
-    let binary_file_name = source_path.with_extension("");
+    let binary_file_name = output_path.unwrap_or_else(|| source_path.with_extension(""));
+
+    // Without an extension on the source file, the default output path would overwrite the source file.
+    if binary_file_name == source_path {
+        eprintln!(
+            "refusing to overwrite source file '{}', pass '-o <output>' to choose an output path",
+            source_path.display()
+        );
+        return ExitCode::FAILURE;
+    }
+
+    let mut object_file_name = binary_file_name.clone().into_os_string();
+    object_file_name.push(".o");
+    let object_file_name = PathBuf::from(object_file_name);
 
     fs::write(&object_file_name, object).expect("failed to write object file");
 
