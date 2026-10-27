@@ -1,4 +1,8 @@
-use std::{env, fs, process::ExitCode};
+use std::{
+    env, fs,
+    path::PathBuf,
+    process::{Command, ExitCode},
+};
 
 use petal_codegen::codegen;
 
@@ -58,7 +62,32 @@ fn main() -> ExitCode {
     }
 
     let object = codegen(&check_result, &parse_result.definitions);
-    println!("created object file of {} byte(s)", object.len());
+
+    let source_path = PathBuf::from(path);
+    let object_file_name = source_path.with_extension("o");
+    let binary_file_name = source_path.with_extension("");
+
+    fs::write(&object_file_name, object).expect("failed to write object file");
+
+    let link_status = Command::new("cc")
+        .arg(&object_file_name)
+        .arg("-o")
+        .arg(&binary_file_name)
+        .status()
+        .expect("failed to spawn cc to link object");
+
+    if !link_status.success() {
+        eprintln!("failed to link {}", object_file_name.display());
+        return ExitCode::FAILURE;
+    }
+
+    let _ = fs::remove_file(object_file_name);
+
+    println!(
+        "Compiled source file '{}' to executable '{}'",
+        source_path.display(),
+        binary_file_name.display()
+    );
 
     ExitCode::SUCCESS
 }

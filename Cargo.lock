@@ -44,6 +44,8 @@ dependencies = [
  "cranelift-codegen",
  "cranelift-frontend",
  "cranelift-module",
+ "cranelift-native",
+ "cranelift-object",
 ]
 
 [[package]]
@@ -349,9 +351,6 @@ name = "petal-codegen"
 version = "0.1.0"
 dependencies = [
  "cranelift",
- "cranelift-module",
- "cranelift-native",
- "cranelift-object",
  "petal-ast",
  "petal-diagnostic",
  "petal-typecheck",
