@@ -22,6 +22,9 @@ struct Parser<'a, 'd> {
 
     /// The ID of the next expression that is going to be allocated by the parser.
     expression_id: u32,
+
+    /// The ID of the next function that is going to be allocated by the parser.
+    function_id: u32,
 }
 
 impl<'a, 'd> Parser<'a, 'd> {
@@ -36,6 +39,7 @@ impl<'a, 'd> Parser<'a, 'd> {
             cursor: TokenCursor::new(tokens, /* skip_comments */ true),
             diagnostics,
             expression_id: 0,
+            function_id: 0,
         }
     }
 
@@ -43,6 +47,13 @@ impl<'a, 'd> Parser<'a, 'd> {
     fn create_expr_id(&mut self) -> ExpressionId {
         let id = ExpressionId(self.expression_id);
         self.expression_id += 1;
+        id
+    }
+
+    /// Allocates a new function ID.
+    fn create_func_id(&mut self) -> FunctionId {
+        let id = FunctionId(self.function_id);
+        self.function_id += 1;
         id
     }
 }
@@ -127,6 +138,7 @@ impl Parser<'_, '_> {
         let span = identifier_token.span.until(body.span);
 
         Some(FunctionDefinition {
+            id: self.create_func_id(),
             name: name_token.span.slice(self.source).to_string(),
             return_type,
             body,
@@ -246,6 +258,9 @@ pub struct ParseResult {
 
     /// The number of expressions that the parser allocated.
     pub expression_count: u32,
+
+    /// The number of functions that the parser created.
+    pub function_count: u32,
 }
 
 impl ParseResult {
@@ -267,6 +282,7 @@ pub fn parse<'a>(source: &'a str, tokens: impl Iterator<Item = Token> + 'a) -> P
     }
 
     result.expression_count = parser.expression_id;
+    result.function_count = parser.function_id;
     result
 }
 
@@ -288,6 +304,7 @@ mod test {
         assert_eq!(result.diagnostics, vec![]);
 
         assert_eq!(result.definitions, vec![Definition::Function(FunctionDefinition {
+            id: FunctionId(0),
             name: "main".to_string(),
             return_type: None,
             body: Block {
@@ -307,6 +324,7 @@ mod test {
         assert_eq!(result.diagnostics, vec![]);
 
         assert_eq!(result.definitions, vec![Definition::Function(FunctionDefinition {
+            id: FunctionId(0),
             name: "main".to_string(),
             return_type: Some(TypeExpression {
                 name: "i32".to_string(),
@@ -329,6 +347,7 @@ mod test {
         assert_eq!(result.diagnostics, vec![]);
 
         assert_eq!(result.definitions, vec![Definition::Function(FunctionDefinition {
+            id: FunctionId(0),
             name: "main".to_string(),
             return_type: None,
             body: Block {
@@ -353,6 +372,7 @@ mod test {
         assert_eq!(result.diagnostics, vec![]);
 
         assert_eq!(result.definitions, vec![Definition::Function(FunctionDefinition {
+            id: FunctionId(0),
             name: "main".to_string(),
             return_type: None,
             body: Block {

@@ -10,7 +10,7 @@ pub enum TypeKind {
     Void,
 
     /// A signed integer of a certain amount of bits.
-    Integer(u8),
+    Integer(u16),
 
     /// An invalid type.
     Invalid,

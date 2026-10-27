@@ -20,6 +20,9 @@ impl Definition {
 /// A function definition.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionDefinition {
+    /// A unique ID for the function definition.
+    pub id: FunctionId,
+
     /// The name of the function.
     pub name: String,
 
@@ -31,4 +34,18 @@ pub struct FunctionDefinition {
 
     /// The [`Span`] that the function definition covers.
     pub span: Span,
+}
+
+/// A unique identifier assigned to a function.
+///
+/// IDs are allocated by the parser, starting from zero for each parse, so they can be used to index into a table
+/// sized by [`crate::ParseResult::function_count`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct FunctionId(pub(crate) u32);
+
+impl FunctionId {
+    /// Return the index of this ID, for use in tables indexed by [`FunctionId`].
+    pub const fn index(self) -> usize {
+        self.0 as usize
+    }
 }

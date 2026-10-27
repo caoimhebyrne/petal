@@ -1,22 +1,24 @@
+mod signature;
 mod r#type;
 
-use petal_ast::{Block, Definition, Expression, ExpressionId, ParseResult, Statement, TypeExpression};
+use petal_ast::{Block, Definition, Expression, ExpressionId, FunctionId, ParseResult, Statement, TypeExpression};
 use petal_diagnostic::{Diagnostic, DiagnosticSeverity};
+pub use signature::*;
 pub use r#type::*;
 
 struct Typechecker {
     result: TypecheckerResult,
 
-    /// The ID of the type that the current function is expected to return.
-    return_type: Option<TypeId>,
+    /// The signature of the function that is currently being checked.
+    signature: Option<Signature>,
 }
 
 impl Typechecker {
     /// Create a new [`Typechecker`].
-    fn new(expression_count: u32) -> Self {
+    fn new(expression_count: u32, function_count: u32) -> Self {
         Self {
-            result: TypecheckerResult::new(expression_count),
-            return_type: None,
+            result: TypecheckerResult::new(expression_count, function_count),
+            signature: None,
         }
     }
 }
@@ -27,7 +29,7 @@ impl Typechecker {
         match definition {
             Definition::Function(function) => {
                 debug_assert!(
-                    self.return_type.is_none(),
+                    self.signature.is_none(),
                     "tried to check a function definition, but the last one did not clean up properly"
                 );
 
@@ -36,9 +38,12 @@ impl Typechecker {
                     None => self.result.types.void(),
                 };
 
-                self.return_type = Some(return_type);
+                let signature = Signature { return_type };
+                self.result.set_function_signature(function.id, signature);
+
+                self.signature = Some(signature);
                 self.check_block(&function.body);
-                self.return_type = None;
+                self.signature = None;
             }
         }
     }
@@ -59,11 +64,9 @@ impl Typechecker {
                     None => (self.result.types.void(), statement.span()),
                 };
 
-                let return_type = self
-                    .return_type
-                    .expect("return statement outside of function definition");
+                let signature = self.signature.expect("return statement outside of function definition");
 
-                if !self.types_match(value_type, return_type) {
+                if !self.types_match(value_type, signature.return_type) {
                     self.result.diagnostics.push(Diagnostic::error(
                         span,
                         // TODO: TypeId -> Display
@@ -121,16 +124,21 @@ pub struct TypecheckerResult {
     /// The type of each expression, indexed by [`ExpressionId`]. Use [`TypecheckerResult::type_of`] to read it.
     expression_types: Vec<Option<TypeId>>,
 
+    /// The type of each function definition (i.e. it's signature), indexed by [`FunctionId`]. Use
+    /// [`TypecheckerResult::signature_of`] to read it.
+    function_signatures: Vec<Option<Signature>>,
+
     /// The diagnostics produced while checking the source.
     pub diagnostics: Vec<Diagnostic>,
 }
 
 impl TypecheckerResult {
     /// Create a new [`TypecheckerResult`] based on the provided expression count.
-    fn new(expression_count: u32) -> Self {
+    fn new(expression_count: u32, function_count: u32) -> Self {
         Self {
             types: Types::default(),
             expression_types: vec![None; expression_count as usize],
+            function_signatures: vec![None; function_count as usize],
             diagnostics: Vec::new(),
         }
     }
@@ -140,6 +148,13 @@ impl TypecheckerResult {
         let slot = &mut self.expression_types[id.index()];
         debug_assert!(slot.is_none(), "expression {id:?} was checked twice");
         *slot = Some(type_id);
+    }
+
+    /// Sets the signature of a function to the provided [`Signature`].
+    fn set_function_signature(&mut self, id: FunctionId, signature: Signature) {
+        let slot = &mut self.function_signatures[id.index()];
+        debug_assert!(slot.is_none(), "function {id:?} was checked twice");
+        *slot = Some(signature);
     }
 }
 
@@ -153,6 +168,15 @@ impl TypecheckerResult {
         self.expression_types[id.index()].expect("expression was not type checked")
     }
 
+    /// Return the [`Signature`] of the function with the provided [`FunctionId`].
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the function was not type checked.
+    pub fn signature_of(&self, id: FunctionId) -> Signature {
+        self.function_signatures[id.index()].expect("function was not type checked")
+    }
+
     /// Return whether compilation can continue (i.e. whether there are any error diagnostics in the result).
     pub fn can_continue(&self) -> bool {
         self.diagnostics
@@ -163,7 +187,7 @@ impl TypecheckerResult {
 
 /// Check the types of the definitions in the provided [`ParseResult`].
 pub fn check(parse_result: &ParseResult) -> TypecheckerResult {
-    let mut typechecker = Typechecker::new(parse_result.expression_count);
+    let mut typechecker = Typechecker::new(parse_result.expression_count, parse_result.function_count);
     for definition in &parse_result.definitions {
         typechecker.check_definition(definition);
     }

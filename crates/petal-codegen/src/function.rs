@@ -6,7 +6,7 @@ pub(crate) struct FunctionCodegen<'a> {
     pub(crate) module: &'a mut object::ObjectModule,
 }
 
-impl<'a> FunctionCodegen<'a> {
+impl FunctionCodegen<'_> {
     pub(crate) fn build(mut self, block: &Block) {
         let entry_block = self.builder.create_block();
         self.builder.append_block_params_for_function_params(entry_block);
