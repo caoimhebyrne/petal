@@ -1,4 +1,13 @@
 {
     "show_wrap_guides": true,
     "wrap_guides": [120],
+    "lsp": {
+        "rust-analyzer": {
+            "initialization_options": {
+                "check": {
+                    "command": "clippy",
+                },
+            },
+        },
+    },
 }
