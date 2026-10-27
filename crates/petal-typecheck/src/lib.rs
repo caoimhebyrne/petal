@@ -93,17 +93,15 @@ impl Typechecker {
 impl Typechecker {
     /// Resolve the type described by a [`TypeExpression`].
     fn resolve(&mut self, expression: &TypeExpression) -> TypeId {
-        let kind = match expression.name.as_str() {
-            "i32" => TypeKind::Integer(32),
+        let kind = if let "i32" = expression.name.as_str() {
+            TypeKind::Integer(32)
+        } else {
+            self.result.diagnostics.push(Diagnostic::error(
+                expression.span,
+                format!("unknown type: '{}'", expression.name),
+            ));
 
-            _ => {
-                self.result.diagnostics.push(Diagnostic::error(
-                    expression.span,
-                    format!("unknown type: '{}'", expression.name),
-                ));
-
-                TypeKind::Invalid
-            }
+            TypeKind::Invalid
         };
 
         self.result.types.intern(kind)

@@ -17,10 +17,10 @@ pub enum TypeKind {
 }
 
 pub struct Types {
-    /// For lookup from TypeId -> TypeKind.
+    /// For lookup from [`TypeId`] -> [`TypeKind`].
     vec: Vec<TypeKind>,
 
-    /// For lookup from TypeKind -> TypeId.
+    /// For lookup from [`TypeKind`] -> [`TypeId`].
     map: HashMap<TypeKind, TypeId>,
 
     /// The ID of the built-in [`TypeKind::Void`] type.

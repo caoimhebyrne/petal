@@ -25,7 +25,7 @@ impl<'a> Codegen<'a> {
     /// The code for this codegen has been based off the JIT demo, and has been adjusted to emit an object instead of
     /// a JIT module.
     ///
-    /// https://github.com/bytecodealliance/cranelift-jit-demo/blob/main/src/jit.rs
+    /// <https://github.com/bytecodealliance/cranelift-jit-demo/blob/main/src/jit.rs>
     fn new<V>(check_result: &'a TypecheckerResult, object_name: V) -> Self
     where
         V: Into<Vec<u8>>,
